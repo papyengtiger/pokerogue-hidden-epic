@@ -1,0 +1,1915 @@
+{
+  "ModifierType": {
+    "AddPokeballModifierType": {
+      "name": "{{pokeballName}} {{modifierCount}}개",
+      "description": "{{pokeballName}} {{modifierCount}}개 (현재: {{pokeballAmount}}개)를 획득한다.\n포획률: {{catchRate}}"
+    },
+    "AddVoucherModifierType": {
+      "name": "{{voucherTypeName}} {{modifierCount}}장",
+      "description": "{{voucherTypeName}} {{modifierCount}}장을 획득한다."
+    },
+    "PokemonHeldItemModifierType": {
+      "extra": {
+        "inoperable": "{{pokemonName}}[[는]]\n이 아이템을 얻을 수 없다!",
+        "tooMany": "{{pokemonName}}[[는]]\n이 아이템을 너무 많이 갖고 있다!"
+      }
+    },
+    "PokemonHpRestoreModifierType": {
+      "description": "포켓몬 1마리의 HP를 {{restorePoints}} 또는 {{restorePercent}}% 중\n높은 수치만큼 회복한다.",
+      "extra": {
+        "fully": "포켓몬 1마리의 HP를 모두 회복한다.",
+        "fullyWithStatus": "포켓몬 1마리의 HP와 상태 이상을 모두 회복한다."
+      }
+    },
+    "PokemonReviveModifierType": {
+      "description": "기절해 버린 포켓몬 1마리의 HP를 {{restorePercent}}%까지 회복한다."
+    },
+    "PokemonStatusHealModifierType": {
+      "description": "포켓몬 1마리의 상태 이상을 모두 회복한다."
+    },
+    "PokemonPpRestoreModifierType": {
+      "description": "포켓몬이 기억하고 있는 기술 중 1개의 PP를 {{restorePoints}}만큼 회복한다.",
+      "extra": {
+        "fully": "포켓몬이 기억하고 있는 기술 중 1개의 PP를 모두 회복한다."
+      }
+    },
+    "PokemonAllMovePpRestoreModifierType": {
+      "description": "포켓몬이 기억하고 있는 4개의 기술 PP를 {{restorePoints}}씩 회복한다.",
+      "extra": {
+        "fully": "포켓몬이 기억하고 있는 4개의 기술 PP를 모두 회복한다."
+      }
+    },
+    "PokemonPpUpModifierType": {
+      "description": "포켓몬이 기억하고 있는 기술 중 1개의 PP 최대치를 5마다 {{upPoints}}씩 상승시킨다. (최대 3)"
+    },
+    "DynamaxMovePpUpModifierType": {
+      "description": "다이맥스 에너지가 흘러넘치는 사탕, 포켓몬에게 사용하면 1개의 다이맥스 기술의 PP 최대치를 5마다 {{upPoints}}씩 상승시킨다.(최대 3)"
+    },
+    "PokemonNatureChangeModifierType": {
+      "name": "{{natureName}}민트",
+      "description": "포켓몬의 성격을 {{natureName}}[[로]] 바꾸고 스타팅에도 등록한다."
+    },
+    "MaxIvModifierType": {
+      "name": "{{stat}}은색병뚜껑",
+      "description": "은색의 아름다운 병뚜껑. 포켓몬에게 사용하면 해당 포켓몬의 {{stat}}[[가]] 최대치로 증가한다."
+    },
+    "MaxAllIvModifierType": {
+      "name": "금색병뚜껑",
+      "description": "금색의 아름다운 병뚜껑. 포켓몬에게 사용하면 해당 포켓몬의 모든 능력치가 최대치로 증가한다."
+    },
+    "ChangeAbilityModifierType": {
+      "name": "특성캡슐",
+      "description": "포켓몬에게 사용하면 기존의 등록되어있던 특성 중에서 하나를 고르게 해주는 캡슐"
+    },
+    "RegisterAbilityModifierType": {
+      "name": "특성패치",
+      "description": "포켓몬에게 사용하면 기존에 등록되어있던 특성 뿐만 아니라 등록되지 않은 특성을 해금 시켜주고 스타팅에도 등록시켜주는 패치"
+    },
+    "WeatherRockTrainerModifierType": {
+      "description": "{{weather}} 날씨를 10턴 동안 유지시킨다."
+    },
+    "TerrainSeedTrainerModifierType": {
+      "description": "{{terrain}}를 10턴 동안 유지시킨다."
+    },
+    "DoubleBattleChanceBoosterModifierType": {
+      "description": "{{battleCount}}번의 배틀 동안 더블 배틀이 등장할 확률이 4배가 된다."
+    },
+    "TempStatStageBoosterModifierType": {
+      "description": "자신의 모든 포켓몬이 5번의 배틀 동안 {{stat}}[[가]] {{amount}} 증가한다.",
+      "extra": {
+        "stage": "1단계",
+        "percentage": "30%"
+      }
+    },
+    "AttackTypeBoosterModifierType": {
+      "description": "지니게 하면 {{moveType}}타입 기술의 위력이 20% 상승한다."
+    },
+    "TypeSpecificMoveBoosterModifierType": {
+      "description": "{{moveType}}타입의 주얼. 지니게 하면 한 번만 {{moveType}} 기술의 위력이 강해진다."
+    },
+    "ZGenericCrystalMoveModifierType": {
+      "name": "{{moveType}}Z",
+      "description": "{{moveType}}타입의 기술의 Z기술을 사용할수 있게 해주는 Z크리스탈, Z파워의 결정을 만들어낸다."
+    },
+    "PokemonZMovePpRestoreModifierType": {
+      "name": "Z회복",
+      "description": "이상한 힘이 깃든 이상한 음료수, Z기술의 PP를 모두 회복한다."
+    },
+    "PokemonMaxMovePpRestoreModifierType": {
+      "name": "다이PP맥스",
+      "description": "다이맥스의 에너지가 농축된 드링크, 다이맥스 거다이맥스 기술의 PP를 모두 회복한다."
+    },
+    "PokemonLevelIncrementModifierType": {
+      "description": "포켓몬 1마리의 레벨이 {{levels}}만큼 상승한다."
+    },
+    "AllPokemonLevelIncrementModifierType": {
+      "description": "자신의 모든 포켓몬의 레벨이 {{levels}}만큼 상승한다."
+    },
+    "BaseStatBoosterModifierType": {
+      "description": "지니게 하면 {{stat}} 종족치를 10% 올려준다. 개체값이 높을수록 더 많이 누적시킬 수 있다."
+    },
+    "PokemonBaseStatTotalModifierType": {
+      "name": "단단지주스",
+      "description": "모든 종족치를 {{statValue}}만큼 {{increaseDecrease}}. 단단지의 {{blessCurse}}[[를]] 받았다.",
+      "extra": {
+        "increase": "올려준다",
+        "decrease": "떨어뜨린다",
+        "blessed": "축복",
+        "cursed": "저주"
+      }
+    },
+    "PokemonBaseStatFlatModifierType": {
+      "name": "숲의양갱",
+      "description": "{{stats}} 종족치를 {{statValue}}만큼 올려준다. 이상한 꿈을 꾸고 얻었다."
+    },
+    "AllPokemonFullHpRestoreModifierType": {
+      "description": "자신의 포켓몬의 HP를 모두 회복한다."
+    },
+    "AllPokemonFullReviveModifierType": {
+      "description": "기절해 버린 포켓몬 전원의 HP를 완전히 회복한다."
+    },
+    "MoneyRewardModifierType": {
+      "description": "{{moneyMultiplier}} 양의 돈을 획득한다. (₽{{moneyAmount}})",
+      "extra": {
+        "small": "적은",
+        "moderate": "적당한",
+        "large": "많은"
+      }
+    },
+    "ExpBoosterModifierType": {
+      "description": "포켓몬이 받는 경험치가 {{boostPercent}}% 증가한다."
+    },
+    "PokemonExpBoosterModifierType": {
+      "description": "지니게 한 포켓몬은 받는 경험치가 {{boostPercent}}% 증가한다."
+    },
+    "PokemonFriendshipBoosterModifierType": {
+      "description": "획득하는 친밀도가 50% 증가한다."
+    },
+    "PokemonMoveAccuracyBoosterModifierType": {
+      "description": "기술의 명중률이 {{accuracyAmount}} 증가한다. (최대 100)"
+    },
+    "PokemonMultiHitModifierType": {
+      "description": "지니게 된 포켓몬은 공격한 데미지의 25%로 한 번 더 공격한다."
+    },
+    "TmModifierType": {
+      "name": "No.{{moveId}} {{moveName}}",
+      "description": "포켓몬에게 {{moveName}}[[를]] 가르침."
+    },
+    "TrModifierType": {
+      "name": "No.{{moveId}} {{moveName}}",
+      "description": "포켓몬에게 {{moveName}}[[를]] 가르침."
+    },
+    "TmModifierTypeWithInfo": {
+      "name": "No.{{moveId}} {{moveName}}",
+      "description": "포켓몬에게 {{moveName}}[[를]] 가르침.\n(C 또는 Shift를 꾹 눌러 정보 확인)"
+    },
+    "TrModifierTypeWithInfo": {
+      "name": "No.{{moveId}} {{moveName}}",
+      "description": "포켓몬에게 {{moveName}}[[를]] 가르침.\n(C 또는 Shift를 꾹 눌러 정보 확인)"
+    },
+    "EvolutionItemModifierType": {
+      "description": "어느 특정 포켓몬을 진화시킨다."
+    },
+    "FormChangeItemModifierType": {
+      "description": "어느 특정 포켓몬을 폼 체인지시킨다."
+    },
+    "FusePokemonModifierType": {
+      "description": "두 포켓몬을 결합시킨다. (특성 변환, 종족값과 타입 분배, 기술폭 공유)"
+    },
+    "TerastallizeModifierType": {
+      "name": "테라피스 {{teraType}}",
+      "description": "테라스탈타입을 {{teraType}} 타입으로 한다."
+    },
+    "ContactHeldItemTransferChanceModifierType": {
+      "description": "공격했을 때, {{chancePercent}}%의 확률로 상대의 도구를 도둑질한다."
+    },
+    "TurnHeldItemTransferModifierType": {
+      "description": "매 턴, 지닌 포켓몬은 상대로부터 도구를 하나 획득한다."
+    },
+    "SuperEffectiveBoosterModifier": {
+      "description": "오래 사용한 까만 띠. 지니게 하면 효과가 뛰어날 때 기술의 위력이 조금 올라간다."
+    },
+    "StackingRiskyPowerBoosterModifier": {
+      "description": "지니게 하면 공격할 때마다 HP가 조금씩 줄지만 기술의 위력이 올라간다."
+    },
+    "StackingPowerBoosterModifier": {
+      "description": "지니게 하면 똑같은 기술을 연속으로 사용했을 때 위력이 올라간다. 중간에 다른 기술을 사용하면 위력이 올라가지는 않고 그대로 머문다."
+    },
+    "RunSuccessItemModifier": {
+      "description": "지니게 한 포켓몬은 야생 포켓몬과의 배틀에서 반드시 도망칠 수 있다."
+    },
+    "EvasiveItemModifier": {
+      "description": "반짝반짝 빛나는 가루. 지니게 하면 빛이 상대를 혼란시켜 기술이 명중되기 어려워진다."
+    },
+    "IgnoreContactItemModifier": {
+      "description": "공격하는 상대와 접촉해서 받게 되는 효과를 받지 않게 하며 기술의 위력이 증가한다."
+    },
+    "GuaranteedSurviveDamageModifier": {
+      "description": "지니게 하면 HP가 꽉 찼을 때 기절할 듯한 기술을 당해도 HP 1로 반드시 한 번은 버틴다."
+    },
+    "ResetMoveRestrictionModifier": {
+      "description": "지니게 한 포켓몬은 포켓몬이 자유롭게 기술을 사용 못하는 상태가 되었을 때 한 번만 회복한다."
+    },
+    "ContactDamageModifier": {
+      "description": "포켓몬에게 지니게 하면 반동 데미지를 받는 기술의 위력이 올라가고 반동 데미지를 받지를 않으며, 타격기술을 받을 때 상대방에게도 데미지를 준다."
+    },
+    "ProtectStatModifier": {
+      "description": "투명하고 빛나는 참. 지니게 하면 상대의 기술이나 특성으로 능력이 떨어지지 않는다."
+    },
+    "WeaknessTypeModifier": {
+      "description": "약점을 공격당했을 때 공격과 특수공격이 각각 크게 올라간다."
+    },
+    "PokemonDefensiveStatModifier": {
+      "description": "공격적으로 변하는 조끼. 지니게 하면 공격기술을 사용할때 방어와 특수방어가 조금씩 오른다."
+    },
+    "SpeedStatModifier": {
+      "description": "지니게 하면 상대 포켓몬을 쓰러뜨릴때마다 자신의 스피드가 조금씩 오른다."
+    },
+    "SpAtkStatModifier": {
+      "description": "지니게 하면 상대 포켓몬을 쓰러뜨릴때마다 자신의 특수공격력이 조금씩 오른다."
+    },
+    "AtkStatModifier": {
+      "description": "지니게 하면 상대 포켓몬을 쓰러뜨릴때마다 자신의 공격력이 조금씩 오른다."
+    },
+    "OvercoatModifier": {
+      "description": "이 도구를 지닌 포켓몬은 날씨에 의한 데미지를 받지 않으며 포자, 가루 계열 기술도 영향을 받지 않는다."
+    }, 
+    "PunchingGloveModifier": {
+      "description": "주먹을 보호하는 글러브. 지니게 하면 펀치 기술의 위력이 오르고 상대에게 접촉하지 않는 펀치가 된다."
+    },
+    "IgnoreMoveEffectsItemModifier": {
+      "description": "상대의 눈을 속이는 후드 달린 망토. 지니게 하면 몸을 숨겨서 기술의 추가 효과를 받지 않게 된다."
+    },
+    "MaxMultiHitModifier": {
+      "description": "좋은 눈만 나오는 주사위. 지니게 하고 연속 기술을 사용하면 많은 횟수로 기술을 사용할 수 있다."
+    },
+    "AttackTypeImmunityModifier": {
+      "description": "포켓몬에게 지니게 하면 포켓몬이 공중에 뜬다. 공격을 받으면 터지고 만다."
+    },
+    "SoundBasedMoveSpecialAttackBoostModifier": {
+      "description": "소리 기술을 사용하면 특수공격이 올라간다."
+    },
+    "AlwaysMoveLastModifier": {
+      "description": "매우 무거운 무언가의 꼬리. 지니게 하면 여느 때보다 행동이 느려진다."
+    },
+    "IgnoreWeatherEffectsItemModifier": {
+      "description": "지니게 한 포켓몬은 모든 날씨의 영향을 받지 않게 된다."
+    },
+    "WeakenMoveScreenModifier": {
+      "description": "지니게 한 포켓몬이 빛의장막이나 리플렉터를 사용했을 때 여느 때보다 긴 시간 동안 지속된다."
+    },
+    "StatStageChangeCopyModifier": {
+      "description": "지니게 한 포켓몬은 한 번에 의해 상대의 능력이 올랐을 때 흉내 내어 똑같이 능력을 올린다."
+    },
+    "PostBattleLootItemModifier": {
+      "description": "포켓몬에게 지니게하면 배틀에서 승리할때마다 상대의 도구를 어느새인가 가져오는 신기한 주머니"
+    },
+    "CritDamageBoostModifier": {
+      "description": "기술을 사용했을때 급소 대미지가 1.5배 증가하게 되는 빨간색 밴드"
+    },
+    "NotEffectiveBoostModifier": {
+      "description": "효과가 별로인 기술을 사용했을때 기술의 위력이 올라가는 이상한 밴드"
+    },
+    "MovePowerBoostItemModifier": {
+      "description": "위력이 낮은 기술의 위력을 올려주는 유용한 앵클릿"
+    },
+    "RecoilBoosterModifier": {
+      "description": "반동 기술을 사용하면 반동대미지를 입지 않게 해주고 반동 기술의 위력을 올려주는 쓸만한 벨트"
+    },
+    "MoveAbilityBypassModifier": {
+      "description": "가지고 있으면 상대의 특성에 방해받지 않고 상대에게 기술을 쓸 수 있게 해주는 엄청난 벨트"
+    },
+    "VictoryStatBoostModifier": {
+      "description": "가지고 있으면 착용자의 가장 높은 능력치를 올려주는 유용한 웨이트"
+    },
+    "UnawareItemModifier": {
+      "description": "지니고 있으면 상대의 스피드를 제외한 능력변화의 영향을 받지 않게되는 노란색 밴드"
+    },
+    "InstantChargeItemModifier": {
+      "description": "지니게 한 포켓몬은 한 번만 1턴째에 힘을 모으는 기술을 바로 사용할 수가 있다."
+    },
+    "StatStageChangeBoostModifier": {
+      "description": "착용자의 능력변화가 평소보다 2배 더 심해지는 초록색 밴드"
+    },
+    "PreventBerryUseItemModifier": {
+      "description": "긴장감을 유발시키는 향으로 인해 필드에 나와있는 상대 포켓몬은 열매를 먹지 못하게 되는 이상한 향로"
+    },
+    "PreventExplosionItemModifier": {
+      "description": "주변에 습기를 뿌려서 그 누구도 터질수 없게 하는 이상한 향로"
+    },
+    "PreventPriorityMoveItemModifier": {
+      "description": "괴상한 향을 내뿜어 상대 포켓몬의 선제 기술을 사용하지 못하게 하는 괴상한 향로"
+    },
+    "MoveEffectChanceMultiplierItemModifier": {
+      "description": "은은한 향기를 내뿜어 기술의 부가효과가 발동될 확률을 2배로 올려주는 축복받은 향로"
+    },
+    "IgnoreTypeImmunityModifier": {
+      "description": "타입 상성상 효과가 없는 기술도 대미지를 줄수 있게 해주는 엄청난 벨트."
+    },
+    "SheerForceItemModifier": {
+      "description": "기술의 추가 효과가 없어지지만 그만큼 높은 위력으로 기술을 사용할수 있게 해주는 우격다짐의 밴드"
+    },
+    "GoldenBodyItemModifier": {
+      "description": "찬란한 금빛 향을 내뿜어 상대의 변화기술의 영향을 받지 않게 해주는 신비한 향로"
+    },
+    "AromaIncenseItemModifier": {
+      "description": "기분 좋은 향기를 내뿜어 자신과 같은 편에게 향하는 멘탈 공격을 막을수 있게 해주는 향기로운 향로"
+    },
+    "AdaptabilityItemModifier": {
+      "description": "가지고 있으면 자신과 같은 타입인 기술의 위력이 올라가는 분홍빛 밴드"
+    },
+    "TelepathyItemModifier": {
+      "description": "알수없는 향을 내뿜어 같은 편의 공격을 간파해서 기술을 회피하게 해주는 이상한 향로"
+    },
+    "EvolutionIncenseModifier": {
+      "description": "지니고 있으면 진화 전 포켓몬의 공격과 특수공격, 스피드를 올려주는 기분이 절로 든든해지는 푸른빛 향로"
+    },
+    "SturdystoneItemModifier": {
+      "description": "거친 향을 내뿜어 자신이 받는 효과가 굉장한 공격의 위력을 약하게 만드는 멧집이 절로 튼튼해지는 향로"
+    },
+    "StatStageChangeReverseModifier": {
+      "description": "지니고 있으면 능력변화가 반대로 적용되는 이상한 밴드"
+    },
+    "MoodyItemModifier": {
+      "description": "지니고 있으면 매 턴 능력 중 하나가 크게 오르고 하나가 떨어지는 특이한 밴드"
+    },
+    "RoomServiceModifier": {
+      "description": "포켓몬에게 지니게 하면 트릭룸일 때 사용하여 스피드가 떨어진다."
+    },
+    "MissEffectModifier": {
+      "description": "명중률에 의해 기술이 빗나갔을 때 스피드가 크게 올라간다."
+    },
+    "AbilityGuardItemModifier": {
+      "description": "귀엽고 개성적인 방패. 지니게 하면 상대에 의해 특성이 바뀌지 않는다."
+    },
+    "SlicingMoveModifier": {
+      "description": "예리하고 날카로운 칼. 지니게 하면 베기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "BitingMoveModifier": {
+      "description": "튼튼하고 예리한 틀니. 지니게 하면 물기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "HeadMoveModifier": {
+      "description": "튼튼한 헬멧. 지니게 하면 박치기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "HornMoveModifier": {
+      "description": "크고 뾰쪽한 뿔이 달린 튼튼한 헬멧. 지니게 하면 뿔 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "KickMoveModifier": {
+      "description": "튼튼하고 안전한 보호대. 지니게 하면 발차기, 지니게 하면 발차기, 킥 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "SpearMoveModifier": {
+      "description": "예리하고 뾰쪽한 창. 지니게 하면 찌르기, 지니게 하면 창, 찌르기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "WingMoveModifier": {
+      "description": "가볍고 튼튼한 깃털. 지니게 하면 날개 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "HammerMoveModifier": {
+      "description": "거대하고 강력한 해머. 지니게 하면 망치, 둔기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "ClawMoveModifier": {
+      "description": "단단하고 예리한 발톱. 지니게 하면 할퀴기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "PinchMoveModifier": {
+      "description": "단단하고 강력한 집게. 지니게 하면 찝기, 가위 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "BeakMoveModifier": {
+      "description": "단단하고 예리한 부리. 지니게 하면 부리, 쪼기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "DashMoveModifier": {
+      "description": "하늘을 날아갈 것 처럼 가벼운 부츠. 지니게 하면 질주 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "SpinMoveModifier": {
+      "description": "회오리처럼 절대 쓰러지지 않고 빙글빙글 돌아가는 팽이. 지니게 하면 스핀 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "DrillMoveModifier": {
+      "description": "빠르고 강력한 장난감 드릴. 지니게 하면 드릴 기술의 위력이 오르고 접촉하기 않게 된다."
+    },
+    "WhipMoveModifier": {
+      "description": "길고 단단한 로프. 지니게 하면 채찍 기술의 위력이 오르고 접촉하기 않게 된다."
+    },
+    "WheelMoveModifier": {
+      "description": "튼튼하고 잘 굴러가는 최신식 타이어. 지니게 하면 바퀴, 구르기 기술의 위력이 오르고 접촉하기 않게 된다."
+    },
+    "TailMoveModifier": {
+      "description": "튼튼하고 강력한 장난감 꼬리. 지니게 하면 꼬리 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "ArrowMoveModifier": {
+      "description": "굉장히 유연하고 활시위가 잘 늘어나는 꽤 쓸만한 장난감 활. 지니게 하면 화살 기술의 위력이 오른다."
+    },
+    "BallBombMoveModifier": {
+      "description": "작지만 단단하고 맞으면 아픈 구슬. 지니게 하면 구슬, 폭탄류 기술의 위력이 오른다."
+    },
+    "BoomerangMoveModifier": {
+      "description": "튼튼하고 던지면 언제든지 제자리로 돌아오는 장난감 부메랑. 지니게 하면 부메랑 기술의 위력이 오른다."
+    },
+    "ThrowMoveModifier": {
+      "description": "무엇이든지 잘 던지고 잘 받는 장난감 글러브. 지니게 하면 떨구기, 던지기 기술의 위력이 오른다."
+    },
+    "PulseMoveModifier": {
+      "description": "파동의 기운이 절로 느껴지는 신비한 구슬. 지니게 하면 파동 기술의 위력이 오른다."
+    },
+    "BeamMoveModifier": {
+      "description": "레이저가 나가는 절대 고장나지 않는 만능 포인터. 지니게 하면 광선, 빔 기술의 위력이 오른다."
+    },
+    "LightMoveModifier": {
+      "description": "절대 꺼지지 않는 불빛을 가진 굉장히 유용한 랜턴. 지니게 하면 빛 기술의 위력이 오른다."
+    },
+    "SoundMoveModifier": {
+      "description": "어떤 노래나 소리든 자유자재로 낼수 있는 만능 스탠드마이크. 지니게 하면 소리 기술의 위력이 오르고 자신이 입는 소리기술의 대미지를 낮춘다."
+    },
+    "WindMoveModifier": {
+      "description": "절대 망가지지 않는 튼실하고 사용하면 바람이 잘 나오는 유용한 부채. 지니게 하면 바람 기술의 위력이 오르고 자신이 입는 바람 기술의 대미지를 낮춘다."
+    },
+    "DanceMoveModifier": {
+      "description": "보기만 해도 저절로 흥이 나서 춤을 추게 되는 이상한 스커트. 지니게 하면 춤 기술의 위력이 오르고 누군가 춤 기술을 쓰면 자신도 이어서 춤 기술을 쓸 수 있게 된다."
+    },
+    "DrainMoveModifier": {
+      "description": "지니게 하면 HP흡수 기술을 썼을 때 기술의 위력이 오르고 여느 때 보다 많은 HP를 자신이 회복할수 있다."
+    },
+    "BoostEnergyModifier": {
+      "description": "에너지가 가득한 캡슐. 어떤 특성을 가진 포켓몬에게 지니게 하면 그 힘을 증폭시킨다."
+    },
+    "PowerUpDiskModifier": {
+      "description": "무언가 알수 없는 기록들이 기록되어있는 이상한 디스크. 어떤 특성을 가진 포켓몬에게 지니게 하면 그 힘을 증폭시킨다."
+    },
+    "BeastBoostStartStatBoostModifier": {
+      "description": "에너지가 가득한 캡슐. 어떤 특성을 가진 포켓몬에게 지니게 하면 배틀이 시작될때 그 힘을 증폭시켜 가장 높은 능력치를 올린다."
+    },
+    "VictoryBadgeModifier": {
+      "description": "무슨일이 있어도 반드시 승부에서 이기게 해준다는 행운의 배지, 승리의별 특성 효과가 30%더 오른다."
+    },
+    "BlockCritItemModifier": {
+      "description": "무슨일이 있어도 부서지지 않는 튼튼한 조개껍질. 지니고 있으면 급소에 맞지 않게 된다."
+    },
+    "StatusBoostItemModifier": {
+      "description": "지니고 있으면 상태이상에 걸릴때 자신의 가장 높은 능력치가 올라가는 신비하고 이상한 비늘"
+    },
+    "EnemyAttackStatusEffectChanceModifierType": {
+      "description": "공격했을 때 {{statusEffect}} 상태로 만들 확률이 {{chancePercent}}% 추가된다."
+    },
+    "EnemyEndureChanceModifierType": {
+      "description": "받은 공격을 버텨낼 확률이 {{chancePercent}}% 추가된다."
+    },
+    "RARE_CANDY": {
+      "name": "이상한사탕"
+    },
+    "RARER_CANDY": {
+      "name": "더이상한사탕"
+    },
+    "MEGA_BRACELET": {
+      "name": "메가링",
+      "description": "메가스톤을 사용할 수 있게 된다."
+    },
+    "DYNAMAX_BAND": {
+      "name": "다이맥스 밴드",
+      "description": "다이버섯을 사용할 수 있게 된다."
+    },
+    "TERA_ORB": {
+      "name": "테라스탈오브",
+      "description": "포켓몬들이 테라스탈할 수 있게 된다. 서서히 충전되며, 테라피스를 사용할 수 있게 된다."
+    },
+    "Z_RING": {
+      "name": "Z링",
+      "description": "트레이너의 기력과 체력을 사용해서 포켓몬이 Z파워를 발산할 수 있게 하는 신비한 팔찌"
+    },
+    "Z_POWER_RING": {
+      "name": "Z파워링",
+      "description": "트레이너의 기력과 체력을 사용해서 특정 포켓몬이 고유의 Z파워를 발산할 수 있게 하는 신비한 팔찌"
+    },
+    "MAP": {
+      "name": "지도",
+      "description": "갈림길에서 목적지를 선택할 수 있다."
+    },
+    "POTION": {
+      "name": "상처약"
+    },
+    "SUPER_POTION": {
+      "name": "좋은상처약"
+    },
+    "HYPER_POTION": {
+      "name": "고급상처약"
+    },
+    "MAX_POTION": {
+      "name": "풀회복약"
+    },
+    "FULL_RESTORE": {
+      "name": "회복약"
+    },
+    "REVIVE": {
+      "name": "기력의조각"
+    },
+    "MAX_REVIVE": {
+      "name": "기력의덩어리"
+    },
+    "FULL_HEAL": {
+      "name": "만병통치제"
+    },
+    "SACRED_ASH": {
+      "name": "성스러운분말"
+    },
+    "REVIVER_SEED": {
+      "name": "부활의씨앗",
+      "description": "포켓몬이 공격을 받고 쓰러지려 할 때 HP를 절반 회복한다."
+    },
+    "WHITE_HERB": {
+      "name": "하양허브",
+      "description": "지니게 한 포켓몬의 능력이 떨어졌을 때 원래 상태로 돌아온다."
+    },
+    "WISHING_STAR": {
+      "name": "소원의별",
+      "description": "주우면 소원이 이루어진다고도 전해지는 신비한 힘을 간직하고 있는 돌. 포켓몬에게 사용하면 10턴동안 다이맥스 상태가 된다."
+    },
+    "DYNAMAX_CANDY": {
+      "name": "다이맥스사탕"
+    },
+    "ETHER": {
+      "name": "PP에이드"
+    },
+    "MAX_ETHER": {
+      "name": "PP회복"
+    },
+    "ELIXIR": {
+      "name": "PP에이더"
+    },
+    "MAX_ELIXIR": {
+      "name": "PP맥스"
+    },
+    "PP_UP": {
+      "name": "포인트업"
+    },
+    "PP_MAX": {
+      "name": "포인트맥스"
+    },
+    "LURE": {
+      "name": "더블배틀코롱"
+    },
+    "SUPER_LURE": {
+      "name": "실버코롱"
+    },
+    "MAX_LURE": {
+      "name": "골드코롱"
+    },
+    "MEMORY_MUSHROOM": {
+      "name": "기억버섯",
+      "description": "포켓몬이 잊어버린 기술을 떠올린다."
+    },
+    "EXP_SHARE": {
+      "name": "학습장치",
+      "description": "배틀에 참여하지 않아도 20%의 경험치를 받을 수 있게 된다."
+    },
+    "EXP_BALANCE": {
+      "name": "균형학습장치",
+      "description": "레벨이 낮은 포켓몬이 받는 경험치를 가중시킨다."
+    },
+    "OVAL_CHARM": {
+      "name": "둥근부적",
+      "description": "1개당 알부화 카운트수가 30% 줄어드는 절로 포근해지는 친근한 부적."
+    },
+    "ARMORITE_ORE": {
+      "name": "갑옷광석",
+      "description": "다이맥스 에너지가 흘러넘치는 희귀한 광석. 가지고 있으면 포켓몬에게 다이맥스, 거다이맥스 기술을 가르칠수 있는 기술레코드를 사용할수 있게 된다."
+    },
+    "EXP_CHARM": {
+      "name": "경험부적"
+    },
+    "SUPER_EXP_CHARM": {
+      "name": "좋은경험부적"
+    },
+    "GOLDEN_EXP_CHARM": {
+      "name": "황금경험부적"
+    },
+    "LUCKY_EGG": {
+      "name": "행복의알"
+    },
+    "GOLDEN_EGG": {
+      "name": "황금의알"
+    },
+    "SOOTHE_BELL": {
+      "name": "평온의방울"
+    },
+    "SCOPE_LENS": {
+      "name": "초점렌즈",
+      "description": "약점이 보이는 렌즈. 지니게 한 포켓몬의 기술이 급소에 맞기 쉬워진다."
+    },
+    "DIRE_HIT": {
+      "name": "크리티컬커터",
+      "extra": {
+        "raises": "급소율"
+      }
+    },
+    "LEEK": {
+      "name": "대파",
+      "description": "매우 길고 단단한 줄기. 파오리에게 지니게 하면 기술이 급소에 맞기 쉬워진다."
+    },
+    "TIDAL_BELL": {
+      "name": "해명의방울",
+      "description": "마음이 편안해지는 음색이 들리는 아주 고풍스러운 방울, 루기아에게 지니게 하면 회복기술의 우선도가 오르고 회복량이 평소보다 더 많이 오른다."
+    },
+    "CLEAR_BELL": {
+      "name": "크리스탈방울",
+      "description": "마음이 편안해지는 음색이 들리는 아주 고풍스러운 방울, 칠색조에게 지니게 하면 매턴 체력이 회복되고 공격이외에는 대미지를 입지 않으며 약점이 되는 기술의 위력을 감소시킨다."
+    },
+    "EVIOLITE": {
+      "name": "진화의휘석",
+      "description": "진화의 이상한 덩어리. 지니게 하면 진화 전 포켓몬의 방어와 특수방어가 올라간다."
+    },
+    "MIND_ORB": {
+      "name": "마음의구슬",
+      "description": "지닌 포켓몬의 성격의 효과가 10% 증가한다. (합연산)"
+    },
+    "MUSCLE_BAND": {
+      "name": "힘의머리띠",
+      "description":"힘이 끓어오르는 머리띠. 지니게 하면 물리 기술의 위력이 조금 올라간다."
+    },
+    "WISE_GLASSES": {
+      "name": "박식안경",
+      "description":"두꺼운 렌즈를 붙인 안경. 지니게 하면 특수 기술의 위력이 조금 올라간다."
+    },
+    "EXPERT_BELT": {
+      "name": "달인의띠",
+      "description": "오래 사용한 까만 띠. 지니게 하면 효과가 뛰어날 때 기술의 위력이 조금 올라간다."
+    },
+    "METRONOME": {
+      "name": "메트로놈",
+      "description":"지니게 하면 똑같은 기술을 연속으로 사용했을 때 위력이 올라간다. 중간에 다른 기술을 사용하면 위력이 올라가지는 않지만 내려가지도 않는다."
+    },
+    "LIFE_ORB": {
+      "name": "생명의구슬",
+      "description": "지니게 하면 공격할 때마다 HP가 조금씩 줄지만 기술의 위력이 올라간다."
+    },
+    "SMOKE_BALL": {
+      "name": "연막탄",
+      "description":"지니게 한 포켓몬은 야생 포켓몬과의 배틀에서 반드시 도망칠 수 있다."
+    },
+    "BRIGHT_POWDER": {
+      "name": "반짝가루",
+      "description":"반짝반짝 빛나는 가루. 지니게 하면 빛이 상대를 혼란시켜 기술이 명중되기 어려워진다."
+    },
+    "PROTECTIVE_PADS": {
+      "name": "방호패드",
+      "description":"공격하는 상대와 접촉해서 받게 되는 효과를 받지 않게 하며 기술의 위력이 증가한다."
+    },
+    "FOCUS_SASH": {
+      "name": "기합의띠",
+      "description":"지니게 하면 HP가 꽉 찼을 때 기절할 듯한 기술을 당해도 HP 1로 반드시 한 번은 버틴다."
+    },
+    "MENTAL_HERB": {
+      "name": "멘탈허브",
+      "description":"지니게 한 포켓몬은 포켓몬이 자유롭게 기술을 사용 못하는 상태가 되었을 때 한 번만 회복한다."
+    },
+    "ROCKY_HELMET": {
+      "name": "울퉁불퉁멧",
+      "description":"포켓몬에게 지니게 하면 타격기술을 받을 때 상대방에게도 데미지를 준다."
+    },
+    "WEAKNESS_POLICY": { 
+      "name": "약점보험", 
+      "description": "약점을 공격당했을 때 공격과 특수공격이 각각 크게 올라간다."
+    },
+    "CLEAR_AMULET": { 
+      "name": "클리어참", 
+      "description": "투명하고 빛나는 참. 지니게 하면 상대의 기술이나 특성으로 능력이 떨어지지 않는다."
+    },
+    "ASSAULT_VEST": { 
+      "name": "돌격조끼", 
+      "description": "공격적으로 변하는 조끼. 지니게 하면 공격기술을 사용할때 방어와 특수방어가 조금씩 오른다."
+    },
+    "CHOICE_SCARF": { 
+      "name": "구애스카프", 
+      "description": "지니게 하면 상대 포켓몬을 쓰러뜨릴때마다 자신의 스피드가 조금씩 오른다."
+    },
+    "CHOICE_SPECS": { 
+      "name": "구애안경", 
+      "description": "지니게 하면 상대 포켓몬을 쓰러뜨릴때마다 자신의 특수공격력이 조금씩 오른다."
+    },
+    "CHOICE_BAND": { 
+      "name": "구애머리띠", 
+      "description": "지니게 하면 상대 포켓몬을 쓰러뜨릴때마다 자신의 공격력이 조금씩 오른다."
+    },
+    "SAFETY_GOGGLES": { 
+      "name": "방진고글", 
+      "description": "이 도구를 지닌 포켓몬은 날씨에 의한 데미지를 받지 않으며 포자, 가루 계열 기술도 영향을 받지 않는다."
+    },
+    "PUNCHING_GLOVE": { 
+      "name": "펀치글러브", 
+      "description": "주먹을 보호하는 글러브. 지니게 하면 펀치 기술의 위력이 오르고 상대에게 접촉하지 않는 펀치가 된다."
+    },
+    "COVERT_CLOAK": { 
+      "name": "은밀망토", 
+      "description": "상대의 눈을 속이는 후드 달린 망토. 지니게 하면 몸을 숨겨서 기술의 추가 효과를 받지 않게 된다."
+    },
+    "LOADED_DICE": { 
+      "name": "속임수주사위", 
+      "description": "좋은 눈만 나오는 주사위. 지니게 하고 연속 기술을 사용하면 많은 횟수로 기술을 사용할 수 있다."
+    },
+    "AIR_BALLOON": { 
+      "name": "풍선", 
+      "description": "포켓몬에게 지니게 하면 포켓몬이 공중에 뜬다. 공격을 받으면 터지고 만다."
+    },
+    "THROAT_SPRAY": { 
+      "name": "목스프레이", 
+      "description": "소리 기술을 사용하면 특수공격이 올라간다."
+    },
+    "LAGGING_TAIL": { 
+      "name": "느림보꼬리", 
+      "description": "매우 무거운 무언가의 꼬리. 지니게 하면 여느 때보다 행동이 느려진다."
+    },
+    "UTILITY_UMBRELLA": { 
+      "name": "만능우산", 
+      "description": "지니게 한 포켓몬은 모든 날씨의 영향을 받지 않게 된다."
+    },
+    "LIGHT_CLAY": { 
+      "name": "빛의점토", 
+      "description": "지니게 한 포켓몬이 빛의장막이나 리플렉터를 사용했을 때 여느 때보다 긴 시간 동안 지속된다."
+    },
+    "MIRROR_HERB": { 
+      "name": "흉내허브", 
+      "description": "지니게 한 포켓몬은 한 번에 의해 상대의 능력이 올랐을 때 흉내 내어 똑같이 능력을 올린다."
+    },
+    "TREASURE_POUCH": { 
+      "name": "보물주머니", 
+      "description": "포켓몬에게 지니게하면 배틀에서 승리할때마다 상대의 도구를 어느새인가 가져오는 신기한 주머니"
+    },
+    "CRITICAL_BAND": { 
+      "name": "크리티컬밴드", 
+      "description": "기술을 사용했을때 급소 대미지가 1.5배 증가하게 되는 빨간색 밴드"
+    },
+    "COLORFUL_LENS": { 
+      "name": "칼라풀렌즈", 
+      "description": "효과가 별로인 기술을 사용했을때 기술의 위력이 올라가는 이상한 밴드"
+    },
+    "TECHNIC_ANKLET": { 
+      "name": "테크닉앵클릿", 
+      "description": "위력이 낮은 기술의 위력을 올려주는 유용한 앵클릿"
+    },
+    "RECOIL_BELT": { 
+      "name": "이판사판벨트", 
+      "description": "반동 기술을 사용하면 반동대미지를 입지 않게 해주고 반동 기술의 위력을 올려주는 쓸만한 벨트"
+    },
+    "MOLD_BREAKER_BRACER": { 
+      "name": "틀깨기벨트", 
+      "description": "가지고 있으면 상대의 특성에 방해받지 않고 상대에게 기술을 쓸 수 있게 해주는 엄청난 벨트"
+    },
+    "POWER_UP_WEIGHT": { 
+      "name": "파워업웨이트", 
+      "description": "가지고 있으면 착용자의 가장 높은 능력치를 올려주는 유용한 웨이트"
+    },
+    "UNAWARE_BAND": { 
+      "name": "천진밴드", 
+      "description": "지니고 있으면 상대의 스피드를 제외한 능력변화의 영향을 받지 않게되는 노란색 밴드"
+    },
+    "SIMPLE_BAND": { 
+      "name": "단순한밴드", 
+      "description": "착용자의 능력변화가 평소보다 2배 더 심해지는 초록색 밴드"
+    },
+    "POWER_HERB": { 
+      "name": "파워풀허브", 
+      "description": "지니게 한 포켓몬은 한 번만 1턴째에 힘을 모으는 기술을 바로 사용할 수가 있다."
+    },
+    "UNNERVE_INCENSE": { 
+      "name": "바들바들향로", 
+      "description": "긴장감을 유발시키는 향으로 인해 필드에 나와있는 상대 포켓몬은 열매를 먹지 못하게 되는 이상한 향로"
+    },
+    "DAMP_INCENSE": { 
+      "name": "습기향로", 
+      "description": "주변에 습기를 뿌려서 그 누구도 터질수 없게 하는 이상한 향로"
+    },
+    "ODD_INCENSE": { 
+      "name": "괴상한향로", 
+      "description": "괴상한 향을 내뿜어 상대 포켓몬의 선제 기술을 사용하지 못하게 하는 괴상한 향로"
+    },
+    "SILVER_INCENSE": { 
+      "name": "은빛향로", 
+      "description": "은은한 향기를 내뿜어 기술의 부가효과가 발동될 확률을 2배로 올려주는 축복받은 향로"
+    },
+    "GOLDEN_INCENSE": { 
+      "name": "황금향로", 
+      "description": "찬란한 금빛 향을 내뿜어 상대의 변화기술의 영향을 받지 않게 해주는 신비한 향로"
+    },
+    "AROMA_INCENSE": { 
+      "name": "아로마향로", 
+      "description": "기분 좋은 향기를 내뿜어 자신과 같은 편에게 향하는 멘탈 공격을 막을수 있게 해주는 향기로운 향로"
+    },
+    "SCRAPPY_BELT": { 
+      "name": "관통벨트", 
+      "description": "타입 상성상 효과가 없는 기술도 대미지를 줄수 있게 해주는 엄청난 벨트."
+    },
+    "ADAPTABILITY_BAND": { 
+      "name": "적응력밴드", 
+      "description": "가지고 있으면 자신과 같은 타입인 기술의 위력이 올라가는 분홍빛 밴드"
+    },
+    "SHEER_FORCE_BAND": { 
+      "name": "우격다짐밴드", 
+      "description": "기술의 추가 효과가 없어지지만 그만큼 높은 위력으로 기술을 사용할수 있게 해주는 우격다짐의 밴드"
+    },
+    "ENIGMA_INCENSE": { 
+      "name": "수수깨끼향로", 
+      "description": "알수없는 향을 내뿜어 같은 편의 공격을 간파해서 기술을 회피하게 해주는 이상한 향로"
+    },
+    "STAT_STAGE_CHANGE_REVERSE_BAND": { 
+      "name": "내맘대로밴드", 
+      "description": "지니고 있으면 능력변화가 반대로 적용되는 이상한 밴드"
+    },
+    "MOODY_BAND": { 
+      "name": "변덕쟁이밴드", 
+      "description": "지니고 있으면 매 턴 능력 중 하나가 크게 오르고 하나가 떨어지는 특이한 밴드"
+    },
+    "EVOLUTION_INCENSE": { 
+      "name": "진화의향로", 
+      "description": "지니고 있으면 진화 전 포켓몬의 공격과 특수공격, 스피드를 올려주는 기분이 절로 든든해지는 푸른빛 향로"
+    },
+    "STURDYSTONE_INCENSE": { 
+      "name": "멧집향로", 
+      "description": "거친 향을 내뿜어 자신이 받는 효과가 굉장한 공격의 위력을 약하게 만드는 멧집이 절로 튼튼해지는 향로"
+    },
+    "ROOM_SERVICE": { 
+      "name": "룸서비스", 
+      "description": "포켓몬에게 지니게 하면 트릭룸일 때 사용하여 스피드가 떨어진다."
+    },
+    "BLUNDER_POLICY": { 
+      "name": "허탕보험", 
+      "description": "명중률에 의해 기술이 빗나갔을 때 스피드가 크게 올라간다."
+    },
+    "ABILITY_SHIELD": { 
+      "name": "특성가드", 
+      "description": "귀엽고 개성적인 방패. 지니게 하면 상대에 의해 특성이 바뀌지 않는다."
+    },
+    "BOOSTER_ENERGY": { 
+      "name": "부스트에너지", 
+      "description": "에너지가 가득한 캡슐. 어떤 특성을 가진 포켓몬에게 지니게 하면 그 힘을 증폭시킨다."
+    },
+    "POWER_UP_DISK": { 
+      "name": "파워업디스크", 
+      "description": "무언가 알수 없는 기록들이 기록되어있는 이상한 디스크. 어떤 특성을 가진 포켓몬에게 지니게 하면 그 힘을 증폭시킨다."
+    },
+    "ULTRA_ENERGY": { 
+      "name": "울트라에너지", 
+      "description": "에너지가 가득한 캡슐. 어떤 특성을 가진 포켓몬에게 지니게 하면 배틀이 시작될때 그 힘을 증폭시켜 가장 높은 능력치를 올린다."
+    },
+    "VICTORY_SYMBOL": { 
+      "name": "승리의배지", 
+      "description": "무슨일이 있어도 반드시 승부에서 이기게 해준다는 행운의 배지, 승리의별 특성 효과가 30%더 오른다."
+    },
+    "CURSED_BOWL": { 
+      "name": "저주받은그릇", 
+      "description": "아주 불길한 의식에 쓰인 것으로 추정되는 무언가를 담은 흔적이 있는 불쾌한 그릇, 재앙의그릇 특성 효과가 2배 증가한다."
+    },
+    "CURSED_SWORD": { 
+      "name": "저주받은검", 
+      "description": "아주 불길한 의식에 쓰인 것으로 추정되는 무언가를 자른 흔적이 있는 불쾌한 칼, 재앙의검 특성 효과가 2배 증가한다."
+    },
+    "CURSED_BOOK": { 
+      "name": "저주받은서", 
+      "description": "아주 불길한 의식에 쓰인 것으로 추정되는 무언가 불길해보이는 문자가 적혀있는 불쾌한 책, 재앙의목간 특성 효과가 2배 증가한다."
+    },
+    "CURSED_BEAD": { 
+      "name": "저주받은구슬", 
+      "description": "아주 불길한 의식에 쓰인 것으로 추정되는 무언가의 원념이 담긴 듯한 불쾌한 구슬, 재앙의구슬 특성 효과가 2배 증가한다."
+    },
+    "SHARPNESS_SWORD": { 
+      "name": "예리한칼", 
+      "description": "예리하고 날카로운 칼. 지니게 하면 베기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_TEETH": { 
+      "name": "파워틀니", 
+      "description": "튼튼하고 예리한 틀니. 지니게 하면 물기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_HELMET": { 
+      "name": "파워헬멧", 
+      "description": "튼튼한 헬멧. 지니게 하면 박치기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "HORN_HELMET": { 
+      "name": "뿔투구", 
+      "description": "크고 뾰족한 뿔이 달린 튼튼한 헬멧. 지니게 하면 뿔 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_PROTECTOR": { 
+      "name": "파워보호대", 
+      "description": "튼튼하고 안전한 보호대. 지니게 하면 발차기, 지니게 하면 킥 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "SPIKE_SPEAR": { 
+      "name": "뾰족한 창", 
+      "description": "예리하고 뾰족한 창. 지니게 하면 찌르기, 창 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_FEATHER": { 
+      "name": "파워깃털", 
+      "description": "가볍고 튼튼한 깃털. 지니게 하면 날개 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "MIGHTY_HAMMER": { 
+      "name": "마이티해머", 
+      "description": "거대하고 강력한 해머. 지니게 하면 망치 둔기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_CLAW": { 
+      "name": "파워발톱", 
+      "description": "단단하고 예리한 발톱. 지니게 하면 할퀴기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_PINCH": { 
+      "name": "파워집게", 
+      "description": "단단하고 강력한 집게. 지니게 하면 찝기, 가위 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "HARDEN_BEAK": { 
+      "name": "단단한부리", 
+      "description": "단단하고 예리한 부리. 지니게 하면 부리, 쪼기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "FAST_BOOTS": { 
+      "name": "쾌속부츠", 
+      "description": "하늘을 날아갈 것 처럼 가벼운 부츠. 지니게 하면 질주 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "SPIN_TOP": { 
+      "name": "회오리팽이", 
+      "description": "회오리처럼 절대 쓰러지지 않고 빙글빙글 돌아가는 팽이. 지니게 하면 스핀 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_DRILL": { 
+      "name": "파워드릴", 
+      "description": "빠르고 강력한 장난감 드릴. 지니게 하면 드릴 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_ROPE": { 
+      "name": "파워로프", 
+      "description": "길고 단단한 로프. 지니게 하면 채찍 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_WHEEL": { 
+      "name": "파워타이어", 
+      "description": "튼튼하고 잘 굴러가는 최신식 타이어. 지니게 하면 바퀴, 구르기 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_TAIL": { 
+      "name": "튼튼한꼬리", 
+      "description": "튼튼하고 강력한 장난감 꼬리. 지니게 하면 꼬리 기술의 위력이 오르고 접촉하지 않게 된다."
+    },
+    "POWER_BOW": { 
+      "name": "만능활", 
+      "description": "굉장히 유연하고 활시위가 잘 늘어나는 꽤 쓸만한 장난감 활. 지니게 하면 화살 기술의 위력이 오른다."
+    },
+    "POWER_BEADS": { 
+      "name": "파워구슬", 
+      "description": "작지만 단단하고 맞으면 아픈 구슬. 지니게 하면 구슬, 폭탄류 기술의 위력이 오른다."
+    },
+    "POWER_BOOMERANG": { 
+      "name": "파워부메랑", 
+      "description": "튼튼하고 던지면 언제든지 제자리로 돌아오는 장난감 부메랑. 지니게 하면 부메랑 기술의 위력이 오른다."
+    },
+    "THROW_GLOVE": { 
+      "name": "파워글러브", 
+      "description": "무엇이든지 잘 던지고 잘 받는 장난감 글러브. 지니게 하면 떨구기, 던지기 기술의 위력이 오른다."
+    },
+    "PULSE_ORB": { 
+      "name": "파동의구슬", 
+      "description": "파동의 기운이 절로 느껴지는 신비한 구슬. 지니게 하면 파동 기술의 위력이 오른다."
+    },
+    "RAZORPOINTER": { 
+      "name": "레이저포인터", 
+      "description": "레이저가 나가는 절대 고장나지 않는 만능 포인터. 지니게 하면 광선, 빔 기술의 위력이 오른다."
+    },
+   "POWER_LANTERN": { 
+      "name": "파워랜턴", 
+      "description": "절대 꺼지지 않는 불빛을 가진 굉장히 유용한 랜턴. 지니게 하면 빛 기술의 위력이 오른다."
+    },
+    "PUNK_MIKE": { 
+      "name": "펑크마이크", 
+      "description": "어떤 노래나 소리든 자유자재로 낼수 있는 만능 스탠드마이크. 지니게 하면 소리 기술의 위력이 오르고 자신이 입는 소리기술의 대미지를 낮춘다."
+    },
+    "POWER_FAN": { 
+      "name": "만능부채", 
+      "description": "절대 망가지지 않는 튼실하고 사용하면 바람이 잘 나오는 유용한 부채. 지니게 하면 바람 기술의 위력이 오르고 자신이 입는 바람 기술의 대미지를 낮춘다."
+    },
+    "HULAHULA_SKIRT": { 
+      "name": "훌라훌라스커트", 
+      "description": "보기만 해도 저절로 흥이 나서 춤을 추게 되는 이상한 스커트. 지니게 하면 춤 기술의 위력이 오르고 누군가 춤 기술을 쓰면 자신도 이어서 춤 기술을 쓸 수 있게 된다."
+    },
+    "BIG_ROOT": { 
+      "name": "큰뿌리", 
+      "description": "지니게 하면 HP흡수 기술을 썼을 때 기술의 위력이 오르고 여느 때 보다 많은 HP를 자신이 회복할수 있다."
+    },
+    "POWER_SHELL": { 
+      "name": "만능조개껍질", 
+      "description": "무슨일이 있어도 부서지지 않는 튼튼한 조개껍질. 지니고 있으면 급소에 맞지 않게 된다."
+    },
+    "CHAMPION_BELT": { 
+      "name": "천하장사벨트", 
+      "description": "전설에 따르면 모든 공격력을 극한까지 몰아붙힌 챔피언이 차고 다녔다는 벨트. 지니고 있으면 착용자의 공격력이 2배가 되지만 특수공격력이 절반으로 감소한다."
+    },
+    "SCHOLAR_TOME": { 
+      "name": "박학다식도감", 
+      "description": "전설에 따르면 모든 지식과 지혜, 정보가 총집합되어있다는 도감. 지니고 있으면 착용자의 특수공격력이 2배가 되지만 공격력이 절반으로 감소한다."
+    },
+    "NUGGET": {
+      "name": "금구슬"
+    },
+    "BIG_NUGGET": {
+      "name": "큰금구슬"
+    },
+    "RELIC_GOLD": {
+      "name": "고대의금화"
+    },
+    "AMULET_COIN": {
+      "name": "부적금화",
+      "description": "받는 돈이 20% 증가한다."
+    },
+    "GOLDEN_PUNCH": {
+      "name": "골든펀치",
+      "description": "주는 데미지의 50%만큼 돈을 획득한다."
+    },
+    "COIN_CASE": {
+      "name": "동전케이스",
+      "description": "매 열 번째 배틀마다, 가진 돈의 10%를 이자로 획득한다."
+    },
+    "LOCK_CAPSULE": {
+      "name": "록캡슐",
+      "description": "받을 아이템을 갱신할 때 희귀도를 고정시킬 수 있게 된다."
+    },
+    "GRIP_CLAW": {
+      "name": "끈기갈고리손톱"
+    },
+    "WIDE_LENS": {
+      "name": "광각렌즈"
+    },
+    "MULTI_LENS": {
+      "name": "멀티렌즈"
+    },
+    "HEALING_CHARM": {
+      "name": "치유의부적",
+      "description": "HP를 회복하는 기술이나 도구를 썼을 때 효율이 10% 증가한다. (부활 제외)"
+    },
+    "CANDY_JAR": {
+      "name": "사탕단지",
+      "description": "이상한사탕 종류의 아이템이 올려주는 레벨이 1 증가한다."
+    },
+    "BERRY_POUCH": {
+      "name": "열매주머니",
+      "description": "사용한 나무열매가 소모되지 않을 확률이 30% 추가된다."
+    },
+    "STRANGE_BOX": {
+      "name": "이상한박스",
+      "description": "사용한 도구가 소모되지 않을 확률이 30% 추가된다."
+    },
+    "FOCUS_BAND": {
+      "name": "기합의머리띠",
+      "description": "기절할 듯한 데미지를 받아도 HP를 1 남겨서 견딜 확률이 10% 추가된다."
+    },
+    "QUICK_CLAW": {
+      "name": "선제공격손톱",
+      "description": "상대보다 먼저 행동할 수 있게 될 확률이 10% 추가된다. (우선도 처리 이후)"
+    },
+    "KINGS_ROCK": {
+      "name": "왕의징표석",
+      "description": "공격해서 데미지를 줄 때 상대를 풀죽일 확률이 10% 추가된다."
+    },
+    "LEFTOVERS": {
+      "name": "먹다남은음식",
+      "description": "포켓몬의 HP가 매 턴 최대 체력의 1/16씩 회복된다."
+    },
+    "SHELL_BELL": {
+      "name": "조개껍질방울",
+      "description": "포켓몬이 준 데미지의 1/8씩을 회복한다."
+    },
+    "TOXIC_ORB": {
+      "name": "맹독구슬",
+      "description": "이 도구를 지닌 포켓몬은 턴이 끝나는 시점에 상태이상에 걸리지 않았다면 맹독 상태가 된다."
+    },
+    "FLAME_ORB": {
+      "name": "화염구슬",
+      "description": "이 도구를 지닌 포켓몬은 턴이 끝나는 시점에 상태이상에 걸리지 않았다면 화상 상태가 된다."
+    },
+    "FREEZE_ORB": {
+      "name": "서리구슬",
+      "description": "이 도구를 지닌 포켓몬은 턴이 끝나는 시점에 상태이상에 걸리지 않았다면 동상 상태가 된다."
+    },
+    "MYSTIC_SCALE": {
+      "name": "신비한비늘",
+      "description": "지니고 있으면 상태이상에 걸릴때 자신의 가장 높은 능력치가 올라가는 신비하고 이상한 비늘"
+    },
+    "MYSTICAL_ROCK": {
+      "name": "신비한바위",
+      "description": "기술이나 특성으로 발생한 날씨, 필드 효과의 지속 시간을 스택 당 2턴 연장한다."
+    },
+    "WICKED_GLOVE": {
+      "name": "일격의글러브",
+      "description": "우라오스에게 지니게 하면 상대의 특성을 무시하고 급소대미지가 2배 증가하며 경우에 따라 접촉하지 않게 되는 암흑처럼 무자비한 강타를 칠듯한 엄청난 에너지를 간직한 실로 비범한 검은 글러브, 치고마가 어느 사부에게서 일격의 수련을 받을 때 썼다고 전해진다."
+    },
+    "BLACK_MANE_HAIR": {
+      "name": "검은갈기",
+      "description": "버드렉스에게 지니게 하면 배틀이 시작될 때 혼연일체로 올라갈 능력치를 올려주고 상대를 쓰러뜨릴때마다 추가 능력치가 올라가며 상대는 자신이 가진 도구를 사용할수 없는 그림자처럼 어둡고 검은 갈기, 버드렉스가 레이스포스를 길들일때 사용했던 유대의고삐에 필요한 재료라고 일컬어진다."
+    },
+    "WHITE_MANE_HAIR": {
+      "name": "하얀갈기",
+      "description": "버드렉스에게 지니게 하면 배틀이 시작될 때 혼연일체로 올라갈 능력치를 올려주고 상대를 쓰러뜨릴때마다 추가 능력치가 올라가며 상대는 자신이 가진 도구를 사용할수 없는 새하얗고 차가운 갈기, 버드렉스가 블리자포스를 길들일때 사용했던 유대의고삐에 필요한 재료라고 일컬어진다."
+    },
+    "SURGING_GLOVE": {
+      "name": "연격의글러브",
+      "description": "우라오스에게 지니게 하면 상대의 특성을 무시하고 급소대미지가 2배 증가하며 경우에 따라 접촉하지 않게 되는 파도처럼 연달아치는 연타를 칠듯한 엄청난 에너지를 간직한 실로 비범한 검은 글러브, 치고마가 어느 사부에게서 연격의 수련을 받을 때 썼다고 전해진다."
+    },
+    "WARRIOR_SWORD": {
+      "name": "역전의보검",
+      "description": "자시안에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르고 추가로 스피드가 1랭크 오르는 아주 고귀하고 용맹한 기운이 감도는 검모양의 휘석, 자시안이 블랙나이트를 해결했을 때 발견되었다는 전설이 있다."
+    },
+    "WARRIOR_SHIELD": {
+      "name": "역전의방패",
+      "description": "자마젠타에게 지니게 하면 방어, 특수방어, 스피드가 1.5배 오르고 추가로 특수방어가 1랭크 오르는 고귀하고 인내의 기운이 감도는 방패모양의 휘석, 자마젠타가 블랙나이트를 해결했을 때 발견되었다는 전설이 있다."
+    },
+    "ANGE_ORB": {
+      "name": "앙쥬오브",
+      "description": "앙쥬오라 특성인 포켓몬에게 지니게 하면 앙쥬오라 효과가 증폭되는 신기한 오브, 어느 포켓몬이 폭주하고 진정된 뒤 발견되었다고 전해진다."
+    },
+    "LEGEND_PLATE": {
+      "name": "레전드플레이트",
+      "description": "만물의 힘이 깃든 석판. 아르세우스에게 지니게 하면 모든 타입의 힘을 얻는다."
+    },
+    "DUSK_BEAD": {
+      "name": "황혼의비드로",
+      "description": "네크로즈마에게 지니게 하면 상대를 쓰러뜨릴때 가장 높은 능력치가 오르고 상대에 의해 능력치가 떨어지지않는 황혼과 같은 음색을 띄는 노을빛 비드로, 네크로즈마가 태양의 빛을 흡수할 때 어느새인가 발견되었다고 전해진다."
+    },
+    "DAWN_BEAD": {
+      "name": "새벽의비드로",
+      "description": "네크로즈마에게 지니게 하면 상대를 쓰러뜨릴때 가장 높은 능력치가 오르고 공격 이외의 대미지는 입지 않는 새벽과 같은 음색을 띄는 새벽빛 비드로, 네크로즈마가 달의 빛을 흡수할 때 어느새인가 발견되었다고 전해진다."
+    },
+    "BLIGHT_BEAD": {
+      "name": "광명의비드로",
+      "description": "네크로즈마에게 지니게 하면 상대를 쓰러뜨릴때 가장 높은 능력치가 오르고 타입 상성에 의한 무효 효과를 무시하고 자신과 같은 타입의 기술의 위력이 오르며 별로인 기술의 위력도 오르는 세상 모든 빛을 머금고 있다고 전해지는 황금빛 비드로, 네크로즈마가 모든 빛 에너지를 흡수할 때 발견되었다고 전해진다."
+    },
+    "EVOLUTION_TRACKER_GIMMIGHOUL": {
+      "name": "보물",
+      "description": "이 포켓몬은 보물을 좋아한다. 보물을 모으다 보면 어떤 일이 일어날 지도 모른다!"
+    },
+    "BATON": {
+      "name": "배턴",
+      "description": "포켓몬을 교체할 때 효과를 넘겨줄 수 있으며, 함정의 영향을 받지 않게 한다."
+    },
+    "SHINY_CHARM": {
+      "name": "빛나는부적",
+      "description": "야생 포켓몬이 색이 다른 포켓몬으로 등장할 확률을 급격히 높인다."
+    },
+    "ABILITY_CHARM": {
+      "name": "특성부적",
+      "description": "야생 포켓몬이 숨겨진 특성을 가지고 등장할 확률을 급격히 높인다."
+    },
+    "CATCHING_CHARM": {
+      "name": "흔들림없는부적",
+      "description": "포켓몬을 포획 시, 포획 크리티컬이 나올 확률이 올라간다."
+    },
+    "IV_SCANNER": {
+      "name": "개체값탐지기",
+      "description": "야생 포켓몬의 개체값을 확인 가능하다."
+    },
+    "DNA_SPLICERS": {
+      "name": "유전자쐐기"
+    },
+    "MINI_BLACK_HOLE": {
+      "name": "미니 블랙홀"
+    },
+    "GOLDEN_POKEBALL": {
+      "name": "황금몬스터볼",
+      "description": "전투 후 획득하는 아이템의 선택지가 하나 더 늘어난다."
+    },
+    "ENEMY_DAMAGE_BOOSTER": {
+      "name": "데미지 토큰",
+      "description": "주는 데미지를 5% 증가시킨다."
+    },
+    "ENEMY_DAMAGE_REDUCTION": {
+      "name": "보호 토큰",
+      "description": "받는 데미지를 2.5% 감소시킨다."
+    },
+    "ENEMY_HEAL": {
+      "name": "회복 토큰",
+      "description": "매 턴 최대 체력의 2%를 회복한다."
+    },
+    "ENEMY_ATTACK_POISON_CHANCE": {
+      "name": "독 토큰"
+    },
+    "ENEMY_ATTACK_PARALYZE_CHANCE": {
+      "name": "마비 토큰"
+    },
+    "ENEMY_ATTACK_BURN_CHANCE": {
+      "name": "화상 토큰"
+    },
+    "ENEMY_STATUS_EFFECT_HEAL_CHANCE": {
+      "name": "만병통치 토큰",
+      "description": "매 턴 상태이상에서 회복될 확률이 2.5% 추가된다."
+    },
+    "ENEMY_ENDURE_CHANCE": {
+      "name": "버티기 토큰"
+    },
+    "ENEMY_FUSED_CHANCE": {
+      "name": "합체 토큰",
+      "description": "야생 포켓몬이 합체되어 등장할 확률이 1% 추가된다."
+    },
+    "MYSTERY_ENCOUNTER_SHUCKLE_JUICE": {
+      "name": "단단지주스"
+    },
+    "MYSTERY_ENCOUNTER_BLACK_SLUDGE": {
+      "name": "검은진흙",
+      "description": "악취가 너무 심한 나머지 상점 물건 가격이 크게 비싸진다."
+    },
+    "MYSTERY_ENCOUNTER_MACHO_BRACE": {
+      "name": "교정깁스",
+      "description": "포켓몬을 쓰러뜨리면 교정깁스 스택을 얻는다. 스택이 올라갈수록 능력치가 약간 올라가고, 최대 스택에서 추가 보너스를 얻는다."
+    },
+    "MYSTERY_ENCOUNTER_OLD_GATEAU": {
+      "name": "숲의양갱",
+      "description": "{{stats}} 종족치를 {{statValue}}만큼 올려준다."
+    },
+    "MYSTERY_ENCOUNTER_GOLDEN_BUG_NET": {
+      "name": "황금잠자리채",
+      "description": "벌레 타입 포켓몬을 더 자주 만날 수 있는 행운을 부여한다. 묘한 무게감이 든다."
+    }
+  },
+  "SpeciesBoosterItem": {
+    "LIGHT_BALL": {
+      "name": "전기구슬",
+      "description": "피카츄에게 지니게 하면 공격과 특수공격이 올라가는 이상한 구슬."
+    },
+    "THICK_CLUB": {
+      "name": "굵은뼈",
+      "description": "무언가의 단단한 뼈. 탕구리 혹은 텅구리에게 지니게 하면 공격이 올라간다."
+    },
+    "RARE_BONE": {
+      "name": "귀중한뼈",
+      "description": "무언가의 귀중한 뼈. 탕구리 혹은 텅구리에게 지니게 하면 스피드가 올라간다."
+    },
+    "METAL_POWDER": {
+      "name": "금속파우더",
+      "description": "메타몽에게 지니게 하면 방어가 올라가는 이상한 가루. 매우 잘고 단단하다."
+    },
+    "QUICK_POWDER": {
+      "name": "스피드파우더",
+      "description": "메타몽에게 지니게 하면 스피드가 올라가는 이상한 가루. 매우 잘고 단단하다."
+    },
+    "ADAMANT_ORB": {
+      "name": "금강옥",
+      "description": "디아루가에게 지니게 하면 방어력과 특수방어력이 올라가는 반짝반짝 빛나는 구슬."
+    },
+    "LUSTROUS_ORB": {
+      "name": "백옥",
+      "description": "펄기아에게 지니게 하면 특수공격력과 스피드가 올라가는 반짝반짝 빛나는 구슬."
+    },
+    "GRISEOUS_ORB": {
+      "name": "백금옥",
+      "description": "기라티나에게 지니게 하면 공격과 특수공격력이 올라가는 반짝반짝 빛나는 구슬."
+    },
+    "DEEP_SEA_SCALE": {
+      "name": "심해의비늘",
+      "description": "진주몽에게 지니게 하면 특수방어가 올라가는 비늘. 연한 분홍색으로 빛난다."
+    },
+    "DEEP_SEA_TOOTH": {
+      "name": "심해의이빨",
+      "description": "진주몽에게 지니게 하면 특수공격이 올라가는 이빨. 날카롭고 은색으로 빛난다."
+    },
+    "HELIX_FOSSIL": {
+      "name": "조개화석",
+      "description": "암나이트, 암스타에게 지니게 하면 특수공격, 특수방어가 올라가는 화석. 조개껍질의 일부인 듯 하다."
+    },
+    "DOME_FOSSIL": {
+      "name": "껍질화석",
+      "description": "투구, 투구푸스에게 지니게 하면 공격, 방어가 올라가는 화석. 껍질의 일부인 듯 하다."
+    },
+    "OLD_AMBER": {
+      "name": "비밀의호박",
+      "description": "프테라에게 지니게 하면 공격, 스피드가 올라가는 화석. 붉은 기가 돌면서 약간 투명하다."
+    },
+    "ROOT_FOSSIL": {
+      "name": "뿌리화석",
+      "description": "릴링, 릴리요에게 지니게 하면 방어, 특수방어가 올라가는 화석. 뿌리의 일부인 듯 하다."
+    },
+    "CLAW_FOSSIL": {
+      "name": "발톱화석",
+      "description": "아노딥스, 아말도에게 지니게 하면 공격, 스피드가 올라가는 화석. 발톱의 일부인 듯 하다."
+    },
+    "SKULL_FOSSIL": {
+      "name": "두개의화석",
+      "description": "두개도스, 램펄드에게 지니게 하면 공격, 스피드가 올라가는 화석. 머리의 일부인 듯 하다."
+    },
+    "ARMOR_FOSSIL": {
+      "name": "방패화석",
+      "description": "방패톱스, 바리톱스에게 지니게 하면 방어, 특수방어가 올라가는 화석. 깃 장식의 일부인 듯 하다."
+    },
+    "COVER_FOSSIL": {
+      "name": "덮개화석",
+      "description": "프로토가, 늑골라에게 지니게 하면 공격, 방어가 올라가는 화석. 등의 일부인 듯 하다."
+    },
+    "PLUME_FOSSIL": {
+      "name": "깃털화석",
+      "description": "아켄, 아케오스에게 지니게 하면 공격, 특수공격, 스피드가 올라가는 화석. 날개의 일부인 듯 하다."
+    },
+    "JAW_FOSSIL": {
+      "name": "턱화석",
+      "description": "티고라스, 견고라스에게 지니게 하면 공격, 스피드가 올라가는 화석. 커다란 턱의 일부인 듯 하다."
+    },
+    "SAIL_FOSSIL": {
+      "name": "지느러미화석",
+      "description": "아마루스, 아마루르가에게 지니게 하면 특수공격, 스피드가 올라가는 화석. 목지느러미의 일부인 듯 하다."
+    },
+    "FOSSILIZED_BIRD": {
+      "name": "화석새",
+      "description": "파치래곤, 파치르돈에게 지니게 하면 스피드가 올라가는 화석. 어떤 모습이었는지는 수수께끼다."
+    },
+    "FOSSILIZED_DINO": {
+      "name": "화석용",
+      "description": "파치래곤, 어래곤에게 지니게 하면 공격력이 올라가는 화석. 어떤 모습이었는지는 수수께끼다."
+    },
+    "FOSSILIZED_DRAKE": {
+      "name": "화석물고기",
+      "description": "어래곤, 어치르돈에게 지니게 하면 방어가 올라가는 화석. 어떤 모습이었는지는 수수께끼다."
+    },
+    "FOSSILIZED_FISH": {
+      "name": "화석긴목",
+      "description": "파치르돈, 어치르돈에게 지니게 하면 특수방어가 올라가는 화석. 어떤 모습이었는지는 수수께끼다."
+    },
+    "LIGHT_STONE": {
+      "name": "라이트스톤",
+      "description": "레시람에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 올라가는 돌, 영웅의 등장을 기다린다고 여겨진다."
+    },
+    "DARK_STONE": {
+      "name": "다크스톤",
+      "description": "제크롬에게 지니게 하면 공격력, 방어, 스피드가 1.5배 올라가는 돌, 영웅의 등장을 기다린다고 여겨진다."
+    },
+    "GOD_STONE": {
+      "name": "갓스톤",
+      "description": "큐렘에게 지니게 하면 모든 능력치가 1.5배 올라가는 돌, 영웅의 등장을 기다린다고 여겨진다."
+    },
+    "ODD_KEYSTONE": {
+      "name": "쐐기돌",
+      "description": "화강돌에게 지니게 하면 공격, 방어, 특수공격, 특수방어가 1.5배 오르는 보라빛으로 빛나는 신비한 돌."
+    },
+    "MOON_FLUTE": {
+      "name": "달의피리",
+      "description": "루나아라에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 은은한 피리, 감사의 마음을 표현하기 위해 음색을 바쳤다고 한다."
+    },
+    "SUN_FLUTE": {
+      "name": "태양의피리",
+      "description": "솔가레오에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 찬란한 피리, 감사의 마음을 표현하기 위해 음색을 바쳤다고 한다."
+    },
+    "SILVER_WING": {
+      "name": "은빛날개",
+      "description": "루기아에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 은빛으로 빛나는 신비한 깃털."
+    },
+    "RAINBOW_WING": {
+      "name": "무지갯빛깃털",
+      "description": "칠색조에게 지니게 하면 공격, 방어, 특수방어, 스피드가 1.5배 오르는 무지갯빛으로 빛나는 이상한 깃털."
+    },
+    "SOUL_DEW": {
+      "name": "마음의물방울",
+      "description": "라티아스나 라티오스에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 이상한 구슬."
+    },
+    "MAGMA_STONE": {
+      "name": "화산의돌",
+      "description": "히드런에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 이글거리는 마그마의 열로 녹은 암석이 굳어져 생긴걸로 보이는 돌."
+    },
+    "LIFES_FLOWER": {
+      "name": "생명의꽃",
+      "description": "제르네아스에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 생생한 생명력을 품기는 신비한 꽃."
+    },
+    "OBLIVION_WINGS": {
+      "name": "파괴의날개",
+      "description": "이벨타르에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 불길한 파멸의 기운이 느껴지는 날개."
+    },
+    "ZYGARDE_CUBE": {
+      "name": "지가르데큐브",
+      "description": "지가르데에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 많은 기척이 느껴지는 이상한 큐브."
+    },
+    "ENIGMA_STONE": {
+      "name": "수수께끼수정",
+      "description": "디안시에게 지니게 하면 공격, 방어, 특수방어, 스피드가 1.5배 오르는 굉장히 희귀한 수정체."
+    },
+    "ALPHA_SAPPHIRE": {
+      "name": "근원의사파이어",
+      "description": "가이오가에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 해저의 근원이 절로 느껴지는 신기한 사파이어."
+    },
+    "OMEGA_RUBY": {
+      "name": "최후의루비",
+      "description": "그란돈에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 대지의 끝이 절로 느껴지는 신비한 루비."
+    },
+    "DELTA_FLUTE": {
+      "name": "델타플루트",
+      "description": "레쿠쟈에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 대지와 바다의 전쟁을 잠재운 것에 대한 감사함을 표한 음색이 담긴 플루트."
+    },
+    "ICEROOT_CARROT": {
+      "name": "차가운당근",
+      "description": "블리자포스에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 희귀한 당근, 보기만해도 냉기가 느껴진다."
+    },
+    "SHADEROOT_CARROT": {
+      "name": "검은당근",
+      "description": "레이스포스에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 희귀한 당근, 보기만 해도 서늘한 기운이 느껴진다."
+    },
+    "METEORITE_SHARD": {
+      "name": "소원의조각",
+      "description": "지라치에게 지니게 하면 모든 능력치가 1.5배 오르는 아주 희귀한 광물 파편, 전설에 따르면 그 어떤 소원도 이루어준다고 전해진다."
+    },
+    "METEORITE": {
+      "name": "운석",
+      "description": "데오키스에게 지니게 하면 모든 능력치가 1.5배 오르는 우주에서 떨어진 운석, 천문학적으로 엄청난 가치를 지니고 있다 여겨진다."
+    },
+    "NORMAL_MEMORY": {
+      "name": "노말메모리",
+      "description": "타입:널, 실버디에게 지니게 하면 모든 능력치가 1.5배 오르는 숨겨진 메모리, 고성능급 전투데이터가 내장되어있다고 한다."
+    },
+    "BLANK_PLATE": {
+      "name": "순백플레이트",
+      "description": "아르세우스에게 지니게 하면 모든 능력치가 1.5배 오르는 숨겨진 플레이트, 세 마리의 포켓몬의 힘은 시간과 공간을 잠시 멈추었다 라고 쓰여있다."
+    },
+    "RADIANT_PETAL": {
+      "name": "황제의꽃",
+      "description": "버드렉스에게 지니게 하면 모든 능력치가 1.5배 오르는 고귀한 꽃, 전설에 따르면 버드렉스와 어떤 포켓몬을 이어주는 힘을 가지고 있다고 전해진다."
+    },
+    "BLIZZARD_FEATHER": {
+      "name": "눈보라깃털",
+      "description": "프리져에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 푸르디 푸른 깃털, 깃털 속에 있는 눈꽃모양 무늬가 실로 인상적이다."
+    },
+    "THUNDER_FEATHER": {
+      "name": "천둥의깃털",
+      "description": "썬더에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 스파크가 튀는 깃털, 마치 낙뢰를 연상케 하는 무늬가 인상적이다."
+    },
+    "BLAZE_FEATHER": {
+      "name": "불사의깃털",
+      "description": "파이어에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 마치 타오르는듯한 깃털, 깃털무늬가 마치 불꽃이 타오르는것처럼 보인다."
+    },
+    "MUTATION_SAMPLE": {
+      "name": "파괴의샘플",
+      "description": "뮤츠에게 지니게 하면 모든 능력치가 1.5배 오르는 뭐든지 부숴버릴 힘을 간직한 샘플, 기록지에 따르면 뮤츠를 연구할 때 같이 연구되었다고 한다."
+    },
+    "NEO_SAMPLE": {
+      "name": "신종샘플",
+      "description": "뮤에게 지니게 하면 모든 능력치가 1.5배 오르는 새로 공개된 샘플, 머나먼 곳에 있는 알지 못할 미지의 장소에서 발견됬다는 기록이 있다."
+    },
+    "LIGHTNING_MANE": {
+      "name": "우레갈기",
+      "description": "라이코에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 우레처럼 굽이치는 갈기, 전설에 따르면 천둥번개가 하늘을 가르는듯한 소리를 내어 땅에 내리 꽂은 자리에서 발견되었다고 전해진다."
+    },
+    "MAGMA_MANE": {
+      "name": "용암갈기",
+      "description": "앤테이에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 용암처럼 뜨거운 듯한 기세를 내는 갈기, 전설에 따르면 화산이 하늘을 크게 가르는 듯한 기세로 분화한 후 발견되었다고 전해진다."
+    },
+    "AURORA_MANE": {
+      "name": "오로라갈기",
+      "description": "스이쿤에게 지니게 하면 방어, 특수방어, 스피드가 1.5배 오르는 오로라처럼 아름다운 갈기, 전설에 따르면 전 지역으로 오로라가 퍼져나간 뒤에 발견되었다고 전해진다."
+    },
+    "GREEN_WATCH": {
+      "name": "심록의회중시계",
+      "description": "세레비에게 지니게 하면 모든 능력치가 1.5배 오르는 이상한 시계, 전설에 따르면 시간의신에게 시간을 이동하는 힘을 하사 받을 때 같이 받은 물건이라 전해진다."
+    },
+    "ROCK_MILESTONE": {
+      "name": "바위점자판",
+      "description": "레지락에게 지니게 하면 공격, 방어, 특수방어가 1.5배 오르는 바위로 만들어진 수수께끼의 점자판, 무슨 일이 있어도 부숴지지 않으며 누가 왜 만들었는지 알수 없다고 한다."
+    },
+    "ICE_MILESTONE": {
+      "name": "얼음점자판",
+      "description": "레지아이스에게 지니게 하면 방어, 특수공격, 특수방어가 1.5배 오르는 빙판에 새겨진 수수께끼의 점자판, 무슨 일이 있어도 녹지않으며 누가 왜 만들었는지는 알수 없다고 한다."
+    },
+    "STEEL_MILESTONE": {
+      "name": "무쇠점자판",
+      "description": "레지스틸에게 지니게 하면 방어, 특수방어, 스피드가 1.5배 오르는 강철로 만들어진 수수께끼의 점자판, 무슨 일이 있어도 녹슬지 않으며 누가 왜 만들었는지는 알수 없다고 한다."
+    },
+    "KNOWLEDGE_GEM": {
+      "name": "지식의보석",
+      "description": "유크시에게 지니게 하면 방어, 특수방어, 스피드가 1.5배 오르는 지식이 응축됬다 전해지는 신비한 보석, 전설에 따르면 이 보석을 손에 넣은 자는 모든 지식을 얻게 된다고 전해진다."
+    },
+    "EMOTION_GEM": {
+      "name": "감정의보석",
+      "description": "엠라이트에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 감정이 응축됬다 전해지는 이상한 보석, 전설에 따르면 이 보석을 손에 넣은 자는 상대의 감정을 읽을수 있게 된다고 전해진다."
+    },
+    "WILLPOWER_GEM": {
+      "name": "의지의보석",
+      "description": "아그놈에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 의지가 응축됬다 전해지는 신기한 보석, 전설에 따르면 상대의 의지를 자유자재로 다룰수 있게 된다고 전해진다."
+    },
+    "GIANT_MILESTONE": {
+      "name": "거대점자판",
+      "description": "레지기가스에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 플레이트와 유사한 재료로 만들어졌다 전해지는 거대한 점자판, 무슨 수를 써도 흠집하나 나지 않으며 누가 왜 만들었는지는 알수 없다고 하지만 무언가 이를 기록할 힘이 있으리라 전해진다."
+    },
+    "LUNAR_WING": {
+      "name": "초승달깃털",
+      "description": "크레세리아에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 달처럼 반짝임을 발산하는 깃털, 악몽을 뿌리치는 힘을 간직하고 있다고 전해진다."
+    },
+    "RAPIDS_SYMBOL": {
+      "name": "여울의심볼",
+      "description": "피오네에게 지니게 하면 모든 능력치가 1.5배 오르는 여울처럼 물결치는 듯한 패턴이 인상적인 심볼, 피오네가 무리지어 지나간 자리에 남아있다고 전해진다."
+    },
+    "WAVE_SYMBOL": {
+      "name": "파랑의심볼",
+      "description": "마나피에게 지니게 하면 모든 능력치가 1.5배 오르는 파랑처럼 물결치는 듯한 패턴이 인상적인 심볼, 마나피가 부화한 뒤 어느새인가 나타나있었다."
+    },
+    "NIGHTMARE_SYMBOLE": {
+      "name": "악몽의심볼",
+      "description": "다크라이에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 불길하고 악몽처럼 무시무시한 기운을 내뿜는 기분나쁜 심볼, 이 심볼을 발견한 이는 몇년동안 무시무시한 가위에 눌렸다 전해진다."
+    },
+    "COBALT_SWORD": {
+      "name": "코발트소드",
+      "description": "코바르온에게 지니게 하면 공격, 방어, 특수방어, 스피드가 1.5배 오르는 정의감으로 가득찬 푸른색의 검, 오랜 전승에 따르면 이 검을 손에 넣은 정의로운 용사는 모든 이들을 통치할수 있게된다 전해진다."
+    },
+    "TERRACOTTA_AXE": {
+      "name": "테라코타액스",
+      "description": "테라키온에게 지니게 하면 공격, 방어, 특수방어, 스피드가 1.5배 오르는 정의감으로 가득찬 아이보리색의 큰도끼, 오랜 전승에 따르면 이 도끼를 다룰줄 아는 정의로운 용사는 그 어떤 성벽도 돌파할 능력을 지니게 된다고 전해진다."
+    },
+    "VIRIDIAN_KNIFE": {
+      "name": "비리디안나이프",
+      "description": "비리디온에게 지니게 하면 공격, 방어, 특수방어, 스피드가 1.5배 오르는 정의감으로 가득찬 초록색의 예리한 칼, 오랜 전승에 따르면 이 칼을 손에 넣은 정의로운 용사는 바람처럼 잽싸게 움직일수 있게 된다 전해진다."
+    },
+    "CYCLONE_FAN": {
+      "name": "선풍부채",
+      "description": "토네로스에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르고 바람기술의 위력이 오르며 부가효과 발동률이 2배가 되는 살짝만 움직여도 강한 바람이 부는 신묘한 부채, 이 부채로 더위를 식히려다 마을에 큰 태풍이 몰아닥쳤다는 설화가 전해진다."
+    },
+    "BOLT_STRIKE_FAN": {
+      "name": "천둥바람부채",
+      "description": "볼트로스에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르고 바람기술의 위력이 오르며 부가효과 발동률이 2배가 되는 살짝만 움직여도 정전기가 툭툭 튀는 이상한 부채, 부채질을 하다보니 천둥번개와 함께 폭우가 쏟아졌다는 설화가 전해진다."
+    },
+    "ABUNDANCE_FAN": {
+      "name": "풍요부채",
+      "description": "랜드로스에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르고 바람기술의 위력이 오르며 부가효과 발동률이 2배가 되는 풍요로운 바람을 일으킨다는 신비한 부채, 마을의 어느 왕이 마을에 극심한 흉년이 들자 이 부채를 이용했더니 순식간에 풍년이 들었다는 설화가 전해진다."
+    },
+    "SPRINGTIDE_FAN": {
+      "name": "봄바람부채",
+      "description": "러브로스에게 지니게 하면 방어, 특수공격, 특수방어가 1.5배 오르고 바람기술의 위력이 오르며 부가효과 발동률이 2배가 되는 봄바람의 달달한 향을 내는 신기한 부채, 어느 여인이 꽃을 보고 싶어 시든 나무에 부채질했더니 어느 순간 그 나무엔 아름다운 꽃들이 피어났다는 설화가 전해진다."
+    },
+    "RESOLVE_BLADE": {
+      "name": "각오의칼날",
+      "description": "케르디오에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 정의감과 각오로 가득찬 하늘색과 여러 장식이 깃든 뾰족한 칼, 오랜 전승에 따르면 이 칼을 손에 넣은 정의로운 용사는 각오를 한 정도에 따라 잠재력을 발휘할수 있게 된다고 전해진다."
+    },
+    "MELODY_SYMBOL": {
+      "name": "멜로디심볼",
+      "description": "메로엣타에게 지니게 하면 모든 능력치가 1.5배 오르는 실로 아름다운 선율을 내는 감미로운 심볼, 소문에 따르면 이 심볼을 손에 넣은 자는 아무리 음치더라도 감미롭고 아름다운 목소리로 노래를 할 수 있다 전해진다."
+    },
+    "GENE_DRIVE": {
+      "name": "게놈카세트",
+      "description": "게노섹트에게 지니게 하면 모든 능력치가 1.5배 오르는 실로 대단한 전투 데이터가 담겨있는 카세트, 게노섹트를 개조할때 필수적으로 제작되었다고 알려져있다."
+    },
+    "VOLCANIC_RING": {
+      "name": "마그마링",
+      "description": "볼케니온에게 지니게 하면 모든 능력치가 1.5배 오르는 뜨거운 증기의 기운이 느껴지는 이상한 반지, 마그마에서 달궈진 어떤 광물이 차가운 물과 만나 급격히 식어서 생겼다는 소문이 있다."
+    },
+    "KOKO_FLOWER": {
+      "name": "뇌신의꽃",
+      "description": "카푸꼬꼬꼭에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 번개처럼 쾌활한 이상한 노란 꽃, 이 꽃이 피어난 자리엔 항상 비범한 천둥번개가 친다고 전해진다."
+    },
+    "LELE_FLOWER": {
+      "name": "치유의꽃",
+      "description": "카푸나비나에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 이상한 향을 내뿜는 기묘한 분홍 꽃, 이 꽃이 피어난 자리엔 항상 평소와 다른 무언가가 느껴진다고 전해진다."
+    },
+    "BULU_FLOWER": {
+      "name": "심원의꽃",
+      "description": "카푸브루루에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 깊은 정글의 기운을 가득 담은 듯한 신비한 녹색 꽃, 이 꽃이 피어난 자리엔 항상 그 어떤 불모지라도 어느새 끝도 없이 펼쳐지는 정글림이 생겨나있다고 전해진다."
+    },
+    "FINI_FLOWER": {
+      "name": "저너머의꽃",
+      "description": "카푸느지느에게 지니게 하면 방어, 특수방어, 스피드가 1.5배 오르는 안개처럼 짙은 향을 내는 희귀한 꽃, 이 꽃이 피어난 자리엔 항상 끝을 알수 없을 정도로 아주 짙은 안개가 생겨나있다고 전해진다."
+    },
+    "PRISM_CORE": {
+      "name": "프리즘코어",
+      "description": "네크로즈마에게 지니게 하면 모든 능력치가 1.5배 오르는 이차원에서 온 듯한 모든 빛을 가득담은 이상한 프리즘, 네크로즈마가 빛을 발산한 자리에 남겨졌다고 전해진다."
+    },
+    "ANTIQUE_GEAR": {
+      "name": "고대의기어하트",
+      "description": "마기아나에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 마치 새것처럼 반짝거리고 설명할 수 없는 기술력이 들어간듯한 이상한 기어, 500년 넘도록 그 어떤 흠집이나 결함이 생기지 않아다고 전해진다."
+    },
+    "SHADE_CAPE": {
+      "name": "그림자망토",
+      "description": "마샤도에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 칠흑처럼 어두운 그림자처럼 새카만 망토, 마샤도가 수행할 때 이 망토를 두르고 시작한다는 전설이 있다."
+    },
+    "THUNDERCLAP_CLAW": {
+      "name": "신뢰의발톱",
+      "description": "제라오라에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 마치 번개를 연상케하는 모양과 전기가 튀는 신기한 발톱, 제라오라가 전투를 벌인뒤 남겨져 있다고 전해진다."
+    },
+    "ANTIQUE_NUT": {
+      "name": "이상한고대너트",
+      "description": "멜탄, 멜메탈에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 이상한 코어가 끼어있는 실로 이상한 너트, 이 너트를 이용해 금속기계나 도구등을 만들면 그 기구는 절대로 망가지지않는다고 전해진다."
+    },
+    "WARRIOR_SWORD": {
+      "name": "역전의보검",
+      "description": "자시안에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 아주 고귀하고 용맹한 기운이 감도는 검모양의 휘석, 자시안이 블랙나이트를 해결했을 때 발견되었다는 전설이 있다."
+    },
+    "WARRIOR_SHIELD": {
+      "name": "역전의방패",
+      "description": "자마젠타에게 지니게 하면 방어, 특수방어, 스피드가 1.5배 오르는 고귀하고 인내의 기운이 감도는 방패모양의 휘석, 자마젠타가 블랙나이트를 해결했을 때 발견되었다는 전설이 있다."
+    },
+    "ETERNAL_HOLE": {
+      "name": "무한다이오브",
+      "description": "무한다이렉스에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 1000년치 에너지를 응축시킨 이상한 보옥, 이 보옥을 손에 넣은 어느 왕은 1000년 이상의 에너지를 자신의 왕국에 퍼뜨리게 되었다는 전설이 있다."
+    },
+    "WUSHU_BELT": {
+      "name": "궁극의허리띠",
+      "description": "우라오스에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 흑백의 색상을 띄는 낡은 허리띠, 치고마가 어느 사부에게서 수련을 받을 때 썼다고 전해진다."
+    },
+    "JUNGLE_CAPE": {
+      "name": "심원의망토",
+      "description": "자루도에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 깊은 부성애가 느껴지는 포근한 망토, 어느 자루도가 어떤 아이를 키울때 썼던 망토라는 전설이 내려온다."
+    },
+    "ELEKI_MILESTONE": {
+      "name": "전자점자판",
+      "description": "레지에레키에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 끝없는 전기 에너지가 퍼져나가는 점자판, 1000년동안 오랫동안 지속될만큼 엄청난 전기에너지를 보유하고 있다는 연구결과가 있으며 누가 왜 어떤 원리로 만들었는지는 알 수 없다."
+    },
+    "DRAGO_MILESTONE": {
+      "name": "마룡점자판",
+      "description": "레지드래고에게 지니게 하면 공격, 특수공격, 스피드가 1.5배 오르는 끝없는 마룡의 에너지가 퍼져나가는 점자판, 용의 힘으로 만들어져 파손되거나 하지 않는다는 전설이 있으며 누가 왜 어떤 원리로 만들었는지는 알 수 없다."
+    },
+    "SCALET_SCALE": {
+      "name": "진홍빛비늘",
+      "description": "코라이돈에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 고대의 기운이 활성화 되는 듯한 느낌이 절로드는 진홍빛 비늘, 날개의왕이라 불리는 포켓몬이 오랜 수련과 전투를 이어온 끝에 생겨났다는 기록이 있다."
+    },
+    "HADRON_SCALE": {
+      "name": "하드론비늘",
+      "description": "미라이돈에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 미래의 쿼크입자가 절로 차지 되는 듯한 느낌이 절로드는 미래에서 온듯한 비늘, 무쇠이무기라 불리는 포켓몬이 오랜 수련과 전투를 이어온 끝에 생겨났다는 기록이 있다."
+    },
+    "MALIGNANT_CHAINS": {
+      "name": "악독한사슬",
+      "description": "조타구, 이야후, 기로치에게 지니게 하면 모든 능력치가 1.5배 오르고 상대를 맹독 상태로 만들며 맹독, 독 상태인 상대를 공격할시 기술의 위력이 1.3배가 올라가는 아주 사악하고 비열한 기운이 퍼져나가는 기분나쁜 사슬, 복숭악동이 세벗에게 자신의 힘을 응축시켜 전해준 사슬이라는 전승이 있다."
+    },
+    "CRYSTAL_CLUSTER": {
+      "name": "감청빛크리스탈",
+      "description": "테라파고스에게 지니게 하면 모든 능력치가 1.5배 오르는 굉장히 희귀하고 모든 타입의 에너지와 스텔라타입의 에너지도 함께 느껴지는 신비한 크리스탈, 테라파고스가 있는 자리에 항상 같이 발견된다 전해져서 뭔가 관계가 있는거 아닌가 하는 학자들의 추측이 있다."
+    },
+    "REDMOON_STONE": {
+      "name": "붉은달의돌",
+      "description": "붉은달 다투곰에게 지니게 하면 방어, 특수공격, 특수방어, 스피드가 1.5배 오르는 붉은달처럼 굉장히 새빨간 이상한 돌, 붉은 달이 뜨는 어스름한 어느 밤에 붉은달 다투곰이 나타나기전에 발견된다는 전승이 있다."
+    },
+    "CRUEL_FEATHER": {
+      "name": "냉정한깃털",
+      "description": "가라르 프리져에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 냉정하고 차분하게 모든 것을 얼릴듯한 에스퍼 기운이 느껴지는 이상한 보라빛 깃털, 가라르 프리져가 날아간 자리에 남겨져있다는 기록이 있다."
+    },
+    "STRONG_FEATHER": {
+      "name": "강력한깃털",
+      "description": "가라르 썬더에게 지니게 하면 공격, 방어, 스피드가 1.5배 오르는 번개처럼 강력하고 재빠른 기운을 내는 이상한 짙은 주황색 깃털, 가라르 썬더가 번개처럼 질주하고 천둥같은 굉음을 낸뒤 어느샌가 발견됬다는 기록이 있다."
+    },
+    "MALEVOLENT_FEATHER": {
+      "name": "사악한깃털",
+      "description": "가라르 파이어에게 지니게 하면 특수공격, 특수방어, 스피드가 1.5배 오르는 불꽃처럼 무자비하게 타오르고 사악한 기운이 깃든 깃털, 가라르 파이어가 사악한 포효를 낼때 어느샌가 남겨져있다고 전해진다."
+    },
+    "ODD_JAR": {
+      "name": "괴상한항아리",
+      "description": "후파에게 지니게 하면 모든 능력치가 1.5배 오르고 50%의 확률로 상대 공격을 피하고 피할 경우 입을 대미지의 절반만큼 돌려주는 요사스러운 패턴과 마치 무언가가 튀어나올듯한 금빛 고리가 인상적인 괴상한 항아리, 금빛 고리에 원하는 곳은 어디든 갈수 있고 원하는 것은 뭐든지 불러낼수 있다는 전설이 내려온다."
+    },
+    "MYTHICAL_PECHA_BERRY": {
+      "name": "환상복슝",
+      "description": "복숭악동에게 지니게 하면 모든 능력치가 1.5배 오르고 독, 맹독상태의 대미지가 2배 오르고 독, 맹독 상태인 상대에게 급소대미지를 맞추면 2배의 위력이 되며 혼란대미지가 2배 증가하고 혼란 지속 시간도 평소보다 더 늘어나는 최상급 복슝열매, 장인이 소중하게 키운 복슝나무에서 수년에 단 하나만 열린다고 전해 내려온다."
+    }
+  },
+  "TempStatStageBoosterItem": {
+    "x_attack": "플러스파워",
+    "x_defense": "디펜드업",
+    "x_sp_atk": "스페셜업",
+    "x_sp_def": "스페셜가드",
+    "x_speed": "스피드업",
+    "x_accuracy": "잘-맞히기"
+  },
+  "WeatherRockTrainer": {
+    "heat_rock": "뜨거운바위",
+    "damp_rock": "축축한바위",
+    "smooth_rock": "보송보송바위",
+    "icy_rock": "차가운바위"
+  },
+  "TerrainSeedTrainer": {
+    "misty_seed": "미스트시드",
+    "electric_seed": "일렉트릭시드",
+    "grassy_seed": "그래스시드",
+    "psychic_seed": "사이코시드"
+  },
+  "AttackTypeBoosterItem": {
+    "silk_scarf": "실크스카프",
+    "black_belt": "검은띠",
+    "sharp_beak": "예리한부리",
+    "poison_barb": "독바늘",
+    "soft_sand": "부드러운모래",
+    "hard_stone": "딱딱한돌",
+    "silver_powder": "은빛가루",
+    "spell_tag": "저주의부적",
+    "metal_coat": "금속코트",
+    "charcoal": "목탄",
+    "mystic_water": "신비의물방울",
+    "miracle_seed": "기적의씨",
+    "magnet": "자석",
+    "twisted_spoon": "휘어진스푼",
+    "never_melt_ice": "녹지않는얼음",
+    "dragon_fang": "용의이빨",
+    "black_glasses": "검은안경",
+    "fairy_feather": "요정의깃털"
+  },
+    "exclusiveZMoves": {
+      "pikanium_z": "피카츄Z",
+      "decidium_z": "모크나이퍼Z",
+      "incinium_z": "어흥염Z",
+      "primarium_z": "누리레느Z",
+      "tapunium_z": "카푸Z",
+      "marshadium_z": "마샤도Z",
+      "aloraichium_z": "알로라이Z",
+      "snorlium_z": "잠만보Z",
+      "eevium_z": "이브이Z",
+      "mewnium_z": "뮤Z",
+      "pikashunium_z": "지우피카Z",
+      "solium_z": "솔가레오Z",
+      "lunarium_z": "루나아라Z",
+      "mimikium_z": "따라큐Z",
+      "lycanium_z": "루가루암Z",
+      "kommonium_z": "짜랑고우거Z",
+      "ultranecrozium_z": "울트라네크로Z"
+    },
+    "exclusiveZMovesDescriptions": {
+      "pikanium_z": "피카츄에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "decidium_z": "모크나이퍼에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "incinium_z": "어흥염에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "primarium_z": "누리레느에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "tapunium_z": "카푸꼬꼬꼭, 카푸나비나, 카푸브루루, 카푸느지느에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "marshadium_z": "마샤도에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "aloraichium_z": "알로라 라이츄에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "snorlium_z": "잠만보에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "eevium_z": "이브이, 부스터, 쥬피썬더, 샤미드, 블래키, 에브이, 리피아, 글레이시아, 님피아에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "mewnium_z": "뮤, 뮤츠에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "pikashunium_z": "특별한 피카츄에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "solium_z": "솔가레오에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "lunarium_z": "루나아라에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "mimikium_z": "따라큐에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "lycanium_z": "루가루암에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "kommonium_z": "짜랑고우거에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다.",
+      "ultranecrozium_z": "네크로즈마에게 특별한 Z기술로 업그레이드하는 Z파워의 결정을 만들어낸다."
+    },
+  "TypeSpecificMoveBoosterItem": {
+    "normal_gem": "노말주얼",
+    "fighting_gem": "격투주얼",
+    "flying_gem": "비행주얼",
+    "poison_gem": "독주얼",
+    "ground_gem": "땅주얼",
+    "rock_gem": "바위주얼",
+    "bug_gem": "벌레주얼",
+    "ghost_gem": "고스트주얼",
+    "steel_gem": "강철주얼",
+    "fire_gem": "불꽃주얼",
+    "water_gem": "물주얼",
+    "grass_gem": "풀주얼",
+    "electric_gem": "전기주얼",
+    "psychic_gem": "에스퍼주얼",
+    "ice_gem": "얼음주얼",
+    "dragon_gem": "드래곤주얼",
+    "dark_gem": "악주얼",
+    "fairy_gem": "페어리주얼"
+  },
+  "BaseStatBoosterItem": {
+    "hp_up": "맥스업",
+    "protein": "타우린",
+    "iron": "사포닌",
+    "calcium": "리보플라빈",
+    "zinc": "키토산",
+    "carbos": "알칼로이드"
+  },
+  "EvolutionItem": {
+    "NONE": "None",
+    "LINKING_CORD": "연결의끈",
+    "SUN_STONE": "태양의돌",
+    "MOON_STONE": "달의돌",
+    "LEAF_STONE": "리프의돌",
+    "FIRE_STONE": "불꽃의돌",
+    "WATER_STONE": "물의돌",
+    "THUNDER_STONE": "천둥의돌",
+    "ICE_STONE": "얼음의돌",
+    "DUSK_STONE": "어둠의돌",
+    "DAWN_STONE": "각성의돌",
+    "SHINY_STONE": "빛의돌",
+    "CRACKED_POT": "깨진포트",
+    "SWEET_APPLE": "달콤한사과",
+    "TART_APPLE": "새콤한사과",
+    "STRAWBERRY_SWEET": "딸기사탕공예",
+    "UNREMARKABLE_TEACUP": "범작찻잔",
+    "UPGRADE": "업그레이드",
+    "DUBIOUS_DISC": "괴상한패치",
+    "DRAGON_SCALE": "용의비늘",
+    "PRISM_SCALE": "고운비늘",
+    "RAZOR_CLAW": "예리한손톱",
+    "RAZOR_FANG": "예리한이빨",
+    "REAPER_CLOTH": "영계의천",
+    "ELECTIRIZER": "에레키부스터",
+    "MAGMARIZER": "마그마부스터",
+    "PROTECTOR": "프로텍터",
+    "SACHET": "향기주머니",
+    "WHIPPED_DREAM": "휘핑크림",
+    "LEADERS_CREST": "대장의징표",
+    "CHIPPED_POT": "이빠진포트",
+    "BLACK_AUGURITE": "검은휘석",
+    "GALARICA_CUFF": "가라두구팔찌",
+    "GALARICA_WREATH": "가라두구머리장식",
+    "PEAT_BLOCK": "피트블록",
+    "AUSPICIOUS_ARMOR": "축복받은갑옷",
+    "MALICIOUS_ARMOR": "저주받은갑옷",
+    "MASTERPIECE_TEACUP": "걸작찻잔",
+    "METAL_ALLOY": "복합금속",
+    "SCROLL_OF_DARKNESS": "악의 족자",
+    "SCROLL_OF_WATERS": "물의 족자",
+    "SYRUPY_APPLE": "꿀맛사과",
+    "OVAL_STONE": "동글동글돌"
+  },
+  "FormChangeItem": {
+    "NONE": "None",
+    "ABOMASITE": "눈설왕나이트",
+    "ABSOLITE": "앱솔나이트",
+    "AERODACTYLITE": "프테라나이트",
+    "AGGRONITE": "보스로라나이트",
+    "ALAKAZITE": "후딘나이트",
+    "ALTARIANITE": "파비코리나이트",
+    "AMPHAROSITE": "전룡나이트",
+    "AUDINITE": "다부니나이트",
+    "BANETTITE": "다크펫나이트",
+    "BEEDRILLITE": "독침붕나이트",
+    "BLASTOISINITE": "거북왕나이트",
+    "BLAZIKENITE": "번치코나이트",
+    "CAMERUPTITE": "폭타나이트",
+    "CHARIZARDITE_X": "리자몽나이트 X",
+    "CHARIZARDITE_Y": "리자몽나이트 Y",
+    "DIANCITE": "디안시나이트",
+    "GALLADITE": "엘레이드나이트",
+    "GARCHOMPITE": "한카리아스나이트",
+    "GARDEVOIRITE": "가디안나이트",
+    "GENGARITE": "팬텀나이트",
+    "GLALITITE": "얼음귀신나이트",
+    "GYARADOSITE": "갸라도스나이트",
+    "HERACRONITE": "헤라크로스나이트",
+    "HOUNDOOMINITE": "헬가나이트",
+    "KANGASKHANITE": "캥카나이트",
+    "LATIASITE": "라티아스나이트",
+    "LATIOSITE": "라티오스나이트",
+    "LOPUNNITE": "이어롭나이트",
+    "LUCARIONITE": "루카리오나이트",
+    "MANECTITE": "썬더볼트나이트",
+    "MAWILITE": "입치트나이트",
+    "MEDICHAMITE": "요가램나이트",
+    "METAGROSSITE": "메타그로스나이트",
+    "MEWTWONITE_X": "뮤츠나이트 X",
+    "MEWTWONITE_Y": "뮤츠나이트 Y",
+    "PIDGEOTITE": "피죤투나이트",
+    "PINSIRITE": "쁘사이저나이트",
+    "RAYQUAZITE": "레쿠쟈나이트",
+    "SABLENITE": "깜까미나이트",
+    "SALAMENCITE": "보만다나이트",
+    "SCEPTILITE": "나무킹나이트",
+    "SCIZORITE": "핫삼나이트",
+    "SHARPEDONITE": "샤크니아나이트",
+    "SLOWBRONITE": "야도란나이트",
+    "STEELIXITE": "강철톤나이트",
+    "SWAMPERTITE": "대짱이나이트",
+    "TYRANITARITE": "마기라스나이트",
+    "VENUSAURITE": "이상해꽃나이트",
+    "STARMINITE": "아쿠스타나이트",
+    "FERALIGITE": "장크로다일나이트",
+    "SKARMORITE": "무장조나이트",
+    "SCRAFTINITE": "곤율거니나이트",
+    "SCOLIPITE": "펜드라나이트",
+    "SCOVILLAINITE": "스코빌런나이트",
+    "CHESNAUGHTITE": "브리가론나이트",
+    "CHANDELURITE": "샹델라나이트",
+    "FLOETTITE": "플라엣테나이트",
+    "MALAMARITE": "칼라마네로나이트",
+    "BLUE_ORB": "쪽빛구슬",
+    "RED_ORB": "주홍구슬",
+    "SHARP_METEORITE": "뾰족한운석",
+    "HARD_METEORITE": "단단한운석",
+    "SMOOTH_METEORITE": "부드러운운석",
+    "ADAMANT_CRYSTAL": "큰금강옥",
+    "LUSTROUS_GLOBE": "큰백옥",
+    "GRISEOUS_CORE": "큰백금옥",
+    "REVEAL_GLASS": "비추는거울",
+    "GRACIDEA": "그라시데아꽃",
+    "MAX_MUSHROOMS": "다이버섯",
+    "MAX_HONEY": "다이꿀",
+    "DARK_SPLICERS": "이상의쐐기",
+    "LIGHT_SPLICERS": "진실의쐐기",
+    "PRISON_BOTTLE": "굴레의항아리",
+    "N_LUNARIZER": "네크로플러스루나",
+    "N_SOLARIZER": "네크로플러스솔",
+    "RUSTED_SWORD": "녹슨검",
+    "RUSTED_SHIELD": "녹슨방패",
+    "ICY_REINS_OF_UNITY": "차가운유대의고삐",
+    "SHADOW_REINS_OF_UNITY": "검은유대의고삐",
+    "WELLSPRING_MASK": "우물의가면",
+    "HEARTHFLAME_MASK": "화덕의가면",
+    "CORNERSTONE_MASK": "주춧돌의가면",
+    "SHOCK_DRIVE": "번개카세트",
+    "BURN_DRIVE": "블레이즈카세트",
+    "CHILL_DRIVE": "프리즈카세트",
+    "DOUSE_DRIVE": "아쿠아카세트",
+    "FIST_PLATE": "주먹플레이트",
+    "SKY_PLATE": "푸른하늘플레이트",
+    "TOXIC_PLATE": "맹독플레이트",
+    "EARTH_PLATE": "대지플레이트",
+    "STONE_PLATE": "암석플레이트",
+    "INSECT_PLATE": "비단벌레플레이트",
+    "SPOOKY_PLATE": "원령플레이트",
+    "IRON_PLATE": "강철플레이트",
+    "FLAME_PLATE": "불구슬플레이트",
+    "SPLASH_PLATE": "물방울플레이트",
+    "MEADOW_PLATE": "초록플레이트",
+    "ZAP_PLATE": "우뢰플레이트",
+    "MIND_PLATE": "이상한플레이트",
+    "ICICLE_PLATE": "고드름플레이트",
+    "DRACO_PLATE": "용의플레이트",
+    "DREAD_PLATE": "공포플레이트",
+    "PIXIE_PLATE": "정령플레이트",
+    "BLANK_PLATE": "순백플레이트",
+    "LEGEND_PLATE": "레전드플레이트",
+    "FIGHTING_MEMORY": "파이팅메모리",
+    "FLYING_MEMORY": "플라잉메모리",
+    "POISON_MEMORY": "포이즌메모리",
+    "GROUND_MEMORY": "그라운드메모리",
+    "ROCK_MEMORY": "록메모리",
+    "BUG_MEMORY": "버그메모리",
+    "GHOST_MEMORY": "고스트메모리",
+    "STEEL_MEMORY": "스틸메모리",
+    "FIRE_MEMORY": "파이어메모리",
+    "WATER_MEMORY": "워터메모리",
+    "GRASS_MEMORY": "그래스메모리",
+    "ELECTRIC_MEMORY": "일렉트릭메모리",
+    "PSYCHIC_MEMORY": "사이킥메모리",
+    "ICE_MEMORY": "아이스메모리",
+    "DRAGON_MEMORY": "드래곤메모리",
+    "DARK_MEMORY": "다크메모리",
+    "FAIRY_MEMORY": "페어리메모리",
+    "NORMAL_MEMORY": "일반메모리"
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "id": 603,
+  "graphic": "PRAS- NeverEndingNightmare",
+  "frames": [
+    [
+      {
+        "x": 0,
+        "y": -16,
+        "graphicFrame": 0,
+        "zoomX": 100,
+        "zoomY": 100,
+        "visible": true,
+        "target": 1,
+        "opacity": 200,
+        "priority": 0,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": -16,
+        "graphicFrame": 5,
+        "zoomX": 120,
+        "zoomY": 120,
+        "visible": true,
+        "target": 1,
+        "opacity": 255,
+        "priority": 1,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": -32,
+        "graphicFrame": 6,
+        "zoomX": 130,
+        "zoomY": 130,
+        "visible": true,
+        "target": 1,
+        "opacity": 220,
+        "priority": 1,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 12,
+        "zoomX": 100,
+        "zoomY": 100,
+        "visible": true,
+        "target": 1,
+        "opacity": 255,
+        "priority": 2,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 13,
+        "zoomX": 110,
+        "zoomY": 110,
+        "visible": true,
+        "target": 1,
+        "opacity": 255,
+        "priority": 2,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 14,
+        "zoomX": 120,
+        "zoomY": 120,
+        "visible": true,
+        "target": 1,
+        "opacity": 255,
+        "priority": 2,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 15,
+        "zoomX": 140,
+        "zoomY": 140,
+        "visible": true,
+        "target": 1,
+        "opacity": 240,
+        "priority": 2,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 16,
+        "zoomX": 150,
+        "zoomY": 150,
+        "visible": true,
+        "target": 1,
+        "opacity": 220,
+        "priority": 2,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 17,
+        "zoomX": 170,
+        "zoomY": 170,
+        "visible": true,
+        "target": 1,
+        "opacity": 200,
+        "priority": 2,
+        "focus": 1
+      }
+    ],
+    [
+      {
+        "x": 0,
+        "y": 0,
+        "graphicFrame": 18,
+        "zoomX": 180,
+        "zoomY": 180,
+        "visible": true,
+        "target": 1,
+        "opacity": 255,
+        "priority": 3,
+        "focus": 1
+      }
+    ]
+  ],
+  "frameTimedEvents": {
+    "0": [
+      {
+        "frameIndex": 0,
+        "resourceName": "PRSFX- NeverEndingNightmare1.wav",
+        "volume": 100,
+        "pitch": 100,
+        "eventType": "AnimTimedSoundEvent"
+      }
+    ],
+    "3": [
+      {
+        "frameIndex": 3,
+        "resourceName": "PRSFX- NeverEndingNightmare2.wav",
+        "volume": 80,
+        "pitch": 90,
+        "eventType": "AnimTimedSoundEvent"
+      }
+    ],
+    "7": [
+      {
+        "frameIndex": 7,
+        "resourceName": "PRSFX- NeverEndingNightmare3.wav",
+        "volume": 110,
+        "pitch": 80,
+        "eventType": "AnimTimedSoundEvent"
+      }
+    ],
+    "9": [
+      {
+        "frameIndex": 9,
+        "resourceName": "PRSFX- NeverEndingNightmare4.wav",
+        "volume": 120,
+        "pitch": 85,
+        "eventType": "AnimTimedSoundEvent"
+      }
+    ],
+    "13": [
+      {
+        "frameIndex": 9,
+        "resourceName": "PRSFX- NeverEndingNightmare5.wav",
+        "volume": 120,
+        "pitch": 85,
+        "eventType": "AnimTimedSoundEvent"
+      }
+    ],
+    "16": [
+      {
+        "frameIndex": 9,
+        "resourceName": "PRSFX- NeverEndingNightmare6.wav",
+        "volume": 120,
+        "pitch": 85,
+        "eventType": "AnimTimedSoundEvent"
+      }
+    ]
+  },
+  "position": 3,
+  "hue": 0
+}
