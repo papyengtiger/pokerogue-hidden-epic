@@ -17,6 +17,7 @@ import type { PokemonSpecies } from "#data/pokemon-species";
 import { loadPositionalTag } from "#data/positional-tags/load-positional-tag";
 import { TerrainType } from "#data/terrain";
 import { AbilityAttr } from "#enums/ability-attr";
+import { BankCurrencyType } from "#enums/bank-currency-type";
 import { BattleType } from "#enums/battle-type";
 import { ChallengeType } from "#enums/challenge-type";
 import { Device } from "#enums/devices";
@@ -26,6 +27,7 @@ import { GameModes } from "#enums/game-modes";
 import type { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import { Nature } from "#enums/nature";
 import { PlayerGender } from "#enums/player-gender";
+import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import { TrainerVariant } from "#enums/trainer-variant";
@@ -63,9 +65,11 @@ import type {
   AchvUnlocks,
   DexAttrProps,
   RunHistoryData,
+  RunItemData,
   SeenDialogues,
   SessionSaveData,
   StarterData,
+  StoredItemData,
   SystemSaveData,
   TutorialFlags,
   Unlocks,
@@ -82,6 +86,9 @@ import { toCamelCase } from "#utils/strings";
 import { AES, enc } from "crypto-js";
 import i18next from "i18next";
 import { ModifierClassMap, EnemyAttackStatusEffectChanceModifier } from "#modifiers/modifier";
+import { getExchangePreviewToRp, type ExchangePreviewResult } from "#system/exchange-utils";
+import type { SpeciesId } from "#enums/species-id";
+import { ExchangeCurrencyType } from "#enums/exchange-currency-type";
 
 function getDataTypeKey(dataType: GameDataType, slotId = 0): string {
   switch (dataType) {
@@ -146,6 +153,14 @@ export class GameData {
   public eggs: Egg[];
   public eggPity: number[];
   public unlockPity: number[];
+  public roguePoints: number;
+  
+  public bankMoney: number;
+  public bankRoguePoints: number;
+  public achvPointsGranted = false;
+
+  public storageItems: StoredItemData[];
+  public runStorageItems: RunItemData[];
 
   /**
    * @param fromRaw - If true, will skip initialization of fields that are normally randomized on new game start. Used for the admin panel; default `false`
@@ -178,32 +193,414 @@ export class GameData {
       [VoucherType.PREMIUM]: 0,
       [VoucherType.GOLDEN]: 0,
     };
+    this.roguePoints = 0;
+    this.bankMoney = 0;
+    this.bankRoguePoints = 0;
     this.eggs = [];
     this.eggPity = [0, 0, 0, 0];
     this.unlockPity = [0, 0, 0, 0];
     this.initDexData();
     this.initStarterData();
+    this.storageItems = [];
+    this.runStorageItems = [];
   }
 
-  public getSystemSaveData(): SystemSaveData {
+  public addRoguePoints(amount: number): void {
+  this.roguePoints = Math.max(0, this.roguePoints + amount);
+}
+
+public spendroguePoints(amount: number): boolean {
+  if (this.roguePoints < amount) {
+    return false;
+  }
+  this.roguePoints -= amount;
+  return true;
+}
+
+public getBankBalance(type: BankCurrencyType): number {
+  switch (type) {
+    case BankCurrencyType.MONEY:
+      return this.bankMoney ?? 0;
+
+    case BankCurrencyType.ROGUE_POINTS:
+      return this.bankRoguePoints ?? 0;
+  }
+
+  return 0;
+}
+
+public getExchangeCurrencyAmount(type: ExchangeCurrencyType, speciesId?: SpeciesId): number {
+  switch (type) {
+    case ExchangeCurrencyType.MONEY:
+      if ((this.money ?? 0) < amount) return false;
+this.money -= amount;
+
+    case ExchangeCurrencyType.CANDY:
+      if (speciesId == null) {
+        return 0;
+      }
+      return this.starterData?.[speciesId]?.candyCount ?? 0;
+
+    case ExchangeCurrencyType.VOUCHER_REGULAR:
+      return this.voucherCounts?.[VoucherType.REGULAR] ?? 0;
+
+    case ExchangeCurrencyType.VOUCHER_PLUS:
+      return this.voucherCounts?.[VoucherType.PLUS] ?? 0;
+
+    case ExchangeCurrencyType.VOUCHER_PREMIUM:
+      return this.voucherCounts?.[VoucherType.PREMIUM] ?? 0;
+
+    case ExchangeCurrencyType.VOUCHER_GOLDEN:
+      return this.voucherCounts?.[VoucherType.GOLDEN] ?? 0;
+
+    default:
+      return 0;
+  }
+}
+
+public getTotalStarterCandyCount(): number {
+  let total = 0;
+
+  for (const speciesIdStr of Object.keys(this.starterData ?? {})) {
+    const speciesId = Number(speciesIdStr) as SpeciesId;
+    total += this.starterData[speciesId]?.candyCount ?? 0;
+  }
+
+  return total;
+}
+
+public getExchangeableCandySpecies(minCandy: number = 10): SpeciesId[] {
+  const result: SpeciesId[] = [];
+
+  for (const speciesIdStr of Object.keys(this.starterData ?? {})) {
+    const speciesId = Number(speciesIdStr) as SpeciesId;
+    const candyCount = this.starterData[speciesId]?.candyCount ?? 0;
+
+    if (candyCount >= minCandy) {
+      result.push(speciesId);
+    }
+  }
+
+  return result;
+}
+
+private spendExchangeCurrency(
+  type: ExchangeCurrencyType,
+  amount: number,
+  speciesId?: SpeciesId,
+): boolean {
+  if (amount <= 0) {
+    return false;
+  }
+
+  switch (type) {
+    case ExchangeCurrencyType.MONEY:
+      if ((this.money ?? 0) < amount) return false;
+      this.money -= amount;
+      return true;
+
+    case ExchangeCurrencyType.CANDY: {
+      if (speciesId == null) return false;
+      const entry = this.starterData?.[speciesId];
+      if (!entry || (entry.candyCount ?? 0) < amount) return false;
+      entry.candyCount -= amount;
+      return true;
+    }
+
+    case ExchangeCurrencyType.VOUCHER_REGULAR:
+      if ((this.voucherCounts?.[VoucherType.REGULAR] ?? 0) < amount) return false;
+      this.voucherCounts[VoucherType.REGULAR] -= amount;
+      return true;
+
+    case ExchangeCurrencyType.VOUCHER_PLUS:
+      if ((this.voucherCounts?.[VoucherType.PLUS] ?? 0) < amount) return false;
+      this.voucherCounts[VoucherType.PLUS] -= amount;
+      return true;
+
+    case ExchangeCurrencyType.VOUCHER_PREMIUM:
+      if ((this.voucherCounts?.[VoucherType.PREMIUM] ?? 0) < amount) return false;
+      this.voucherCounts[VoucherType.PREMIUM] -= amount;
+      return true;
+
+    case ExchangeCurrencyType.VOUCHER_GOLD:
+      if ((this.voucherCounts?.[VoucherType.GOLDEN] ?? 0) < amount) return false;
+      this.voucherCounts[VoucherType.GOLDEN] -= amount;
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+public exchangeCurrencyToRoguePoints(
+  source: ExchangeCurrencyType,
+  amount: number,
+  speciesId?: SpeciesId,
+): ExchangePreviewResult {
+  if (amount <= 0) {
     return {
-      trainerId: this.trainerId,
-      secretId: this.secretId,
-      gender: this.gender,
-      dexData: this.dexData,
-      starterData: this.starterData,
-      gameStats: this.gameStats,
-      unlocks: this.unlocks,
-      achvUnlocks: this.achvUnlocks,
-      voucherUnlocks: this.voucherUnlocks,
-      voucherCounts: this.voucherCounts,
-      eggs: this.eggs.map(e => new EggData(e)),
-      gameVersion: globalScene.game.config.gameVersion,
-      timestamp: Date.now(),
-      eggPity: this.eggPity.slice(0),
-      unlockPity: this.unlockPity.slice(0),
+      success: false,
+      source,
+      requestedAmount: amount,
+      consumedAmount: 0,
+      remainderAmount: amount,
+      gainedRp: 0,
+      speciesId,
+      reason: "수량은 1 이상이어야 합니다.",
     };
   }
+
+  if (source === ExchangeCurrencyType.CANDY && speciesId == null) {
+    return {
+      success: false,
+      source,
+      requestedAmount: amount,
+      consumedAmount: 0,
+      remainderAmount: amount,
+      gainedRp: 0,
+      speciesId,
+      reason: "포켓몬사탕 환전에는 speciesId가 필요합니다.",
+    };
+  }
+
+  const ownedAmount = this.getExchangeCurrencyAmount(source, speciesId);
+
+  if (ownedAmount <= 0) {
+    return {
+      success: false,
+      source,
+      requestedAmount: amount,
+      consumedAmount: 0,
+      remainderAmount: amount,
+      gainedRp: 0,
+      speciesId,
+      reason: "보유량이 부족합니다.",
+    };
+  }
+
+  const actualAmount = Math.min(amount, ownedAmount);
+  const preview = getExchangePreviewToRp(source, actualAmount, speciesId);
+
+  if (!preview.success) {
+    return preview;
+  }
+
+  const spent = this.spendExchangeCurrency(source, preview.consumedAmount, speciesId);
+
+  if (!spent) {
+    return {
+      success: false,
+      source,
+      requestedAmount: amount,
+      consumedAmount: 0,
+      remainderAmount: amount,
+      gainedRp: 0,
+      speciesId,
+      reason: "재화 차감에 실패했습니다.",
+    };
+  }
+
+  this.addRoguePoints(preview.gainedRp);
+  this.saveSystem();
+
+  return preview;
+}
+
+  public depositCurrency(type: BankCurrencyType, amount: number): boolean {
+  if (amount <= 0) return false;
+
+  const bonus = Math.floor(amount / 100) * 10;
+  const total = amount + bonus;
+
+  switch (type) {
+    case BankCurrencyType.MONEY:
+      if (globalScene.money < amount) return false;
+
+      globalScene.money -= amount;
+      this.bankMoney = (this.bankMoney ?? 0) + total;
+      globalScene.updateMoneyText();
+      return true;
+
+    case BankCurrencyType.ROGUE_POINTS:
+      if ((this.roguePoints ?? 0) < amount) return false;
+
+      this.roguePoints -= amount;
+      this.bankRoguePoints = (this.bankRoguePoints ?? 0) + total;
+      globalScene.updateroguePointText?.();
+      return true;
+  }
+
+  return false;
+}
+
+public withdrawCurrency(type: BankCurrencyType, amount: number): boolean {
+  if (amount <= 0) return false;
+
+  switch (type) {
+    case BankCurrencyType.MONEY:
+      if ((this.bankMoney ?? 0) < amount) return false;
+
+      this.bankMoney = (this.bankMoney ?? 0) - amount;
+      globalScene.money += amount;
+      globalScene.updateMoneyText();
+      return true;
+
+    case BankCurrencyType.ROGUE_POINTS:
+      if ((this.bankRoguePoints ?? 0) < amount) return false;
+
+      this.bankRoguePoints = (this.bankRoguePoints ?? 0) - amount;
+      this.roguePoints += amount;
+      globalScene.updateroguePointText?.();
+      return true;
+  }
+
+  return false;
+}
+
+public getStorageItems(): StoredItemData[] {
+  return [...(this.storageItems ?? [])];
+}
+
+public getRunStorageItems(): RunItemData[] {
+  return [...(this.runStorageItems ?? [])];
+}
+
+public addToStorage(itemId: string, amount: number): boolean {
+  if (!itemId || amount <= 0) {
+    return false;
+  }
+
+  const qty = Math.floor(amount);
+  const existing = this.storageItems.find(item => item.itemId === itemId);
+
+  if (existing) {
+    existing.quantity += qty;
+  } else {
+    this.storageItems.push({ itemId, quantity: qty });
+  }
+
+  return true;
+}
+
+public removeFromStorage(itemId: string, amount: number): boolean {
+  if (!itemId || amount <= 0) {
+    return false;
+  }
+
+  const qty = Math.floor(amount);
+  const existing = this.storageItems.find(item => item.itemId === itemId);
+
+  if (!existing || existing.quantity < qty) {
+    return false;
+  }
+
+  existing.quantity -= qty;
+
+  if (existing.quantity <= 0) {
+    this.storageItems = this.storageItems.filter(item => item.itemId !== itemId);
+  }
+
+  return true;
+}
+
+public addRunStorageItem(itemId: string, amount: number): boolean {
+  if (!itemId || amount <= 0) {
+    return false;
+  }
+
+  const qty = Math.floor(amount);
+  const existing = this.runStorageItems.find(item => item.itemId === itemId);
+
+  if (existing) {
+    existing.quantity += qty;
+  } else {
+    this.runStorageItems.push({ itemId, quantity: qty });
+  }
+
+  return true;
+}
+
+public removeRunStorageItem(itemId: string, amount: number): boolean {
+  if (!itemId || amount <= 0) {
+    return false;
+  }
+
+  const qty = Math.floor(amount);
+  const existing = this.runStorageItems.find(item => item.itemId === itemId);
+
+  if (!existing || existing.quantity < qty) {
+    return false;
+  }
+
+  existing.quantity -= qty;
+
+  if (existing.quantity <= 0) {
+    this.runStorageItems = this.runStorageItems.filter(item => item.itemId !== itemId);
+  }
+
+  return true;
+}
+
+public moveStorageItemToRun(itemId: string, amount: number): boolean {
+  if (!this.removeFromStorage(itemId, amount)) {
+    return false;
+  }
+
+  this.addRunStorageItem(itemId, amount);
+  return true;
+}
+
+public sendRunItemToStorage(itemId: string, amount: number): boolean {
+  if (!this.removeRunStorageItem(itemId, amount)) {
+    return false;
+  }
+
+  this.addToStorage(itemId, amount);
+  return true;
+}
+
+public depositRemainingRunItemsToStorage(): void {
+  for (const item of this.runStorageItems) {
+    if (item.quantity > 0) {
+      this.addToStorage(item.itemId, item.quantity);
+    }
+  }
+
+  this.runStorageItems = [];
+}
+
+public clearRunStorageItems(): void {
+  this.runStorageItems = [];
+}
+
+public hasRunStorageItems(): boolean {
+  return this.runStorageItems.some(item => item.quantity > 0);
+}
+
+  public getSystemSaveData(): SystemSaveData {
+  return {
+    trainerId: this.trainerId,
+    secretId: this.secretId,
+    gender: this.gender,
+    dexData: this.dexData,
+    starterData: this.starterData,
+    gameStats: this.gameStats,
+    unlocks: this.unlocks,
+    achvUnlocks: this.achvUnlocks,
+    voucherUnlocks: this.voucherUnlocks,
+    voucherCounts: this.voucherCounts,
+    roguePoints: this.roguePoints,
+    achvPointsGranted: this.achvPointsGranted,
+    bankMoney: this.bankMoney,
+    bankRoguePoints: this.bankRoguePoints,
+    storageItems: this.storageItems,
+    eggs: this.eggs.map(e => new EggData(e)),
+    gameVersion: globalScene.game.config.gameVersion,
+    timestamp: Date.now(),
+    eggPity: this.eggPity.slice(0),
+    unlockPity: this.unlockPity.slice(0),
+  };
+}
 
   /**
    * Checks if an `Unlockable` has been unlocked.
@@ -309,22 +706,65 @@ export class GameData {
     return gameData;
   }
 
+  private grantExistingAchievementPointsOnce(): void {
+  if (this.achvPointsGranted) {
+    return;
+  }
+
+  let total = 0;
+
+  for (const id of Object.keys(this.achvUnlocks)) {
+    const achv = achvs[id];
+    if (achv) {
+      total += achv.score;
+    }
+  }
+
+  if (total > 0) {
+    this.addRoguePoints(total);
+  }
+
+  this.achvPointsGranted = true;
+}
+
   /**
    * Initialize system data _after_ it has been parsed from JSON.
    * @param systemData The parsed `SystemSaveData` to initialize from
    */
   private initParsedSystem(systemData: SystemSaveData): void {
-    applySystemVersionMigration(systemData);
+  applySystemVersionMigration(systemData);
 
-    this.trainerId = systemData.trainerId;
-    this.secretId = systemData.secretId;
+  this.trainerId = systemData.trainerId;
+  this.secretId = systemData.secretId;
 
-    this.gender = systemData.gender;
+  this.gender = systemData.gender;
 
-    this.saveSetting(SettingKeys.Player_Gender, systemData.gender === PlayerGender.FEMALE ? 1 : 0);
+  this.saveSetting(SettingKeys.Player_Gender, systemData.gender === PlayerGender.FEMALE ? 1 : 0);
+
+  if (systemData.starterData) {
+    this.starterData = systemData.starterData;
+  } else {
+    this.initStarterData();
 
     if (systemData.starterData) {
       this.starterData = systemData.starterData;
+
+      // ✅ 기존 세이브용 테라 타입 보정
+      for (const speciesIdStr of Object.keys(this.starterData)) {
+        const speciesId = Number(speciesIdStr) as SpeciesId;
+        const species = getPokemonSpecies(speciesId);
+        const entry = this.starterData[speciesId];
+
+        if (!entry) continue;
+
+        entry.teraTypeAttr = Number(entry.teraTypeAttr ?? 0);
+
+        entry.teraTypeAttr |= 1 << (species.type1 + 1);
+
+        if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN) {
+          entry.teraTypeAttr |= 1 << (species.type2 + 1);
+        }
+      }
     } else {
       this.initStarterData();
 
@@ -353,51 +793,91 @@ export class GameData {
         }
       }
     }
-
-    if (systemData.gameStats) {
-      this.gameStats = systemData.gameStats;
-    }
-
-    if (systemData.unlocks) {
-      for (const key of Object.keys(systemData.unlocks)) {
-        if (this.unlocks.hasOwnProperty(key)) {
-          this.unlocks[key] = systemData.unlocks[key];
-        }
-      }
-    }
-
-    if (systemData.achvUnlocks) {
-      for (const a of Object.keys(systemData.achvUnlocks)) {
-        if (achvs.hasOwnProperty(a)) {
-          this.achvUnlocks[a] = systemData.achvUnlocks[a];
-        }
-      }
-    }
-
-    if (systemData.voucherUnlocks) {
-      for (const v of Object.keys(systemData.voucherUnlocks)) {
-        if (vouchers.hasOwnProperty(v)) {
-          this.voucherUnlocks[v] = systemData.voucherUnlocks[v];
-        }
-      }
-    }
-
-    if (systemData.voucherCounts) {
-      getEnumKeys(VoucherType).forEach(key => {
-        const index = VoucherType[key];
-        this.voucherCounts[index] = systemData.voucherCounts[index] || 0;
-      });
-    }
-
-    this.eggs = systemData.eggs ? systemData.eggs.map(e => e.toEgg()) : [];
-
-    this.eggPity = systemData.eggPity ? systemData.eggPity.slice(0) : [0, 0, 0, 0];
-    this.unlockPity = systemData.unlockPity ? systemData.unlockPity.slice(0) : [0, 0, 0, 0];
-
-    this.dexData = Object.assign(this.dexData, systemData.dexData);
-    this.consolidateDexData(this.dexData);
-    this.defaultDexData = null;
   }
+
+  if (systemData.gameStats) {
+    this.gameStats = systemData.gameStats;
+  }
+
+  if (systemData.unlocks) {
+    for (const key of Object.keys(systemData.unlocks)) {
+      if (this.unlocks.hasOwnProperty(key)) {
+        this.unlocks[key] = systemData.unlocks[key];
+      }
+    }
+  }
+
+  if (systemData.achvUnlocks) {
+    for (const a of Object.keys(systemData.achvUnlocks)) {
+      if (achvs.hasOwnProperty(a)) {
+        this.achvUnlocks[a] = systemData.achvUnlocks[a];
+      }
+    }
+  }
+
+  if (systemData.voucherUnlocks) {
+    for (const v of Object.keys(systemData.voucherUnlocks)) {
+      if (vouchers.hasOwnProperty(v)) {
+        this.voucherUnlocks[v] = systemData.voucherUnlocks[v];
+      }
+    }
+  }
+
+  if (systemData.voucherCounts) {
+    getEnumKeys(VoucherType).forEach(key => {
+      const index = VoucherType[key];
+      this.voucherCounts[index] = systemData.voucherCounts[index] || 0;
+    });
+  }
+
+  if (typeof systemData.roguePoints === "number") {
+    this.roguePoints = systemData.roguePoints;
+  } else {
+    this.roguePoints = 0;
+  }
+
+  if (typeof systemData.achvPointsGranted === "boolean") {
+    this.achvPointsGranted = systemData.achvPointsGranted;
+  } else {
+    this.achvPointsGranted = false;
+  }
+
+  if (typeof systemData.bankMoney === "number") {
+    this.bankMoney = systemData.bankMoney;
+  } else {
+    this.bankMoney = 0;
+  }
+
+  if (typeof systemData.bankRoguePoints === "number") {
+    this.bankRoguePoints = systemData.bankRoguePoints;
+  } else {
+    this.bankRoguePoints = 0;
+  }
+
+  if (Array.isArray(systemData.storageItems)) {
+  this.storageItems = systemData.storageItems
+    .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
+    .map(item => ({
+      itemId: item.itemId,
+      quantity: Math.max(0, Math.floor(item.quantity)),
+    }))
+    .filter(item => item.quantity > 0);
+} else {
+  this.storageItems = [];
+}
+
+  // ✅ 기존 업적 점수 1회 정산
+  this.grantExistingAchievementPointsOnce();
+
+  this.eggs = systemData.eggs ? systemData.eggs.map(e => e.toEgg()) : [];
+
+  this.eggPity = systemData.eggPity ? systemData.eggPity.slice(0) : [0, 0, 0, 0];
+  this.unlockPity = systemData.unlockPity ? systemData.unlockPity.slice(0) : [0, 0, 0, 0];
+
+  this.dexData = Object.assign(this.dexData, systemData.dexData);
+  this.consolidateDexData(this.dexData);
+  this.defaultDexData = null;
+}
 
   public initSystem(systemDataStr: string, cachedSystemDataStr?: string): Promise<boolean> {
     const { promise, resolve } = Promise.withResolvers<boolean>();
@@ -800,32 +1280,43 @@ export class GameData {
   }
 
   public getSessionSaveData(): SessionSaveData {
-    return {
-      seed: globalScene.seed,
-      playTime: globalScene.sessionPlayTime,
-      gameMode: globalScene.gameMode.modeId,
-      party: globalScene.getPlayerParty().map(p => new PokemonData(p)),
-      enemyParty: globalScene.getEnemyParty().map(p => new PokemonData(p)),
-      modifiers: globalScene.findModifiers(() => true).map(m => new PersistentModifierData(m, true)),
-      enemyModifiers: globalScene.findModifiers(() => true, false).map(m => new PersistentModifierData(m, false)),
-      arena: new ArenaData(globalScene.arena),
-      pokeballCounts: globalScene.pokeballCounts,
-      money: Math.floor(globalScene.money),
-      score: globalScene.score,
-      waveIndex: globalScene.currentBattle.waveIndex,
-      battleType: globalScene.currentBattle.battleType,
-      trainer:
-        globalScene.currentBattle.battleType === BattleType.TRAINER
-          ? new TrainerData(globalScene.currentBattle.trainer)
-          : null,
-      gameVersion: globalScene.game.config.gameVersion,
-      timestamp: Date.now(),
-      challenges: globalScene.gameMode.challenges.map(c => new ChallengeData(c)),
-      mysteryEncounterType: globalScene.currentBattle.mysteryEncounter?.encounterType ?? -1,
-      mysteryEncounterSaveData: globalScene.mysteryEncounterSaveData,
-      playerFaints: globalScene.arena.playerFaints,
-    } as SessionSaveData;
-  }
+  console.log(
+    "[SESSION_SAVE_MODIFIERS]",
+    globalScene.findModifiers(() => true).map(m => ({
+      className: m.constructor?.name,
+      typeId: m.type?.id,
+      pokemonId: (m as any).pokemonId,
+      stackCount: (m as any).stackCount,
+    }))
+  );
+
+  return {
+    seed: globalScene.seed,
+    playTime: globalScene.sessionPlayTime,
+    gameMode: globalScene.gameMode.modeId,
+    party: globalScene.getPlayerParty().map(p => new PokemonData(p)),
+    enemyParty: globalScene.getEnemyParty().map(p => new PokemonData(p)),
+    modifiers: globalScene.findModifiers(() => true).map(m => new PersistentModifierData(m, true)),
+    enemyModifiers: globalScene.findModifiers(() => true, false).map(m => new PersistentModifierData(m, false)),
+    arena: new ArenaData(globalScene.arena),
+    pokeballCounts: globalScene.pokeballCounts,
+    money: Math.floor(globalScene.money),
+    score: globalScene.score,
+    waveIndex: globalScene.currentBattle.waveIndex,
+    battleType: globalScene.currentBattle.battleType,
+    trainer:
+      globalScene.currentBattle.battleType === BattleType.TRAINER
+        ? new TrainerData(globalScene.currentBattle.trainer)
+        : null,
+    gameVersion: globalScene.game.config.gameVersion,
+    timestamp: Date.now(),
+    challenges: globalScene.gameMode.challenges.map(c => new ChallengeData(c)),
+    mysteryEncounterType: globalScene.currentBattle.mysteryEncounter?.encounterType ?? -1,
+    mysteryEncounterSaveData: globalScene.mysteryEncounterSaveData,
+    playerFaints: globalScene.arena.playerFaints,
+    runStorageItems: this.runStorageItems,
+  } as SessionSaveData;
+}
 
   async getSession(slotId: number): Promise<SessionSaveData | null> {
     const { promise, resolve, reject } = Promise.withResolvers<SessionSaveData | null>();
@@ -927,6 +1418,16 @@ export class GameData {
           }
         }
 
+        this.runStorageItems = Array.isArray(fromSession.runStorageItems)
+  ? fromSession.runStorageItems
+      .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
+      .map(item => ({
+        itemId: item.itemId,
+        quantity: Math.max(0, Math.floor(item.quantity)),
+      }))
+      .filter(item => item.quantity > 0)
+  : [];
+   
         globalScene.gameMode = getGameMode(fromSession.gameMode || GameModes.CLASSIC);
         if (fromSession.challenges) {
           globalScene.gameMode.challenges = fromSession.challenges.map(c => c.toChallenge());
@@ -1564,16 +2065,26 @@ if (!ctor) {
     const starterSpeciesIds = Object.keys(speciesStarterCosts).map(k => Number.parseInt(k) as SpeciesId);
 
     for (const speciesId of starterSpeciesIds) {
-      starterData[speciesId] = {
-        moveset: null,
-        eggMoves: 0,
-        candyCount: 0,
-        friendship: 0,
-        abilityAttr: defaultStarterSpecies.includes(speciesId) ? AbilityAttr.ABILITY_1 : 0,
-        passiveAttr: 0,
-        valueReduction: 0,
-        classicWinCount: 0,
-      };
+      const species = getPokemonSpecies(speciesId);
+
+let teraTypeAttr = 0;
+teraTypeAttr |= 1 << (species.type1 + 1);
+
+if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN) {
+  teraTypeAttr |= 1 << (species.type2 + 1);
+}
+
+starterData[speciesId] = {
+  moveset: null,
+  eggMoves: 0,
+  candyCount: 0,
+  friendship: 0,
+  abilityAttr: defaultStarterSpecies.includes(speciesId) ? AbilityAttr.ABILITY_1 : 0,
+  passiveAttr: 0,
+  valueReduction: 0,
+  classicWinCount: 0,
+  teraTypeAttr,
+};
     }
 
     this.starterData = starterData;
@@ -1904,6 +2415,37 @@ if (!ctor) {
       }
     } while (pokemonPrevolutions.hasOwnProperty(speciesId) && (speciesId = pokemonPrevolutions[speciesId]));
   }
+
+  unlockSpeciesTeraType(species: PokemonSpecies, teraType: PokemonType): boolean {
+  if (!this.isRootSpeciesUnlocked(species)) {
+    return false;
+  }
+
+  const value = 1 << (teraType + 1);
+  let unlocked = false;
+
+  const _unlockSpeciesTeraType = (speciesId: SpeciesId) => {
+    const starterEntry = this.starterData[speciesId];
+    if (!starterEntry) {
+      return;
+    }
+
+    // ✅ BigInt 저장 데이터 방어
+    starterEntry.teraTypeAttr = Number(starterEntry.teraTypeAttr ?? 0);
+
+    if (!(starterEntry.teraTypeAttr & value)) {
+      starterEntry.teraTypeAttr |= value;
+      unlocked = true;
+    }
+
+    if (pokemonPrevolutions.hasOwnProperty(speciesId)) {
+      _unlockSpeciesTeraType(pokemonPrevolutions[speciesId]);
+    }
+  };
+
+  _unlockSpeciesTeraType(species.speciesId);
+  return unlocked;
+}
 
   getSpeciesCount(dexEntryPredicate: (entry: DexEntry) => boolean): number {
     const dexKeys = Object.keys(this.dexData);

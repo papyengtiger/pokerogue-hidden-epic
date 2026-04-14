@@ -28,6 +28,9 @@ import { PartyUiMode } from "#ui/party-ui-handler";
 import { SummaryUiMode } from "#ui/summary-ui-handler";
 import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder } from "#utils/common";
+import { EggTier } from "#enums/egg-type";
+import { VariantTier } from "#enums/variant-tier";
+import { getEggTierForSpecies } from "#data/egg";
 import i18next from "i18next";
 
 // TODO: Refactor and split up to allow for overriding capture chance
@@ -313,7 +316,23 @@ export class AttemptCapturePhase extends PokemonPhase {
           });
         };
         Promise.all([pokemon.hideInfo(), globalScene.gameData.setPokemonCaught(pokemon)]).then(() => {
-          if (!addStatus.value) {
+
+  const eggTier = getEggTierForSpecies(pokemon.species);
+const variantTier = pokemon.variant as VariantTier;
+
+let gainedRp = 0;
+gainedRp += this.getEggTierRoguePoints(eggTier);
+gainedRp += this.getVariantRoguePoints(
+  variantTier,
+  pokemon.isShiny()
+);
+
+if (gainedRp > 0) {
+  globalScene.gameData.addRoguePoints(gainedRp);
+  globalScene.updateroguePointText();
+}
+
+  if (!addStatus.value) {
             removePokemon();
             end();
             return;
@@ -412,6 +431,42 @@ export class AttemptCapturePhase extends PokemonPhase {
       true,
     );
   }
+
+  private getEggTierRoguePoints(tier?: EggTier): number {
+  switch (tier) {
+    case EggTier.COMMON:
+      return 10;
+    case EggTier.RARE:
+      return 25;
+    case EggTier.EPIC:
+      return 50;
+    case EggTier.LEGENDARY:
+      return 100;
+    default:
+      return 0;
+  }
+}
+
+private getVariantRoguePoints(
+  tier?: VariantTier,
+  isShiny?: boolean
+): number {
+  // 일반 이로치
+  if (isShiny && tier === VariantTier.STANDARD) {
+    return 10;
+  }
+
+  switch (tier) {
+    case VariantTier.RARE:
+      return 50;
+
+    case VariantTier.EPIC:
+      return 100;
+
+    default:
+      return 5;
+  }
+}
 
   removePb() {
     globalScene.tweens.add({

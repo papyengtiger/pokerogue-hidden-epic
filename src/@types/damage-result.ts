@@ -18,4 +18,6 @@ export interface DamageCalculationResult {
   result: HitResult;
   /** The damage dealt by the move */
   damage: number;
+  /** Rogue Point gain to award when this damage is actually applied */
+  roguePointGain?: number;
 }

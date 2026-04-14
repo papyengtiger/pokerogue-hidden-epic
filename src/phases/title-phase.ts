@@ -6,7 +6,7 @@ import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
 import { Phase } from "#app/phase";
 import { bypassLogin } from "#constants/app-constants";
-import { getDailyRunStarters } from "#data/daily-run";
+import { getDailyRunStarters } from "#data/daily-seed/daily-run";
 import { modifierTypes } from "#data/data-lists";
 import { Gender } from "#data/gender";
 import { BattleType } from "#enums/battle-type";
@@ -178,6 +178,16 @@ export class TitlePhase extends Phase {
         },
         keepOpen: true,
       },
+      {
+  label: i18next.t("menu:logShop"),
+  handler: () => {
+    globalScene.ui.setMode(UiMode.MESSAGE);
+    globalScene.ui.clearText();
+    globalScene.phaseManager.pushNew("RogueShopPhase");
+    super.end();
+    return true;
+  },
+},
       {
         label: i18next.t("menu:settings"),
         handler: () => {

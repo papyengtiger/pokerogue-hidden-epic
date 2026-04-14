@@ -13,6 +13,7 @@ import type { Pokemon } from "#field/pokemon";
 import { SwitchEffectTransferModifier } from "#modifiers/modifier";
 import { SummonPhase } from "#phases/summon-phase";
 import { inSpeedOrder } from "#utils/speed-order-generator";
+import { MoveId } from "#enums/move-id";
 import i18next from "i18next";
 
 export class SwitchSummonPhase extends SummonPhase {

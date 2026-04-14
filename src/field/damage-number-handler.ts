@@ -41,23 +41,35 @@ export class DamageNumberHandler {
     let [textColor, shadowColor]: TextAndShadowArr = [null, null];
 
     switch (result) {
-      case HitResult.SUPER_EFFECTIVE:
-        [textColor, shadowColor] = ["#f8d030", "#b8a038"];
-        break;
-      case HitResult.NOT_VERY_EFFECTIVE:
-        [textColor, shadowColor] = ["#f08030", "#c03028"];
-        break;
-      case HitResult.INDIRECT_KO:
-      case HitResult.ONE_HIT_KO:
-        [textColor, shadowColor] = ["#a040a0", "#483850"];
-        break;
-      case HitResult.HEAL:
-        [textColor, shadowColor] = ["#78c850", "#588040"];
-        break;
-      default:
-        [textColor, shadowColor] = ["#ffffff", "#636363"];
-        break;
-    }
+  case HitResult.EXTREMELY_EFFECTIVE:
+    [textColor, shadowColor] = ["#ffd700", "#c8a000"]; // 강한 금색 (4배 약점)
+    break;
+
+  case HitResult.SUPER_EFFECTIVE:
+    [textColor, shadowColor] = ["#f8d030", "#b8a038"]; // 노랑 (2배)
+    break;
+
+  case HitResult.MOSTLY_INEFFECTIVE:
+    [textColor, shadowColor] = ["#b86020", "#803018"]; // 어두운 주황 (0.25배)
+    break;
+
+  case HitResult.NOT_VERY_EFFECTIVE:
+    [textColor, shadowColor] = ["#f08030", "#c03028"]; // 주황 (0.5배)
+    break;
+
+  case HitResult.INDIRECT_KO:
+  case HitResult.ONE_HIT_KO:
+    [textColor, shadowColor] = ["#a040a0", "#483850"]; // 보라
+    break;
+
+  case HitResult.HEAL:
+    [textColor, shadowColor] = ["#78c850", "#588040"]; // 초록
+    break;
+
+  default:
+    [textColor, shadowColor] = ["#ffffff", "#636363"]; // 기본
+    break;
+}
 
     if (textColor) {
       damageNumber.setColor(textColor);

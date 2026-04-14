@@ -1106,12 +1106,6 @@ export class ConfusedTag extends SerializableBattlerTag {
 
   onAdd(pokemon: Pokemon): void {
   const src = this.sourceId != null ? globalScene.getPokemonById(this.sourceId) : null;
-console.log("[CONFUSED_TAG][ON_ADD]", {
-  target: pokemon.name,
-  sourceId: this.sourceId,
-  source: src?.name,
-  sourceMove: MoveId[(this as any).sourceMove ?? -1],
-});
     super.onAdd(pokemon);
 
     globalScene.phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, CommonAnim.CONFUSION);
@@ -1200,23 +1194,22 @@ const selfHit =
   defender.randBattleSeedInt(denom) === 0 ||
   Overrides.CONFUSION_ACTIVATION_OVERRIDE === true;
 
-console.log("[CONFUSION][ROLL]", {
-  defender: defender.name,
-  eff,
-  isPoisoned,
-  source: source?.name,
-  hasMythicalPecha,
-  pechaBoostActive,
-  denom,
-  selfHit,
-});
-
 if (selfHit) {
-  const atk = defender.getEffectiveStat(Stat.ATK);
-  const def = defender.getEffectiveStat(Stat.DEF);
+  const atkCompare = defender.getCategoryCompareStat(Stat.ATK);
+  const spaCompare = defender.getCategoryCompareStat(Stat.SPATK);
+
+  const usePhysical = atkCompare >= spaCompare;
+
+  const offenseStat = usePhysical
+    ? defender.getEffectiveStat(Stat.ATK)
+    : defender.getEffectiveStat(Stat.SPATK);
+
+  const defenseStat = usePhysical
+    ? defender.getEffectiveStat(Stat.DEF)
+    : defender.getEffectiveStat(Stat.SPDEF);
 
   let damage = toDmgValue(
-    ((((2 * defender.level) / 5 + 2) * 40 * atk) / def / 50 + 2) *
+    ((((2 * defender.level) / 5 + 2) * 40 * offenseStat) / defenseStat / 50 + 2) *
       (defender.randBattleSeedIntRange(85, 100) / 100),
   );
 
@@ -1224,14 +1217,6 @@ if (selfHit) {
   if (pechaBoostActive) {
     const before = damage;
     damage = toDmgValue(damage * 2);
-
-    console.log("[MYTHICAL_PECHA][CONFUSION_SELF_DMG] applied", {
-      defender: defender.name,
-      source: source?.name,
-      mult: 2,
-      before,
-      after: damage,
-    });
   }
 
   phaseManager.queueMessage(i18next.t("battlerTags:confusedLapseHurtItself"));
@@ -2186,6 +2171,19 @@ export class MagmaStormTag extends DamagingTrapTag {
 
   getTrapMessage(pokemon: Pokemon): string {
     return i18next.t("battlerTags:magmaStormOnTrap", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+    });
+  }
+}
+
+export class GrassBindTag extends DamagingTrapTag {
+  public override readonly tagType = BattlerTagType.GRASS_BIND;
+  constructor(turnCount: number, sourceId: number) {
+    super(BattlerTagType.GRASS_BIND, CommonAnim.WRAP, turnCount, MoveId.GRASS_BIND, sourceId);
+  }
+
+  getTrapMessage(pokemon: Pokemon): string {
+    return i18next.t("battlerTags:grassBindOnTrap", {
       pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
     });
   }
@@ -3261,6 +3259,485 @@ export class SaltCuredTag extends SerializableBattlerTag {
   }
 
   return ret;
+  }
+}
+
+export class RockCursedTag extends SerializableBattlerTag {
+  public override readonly tagType = BattlerTagType.ROCK_CURSE;
+
+  constructor(sourceId: number) {
+    super(BattlerTagType.ROCK_CURSE, BattlerTagLapseType.TURN_END, 1, MoveId.ROCK_CURSE, sourceId);
+  }
+
+  onAdd(pokemon: Pokemon): void {
+    const source = this.getSourcePokemon();
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for RockCursedTag onAdd; id: ${this.sourceId}`);
+      return;
+    }
+
+    super.onAdd(pokemon);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:rockCursedOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
+
+  /**
+   * 바위 타입 상성 기반 턴당 대미지 비율 계산
+   * 기본은 스텔스록과 동일한 1/8 * 상성배율
+   * 단, 상한은 소금절이와 동일하게 1/4까지만 허용
+   *
+   * 예시:
+   * 0배   -> 0
+   * 0.25배 -> 1/32
+   * 0.5배 -> 1/16
+   * 1배   -> 1/8
+   * 2배   -> 1/4
+   * 4배   -> 원래 1/2지만, 상한 1/4로 캡
+   */
+  protected getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.ROCK, undefined, true);
+    return Math.min(0.125 * effectiveness, 0.25);
+  }
+
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE, // 전용 애니메이션 있으면 CommonAnim.ROCK_CURSE로 교체
+      );
+
+      // 간접 대미지 면역이면 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        const damageHpRatio = this.getDamageHpRatio(pokemon);
+
+        // 바위 면역(0배)면 대미지/메시지 생략
+        if (damageHpRatio > 0) {
+          pokemon.damageAndUpdate(
+            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
+            { result: HitResult.INDIRECT },
+          );
+
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battlerTags:rockCursedLapse", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+              moveName: this.getMoveName(),
+            }),
+          );
+        }
+      }
+    }
+
+    return ret;
+  }
+}
+
+export class ColdCursedTag extends SerializableBattlerTag {
+  public override readonly tagType = BattlerTagType.COLD_CURSE;
+
+  constructor(sourceId: number) {
+    super(BattlerTagType.COLD_CURSE, BattlerTagLapseType.TURN_END, 1, MoveId.COLD_CURSE, sourceId);
+  }
+
+  onAdd(pokemon: Pokemon): void {
+    const source = this.getSourcePokemon();
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for ColdCursedTag onAdd; id: ${this.sourceId}`);
+      return;
+    }
+
+    super.onAdd(pokemon);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:iceCursedOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
+
+  /**
+   * 바위 타입 상성 기반 턴당 대미지 비율 계산
+   * 기본은 스텔스록과 동일한 1/8 * 상성배율
+   * 단, 상한은 소금절이와 동일하게 1/4까지만 허용
+   *
+   * 예시:
+   * 0배   -> 0
+   * 0.25배 -> 1/32
+   * 0.5배 -> 1/16
+   * 1배   -> 1/8
+   * 2배   -> 1/4
+   * 4배   -> 원래 1/2지만, 상한 1/4로 캡
+   */
+  protected getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.ICE, undefined, true);
+    return Math.min(0.125 * effectiveness, 0.25);
+  }
+
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE, // 전용 애니메이션 있으면 CommonAnim.ROCK_CURSE로 교체
+      );
+
+      // 간접 대미지 면역이면 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        const damageHpRatio = this.getDamageHpRatio(pokemon);
+
+        // 바위 면역(0배)면 대미지/메시지 생략
+        if (damageHpRatio > 0) {
+          pokemon.damageAndUpdate(
+            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
+            { result: HitResult.INDIRECT },
+          );
+
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battlerTags:iceCursedLapse", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+              moveName: this.getMoveName(),
+            }),
+          );
+        }
+      }
+    }
+
+    return ret;
+  }
+}
+
+export class RustedCursedTag extends SerializableBattlerTag {
+  public override readonly tagType = BattlerTagType.RUSTED_CURSE;
+
+  constructor(sourceId: number) {
+    super(BattlerTagType.RUSTED_CURSE, BattlerTagLapseType.TURN_END, 1, MoveId.RUSTED_CURSE, sourceId);
+  }
+
+  onAdd(pokemon: Pokemon): void {
+    const source = this.getSourcePokemon();
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for RustedCursedTag onAdd; id: ${this.sourceId}`);
+      return;
+    }
+
+    super.onAdd(pokemon);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:rustedCursedOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
+
+  /**
+   * 바위 타입 상성 기반 턴당 대미지 비율 계산
+   * 기본은 스텔스록과 동일한 1/8 * 상성배율
+   * 단, 상한은 소금절이와 동일하게 1/4까지만 허용
+   *
+   * 예시:
+   * 0배   -> 0
+   * 0.25배 -> 1/32
+   * 0.5배 -> 1/16
+   * 1배   -> 1/8
+   * 2배   -> 1/4
+   * 4배   -> 원래 1/2지만, 상한 1/4로 캡
+   */
+  protected getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.STEEL, undefined, true);
+    return Math.min(0.125 * effectiveness, 0.25);
+  }
+
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE, // 전용 애니메이션 있으면 CommonAnim.ROCK_CURSE로 교체
+      );
+
+      // 간접 대미지 면역이면 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        const damageHpRatio = this.getDamageHpRatio(pokemon);
+
+        // 바위 면역(0배)면 대미지/메시지 생략
+        if (damageHpRatio > 0) {
+          pokemon.damageAndUpdate(
+            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
+            { result: HitResult.INDIRECT },
+          );
+
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battlerTags:rustedCursedLapse", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+              moveName: this.getMoveName(),
+            }),
+          );
+        }
+      }
+    }
+
+    return ret;
+  }
+}
+
+export class KnowledgeCursedTag extends SerializableBattlerTag {
+  public override readonly tagType = BattlerTagType.KNOWLEDGE_CURSE;
+
+  constructor(sourceId: number) {
+    super(BattlerTagType.KNOWLEDGE_CURSE, BattlerTagLapseType.TURN_END, 1, MoveId.KNOWLEDGE_CURSE, sourceId);
+  }
+
+  onAdd(pokemon: Pokemon): void {
+    const source = this.getSourcePokemon();
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for KnowledgeCursedTag onAdd; id: ${this.sourceId}`);
+      return;
+    }
+
+    super.onAdd(pokemon);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:knowledgeCursedOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
+
+  /**
+   * 바위 타입 상성 기반 턴당 대미지 비율 계산
+   * 기본은 스텔스록과 동일한 1/8 * 상성배율
+   * 단, 상한은 소금절이와 동일하게 1/4까지만 허용
+   *
+   * 예시:
+   * 0배   -> 0
+   * 0.25배 -> 1/32
+   * 0.5배 -> 1/16
+   * 1배   -> 1/8
+   * 2배   -> 1/4
+   * 4배   -> 원래 1/2지만, 상한 1/4로 캡
+   */
+  protected getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.PSYCHIC, undefined, true);
+    return Math.min(0.125 * effectiveness, 0.25);
+  }
+
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE, // 전용 애니메이션 있으면 CommonAnim.ROCK_CURSE로 교체
+      );
+
+      // 간접 대미지 면역이면 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        const damageHpRatio = this.getDamageHpRatio(pokemon);
+
+        // 바위 면역(0배)면 대미지/메시지 생략
+        if (damageHpRatio > 0) {
+          pokemon.damageAndUpdate(
+            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
+            { result: HitResult.INDIRECT },
+          );
+
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battlerTags:knowledgeCursedLapse", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+              moveName: this.getMoveName(),
+            }),
+          );
+        }
+      }
+    }
+
+    return ret;
+  }
+}
+
+export class DrownedCursedTag extends SerializableBattlerTag {
+  public override readonly tagType = BattlerTagType.DROWNED_CURSE;
+
+  constructor(sourceId: number) {
+    super(BattlerTagType.DROWNED_CURSE, BattlerTagLapseType.TURN_END, 1, MoveId.DROWNED_CURSE, sourceId);
+  }
+
+  onAdd(pokemon: Pokemon): void {
+    const source = this.getSourcePokemon();
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for drownedCursedTag onAdd; id: ${this.sourceId}`);
+      return;
+    }
+
+    super.onAdd(pokemon);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:drownedCursedOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
+
+  /**
+   * 바위 타입 상성 기반 턴당 대미지 비율 계산
+   * 기본은 스텔스록과 동일한 1/8 * 상성배율
+   * 단, 상한은 소금절이와 동일하게 1/4까지만 허용
+   *
+   * 예시:
+   * 0배   -> 0
+   * 0.25배 -> 1/32
+   * 0.5배 -> 1/16
+   * 1배   -> 1/8
+   * 2배   -> 1/4
+   * 4배   -> 원래 1/2지만, 상한 1/4로 캡
+   */
+  protected getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.WATER, undefined, true);
+    return Math.min(0.125 * effectiveness, 0.25);
+  }
+
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE, // 전용 애니메이션 있으면 CommonAnim.ROCK_CURSE로 교체
+      );
+
+      // 간접 대미지 면역이면 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        const damageHpRatio = this.getDamageHpRatio(pokemon);
+
+        // 바위 면역(0배)면 대미지/메시지 생략
+        if (damageHpRatio > 0) {
+          pokemon.damageAndUpdate(
+            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
+            { result: HitResult.INDIRECT },
+          );
+
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battlerTags:drownedCursedLapse", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+              moveName: this.getMoveName(),
+            }),
+          );
+        }
+      }
+    }
+
+    return ret;
+  }
+}
+
+export class BeastStackTag extends SerializableBattlerTag {
+  public override readonly tagType = BattlerTagType.BEAST_STACK;
+
+  /** 맹독처럼 누적되는 턴 수 */
+  public stackTurnCount = 0;
+
+  /** 상태에 걸려 있는 동안 고정으로 늘어나는 무게 */
+  public weightAdded = 100;
+
+  constructor(sourceId: number) {
+    super(
+      BattlerTagType.BEAST_STACK,
+      BattlerTagLapseType.TURN_END,
+      1,
+      MoveId.BEAST_STACK,
+      sourceId,
+    );
+  }
+
+  onAdd(pokemon: Pokemon): void {
+    const source = this.getSourcePokemon();
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for beastStackTag onAdd; id: ${this.sourceId}`);
+      return;
+    }
+
+    super.onAdd(pokemon);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:beastStackOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
+
+  public override loadTag(
+    source: BaseBattlerTag & Pick<BeastStackTag, "tagType" | "stackTurnCount" | "weightAdded">
+  ): void {
+    super.loadTag(source);
+    this.stackTurnCount = source.stackTurnCount ?? 0;
+    this.weightAdded = source.weightAdded ?? 100;
+  }
+
+  protected getDamageValue(pokemon: Pokemon): number {
+    return Math.max(
+      Math.floor((pokemon.getMaxHp() / 16) * this.stackTurnCount),
+      1,
+    );
+  }
+
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE, // 전용 애니메이션 있으면 교체
+      );
+
+      // 맹독처럼 턴 수 누적
+      this.stackTurnCount += 1;
+
+      // 매턴 스피드 하락
+      globalScene.phaseManager.unshiftNew(
+        "StatStageChangePhase",
+        pokemon.getBattlerIndex(),
+        false,
+        [Stat.SPD],
+        -1,
+      );
+
+      // 간접 대미지 면역이면 도트만 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(
+          this.getDamageValue(pokemon),
+          { result: HitResult.INDIRECT },
+        );
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:beastStackLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+            turnCount: this.stackTurnCount,
+          }),
+        );
+      }
+    }
+
+    return ret;
   }
 }
 
@@ -4851,6 +5328,8 @@ export function getBattlerTag(
       return new ClampTag(turnCount, sourceId);
     case BattlerTagType.SAND_TOMB:
       return new SandTombTag(turnCount, sourceId);
+    case BattlerTagType.GRASS_BIND:
+      return new GrassBindTag(turnCount, sourceId);
     case BattlerTagType.MAGMA_STORM:
       return new MagmaStormTag(turnCount, sourceId);
     case BattlerTagType.SNAP_TRAP:
@@ -4956,6 +5435,18 @@ export function getBattlerTag(
       return new RemovedTypeTag(tagType, BattlerTagLapseType.CUSTOM, sourceMove);
     case BattlerTagType.SALT_CURED:
       return new SaltCuredTag(sourceId);
+    case BattlerTagType.ROCK_CURSE:
+      return new RockCursedTag(sourceId);
+    case BattlerTagType.COLD_CURSE:
+      return new ColdCursedTag(sourceId);
+    case BattlerTagType.RUSTED_CURSE:
+      return new RustedCursedTag(sourceId);
+    case BattlerTagType.KNOWLEDGE_CURSE:
+      return new KnowledgeCursedTag(sourceId);
+    case BattlerTagType.DROWNED_CURSE:
+      return new DrownedCursedTag(sourceId);
+    case BattlerTagType.BEAST_STACK:
+      return new BeastStackTag(sourceId);
     case BattlerTagType.CURSED:
       return new CursedTag(sourceId);
     case BattlerTagType.CHARGED:
@@ -5095,6 +5586,7 @@ export type BattlerTagTypeMap = {
   [BattlerTagType.WHIRLPOOL]: WhirlpoolTag;
   [BattlerTagType.CLAMP]: ClampTag;
   [BattlerTagType.SAND_TOMB]: SandTombTag;
+  [BattlerTagType.GRASS_BIND]: GrassBindTag;
   [BattlerTagType.MAGMA_STORM]: MagmaStormTag;
   [BattlerTagType.SNAP_TRAP]: SnapTrapTag;
   [BattlerTagType.THUNDER_CAGE]: ThunderCageTag;
@@ -5150,6 +5642,12 @@ export type BattlerTagTypeMap = {
   [BattlerTagType.BURNED_UP]: RemovedTypeTag;
   [BattlerTagType.DOUBLE_SHOCKED]: RemovedTypeTag;
   [BattlerTagType.SALT_CURED]: SaltCuredTag;
+  [BattlerTagType.ROCK_CURSE]: RockCursedTag;
+  [BattlerTagType.COLD_CURSE]: ColdCursedTag;
+  [BattlerTagType.RUSTED_CURSE]: RustedCursedTag;
+  [BattlerTagType.KNOWLEDGE_CURSE]: KnowledgeCursedTag;
+  [BattlerTagType.DROWNED_CURSE]: DrownedCursedTag;
+  [BattlerTagType.BEAST_STACK]: BeastStackTag;
   [BattlerTagType.CURSED]: CursedTag;
   [BattlerTagType.CHARGED]: TypeBoostTag;
   [BattlerTagType.FLOATING]: FloatingTag;

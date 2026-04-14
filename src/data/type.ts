@@ -22,6 +22,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.FLYING:
         case PokemonType.PSYCHIC:
         case PokemonType.FAIRY:
+        case PokemonType.POISON:
           return 2;
         case PokemonType.ROCK:
         case PokemonType.DARK:
@@ -107,11 +108,11 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
       switch (attackType) {
         case PokemonType.GHOST:
         case PokemonType.DARK:
-        case PokemonType.ELECTRIC:
+        case PokemonType.FIRE:
         case PokemonType.PSYCHIC:
           return 2;
         case PokemonType.POISON:
-        case PokemonType.BUG:
+        case PokemonType.FAIRY:
           return 0.5;
         case PokemonType.NORMAL:
         case PokemonType.FIGHTING:
@@ -191,6 +192,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.GROUND:
         case PokemonType.GRASS:
         case PokemonType.ROCK:
+        case PokemonType.PSYCHIC:
           return 2;
         case PokemonType.FLYING:
         case PokemonType.STEEL:
@@ -204,6 +206,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.BUG:
         case PokemonType.GHOST:
         case PokemonType.DARK:
+        case PokemonType.POISON:
           return 2;
         case PokemonType.FIGHTING:
         case PokemonType.PSYCHIC:
@@ -245,6 +248,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.FIGHTING:
         case PokemonType.BUG:
         case PokemonType.FAIRY:
+        case PokemonType.ELECTRIC:
           return 2;
         case PokemonType.GHOST:
         case PokemonType.DARK:
@@ -259,6 +263,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.POISON:
         case PokemonType.STEEL:
         case PokemonType.PSYCHIC:
+        case PokemonType.ELECTRIC:
           return 2;
         case PokemonType.GHOST:
         case PokemonType.DARK:

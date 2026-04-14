@@ -149,6 +149,14 @@ console.log("[DEBUG] form obj =", this.pokemon.getSpeciesForm?.());
 console.log("[DEBUG] form keys =", Object.keys(this.pokemon.getSpeciesForm?.() ?? {}));
 
       this.pokemon.changeForm(this.formChange).then(() => {
+
+      // ✅ 로그포인트 지급 (폼체인지 성공)
+const gainedRp = this.getFormChangeRoguePoints(this.formChange);
+
+if (gainedRp > 0) {
+  globalScene.gameData.addRoguePoints(gainedRp);
+  globalScene.updateroguePointText();
+}
         console.log("[폼체인지] ✅ changeForm 완료", {
   speciesId: this.pokemon.species.speciesId,
   newFormKey: this.pokemon.getSpeciesForm?.()?.formKey, // ✅
@@ -201,6 +209,31 @@ console.log("[DEBUG] form keys =", Object.keys(this.pokemon.getSpeciesForm?.() ?
       });
     });
   }
+
+  private getFormChangeRoguePoints(formChange: SpeciesFormChange): number {
+  const key = formChange.formKey;
+
+  // 메가진화
+  if (key.indexOf(SpeciesFormKey.MEGA) > -1) return 20;
+
+  // 무한다이맥스 (에터나맥스)
+  if (key.indexOf(SpeciesFormKey.ETERNAMAX) > -1) return 40;
+
+  // 거다이맥스
+  if (key.indexOf(SpeciesFormKey.GIGANTAMAX) > -1) return 20;
+
+  // 원시회귀
+  if (key === SpeciesFormKey.PRIMAL) return 40;
+
+  // 폼체인지
+  if (
+    key === SpeciesFormKey.ORIGIN ||
+    key === SpeciesFormKey.THERIAN ||
+    key === SpeciesFormKey.INCARNATE
+  ) return 30;
+
+  return 3;
+}
 
   /**
    * Commence the sequence of tweens and events that occur during the evolution animation

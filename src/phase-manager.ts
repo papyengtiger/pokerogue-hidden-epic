@@ -82,6 +82,7 @@ import { ShinySparklePhase } from "#phases/shiny-sparkle-phase";
 import { ShowAbilityPhase } from "#phases/show-ability-phase";
 import { ShowPartyExpBarPhase } from "#phases/show-party-exp-bar-phase";
 import { ShowTrainerPhase } from "#phases/show-trainer-phase";
+import { StartRunPhase } from "#phases/start-run-phase";
 import { StatStageChangePhase } from "#phases/stat-stage-change-phase";
 import { SummonMissingPhase } from "#phases/summon-missing-phase";
 import { SummonPhase } from "#phases/summon-phase";
@@ -105,6 +106,7 @@ import { TrickItemSelectPhase } from "#phases/trick-item-select-phase";
 import { BestowItemSelectPhase } from "#phases/bestow-item-select-phase";
 import { NaturalGiftBerrySelectPhase } from "#phases/natural-gift-berry-select-phase";
 import { WeatherEffectPhase } from "#phases/weather-effect-phase";
+import { RogueShopPhase } from "#phases/rogue-shop-phase";
 import type { PhaseMap, PhaseString } from "#types/phase-types";
 import { type Constructor, coerceArray } from "#utils/common";
 import { InitEncounterPhase } from "#phases/init-encounter-phase";
@@ -205,6 +207,7 @@ const PHASES = Object.freeze({
   ShowAbilityPhase,
   ShowPartyExpBarPhase,
   ShowTrainerPhase,
+  StartRunPhase,
   StatStageChangePhase,
   SummonMissingPhase,
   SummonPhase,
@@ -222,6 +225,7 @@ const PHASES = Object.freeze({
   UnlockPhase,
   VictoryPhase,
   WeatherEffectPhase,
+  RogueShopPhase,
   InitEncounterPhase,
   BattleStartImmediateBerryPhase,
   TurnCommandExecutionPhase,

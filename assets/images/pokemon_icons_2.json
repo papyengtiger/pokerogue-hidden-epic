@@ -5783,6 +5783,48 @@
 						"w": 16,
 						"h": 16
 					}
+				},
+                                {
+					"filename": "154-mega",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 16,
+						"y": 16,
+						"w": 16,
+						"h": 16
+					},
+					"frame": {
+						"x": 120,
+						"y": 454,
+						"w": 16,
+						"h": 16
+					}
+				},
+                                {
+					"filename": "154s-mega",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 30
+					},
+					"spriteSourceSize": {
+						"x": 16,
+						"y": 16,
+						"w": 16,
+						"h": 16
+					},
+					"frame": {
+						"x": 152,
+						"y": 454,
+						"w": 16,
+						"h": 16
+					}
 				}
 			]
 		}

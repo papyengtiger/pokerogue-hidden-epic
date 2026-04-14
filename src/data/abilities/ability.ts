@@ -1092,14 +1092,14 @@ export class ReverseDrainAbAttr extends PostDefendAbAttr {
 
 export class PostDefendStatStageChangeAbAttr extends PostDefendAbAttr {
   private condition: PokemonDefendCondition;
-  private stat: BattleStat;
+  private stats: BattleStat[];
   private stages: number;
   private selfTarget: boolean;
   private allOthers: boolean;
 
   constructor(
     condition: PokemonDefendCondition,
-    stat: BattleStat,
+    stats: BattleStat | BattleStat[],
     stages: number,
     selfTarget = true,
     allOthers = false,
@@ -1107,7 +1107,7 @@ export class PostDefendStatStageChangeAbAttr extends PostDefendAbAttr {
     super(true);
 
     this.condition = condition;
-    this.stat = stat;
+    this.stats = Array.isArray(stats) ? stats : [stats];
     this.stages = stages;
     this.selfTarget = selfTarget;
     this.allOthers = allOthers;
@@ -1124,13 +1124,14 @@ export class PostDefendStatStageChangeAbAttr extends PostDefendAbAttr {
 
     if (this.allOthers) {
       const ally = pokemon.getAlly();
-      const otherPokemon = ally != null ? pokemon.getOpponents().concat([ally]) : pokemon.getOpponents();
+      const otherPokemon = ally != null ? pokemon.getOpponents().concat([ ally ]) : pokemon.getOpponents();
+
       for (const other of otherPokemon) {
         globalScene.phaseManager.unshiftNew(
           "StatStageChangePhase",
           other.getBattlerIndex(),
           false,
-          [this.stat],
+          this.stats,
           this.stages,
         );
       }
@@ -1139,7 +1140,7 @@ export class PostDefendStatStageChangeAbAttr extends PostDefendAbAttr {
         "StatStageChangePhase",
         (this.selfTarget ? pokemon : attacker).getBattlerIndex(),
         this.selfTarget,
-        [this.stat],
+        this.stats,
         this.stages,
       );
     }
@@ -6785,6 +6786,8 @@ export class PostDefendIllusionBreakAbAttr extends PostDefendAbAttr {
       HitResult.SUPER_EFFECTIVE,
       HitResult.NOT_VERY_EFFECTIVE,
       HitResult.ONE_HIT_KO,
+      HitResult.EXTREMELY_EFFECTIVE,
+      HitResult.MOSTLY_INEFFECTIVE,
     ];
     return breakIllusion.includes(hitResult) && !!pokemon.summonData.illusion;
   }
@@ -7647,6 +7650,7 @@ export function initAbilities() {
     new Ability(AbilityId.RAIN_DISH, 3)
       .attr(PostWeatherLapseHealAbAttr, 1, WeatherType.RAIN, WeatherType.HEAVY_RAIN),
     new Ability(AbilityId.SAND_STREAM, 3)
+      .attr(BlockWeatherDamageAttr, WeatherType.SANDSTORM)
       .attr(PostSummonWeatherChangeAbAttr, WeatherType.SANDSTORM)
       .attr(PostBiomeChangeWeatherChangeAbAttr, WeatherType.SANDSTORM),
     new Ability(AbilityId.PRESSURE, 3)
@@ -7754,7 +7758,7 @@ export function initAbilities() {
       .attr(MovePowerBoostAbAttr, (user, target, _move) => user?.gender !== Gender.GENDERLESS && target?.gender !== Gender.GENDERLESS && user?.gender === target?.gender, 1.25, true)
       .attr(MovePowerBoostAbAttr, (user, target, _move) => user?.gender !== Gender.GENDERLESS && target?.gender !== Gender.GENDERLESS && user?.gender !== target?.gender, 0.75),
     new Ability(AbilityId.STEADFAST, 4)
-      .attr(FlinchStatStageChangeAbAttr, [ Stat.SPD ], 1),
+      .attr(FlinchStatStageChangeAbAttr, [ Stat.SPD ], 2),
     new Ability(AbilityId.SNOW_CLOAK, 4)
       .attr(StatMultiplierAbAttr, Stat.EVA, 1.2)
       .attr(BlockWeatherDamageAttr, WeatherType.HAIL)
@@ -7866,6 +7870,7 @@ export function initAbilities() {
       .attr(MoveTypePowerBoostAbAttr, PokemonType.ROCK, 1.2)
       .ignorable(),
     new Ability(AbilityId.SNOW_WARNING, 4)
+      .attr(BlockWeatherDamageAttr, WeatherType.HAIL)
       .attr(PostSummonWeatherChangeAbAttr, WeatherType.SNOW)
       .attr(PostBiomeChangeWeatherChangeAbAttr, WeatherType.SNOW),
     new Ability(AbilityId.HONEY_GATHER, 4)
@@ -8005,7 +8010,7 @@ export function initAbilities() {
         const moveType = user.getMoveType(move);
         return move.category !== MoveCategory.STATUS
           && (moveType === PokemonType.DARK || moveType === PokemonType.BUG || moveType === PokemonType.GHOST);
-      }, Stat.SPD, 1)
+      }, Stat.SPD, 2)
       .attr(PostIntimidateStatStageChangeAbAttr, [ Stat.SPD ], 1),
     new Ability(AbilityId.MAGIC_BOUNCE, 5)
       .attr(ReflectStatusMoveAbAttr)

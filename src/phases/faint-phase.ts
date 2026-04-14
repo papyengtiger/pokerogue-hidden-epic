@@ -17,7 +17,6 @@ import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
 import { PokemonInstantReviveModifier, VictoryStatBoostModifier, CalyrexReinsUnifiedModifier, DuskManeBeadModifier, DawnWingsBeadModifier, UltraBeadModifier } from "#modifiers/modifier";
 import { PokemonMove } from "#moves/pokemon-move";
 import { PokemonPhase } from "#phases/pokemon-phase";
-import { isNullOrUndefined } from "#utils/common";
 import i18next from "i18next";
 
 export class FaintPhase extends PokemonPhase {

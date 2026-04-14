@@ -19,6 +19,7 @@ import type { CoerceNullPropertiesToUndefined } from "#types/type-helpers";
 import { getPokemonSpecies, getPokemonSpeciesForm } from "#utils/pokemon-utils";
 import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import type { RecycleSnapshot } from "#moves/recycle-snapshot";
+import { SpeciesId } from "#enums/species-id";
 
 /**
  * Permanent data that can customize a Pokemon in non-standard ways from its Species.

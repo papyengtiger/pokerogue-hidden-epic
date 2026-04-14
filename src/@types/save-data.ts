@@ -19,6 +19,16 @@ import type { PokemonData } from "#system/pokemon-data";
 import type { TrainerData } from "#system/trainer-data";
 import type { DexData } from "./dex-data";
 
+export interface StoredItemData {
+  itemId: string;
+  quantity: number;
+}
+
+export interface RunItemData {
+  itemId: string;
+  quantity: number;
+}
+
 export interface SystemSaveData {
   trainerId: number;
   secretId: number;
@@ -35,6 +45,12 @@ export interface SystemSaveData {
   timestamp: number;
   eggPity: number[];
   unlockPity: number[];
+  roguePoints?: number;
+  bankMoney?: number;
+  bankRoguePoints?: number;
+  achvPointsGranted?: boolean;
+
+  storageItems?: StoredItemData[];
 }
 
 export interface SessionSaveData {
@@ -53,16 +69,14 @@ export interface SessionSaveData {
   battleType: BattleType;
   trainer: TrainerData;
   gameVersion: string;
-  /** The player-chosen name of the run */
   name: string;
   timestamp: number;
   challenges: ChallengeData[];
-  mysteryEncounterType: MysteryEncounterType | -1; // Only defined when current wave is ME,
+  mysteryEncounterType: MysteryEncounterType | -1;
   mysteryEncounterSaveData: MysteryEncounterSaveData;
-  /**
-   * Counts the amount of pokemon fainted in your party during the current arena encounter.
-   */
   playerFaints: number;
+
+  runStorageItems?: RunItemData[];
 }
 
 export interface Unlocks {
@@ -124,6 +138,8 @@ export interface Starter {
   nickname?: string;
   teraType?: PokemonType;
   ivs: number[];
+
+  preRunItems?: string[];
 }
 
 export type RunHistoryData = Record<number, RunEntry>;
@@ -144,6 +160,7 @@ export interface StarterDataEntry {
   passiveAttr: number;
   valueReduction: number;
   classicWinCount: number;
+  teraTypeAttr?: number;
 }
 
 export interface StarterData {

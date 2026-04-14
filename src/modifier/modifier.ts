@@ -25,6 +25,7 @@ import { Command } from "#enums/command";
 import type { FormChangeItem } from "#enums/form-change-item";
 import { LearnMoveType } from "#enums/learn-move-type";
 import type { MoveId } from "#enums/move-id";
+import { MoveId } from "#enums/move-id";
 import type { Nature } from "#enums/nature";
 import type { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
@@ -3362,49 +3363,60 @@ export class WeaknessTypeModifier extends PokemonHeldItemModifier {
     return true;
   }
 
-  // apply 메소드 수정
-  override apply(pokemon: Pokemon, moveType: Type, movePower: number, result: HitResult, source: Pokemon): boolean {
+  override apply(
+    pokemon: Pokemon,
+    moveType: Type,
+    movePower: number,
+    result: HitResult,
+    source: Pokemon
+  ): boolean {
     if (!this.canApply(pokemon)) {
       console.log("canApply returned false");
-
-      if (result === HitResult.SUPER_EFFECTIVE && source) {
-        return false; // 이미 적용된 경우 발동되지 않음
-      }
+      return false;
     }
-    // 결과가 약점 공격인 경우에만 처리
-    if (result === HitResult.SUPER_EFFECTIVE && source) {
-      // 공격력과 특수공격력 2단계 증가
+
+    const isWeaknessHit =
+      result === HitResult.SUPER_EFFECTIVE ||
+      result === HitResult.EXTREMELY_EFFECTIVE;
+
+    // 결과가 약점 공격(2배 / 4배)인 경우에만 처리
+    if (isWeaknessHit && source) {
       globalScene.phaseManager.unshiftNew(
-         "StatStageChangePhase",
-          pokemon.getBattlerIndex(),
-          true,
-          [Stat.ATK, Stat.SPATK],
-          2, // 2 스테이지 증가
-          true,
-        );
+        "StatStageChangePhase",
+        pokemon.getBattlerIndex(),
+        true,
+        [Stat.ATK, Stat.SPATK],
+        2,
+        true,
+      );
 
-      // 아이템 소모 관리
       const preserve = new BooleanHolder(false);
-globalScene.applyModifiers(PreserveItemModifier, pokemon.isPlayer(), pokemon, preserve, "item");
+      globalScene.applyModifiers(
+        PreserveItemModifier,
+        pokemon.isPlayer(),
+        pokemon,
+        preserve,
+        "item"
+      );
 
-if (!preserve.value) {
-  recordRecycleSnapshot(pokemon, this, { args: [] });
+      if (!preserve.value) {
+        recordRecycleSnapshot(pokemon, this, { args: [] });
 
-  if (this.stackCount > 1) {
-    this.stackCount--;
-  } else {
-    globalScene.removeModifier(this);
-  }
-}
+        if (this.stackCount > 1) {
+          this.stackCount--;
+        } else {
+          globalScene.removeModifier(this);
+        }
+      }
 
-      return true; // 성공적으로 적용됨
+      return true;
     }
 
-    return false; // 타입에 따른 조건을 만족하지 않으면 false
+    return false;
   }
 
   getMaxHeldItemCount(pokemon: Pokemon): number {
-    return 10; // 약점보험은 최대 10개
+    return 10;
   }
 }
 
@@ -9994,7 +10006,6 @@ if (!preserve.value) {
     this.stackCount--;
   } else {
     console.log("[RECYCLE SNAPSHOT SET]", pokemon.summonData?.lastConsumedHeldItem);
-    globalScene.removeModifier(this);
   }
 }
 
@@ -10099,8 +10110,26 @@ export class TerastallizeModifier extends ConsumablePokemonModifier {
    * @returns `true` if hp was restored
    */
   override apply(pokemon: Pokemon): boolean {
-    pokemon.teraType = this.teraType;
-    return true;
+  pokemon.teraType = this.teraType;
+
+  if (pokemon.isPlayer()) {
+    const unlocked = globalScene.gameData.unlockSpeciesTeraType(pokemon.species, this.teraType);
+
+    console.log("[TERA_UNLOCK]", {
+      species: pokemon.species.speciesId,
+      teraType: this.teraType,
+      unlocked,
+      teraTypeAttr: globalScene.gameData.starterData[pokemon.species.speciesId]?.teraTypeAttr,
+    });
+
+    if (unlocked) {
+      const gainedRp = this.teraType === PokemonType.STELLAR ? 50 : 10;
+      globalScene.gameData.addRoguePoints(gainedRp);
+      globalScene.updateroguePointText();
+    }
+  }
+
+  return true;
   }
 }
 

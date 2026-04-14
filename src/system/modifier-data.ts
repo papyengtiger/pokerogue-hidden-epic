@@ -15,7 +15,9 @@ export class ModifierData {
     const sourceModifier = source instanceof PersistentModifier ? (source as PersistentModifier) : null;
 
     this.player = player;
-    this.typeId = sourceModifier ? sourceModifier.type.id : source.typeId;
+    this.typeId = sourceModifier
+  ? (sourceModifier.type?.id || source.typeId || "")
+  : (source.typeId || "");
 
     if (sourceModifier) {
       if ("getPregenArgs" in source.type) {

@@ -9,6 +9,7 @@ import { Nature } from "#enums/nature";
 import { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
 import type { SpeciesId } from "#enums/species-id";
+import { SpeciesId } from "#enums/species-id";
 import { TrainerSlot } from "#enums/trainer-slot";
 import { EnemyPokemon, Pokemon } from "#field/pokemon";
 import { PokemonMove } from "#moves/pokemon-move";
@@ -156,55 +157,71 @@ export class PokemonData {
   }
 
   toPokemon(battleType?: BattleType, partyMemberIndex = 0, double = false): Pokemon {
-    const species = getPokemonSpecies(this.species);
-    const ret: Pokemon = this.player
-      ? globalScene.addPlayerPokemon(
-          species,
-          this.level,
-          this.abilityIndex,
-          this.formIndex,
-          this.gender,
-          this.shiny,
-          this.variant,
-          this.ivs,
-          this.nature,
-          this,
-          playerPokemon => {
-            if (this.nickname) {
-              playerPokemon.nickname = this.nickname;
-            }
-          },
-        )
-      : globalScene.addEnemyPokemon(
-          species,
-          this.level,
-          battleType === BattleType.TRAINER
-            ? !double || !(partyMemberIndex % 2)
-              ? TrainerSlot.TRAINER
-              : TrainerSlot.TRAINER_PARTNER
-            : TrainerSlot.NONE,
-          this.boss,
-          false,
-          this,
-        );
-    // ✅ 추가: "전투 시작 전" 로드라면 적은 무조건 풀피로
+  const species = getPokemonSpecies(this.species);
+
+  const isEnemy = !this.player;
+  const isTrainer = battleType === BattleType.TRAINER;
+
+  // 🔥 임시: 메가싸리용 야생 로드시 강제 기본폼
+  if (
+    isEnemy &&
+    !isTrainer &&
+    !this.boss &&
+    this.species === SpeciesId.TATSUGIRI &&
+    this.formIndex === 1 // ← 메가 폼 인덱스가 1일 경우
+  ) {
+    this.formIndex = 0;
+    if (this.summonData) {
+      this.summonData.speciesForm = null;
+    }
+  }
+
+  const ret: Pokemon = this.player
+    ? globalScene.addPlayerPokemon(
+        species,
+        this.level,
+        this.abilityIndex,
+        this.formIndex,
+        this.gender,
+        this.shiny,
+        this.variant,
+        this.ivs,
+        this.nature,
+        this,
+        playerPokemon => {
+          if (this.nickname) playerPokemon.nickname = this.nickname;
+        },
+      )
+    : globalScene.addEnemyPokemon(
+        species,
+        this.level,
+        isTrainer
+          ? !double || !(partyMemberIndex % 2)
+            ? TrainerSlot.TRAINER
+            : TrainerSlot.TRAINER_PARTNER
+          : TrainerSlot.NONE,
+        this.boss,
+        false,
+        this,
+      );
+
+  // ✅ "전투 시작 전" 로드라면 적은 무조건 풀피로 (네가 추가한 부분)
   if (!this.player) {
     const battleStarted = globalScene.currentBattle?.started;
-    // started=false 인 구간은 "등장 전/웨이브 시작 직전" 성격이 강함
     if (!battleStarted) {
       ret.hp = ret.getMaxHp();
-      // UI까지 확실히 맞추고 싶으면:
       ret.updateInfo?.(true);
     }
   }
-    // when loading from saved session, recover summonData.speciesFrom and form index species object
-    // used to stay transformed on reload session
-    if (this.summonData.speciesForm) {
-      ret.summonData.speciesForm = getPokemonSpeciesForm(
-        this.summonData.speciesForm.speciesId,
-        this.summonDataSpeciesFormIndex,
-      );
-    }
-    return ret;
+
+  // ✅ transformed 유지 로직 (단, 야생 적은 위에서 speciesForm을 null 처리했으니 안 탐)
+  if (this.summonData.speciesForm) {
+    ret.summonData.speciesForm = getPokemonSpeciesForm(
+      this.summonData.speciesForm.speciesId,
+      this.summonDataSpeciesFormIndex,
+    );
+  }
+
+  return ret;
   }
 }

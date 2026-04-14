@@ -5909,6 +5909,90 @@
 						"w": 40,
 						"h": 30
 					}
+				},
+                                {
+					"filename": "358-mega_2",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 40
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 40
+					},
+					"frame": {
+						"x": 440,
+						"y": 540,
+						"w": 40,
+						"h": 40
+					}
+				},
+				{
+					"filename": "358-mega_3",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 40
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 40
+					},
+					"frame": {
+						"x": 480,
+						"y": 540,
+						"w": 40,
+						"h": 40
+					}
+				},
+                                {
+					"filename": "359-mega-z_2",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 40
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 40
+					},
+					"frame": {
+						"x": 520,
+						"y": 540,
+						"w": 40,
+						"h": 40
+					}
+				},
+				{
+					"filename": "359-mega-z_3",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 40
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 40
+					},
+					"frame": {
+						"x": 560,
+						"y": 540,
+						"w": 40,
+						"h": 40
+					}
 				}
 			]
 		}

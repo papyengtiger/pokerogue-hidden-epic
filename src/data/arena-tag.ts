@@ -424,6 +424,43 @@ class AuroraVeilTag extends WeakenMoveScreenTag {
   }
 }
 
+class SandBarrierTag extends WeakenMoveScreenTag {
+  public readonly tagType = ArenaTagType.SAND_BARRIER;
+  protected override get weakenedCategories(): [MoveCategory.PHYSICAL, MoveCategory.SPECIAL] {
+    return [MoveCategory.PHYSICAL, MoveCategory.SPECIAL];
+  }
+
+  constructor(turnCount: number, sourceId: number | undefined, side: ArenaTagSide) {
+    super(turnCount, MoveId.SAND_BARRIER, sourceId, side);
+  }
+
+  protected override get onAddMessageKey(): string {
+    return "arenaTag:sandBarrierOnAdd" + this.i18nSideKey;
+  }
+  protected override get onRemoveMessageKey(): string {
+    return "arenaTag:sandBarrierOnRemove" + this.i18nSideKey;
+  }
+}
+
+class FloraVeilTag extends WeakenMoveScreenTag {
+  public readonly tagType = ArenaTagType.FLORA_VEIL;
+  protected override get weakenedCategories(): [MoveCategory.PHYSICAL, MoveCategory.SPECIAL] {
+    return [MoveCategory.PHYSICAL, MoveCategory.SPECIAL];
+  }
+
+  constructor(turnCount: number, sourceId: number | undefined, side: ArenaTagSide) {
+    super(turnCount, MoveId.FLORA_VEIL, sourceId, side);
+  }
+
+  protected override get onAddMessageKey(): string {
+    return "arenaTag:floraVeilOnAdd" + this.i18nSideKey;
+  }
+  protected override get onRemoveMessageKey(): string {
+    return "arenaTag:floraVeilOnRemove" + this.i18nSideKey;
+  }
+}
+
+
 type ProtectConditionFunc = (moveId: MoveId | undefined) => boolean;
 
 /**
@@ -951,6 +988,78 @@ class StealthRockTag extends DamagingTrapTag {
 
   protected override getDamageHpRatio(pokemon: Pokemon): number {
     const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.ROCK, undefined, true);
+    return 0.125 * effectiveness;
+  }
+
+  getMatchupScoreMultiplier(pokemon: Pokemon): number {
+    const damageHpRatio = this.getDamageHpRatio(pokemon);
+    return Phaser.Math.Linear(super.getMatchupScoreMultiplier(pokemon), 1, 1 - Math.pow(damageHpRatio, damageHpRatio));
+  }
+}
+
+class IceSpikeTag extends DamagingTrapTag {
+  public readonly tagType = ArenaTagType.ICE_SPIKE;
+  public override get maxLayers() {
+    return 1 as const;
+  }
+  protected override get groundedOnly() {
+    return false;
+  }
+
+  constructor(sourceId: number | undefined, side: ArenaTagSide) {
+    super(MoveId.ICE_SPIKE, sourceId, side);
+  }
+
+  protected override get onAddMessageKey(): string {
+    return "arenaTag:iceSpikeOnAdd" + this.i18nSideKey;
+  }
+
+  protected override get onRemoveMessageKey(): string {
+    return "arenaTag:iceSpikeOnRemove" + this.i18nSideKey;
+  }
+
+  protected override get triggerMessageKey(): string {
+    return "arenaTag:iceSpikeActivateTrap";
+  }
+
+  protected override getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.ICE, undefined, true);
+    return 0.125 * effectiveness;
+  }
+
+  getMatchupScoreMultiplier(pokemon: Pokemon): number {
+    const damageHpRatio = this.getDamageHpRatio(pokemon);
+    return Phaser.Math.Linear(super.getMatchupScoreMultiplier(pokemon), 1, 1 - Math.pow(damageHpRatio, damageHpRatio));
+  }
+}
+
+class MetalSpikeTag extends DamagingTrapTag {
+  public readonly tagType = ArenaTagType.METAL_SPIKE;
+  public override get maxLayers() {
+    return 1 as const;
+  }
+  protected override get groundedOnly() {
+    return false;
+  }
+
+  constructor(sourceId: number | undefined, side: ArenaTagSide) {
+    super(MoveId.METAL_SPIKE, sourceId, side);
+  }
+
+  protected override get onAddMessageKey(): string {
+    return "arenaTag:metalSpikeOnAdd" + this.i18nSideKey;
+  }
+
+  protected override get onRemoveMessageKey(): string {
+    return "arenaTag:metalSpikeOnRemove" + this.i18nSideKey;
+  }
+
+  protected override get triggerMessageKey(): string {
+    return "arenaTag:metalSpikeActivateTrap";
+  }
+
+  protected override getDamageHpRatio(pokemon: Pokemon): number {
+    const effectiveness = pokemon.getAttackTypeEffectiveness(PokemonType.STEEL, undefined, true);
     return 0.125 * effectiveness;
   }
 
@@ -1790,6 +1899,10 @@ export function getArenaTag(
       return new ToxicSpikesTag(sourceId, side);
     case ArenaTagType.STEALTH_ROCK:
       return new StealthRockTag(sourceId, side);
+    case ArenaTagType.ICE_SPIKE:
+      return new IceSpikeTag(sourceId, side);
+    case ArenaTagType.METAL_SPIKE:
+      return new MetalSpikeTag(sourceId, side);
     case ArenaTagType.STICKY_WEB:
       return new StickyWebTag(sourceId, side);
     case ArenaTagType.TRICK_ROOM:
@@ -1806,6 +1919,10 @@ export function getArenaTag(
       return new LightScreenTag(turnCount, sourceId, side);
     case ArenaTagType.AURORA_VEIL:
       return new AuroraVeilTag(turnCount, sourceId, side);
+    case ArenaTagType.SAND_BARRIER:
+      return new SandBarrierTag(turnCount, sourceId, side);
+    case ArenaTagType.FLORA_VEIL:
+      return new FloraVeilTag(turnCount, sourceId, side);
     case ArenaTagType.TAILWIND:
       return new TailwindTag(turnCount, sourceId, side);
     case ArenaTagType.HAPPY_HOUR:
@@ -1859,6 +1976,8 @@ export type ArenaTagTypeMap = {
   [ArenaTagType.NO_CRIT]: NoCritTag;
   [ArenaTagType.TOXIC_SPIKES]: ToxicSpikesTag;
   [ArenaTagType.STEALTH_ROCK]: StealthRockTag;
+  [ArenaTagType.ICE_SPIKE]: IceSpikeTag;
+  [ArenaTagType.METAL_SPIKE]: MetalSpikeTag;
   [ArenaTagType.STICKY_WEB]: StickyWebTag;
   [ArenaTagType.TRICK_ROOM]: TrickRoomTag;
   [ArenaTagType.MAGIC_ROOM]: MagicRoomTag;
@@ -1867,6 +1986,8 @@ export type ArenaTagTypeMap = {
   [ArenaTagType.REFLECT]: ReflectTag;
   [ArenaTagType.LIGHT_SCREEN]: LightScreenTag;
   [ArenaTagType.AURORA_VEIL]: AuroraVeilTag;
+  [ArenaTagType.SAND_BARRIER]: SandBarrierTag;
+  [ArenaTagType.FLORA_VEIL]: FloraVeilTag;
   [ArenaTagType.TAILWIND]: TailwindTag;
   [ArenaTagType.HAPPY_HOUR]: HappyHourTag;
   [ArenaTagType.SAFEGUARD]: SafeguardTag;

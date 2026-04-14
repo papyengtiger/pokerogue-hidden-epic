@@ -8,7 +8,7 @@ import { EvolutionItem, pokemonEvolutions } from "#balance/pokemon-evolutions";
 import { tmSpecies } from "#balance/tm-species-map";
 import { tmPoolTiers } from "#balance/tms";
 import { getBerryEffectDescription, getBerryName } from "#data/berry";
-import { getDailyEventSeedLuck } from "#data/daily-run";
+import { getDailyEventSeedLuck } from "#data/daily-seed/daily-run";
 import { allMoves, modifierTypes } from "#data/data-lists";
 import { SpeciesFormChangeItemTrigger } from "#data/form-change-triggers";
 import { getNatureName, getNatureStatMultiplier } from "#data/nature";
@@ -379,7 +379,7 @@ export class ModifierType {
             this.tier = modifier.modifierType.tier;
             return this;
           }
-          if (isNullOrUndefined(defaultTier)) {
+          if (defaultTier == null) {
             // If weight is 0, keep track of the first tier where the item was found
             defaultTier = modifier.modifierType.tier;
           }
@@ -401,7 +401,7 @@ export class ModifierType {
   }
 }
 
-type ModifierTypeGeneratorFunc = (party: Pokemon[], pregenArgs?: any[]) => ModifierType | null;
+type ModifierTypeGeneratorFunc = (party: readonly Pokemon[], pregenArgs?: any[]) => ModifierType | null;
 
 export class ModifierTypeGenerator extends ModifierType {
   private genTypeFunc: ModifierTypeGeneratorFunc;
@@ -5093,6 +5093,7 @@ SCHOLAR_TOME: () =>
   VOUCHER: () => new AddVoucherModifierType(VoucherType.REGULAR, 1),
   VOUCHER_PLUS: () => new AddVoucherModifierType(VoucherType.PLUS, 1),
   VOUCHER_PREMIUM: () => new AddVoucherModifierType(VoucherType.PREMIUM, 1),
+  VOUCHER_GOLDEN: () => new AddVoucherModifierType(VoucherType.GOLDEN, 1),
 
   GOLDEN_POKEBALL: () =>
     new ModifierType(
@@ -5823,13 +5824,13 @@ export class ModifierTypeOption {
  * @param party The player's party.
  * @returns A number between 0 and 14 based on the party's total luck value, or a random number between 0 and 14 if the player is in Daily Run mode.
  */
-export function getPartyLuckValue(party: Pokemon[]): number {
+export function getPartyLuckValue(party: readonly Pokemon[]): number {
   if (globalScene.gameMode.isDaily) {
     const DailyLuck = new NumberHolder(0);
     globalScene.executeWithSeedOffset(
       () => {
-        const eventLuck = getDailyEventSeedLuck(globalScene.seed);
-        if (!isNullOrUndefined(eventLuck)) {
+        const eventLuck = getDailyEventSeedLuck();
+        if (eventLuck != null) {
           DailyLuck.value = eventLuck;
           return;
         }

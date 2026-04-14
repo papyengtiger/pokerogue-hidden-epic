@@ -40,26 +40,33 @@ export class DynamaxPhase extends BattlePhase {
     super.start();
 
     this.pokemon.isDynamaxed = true;
-    this.pokemon.dynamaxPhase = this;
+this.pokemon.dynamaxPhase = this;
 
-    const field = (this.scene as any).field as Phaser.GameObjects.Container;
-    this.field = field;
+const field = (this.scene as any).field as Phaser.GameObjects.Container;
+this.field = field;
 
-    if (!field) {
-      console.warn("[DynamaxPhase] field not found");
-      return;
-    }
+if (!field) {
+  console.warn("[DynamaxPhase] field not found");
+  return;
+}
 
-    const gigantamaxForms = [
-      SpeciesFormKey.GIGANTAMAX,
-      SpeciesFormKey.GIGANTAMAX_SINGLE,
-      SpeciesFormKey.GIGANTAMAX_RAPID,
-      SpeciesFormKey.ETERNAMAX,
-    ];
+const gigantamaxForms = [
+  SpeciesFormKey.GIGANTAMAX,
+  SpeciesFormKey.GIGANTAMAX_SINGLE,
+  SpeciesFormKey.GIGANTAMAX_RAPID,
+  SpeciesFormKey.ETERNAMAX,
+];
 
-    const isGigantamax = gigantamaxForms.includes(this.pokemon.formKey);
+const isGigantamax = gigantamaxForms.includes(this.pokemon.formKey);
 
-    const newMaxHp = this.pokemon.getMaxHp();
+// ✅ 여기 추가
+if (this.pokemon.isPlayer()) {
+  const gainedRp = isGigantamax ? 20 : 10;
+  globalScene.gameData.addRoguePoints(gainedRp);
+  globalScene.updateroguePointText();
+}
+
+const newMaxHp = this.pokemon.getMaxHp();
 
     const ratioRaw = this.originalMaxHp > 0 ? this.originalHp / this.originalMaxHp : 1;
     const ratio = Math.min(ratioRaw, 1);

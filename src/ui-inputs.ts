@@ -13,6 +13,7 @@ import { SettingsGamepadUiHandler } from "#ui/settings-gamepad-ui-handler";
 import { SettingsKeyboardUiHandler } from "#ui/settings-keyboard-ui-handler";
 import { SettingsUiHandler } from "#ui/settings-ui-handler";
 import { StarterSelectUiHandler } from "#ui/starter-select-ui-handler";
+import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
 import Phaser from "phaser";
 
 type ActionKeys = Record<Button, () => void>;
@@ -150,14 +151,19 @@ export class UiInputs {
   }
 
   buttonGoToFilter(button: Button): void {
-    const whitelist = [StarterSelectUiHandler, PokedexUiHandler, PokedexPageUiHandler];
-    const uiHandler = globalScene.ui?.getHandler();
-    if (whitelist.some(handler => uiHandler instanceof handler)) {
-      globalScene.ui.processInput(button);
-    } else {
-      this.buttonStats(true);
-    }
+  const whitelist = [
+    StarterSelectUiHandler,
+    RogueShopUiHandler,
+    PokedexUiHandler,
+    PokedexPageUiHandler,
+  ];
+  const uiHandler = globalScene.ui?.getHandler();
+  if (whitelist.some(handler => uiHandler instanceof handler)) {
+    globalScene.ui.processInput(button);
+  } else {
+    this.buttonStats(true);
   }
+}
 
   buttonInfo(pressed = true): void {
     if (globalScene.showMovesetFlyout) {
@@ -190,6 +196,7 @@ export class UiInputs {
         globalScene.ui.setOverlayMode(UiMode.MENU);
         break;
       case UiMode.STARTER_SELECT:
+      case UiMode.ROGUE_SHOP:
       case UiMode.POKEDEX_PAGE:
         this.buttonTouch();
         break;
@@ -203,24 +210,25 @@ export class UiInputs {
   }
 
   buttonCycleOption(button: Button): void {
-    const whitelist = [
-      StarterSelectUiHandler,
-      PokedexUiHandler,
-      PokedexPageUiHandler,
-      SettingsUiHandler,
-      RunInfoUiHandler,
-      SettingsDisplayUiHandler,
-      SettingsAudioUiHandler,
-      SettingsGamepadUiHandler,
-      SettingsKeyboardUiHandler,
-    ];
-    const uiHandler = globalScene.ui?.getHandler();
-    if (whitelist.some(handler => uiHandler instanceof handler)) {
-      globalScene.ui.processInput(button);
-    } else if (button === Button.CYCLE_TERA) {
-      this.buttonInfo(true);
-    }
+  const whitelist = [
+    StarterSelectUiHandler,
+    RogueShopUiHandler,
+    PokedexUiHandler,
+    PokedexPageUiHandler,
+    SettingsUiHandler,
+    RunInfoUiHandler,
+    SettingsDisplayUiHandler,
+    SettingsAudioUiHandler,
+    SettingsGamepadUiHandler,
+    SettingsKeyboardUiHandler,
+  ];
+  const uiHandler = globalScene.ui?.getHandler();
+  if (whitelist.some(handler => uiHandler instanceof handler)) {
+    globalScene.ui.processInput(button);
+  } else if (button === Button.CYCLE_TERA) {
+    this.buttonInfo(true);
   }
+}
 
   buttonSpeedChange(up = true): void {
     const settingGameSpeed = settingIndex(SettingKeys.Game_Speed);

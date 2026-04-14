@@ -39,9 +39,16 @@ export class LevelUpPhase extends PlayerPartyMemberPokemonPhase {
     globalScene.validateAchvs(LevelAchv, new NumberHolder(this.level));
 
     const prevStats = this.pokemon.stats.slice(0);
-    this.pokemon.calculateStats();
-    this.pokemon.updateInfo();
-    if (globalScene.expParty === ExpNotification.DEFAULT) {
+this.pokemon.calculateStats();
+this.pokemon.updateInfo();
+
+// ✅ 레벨업 로그포인트
+if (this.pokemon.isPlayer()) {
+  globalScene.gameData.addRoguePoints(1);
+  globalScene.updateroguePointText();
+}
+
+if (globalScene.expParty === ExpNotification.DEFAULT) {
       globalScene.playSound("level_up_fanfare");
       globalScene.ui.showText(
         i18next.t("battle:levelUp", {

@@ -284,6 +284,11 @@ export abstract class PokemonSpeciesForm {
       case SpeciesFormKey.MEGA_X:
       case SpeciesFormKey.MEGA_Y:
       case SpeciesFormKey.PRIMAL:
+      case SpeciesFormKey.MEGA_Z:
+      case SpeciesFormKey.MEGA_ORIGINAL:
+      case SpeciesFormKey.MEGA_CURLY:
+      case SpeciesFormKey.MEGA_DROOPY:
+      case SpeciesFormKey.MEGA_STRETCHY:
       case SpeciesFormKey.GIGANTAMAX:
       case SpeciesFormKey.ETERNAMAX:
         ret *= 1.5;
@@ -439,6 +444,8 @@ export abstract class PokemonSpeciesForm {
         case SpeciesFormKey.MEGA:
         case SpeciesFormKey.MEGA_X:
         case SpeciesFormKey.MEGA_Y:
+        case SpeciesFormKey.MEGA_Z:
+        case SpeciesFormKey.PRIMAL:
         case SpeciesFormKey.GIGANTAMAX:
         case SpeciesFormKey.GIGANTAMAX_SINGLE:
         case SpeciesFormKey.GIGANTAMAX_RAPID:
@@ -472,6 +479,8 @@ export abstract class PokemonSpeciesForm {
         case "dawn-wings":
         case "dusk-mane":
         case "ultra":
+        case "ice":
+        case "shadow":
           ret += `-${formKey}`;
           break;
       }
@@ -769,6 +778,8 @@ export class PokemonSpecies extends PokemonSpeciesForm implements Localizable {
         case SpeciesFormKey.ETERNAMAX:
         case SpeciesFormKey.MEGA_X:
         case SpeciesFormKey.MEGA_Y:
+        case SpeciesFormKey.MEGA_Z:
+        case SpeciesFormKey.MEGA_ORIGINAL:
           key = form.formKey;
           break;
         default:
@@ -838,6 +849,11 @@ export class PokemonSpecies extends PokemonSpeciesForm implements Localizable {
         SpeciesFormKey.MEGA_X,
         SpeciesFormKey.MEGA_Y,
         SpeciesFormKey.PRIMAL,
+        SpeciesFormKey.MEGA_Z,
+        SpeciesFormKey.MEGA_ORIGINAL,
+        SpeciesFormKey.MEGA_CURLY,
+        SpeciesFormKey.MEGA_DROOPY,
+        SpeciesFormKey.MEGA_STRETCHY,
         SpeciesFormKey.GIGANTAMAX,
         SpeciesFormKey.GIGANTAMAX_RAPID,
         SpeciesFormKey.GIGANTAMAX_SINGLE,

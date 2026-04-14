@@ -12,6 +12,8 @@ import type { Move } from "#moves/move";
 import { PlayerPartyMemberPokemonPhase } from "#phases/player-party-member-pokemon-phase";
 import { EvolutionSceneUiHandler } from "#ui/evolution-scene-ui-handler";
 import { SummaryUiMode } from "#ui/summary-ui-handler";
+import { trPoolTiers } from "#app/data/balance/trs";
+import { ModifierTier } from "#enums/modifier-tier";
 import i18next from "i18next";
 import { SpeciesId } from "#enums/species-id";
 
@@ -70,6 +72,34 @@ export class LearnMovePhase extends PlayerPartyMemberPokemonPhase {
       this.replaceMoveCheck(move, pokemon);
     }
   }
+
+  private getTrLearnRoguePoints(moveId: MoveId): number {
+  const tier = trPoolTiers[moveId];
+
+  switch (tier) {
+    case ModifierTier.COMMON:
+      // 일반 다이맥스기술
+      return 10;
+
+    case ModifierTier.RARE:
+      // 거다이맥스기술
+      return 20;
+
+    default:
+      return 0;
+  }
+}
+
+private getZLearnRoguePoints(learnMoveType: LearnMoveType): number {
+  switch (learnMoveType) {
+    case LearnMoveType.Z_EXCLUSIVE:
+      return 20;
+    case LearnMoveType.Z_GENERIC:
+      return 10;
+    default:
+      return 0;
+  }
+}
 
   async replaceMoveCheck(move: Move, pokemon: Pokemon) {
     const learnMovePrompt = i18next.t("battle:learnMovePrompt", {
@@ -164,24 +194,52 @@ export class LearnMovePhase extends PlayerPartyMemberPokemonPhase {
 
 } else if (this.learnMoveType === LearnMoveType.TR) {
   pokemon.usedTRs ??= [];
-  if (!pokemon.usedTRs.includes(this.moveId)) pokemon.usedTRs.push(this.moveId);
+
+  const wasKnownTR = pokemon.usedTRs.includes(this.moveId);
+  if (!wasKnownTR) {
+    pokemon.usedTRs.push(this.moveId);
+  }
+
   globalScene.phaseManager.tryRemovePhase(phase => phase.is("SelectModifierPhase"));
+
+  // ✅ TR로 배우는 맥스기술 / 거다이맥스기술 로그포인트
+  if (!wasKnownTR) {
+    const gainedRp = this.getTrLearnRoguePoints(this.moveId);
+    if (gainedRp > 0) {
+      globalScene.gameData.addRoguePoints(gainedRp);
+      globalScene.updateroguePointText();
+    }
+  }
 
 } else if (
   this.learnMoveType === LearnMoveType.Z_EXCLUSIVE ||
   this.learnMoveType === LearnMoveType.Z_GENERIC
 ) {
   pokemon.usedZMoves ??= [];
-  if (!pokemon.usedZMoves.includes(this.moveId)) pokemon.usedZMoves.push(this.moveId);
 
-  // ✅ 중요: 세이브/재구성에 쓰이는 data 객체에도 동기화 (있는 경우)
+  const wasKnownZMove = pokemon.usedZMoves.includes(this.moveId);
+  if (!wasKnownZMove) {
+    pokemon.usedZMoves.push(this.moveId);
+  }
+
   const anyP: any = pokemon as any;
   if (anyP.data) {
     anyP.data.usedZMoves ??= [];
-    if (!anyP.data.usedZMoves.includes(this.moveId)) anyP.data.usedZMoves.push(this.moveId);
+    if (!anyP.data.usedZMoves.includes(this.moveId)) {
+      anyP.data.usedZMoves.push(this.moveId);
+    }
   }
 
   globalScene.phaseManager.tryRemovePhase(phase => phase.is("SelectModifierPhase"));
+
+  // ✅ Z기술 학습 로그포인트
+  if (!wasKnownZMove) {
+    const gainedRp = this.getZLearnRoguePoints(this.learnMoveType);
+    if (gainedRp > 0) {
+      globalScene.gameData.addroguePoints(gainedRp);
+      globalScene.updateroguePointText();
+    }
+  }
 } else if (this.learnMoveType === LearnMoveType.MEMORY) {
   if (this.cost !== -1) {
     if (!Overrides.WAIVE_ROLL_FEE_OVERRIDE) {

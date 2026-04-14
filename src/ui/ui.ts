@@ -8,6 +8,7 @@ import { AchvBar } from "#ui/achv-bar";
 import { AchvsUiHandler } from "#ui/achvs-ui-handler";
 import { AutoCompleteUiHandler } from "#ui/autocomplete-ui-handler";
 import { AwaitableUiHandler } from "#ui/awaitable-ui-handler";
+import { BankAmountFormUiHandler } from "#ui/bank-amount-form-ui-handler";
 import { BallUiHandler } from "#ui/ball-ui-handler";
 import { BattleMessageUiHandler } from "#ui/battle-message-ui-handler";
 import type { BgmBar } from "#ui/bgm-bar";
@@ -62,6 +63,7 @@ import { executeIf } from "#utils/common";
 import i18next from "i18next";
 import { AdminUiHandler } from "./handlers/admin-ui-handler";
 import { RenameRunFormUiHandler } from "./handlers/rename-run-ui-handler";
+import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
 
 const transitionModes = [
   UiMode.SAVE_SLOT,
@@ -76,6 +78,7 @@ const transitionModes = [
   UiMode.POKEDEX_PAGE,
   UiMode.CHALLENGE_SELECT,
   UiMode.RUN_HISTORY,
+  UiMode.ROGUE_SHOP,
 ];
 
 const noTransitionModes = [
@@ -107,6 +110,8 @@ const noTransitionModes = [
   UiMode.MYSTERY_ENCOUNTER,
   UiMode.RUN_INFO,
   UiMode.CHANGE_PASSWORD_FORM,
+  UiMode.ROGUE_SHOP,
+  UiMode.BANK_AMOUNT_FORM,
 ];
 
 export class UI extends Phaser.GameObjects.Container {
@@ -180,6 +185,8 @@ export class UI extends Phaser.GameObjects.Container {
       new AdminUiHandler(),
       new MysteryEncounterUiHandler(),
       new ChangePasswordFormUiHandler(),
+      new RogueShopUiHandler(),
+      new BankAmountFormUiHandler(),
     ];
   }
 
@@ -628,13 +635,16 @@ export class UI extends Phaser.GameObjects.Container {
   }
 
   revertModes(): Promise<void> {
-    return new Promise<void>(resolve => {
-      if (this?.modeChain?.length === 0) {
-        return resolve();
-      }
-      this.revertMode().then(success => executeIf(success, this.revertModes).then(() => resolve()));
-    });
-  }
+  return new Promise<void>(resolve => {
+    if (this?.modeChain?.length === 0) {
+      return resolve();
+    }
+
+    this.revertMode().then(success =>
+      executeIf(success, () => this.revertModes()).then(() => resolve()),
+    );
+  });
+}
 
   public getModeChain(): UiMode[] {
     return this.modeChain;

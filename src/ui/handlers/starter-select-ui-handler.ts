@@ -1308,15 +1308,16 @@ export class StarterSelectUiHandler extends MessageUiHandler {
     }
 
     if (starterAttributes.tera !== undefined) {
-      // If somehow we have an illegal tera type, it is reset here
-      if (!(starterAttributes.tera === species.type1 || starterAttributes.tera === species?.type2)) {
-        starterAttributes.tera = species.type1;
-      }
-      // In fresh start challenge, the tera type is always reset to the first one
-      if (globalScene.gameMode.hasChallenge(Challenges.FRESH_START) && !ignoreChallenge) {
-        starterAttributes.tera = species.type1;
-      }
-    }
+  const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(species);
+
+  if (!unlockedTeraTypes.includes(starterAttributes.tera)) {
+    starterAttributes.tera = unlockedTeraTypes[0];
+  }
+
+  if (globalScene.gameMode.hasChallenge(Challenges.FRESH_START) && !ignoreChallenge) {
+    starterAttributes.tera = species.type1;
+  }
+}
 
     return starterAttributes;
   }
@@ -1560,6 +1561,7 @@ export class StarterSelectUiHandler extends MessageUiHandler {
   }
 
   processInput(button: Button): boolean {
+  console.log("[STARTER_SELECT] processInput", button);
     if (this.blockInput) {
       return false;
     }
@@ -2551,24 +2553,27 @@ export class StarterSelectUiHandler extends MessageUiHandler {
             }
             break;
           case Button.CYCLE_TERA:
-            if (this.canCycleTera) {
-              const speciesForm = getPokemonSpeciesForm(this.lastSpecies.speciesId, starterAttributes.form ?? 0);
-              if (speciesForm.type1 === this.teraCursor && speciesForm.type2 != null) {
-                starterAttributes.tera = speciesForm.type2;
-                originalStarterAttributes.tera = starterAttributes.tera;
-                this.setSpeciesDetails(this.lastSpecies, {
-                  teraType: speciesForm.type2,
-                });
-              } else {
-                starterAttributes.tera = speciesForm.type1;
-                originalStarterAttributes.tera = starterAttributes.tera;
-                this.setSpeciesDetails(this.lastSpecies, {
-                  teraType: speciesForm.type1,
-                });
-              }
-              success = true;
-            }
-            break;
+  if (this.canCycleTera) {
+    const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(this.lastSpecies);
+
+    if (unlockedTeraTypes.length > 0) {
+      const currentTera = starterAttributes.tera ?? unlockedTeraTypes[0];
+      const currentIndex = unlockedTeraTypes.indexOf(currentTera);
+      const nextIndex = currentIndex >= 0
+        ? (currentIndex + 1) % unlockedTeraTypes.length
+        : 0;
+
+      starterAttributes.tera = unlockedTeraTypes[nextIndex];
+      originalStarterAttributes.tera = starterAttributes.tera;
+
+      this.setSpeciesDetails(this.lastSpecies, {
+        teraType: starterAttributes.tera,
+      });
+
+      success = true;
+    }
+  }
+  break;
           case Button.UP:
             if (!this.starterIconsCursorObj.visible) {
               if (currentRow > 0) {
@@ -4690,6 +4695,37 @@ export class StarterSelectUiHandler extends MessageUiHandler {
     this.starterPreferences = {};
     this.originalStarterPreferences = {};
   }
+
+private getUnlockedTeraTypesForSpecies(species: PokemonSpecies): PokemonType[] {
+  const starterData = globalScene.gameData.starterData[species.speciesId];
+  const teraAttr = Number(starterData?.teraTypeAttr ?? 0);
+
+  const ret: PokemonType[] = [];
+
+  // ✅ 기존 타입 항상 포함
+  ret.push(species.type1);
+
+  if (
+    species.type2 != null &&
+    species.type2 !== PokemonType.UNKNOWN &&
+    species.type2 !== species.type1
+  ) {
+    ret.push(species.type2);
+  }
+
+  // ✅ 해금된 테라 타입 추가
+  for (let t = PokemonType.NORMAL; t <= PokemonType.STELLAR; t++) {
+    if (teraAttr & (1 << (t + 1))) {
+      const type = t as PokemonType;
+
+      if (!ret.includes(type)) {
+        ret.push(type);
+      }
+    }
+  }
+
+  return ret;
+}
 
   /**
    * Truncate the Pokémon name so it won't overlap into the starters.

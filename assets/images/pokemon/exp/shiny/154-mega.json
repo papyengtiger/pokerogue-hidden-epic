@@ -1,0 +1,83 @@
+{
+  "textures": [
+    {
+      "image": "154-mega.png",
+      "format": "RGBA8888",
+      "size": { "w": 216, "h": 1649 },
+      "scale": 1,
+      "frames": [
+        { "filename": "tile000.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 0, "w": 72, "h": 97 } },
+        { "filename": "tile001.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 0, "w": 72, "h": 97 } },
+        { "filename": "tile002.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 0, "w": 72, "h": 97 } },
+
+        { "filename": "tile003.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 97, "w": 72, "h": 97 } },
+        { "filename": "tile004.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 97, "w": 72, "h": 97 } },
+        { "filename": "tile005.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 97, "w": 72, "h": 97 } },
+
+        { "filename": "tile006.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 194, "w": 72, "h": 97 } },
+        { "filename": "tile007.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 194, "w": 72, "h": 97 } },
+        { "filename": "tile008.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 194, "w": 72, "h": 97 } },
+
+        { "filename": "tile009.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 291, "w": 72, "h": 97 } },
+        { "filename": "tile010.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 291, "w": 72, "h": 97 } },
+        { "filename": "tile011.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 291, "w": 72, "h": 97 } },
+
+        { "filename": "tile012.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 388, "w": 72, "h": 97 } },
+        { "filename": "tile013.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 388, "w": 72, "h": 97 } },
+        { "filename": "tile014.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 388, "w": 72, "h": 97 } },
+
+        { "filename": "tile015.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 485, "w": 72, "h": 97 } },
+        { "filename": "tile016.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 485, "w": 72, "h": 97 } },
+        { "filename": "tile017.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 485, "w": 72, "h": 97 } },
+
+        { "filename": "tile018.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 582, "w": 72, "h": 97 } },
+        { "filename": "tile019.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 582, "w": 72, "h": 97 } },
+        { "filename": "tile020.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 582, "w": 72, "h": 97 } },
+
+        { "filename": "tile021.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 679, "w": 72, "h": 97 } },
+        { "filename": "tile022.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 679, "w": 72, "h": 97 } },
+        { "filename": "tile023.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 679, "w": 72, "h": 97 } },
+
+        { "filename": "tile024.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 776, "w": 72, "h": 97 } },
+        { "filename": "tile025.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 776, "w": 72, "h": 97 } },
+        { "filename": "tile026.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 776, "w": 72, "h": 97 } },
+
+        { "filename": "tile027.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 873, "w": 72, "h": 97 } },
+        { "filename": "tile028.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 873, "w": 72, "h": 97 } },
+        { "filename": "tile029.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 873, "w": 72, "h": 97 } },
+
+        { "filename": "tile030.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 970, "w": 72, "h": 97 } },
+        { "filename": "tile031.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 970, "w": 72, "h": 97 } },
+        { "filename": "tile032.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 970, "w": 72, "h": 97 } },
+
+        { "filename": "tile033.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 1067, "w": 72, "h": 97 } },
+        { "filename": "tile034.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 1067, "w": 72, "h": 97 } },
+        { "filename": "tile035.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 1067, "w": 72, "h": 97 } },
+
+        { "filename": "tile036.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 1164, "w": 72, "h": 97 } },
+        { "filename": "tile037.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 1164, "w": 72, "h": 97 } },
+        { "filename": "tile038.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 1164, "w": 72, "h": 97 } },
+
+        { "filename": "tile039.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 1261, "w": 72, "h": 97 } },
+        { "filename": "tile040.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 1261, "w": 72, "h": 97 } },
+        { "filename": "tile041.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 1261, "w": 72, "h": 97 } },
+
+        { "filename": "tile042.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 1358, "w": 72, "h": 97 } },
+        { "filename": "tile043.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 1358, "w": 72, "h": 97 } },
+        { "filename": "tile044.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 1358, "w": 72, "h": 97 } },
+
+        { "filename": "tile045.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 1455, "w": 72, "h": 97 } },
+        { "filename": "tile046.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 1455, "w": 72, "h": 97 } },
+        { "filename": "tile047.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 1455, "w": 72, "h": 97 } },
+
+        { "filename": "tile048.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 0, "y": 1552, "w": 72, "h": 97 } },
+        { "filename": "tile049.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 72, "y": 1552, "w": 72, "h": 97 } },
+        { "filename": "tile050.png", "rotated": false, "trimmed": false, "sourceSize": { "w": 72, "h": 97 }, "spriteSourceSize": { "x": 0, "y": 0, "w": 72, "h": 97 }, "frame": { "x": 144, "y": 1552, "w": 72, "h": 97 } }
+      ]
+    }
+  ],
+  "meta": {
+    "app": "https://www.codeandweb.com/texturepacker",
+    "version": "3.0"
+  }
+}

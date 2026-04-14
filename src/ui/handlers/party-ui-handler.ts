@@ -126,6 +126,8 @@ export enum PartyUiMode {
   TRICK_TAKE_SELECT,
   BESTOW_ITEM_SELECT,
   NATURAL_GIFT_BERRY_SELECT,
+  SEND_TO_STORAGE,
+  SEND_TO_STORAGE_SELECT,
 }
 
 export enum PartyOption {
@@ -150,6 +152,8 @@ export enum PartyOption {
   TRICK_TAKE_SELECT,
   BESTOW_ITEM_SELECT,
   NATURAL_GIFT_BERRY_SELECT,
+  SEND_TO_STORAGE,
+  SEND_TO_STORAGE_SELECT,
   SCROLL_UP = 1000,
   SCROLL_DOWN = 1001,
   FORM_CHANGE_ITEM = 2000,
@@ -190,6 +194,7 @@ export class PartyUiHandler extends MessageUiHandler {
   private partySlots: PartySlot[];
   private partyCancelButton: PartyCancelButton;
   private partyDiscardModeButton: PartyDiscardModeButton;
+  private partyStorageButton: PartyStorageButton;
   private partyMessageBox: Phaser.GameObjects.NineSlice;
   private moveInfoOverlay: MoveInfoOverlay;
 
@@ -293,6 +298,8 @@ export class PartyUiHandler extends MessageUiHandler {
     PartyOption.TRICK_TAKE_SELECT,
     PartyOption.BESTOW_ITEM_SELECT,
     PartyOption.NATURAL_GIFT_BERRY_SELECT,
+    PartyOption.SEND_TO_STORAGE,
+    PartyOption.SEND_TO_STORAGE_SELECT,
   ];
 
   constructor() {
@@ -576,34 +583,39 @@ export class PartyUiHandler extends MessageUiHandler {
 
   // TODO: Does this need to check that selectCallback exists?
   private processTransferOption(): boolean {
-    const ui = this.getUi();
-    if (this.transferCursor !== this.cursor) {
-      if (this.transferAll) {
-        this.getTransferrableItemsFromPokemon(globalScene.getPlayerParty()[this.transferCursor]).forEach(
-          (_, i, array) => {
-            const invertedIndex = array.length - 1 - i;
-            (this.selectCallback as PartyModifierTransferSelectCallback)(
-              this.transferCursor,
-              invertedIndex,
-              this.transferQuantitiesMax[invertedIndex],
-              this.cursor,
-            );
-          },
-        );
-      } else {
+  const ui = this.getUi();
+
+  const targetCursor = this.cursor === 8 ? -2 : this.cursor;
+
+  if (this.transferCursor !== this.cursor || this.cursor === 8) {
+    if (this.transferAll) {
+      this.getTransferrableItemsFromPokemon(
+        globalScene.getPlayerParty()[this.transferCursor]
+      ).forEach((_, i, array) => {
+        const invertedIndex = array.length - 1 - i;
+
         (this.selectCallback as PartyModifierTransferSelectCallback)(
           this.transferCursor,
-          this.transferOptionCursor,
-          this.transferQuantities[this.transferOptionCursor],
-          this.cursor,
+          invertedIndex,
+          this.transferQuantitiesMax[invertedIndex],
+          targetCursor
         );
-      }
+      });
+    } else {
+      (this.selectCallback as PartyModifierTransferSelectCallback)(
+        this.transferCursor,
+        this.transferOptionCursor,
+        this.transferQuantities[this.transferOptionCursor],
+        targetCursor
+      );
     }
-    this.clearTransfer();
-    this.clearOptions();
-    ui.playSelect();
-    return true;
   }
+
+  this.clearTransfer();
+  this.clearOptions();
+  ui.playSelect();
+  return true;
+}
 
   // TODO: This will be largely changed with the modifier rework
   private processModifierTransferModeInput(pokemon: PlayerPokemon) {
@@ -879,7 +891,64 @@ export class PartyUiHandler extends MessageUiHandler {
     this.partyUiMode === PartyUiMode.TRICK_GIVE_SELECT ||
     this.partyUiMode === PartyUiMode.TRICK_TAKE_SELECT ||
     this.partyUiMode === PartyUiMode.BESTOW_ITEM_SELECT || 
-    this.partyUiMode === PartyUiMode.NATURAL_GIFT_BERRY_SELECT; 
+    this.partyUiMode === PartyUiMode.NATURAL_GIFT_BERRY_SELECT || 
+    this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT; 
+
+  if (this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT) {
+  const itemModifiers = this.getItemModifiers(pokemon);
+  const idx = option as number;
+
+  if (idx < 0 || idx >= itemModifiers.length) {
+    ui.playError();
+    return false;
+  }
+
+  const item = itemModifiers[idx];
+  if (!item) {
+    ui.playError();
+    return false;
+  }
+
+  this.clearOptions();
+  this.blockInput = true;
+
+  this.showText(`${item.type.name}을(를) 창고로 보내시겠습니까?`, null, () => {
+    this.blockInput = false;
+
+    ui.setModeWithoutClear(
+      UiMode.CONFIRM,
+      () => {
+        ui.setMode(UiMode.PARTY);
+
+        const stored = globalScene.gameData.addToStorage(item.type.id, item.stackCount);
+
+        if (stored) {
+          globalScene.removeModifier(item);
+          globalScene.updateModifiers(true);
+          globalScene.gameData.saveSystem();
+
+          this.showText("창고로 보냈습니다.", 1000, () => {
+            this.partyUiMode = PartyUiMode.CHECK;
+            this.showPartyText();
+          });
+        } else {
+          this.showText("창고 저장에 실패했습니다.", 1000, () => {
+            this.partyUiMode = PartyUiMode.CHECK;
+            this.showPartyText();
+          });
+        }
+      },
+      () => {
+        ui.setMode(UiMode.PARTY);
+        this.partyUiMode = PartyUiMode.CHECK;
+        this.showPartyText();
+      },
+    );
+  });
+
+  ui.playSelect();
+  return true;
+}
 
   if (isIndexItemSelect) {
     const itemModifiers = this.getItemModifiers(pokemon);
@@ -926,6 +995,20 @@ export class PartyUiHandler extends MessageUiHandler {
   if (option === PartyOption.RENAME) {
     return this.processRenameOption(pokemon);
   }
+  if (option === PartyOption.SEND_TO_STORAGE) {
+  const items = this.getTransferrableItemsFromPokemon(pokemon);
+
+  if (!items.length) {
+    this.showText("지닌 아이템이 없습니다.");
+    return true;
+  }
+
+  this.clearOptions(); // 기존 포켓몬 메뉴 닫기
+  this.partyUiMode = PartyUiMode.SEND_TO_STORAGE_SELECT;
+  this.showOptions();  // 이제 새 모드 기준으로 아이템 목록 다시 생성
+
+  return true;
+}
     // This is only relevant for PartyUiMode.CHECK
     // TODO: This risks hitting the other options (.MOVE_i and ALL) so does it? Do we need an extra check?
     if (
@@ -1129,13 +1212,14 @@ export class PartyUiHandler extends MessageUiHandler {
    */
   private isItemManageMode(): boolean {
   const ret =
-    this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER ||
-    this.partyUiMode === PartyUiMode.DISCARD ||
-    this.partyUiMode === PartyUiMode.FLING_ITEM_SELECT ||
-    this.partyUiMode === PartyUiMode.TRICK_GIVE_SELECT ||
-    this.partyUiMode === PartyUiMode.TRICK_TAKE_SELECT ||
-    this.partyUiMode === PartyUiMode.BESTOW_ITEM_SELECT ||
-    this.partyUiMode === PartyUiMode.NATURAL_GIFT_BERRY_SELECT;
+  this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER ||
+  this.partyUiMode === PartyUiMode.DISCARD ||
+  this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT ||
+  this.partyUiMode === PartyUiMode.FLING_ITEM_SELECT ||
+  this.partyUiMode === PartyUiMode.TRICK_GIVE_SELECT ||
+  this.partyUiMode === PartyUiMode.TRICK_TAKE_SELECT ||
+  this.partyUiMode === PartyUiMode.BESTOW_ITEM_SELECT ||
+  this.partyUiMode === PartyUiMode.NATURAL_GIFT_BERRY_SELECT;
 
   console.log(
     "[ITEM_MANAGE?]",
@@ -1151,19 +1235,20 @@ export class PartyUiHandler extends MessageUiHandler {
     const ui = this.getUi();
     if (this.cursor < 6) {
       if (
-        (this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER && !this.transferMode)
-        || this.partyUiMode === PartyUiMode.DISCARD
-      ) {
-        /** Initialize item quantities for the selected Pokemon */
-        const itemModifiers = globalScene.findModifiers(
-          m =>
-            m.is("PokemonHeldItemModifier")
-            && m.isTransferable
-            && m.pokemonId === globalScene.getPlayerParty()[this.cursor].id,
-        ) as PokemonHeldItemModifier[];
-        this.transferQuantities = itemModifiers.map(item => item.getStackCount());
-        this.transferQuantitiesMax = itemModifiers.map(item => item.getStackCount());
-      }
+  ((this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER && !this.transferMode) ||
+    this.partyUiMode === PartyUiMode.DISCARD ||
+    this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT)
+) {
+  const itemModifiers = globalScene.findModifiers(
+    m =>
+      m.is("PokemonHeldItemModifier") &&
+      m.isTransferable &&
+      m.pokemonId === globalScene.getPlayerParty()[this.cursor].id,
+  ) as PokemonHeldItemModifier[];
+
+  this.transferQuantities = itemModifiers.map(item => item.getStackCount());
+  this.transferQuantitiesMax = itemModifiers.map(item => item.getStackCount());
+}
       this.showOptions();
       ui.playSelect();
     }
@@ -1349,30 +1434,40 @@ if (isItemSelectMode) return false;
   }
 
   setCursor(cursor: number): boolean {
-    if (this.optionsMode) {
-      return this.setOptionsCursor(cursor);
-    }
-    const changed = this.cursor !== cursor;
-    if (changed) {
-      this.lastCursor = this.cursor;
-      this.cursor = cursor;
-      if (this.lastCursor < 6) {
-        this.partySlots[this.lastCursor].deselect();
-      } else if (this.lastCursor === 6) {
-        this.partyCancelButton.deselect();
-      } else if (this.lastCursor === 7) {
-        this.partyDiscardModeButton.deselect();
-      }
-      if (cursor < 6) {
-        this.partySlots[cursor].select();
-      } else if (cursor === 6) {
-        this.partyCancelButton.select();
-      } else if (cursor === 7) {
-        this.partyDiscardModeButton.select();
-      }
-    }
-    return changed;
+  if (this.optionsMode) {
+    return this.setOptionsCursor(cursor);
   }
+
+  const changed = this.cursor !== cursor;
+  if (changed) {
+    this.lastCursor = this.cursor;
+    this.cursor = cursor;
+
+    // 이전 커서 해제
+    if (this.lastCursor < 6) {
+      this.partySlots[this.lastCursor].deselect();
+    } else if (this.lastCursor === 6) {
+      this.partyCancelButton.deselect();
+    } else if (this.lastCursor === 7) {
+      this.partyDiscardModeButton.deselect();
+    } else if (this.lastCursor === 8) {
+      this.partyStorageButton.deselect();
+    }
+
+    // 새 커서 선택
+    if (cursor < 6) {
+      this.partySlots[cursor].select();
+    } else if (cursor === 6) {
+      this.partyCancelButton.select();
+    } else if (cursor === 7) {
+      this.partyDiscardModeButton.select();
+    } else if (cursor === 8) {
+      this.partyStorageButton.select();
+    }
+  }
+
+  return changed;
+}
 
   private setOptionsCursor(cursor: number): boolean {
     const changed = this.optionsCursor !== cursor;
@@ -1456,14 +1551,17 @@ if (
       ? i18next.t("partyUiHandler:flingWhichItem")
       : i18next.t("partyUiHandler:bestowWhichItem")
   );
+} else if (
+  this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER ||
+  this.partyUiMode === PartyUiMode.DISCARD ||
+  this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT
+) {
+  this.showText(
+    this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT
+      ? "창고로 보낼 아이템을 고르세요."
+      : i18next.t("partyUiHandler:doWhatWithThisItem")
+  );
 }
-    // ✅ 아이템 관리 전용
-    else if (
-      this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER
-      || this.partyUiMode === PartyUiMode.DISCARD
-    ) {
-      this.showText(i18next.t("partyUiHandler:doWhatWithThisItem"));
-    }
     // ✅ 포켓몬 대상
     else {
       this.showText(i18next.t("partyUiHandler:doWhatWithThisPokemon"));
@@ -1519,6 +1617,10 @@ if (
 
     case PartyUiMode.TRICK_TAKE_SELECT:
       this.showText(i18next.t("partyUiHandler:trickTakeSelectItem"));
+      break;
+
+    case PartyUiMode.SEND_TO_STORAGE_SELECT:
+      this.showText(i18next.t("partyUiHandler:sendToStorageSelect"));
       break;
 
     default:
@@ -1626,6 +1728,13 @@ return all.filter(m => m.isTransferable);
     }
   }
   
+  private updateOptionsWithSendToStorageMode(pokemon): void {
+  const itemModifiers = this.getTransferrableItemsFromPokemon(pokemon);
+  for (let im = 0; im < itemModifiers.length; im++) {
+    this.options.push(im);
+  }
+}
+
   private updateOptionsWithFlingItemSelectMode(pokemon): void {
     const itemModifiers = this.getItemModifiers(pokemon);
     for (let im = 0; im < itemModifiers.length; im++) {
@@ -1642,19 +1751,22 @@ return all.filter(m => m.isTransferable);
 }
 
   private addCommonOptions(pokemon): void {
-    this.options.push(PartyOption.SUMMARY);
-    this.options.push(PartyOption.POKEDEX);
-    this.options.push(PartyOption.RENAME);
+  this.options.push(PartyOption.SUMMARY);
+  this.options.push(PartyOption.POKEDEX);
+  this.options.push(PartyOption.RENAME);
 
-    if (
-      pokemonEvolutions.hasOwnProperty(pokemon.species.speciesId)
-      || (pokemon.isFusion()
-        && pokemon.fusionSpecies
-        && pokemonEvolutions.hasOwnProperty(pokemon.fusionSpecies.speciesId))
-    ) {
-      this.options.push(PartyOption.UNPAUSE_EVOLUTION);
-    }
+  if (
+    pokemonEvolutions.hasOwnProperty(pokemon.species.speciesId)
+    || (pokemon.isFusion()
+      && pokemon.fusionSpecies
+      && pokemonEvolutions.hasOwnProperty(pokemon.fusionSpecies.speciesId))
+  ) {
+    this.options.push(PartyOption.UNPAUSE_EVOLUTION);
   }
+
+  // ✅ 추가
+  this.options.push(PartyOption.SEND_TO_STORAGE);
+}
 
   private addCancelAndScrollOptions(): void {
     this.optionsScrollTotal = this.options.length;
@@ -1700,23 +1812,30 @@ return all.filter(m => m.isTransferable);
     }
 
     switch (this.partyUiMode) {
-      case PartyUiMode.MOVE_MODIFIER:
-        this.updateOptionsWithMoveModifierMode(pokemon);
-        break;
-      case PartyUiMode.REMEMBER_MOVE_MODIFIER:
-        this.updateOptionsWithRememberMoveModifierMode(pokemon);
-        break;
-      case PartyUiMode.MODIFIER_TRANSFER:
-        if (!this.transferMode) {
-          this.updateOptionsWithModifierTransferMode(pokemon);
-        } else {
-          this.options.push(PartyOption.TRANSFER);
-          this.addCommonOptions(pokemon);
-        }
-        break;
-      case PartyUiMode.DISCARD:
-        this.updateOptionsWithModifierTransferMode(pokemon);
-        break;
+  case PartyUiMode.MOVE_MODIFIER:
+    this.updateOptionsWithMoveModifierMode(pokemon);
+    break;
+
+  case PartyUiMode.REMEMBER_MOVE_MODIFIER:
+    this.updateOptionsWithRememberMoveModifierMode(pokemon);
+    break;
+
+  case PartyUiMode.MODIFIER_TRANSFER:
+    if (!this.transferMode) {
+      this.updateOptionsWithModifierTransferMode(pokemon);
+    } else {
+      this.options.push(PartyOption.TRANSFER);
+      this.addCommonOptions(pokemon);
+    }
+    break;
+
+  case PartyUiMode.SEND_TO_STORAGE_SELECT:
+  this.updateOptionsWithSendToStorageMode(pokemon);
+  break;
+
+  case PartyUiMode.DISCARD:
+    this.updateOptionsWithModifierTransferMode(pokemon);
+    break;
       // TODO: This still needs to be broken up.
       // It could use a rework differentiating different kind of switches
       // to treat baton passing separately from switching on faint.
@@ -1788,6 +1907,9 @@ return all.filter(m => m.isTransferable);
         this.options.push(PartyOption.SELECT);
         this.addCommonOptions(pokemon);
         break;
+      case PartyUiMode.SEND_TO_STORAGE_SELECT:
+  this.updateOptionsWithSendToStorageMode(pokemon);
+  break;
       case PartyUiMode.FLING_ITEM_SELECT:
       case PartyUiMode.BESTOW_ITEM_SELECT: // ✅ 추가
       case PartyUiMode.NATURAL_GIFT_BERRY_SELECT:
@@ -1874,8 +1996,9 @@ return all.filter(m => m.isTransferable);
   && this.partyUiMode !== PartyUiMode.TRICK_TAKE_SELECT
   && this.partyUiMode !== PartyUiMode.BESTOW_ITEM_SELECT
   && this.partyUiMode !== PartyUiMode.NATURAL_GIFT_BERRY_SELECT
+  && this.partyUiMode !== PartyUiMode.SEND_TO_STORAGE_SELECT
 ) {
-        switch (option) {
+          switch (option) {
           case PartyOption.MOVE_1:
           case PartyOption.MOVE_2:
           case PartyOption.MOVE_3:
@@ -2188,6 +2311,7 @@ class PartySlot extends Phaser.GameObjects.Container {
     const isItemManageMode =
   partyUiMode === PartyUiMode.MODIFIER_TRANSFER
   || partyUiMode === PartyUiMode.DISCARD
+  || partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT
   || partyUiMode === PartyUiMode.FLING_ITEM_SELECT
   || partyUiMode === PartyUiMode.BESTOW_ITEM_SELECT
   || partyUiMode === PartyUiMode.NATURAL_GIFT_BERRY_SELECT;
@@ -2552,6 +2676,59 @@ class PartyCancelButton extends Phaser.GameObjects.Container {
 
     this.partyCancelBg.setFrame("party_cancel");
     this.partyCancelPb.setFrame("party_pb");
+  }
+}
+
+class PartyStorageButton extends Phaser.GameObjects.Container {
+  private selected: boolean;
+  private partyStorageBg: Phaser.GameObjects.Sprite;
+  private partyStoragePb: Phaser.GameObjects.Sprite;
+
+  constructor(x: number, y: number) {
+    super(globalScene, x, y);
+    this.setup();
+  }
+
+  setup() {
+    const partyStorageBg = globalScene.add.sprite(0, 0, "party_storage");
+    this.add(partyStorageBg);
+
+    this.partyStorageBg = partyStorageBg;
+
+    const partyStoragePb = globalScene.add.sprite(-17, 0, "party_pb");
+    this.add(partyStoragePb);
+
+    this.partyStoragePb = partyStoragePb;
+
+    const partyStorageText = addTextObject(
+      -10,
+      -7,
+      "창고",
+      TextStyle.PARTY_CANCEL_BUTTON,
+    );
+    this.add(partyStorageText);
+  }
+
+  select() {
+    if (this.selected) {
+      return;
+    }
+
+    this.selected = true;
+
+    this.partyStorageBg.setFrame("party_storage_sel");
+    this.partyStoragePb.setFrame("party_pb_sel");
+  }
+
+  deselect() {
+    if (!this.selected) {
+      return;
+    }
+
+    this.selected = false;
+
+    this.partyStorageBg.setFrame("party_storage");
+    this.partyStoragePb.setFrame("party_pb");
   }
 }
 

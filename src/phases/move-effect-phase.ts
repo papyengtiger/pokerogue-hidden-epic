@@ -1467,7 +1467,7 @@ this.postAnimCallback(user, targets, move);
      */
     applyMoveAttrs("StatChangeBeforeDmgCalcAttr", user, target, this.move);
 
-    const { result, damage: dmg } = target.getAttackDamage({
+    const { result, damage: dmg, roguePointGain } = target.getAttackDamage({
       source: user,
       move: this.move,
       ignoreAbility: false,
@@ -1511,9 +1511,10 @@ this.postAnimCallback(user, targets, move);
       ignoreSegments: isOneHitKo,
       isCritical,
       source: user,
-      move: this.move,          // ✅ 추가 (핵심)
-      moveType: user.getMoveType(this.move), // (선택) WeaknessTypeModifier 등에 쓰면 유용
-      movePower: dmg,           // (선택) 원하면 실제 위력/계산값 넣기
+      move: this.move,
+      moveType: user.getMoveType(this.move),
+      movePower: dmg,
+      roguePointGain: roguePointGain ?? 0, // ✅ 추가
     });
 
     if (isCritical) {
@@ -1590,6 +1591,12 @@ this.postAnimCallback(user, targets, move);
       case HitResult.ONE_HIT_KO:
         msg = i18next.t("battle:hitResultOneHitKO");
         break;
+      case HitResult.EXTREMELY_EFFECTIVE:
+        msg = i18next.t("battle:hitResultExtremelyEffective");
+        break;
+      case HitResult.MOSTLY_INEFFECTIVE:
+        msg = i18next.t("battle:hitResultMostlyIneffective");
+        break;
     }
     if (msg) {
       globalScene.phaseManager.queueMessage(msg);
@@ -1659,6 +1666,8 @@ this.postAnimCallback(user, targets, move);
     HitResult.SUPER_EFFECTIVE,
     HitResult.NOT_VERY_EFFECTIVE,
     HitResult.ONE_HIT_KO,
+    HitResult.EXTREMELY_EFFECTIVE,
+    HitResult.MOSTLY_INEFFECTIVE
   ].includes(hitResult);
 
   // 기존 효과 처리

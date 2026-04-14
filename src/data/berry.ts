@@ -90,8 +90,11 @@ export function getBerryPredicate(berryType: BerryType): BerryPredicate {
     case BerryType.LUM:
       return (pokemon: Pokemon) => !!pokemon.status || !!pokemon.getTag(BattlerTagType.CONFUSED);
     case BerryType.ENIGMA:
-      return (pokemon: Pokemon) =>
-        !!pokemon.turnData.attacksReceived.filter(a => a.result === HitResult.SUPER_EFFECTIVE).length;
+  return (pokemon: Pokemon) =>
+    !!pokemon.turnData.attacksReceived.filter(
+      a => a.result === HitResult.SUPER_EFFECTIVE ||
+           a.result === HitResult.EXTREMELY_EFFECTIVE
+    ).length;
     case BerryType.LIECHI:
     case BerryType.GANLON:
     case BerryType.PETAYA:
@@ -207,41 +210,36 @@ case BerryType.COLBUR:
 case BerryType.BABIRI:
 case BerryType.CHILAN:
 case BerryType.ROSELI:
-  return (pokemon: Pokemon) => {
-  const firstAttack = pokemon.turnData.attacksReceived[0];
-  if (!firstAttack) return false;
+      return (pokemon: Pokemon) => {
+        const firstAttack = pokemon.turnData.attacksReceived[0];
+        if (!firstAttack) return false;
 
-  // ✅ Move 인스턴스면 바로 타입 읽기
-  let moveType: PokemonType | null = null;
-  if (firstAttack.move && typeof firstAttack.move === "object" && "type" in firstAttack.move) {
-    moveType = (firstAttack.move as Move).type;
+        let moveType: PokemonType | null = null;
+        if (firstAttack.move && typeof firstAttack.move === "object" && "type" in firstAttack.move) {
+          moveType = (firstAttack.move as Move).type;
+        } else if (firstAttack.moveId !== undefined) {
+          const moveData = globalScene.moveDex?.[firstAttack.moveId];
+          if (moveData && moveData.type) moveType = moveData.type;
+        }
+
+        if (moveType === null) return false;
+
+        const resistType = berryResistTypeMap[berryType];
+
+        if (resistType === PokemonType.NORMAL && moveType === PokemonType.NORMAL) {
+          return true;
+        }
+
+        return (
+          moveType === resistType &&
+          [HitResult.SUPER_EFFECTIVE, HitResult.EXTREMELY_EFFECTIVE].includes(firstAttack.result)
+        );
+      };
+
+    default:
+      return (_p: Pokemon) => false;
   }
-
-  // ✅ moveId만 있으면 전역 move 데이터에서 검색
-  else if (firstAttack.moveId !== undefined) {
-    const moveData = globalScene.moveDex?.[firstAttack.moveId];
-    if (moveData && moveData.type) moveType = moveData.type;
-  }
-
-  if (moveType === null) return false;
-
-  const resistType = berryResistTypeMap[berryType];
-
-  // 노말은 예외적으로 무조건 발동
-  if (resistType === PokemonType.NORMAL && moveType === PokemonType.NORMAL) {
-    return true;
-  }
-
-  // 해당 타입 공격에만 반응 + 효과가 굉장한 경우만
-  return (
-    moveType === resistType &&
-    firstAttack.result === HitResult.SUPER_EFFECTIVE
-  );
-};
-  }
-
-  return (_p: Pokemon) => false;
-  }
+}
 
 export type BerryEffectFunc = (consumer: Pokemon) => void;
 

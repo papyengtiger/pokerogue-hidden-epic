@@ -557,6 +557,60 @@ function initCommonModifierPool() {
     new WeightedModifierType(modifierTypes.TEMP_STAT_STAGE_BOOSTER, 4),
     new WeightedModifierType(modifierTypes.BERRY, 10),
     new WeightedModifierType(modifierTypes.TM_COMMON, 14),
+  ];
+
+arr.forEach(m => m.setTier(ModifierTier.COMMON));
+modifierPool[ModifierTier.COMMON] = arr;
+}
+
+/**
+ * Initialize the Great modifier pool
+ */
+function initGreatModifierPool() {
+  const arr = [
+    new WeightedModifierType(modifierTypes.GREAT_BALL, () => (hasMaximumBalls(PokeballType.GREAT_BALL) ? 0 : 6), 6),
+    new WeightedModifierType(modifierTypes.WHITE_HERB, 7),
+    new WeightedModifierType(modifierTypes.TR_COMMON, 14),
+    new WeightedModifierType(modifierTypes.DYNAMAX_CANDY, 7),
+    new WeightedModifierType(modifierTypes.ARMORITE_ORE, 7),
+    new WeightedModifierType(modifierTypes.Z_GENERIC, 7),
+    new WeightedModifierType(modifierTypes.WISHING_STAR, 17),
+    new WeightedModifierType(
+      modifierTypes.CLEAR_BELL,
+      (party: Pokemon[]) => {
+        const checkedSpecies = [SpeciesId.HO_OH];
+        // If a party member doesn't already have a Leek and is one of the relevant species, Leek can appear
+        return party.some(
+          p =>
+            !p.getHeldItems().some(i => i instanceof SturdyMealModifier) &&
+            (checkedSpecies.includes(p.getSpeciesForm(true).speciesId) ||
+              (p.isFusion() && checkedSpecies.includes(p.getFusionSpeciesForm(true).speciesId))),
+        )
+          ? 12
+          : 0;
+      },
+      12,
+    ),
+    new WeightedModifierType(
+  modifierTypes.LEGEND_PLATE,
+  (party: Pokemon[]) => {
+    return party.some(p => {
+      const sid = p.getSpeciesForm(true).speciesId;
+      const held = p.getHeldItems().map(i => ({
+        ctor: i.constructor?.name,
+        type: i.type,
+        typeKey: (i as any).type?.toString?.(),
+      }));
+      console.log("[LP_WEIGHT_CHECK]", p.getName?.(), sid, held);
+
+      if (sid !== SpeciesId.ARCEUS) return false;
+
+      const has = p.getHeldItems().some(i => i.type === ModifierType.LEGEND_PLATE);
+      return !has;
+    }) ? 12 : 0;
+  },
+  12,
+),
     new WeightedModifierType(
   modifierTypes.DUSK_BEAD,
   (party: Pokemon[]) => {
@@ -617,60 +671,6 @@ new WeightedModifierType(
     })
       ? 12
       : 0;
-  },
-  12,
-),
-  ];
-
-arr.forEach(m => m.setTier(ModifierTier.COMMON));
-modifierPool[ModifierTier.COMMON] = arr;
-}
-
-/**
- * Initialize the Great modifier pool
- */
-function initGreatModifierPool() {
-  const arr = [
-    new WeightedModifierType(modifierTypes.GREAT_BALL, () => (hasMaximumBalls(PokeballType.GREAT_BALL) ? 0 : 6), 6),
-    new WeightedModifierType(modifierTypes.WHITE_HERB, 7),
-    new WeightedModifierType(modifierTypes.TR_COMMON, 14),
-    new WeightedModifierType(modifierTypes.DYNAMAX_CANDY, 7),
-    new WeightedModifierType(modifierTypes.ARMORITE_ORE, 7),
-    new WeightedModifierType(modifierTypes.Z_GENERIC, 7),
-    new WeightedModifierType(modifierTypes.WISHING_STAR, 17),
-    new WeightedModifierType(
-      modifierTypes.CLEAR_BELL,
-      (party: Pokemon[]) => {
-        const checkedSpecies = [SpeciesId.HO_OH];
-        // If a party member doesn't already have a Leek and is one of the relevant species, Leek can appear
-        return party.some(
-          p =>
-            !p.getHeldItems().some(i => i instanceof SturdyMealModifier) &&
-            (checkedSpecies.includes(p.getSpeciesForm(true).speciesId) ||
-              (p.isFusion() && checkedSpecies.includes(p.getFusionSpeciesForm(true).speciesId))),
-        )
-          ? 12
-          : 0;
-      },
-      12,
-    ),
-    new WeightedModifierType(
-  modifierTypes.LEGEND_PLATE,
-  (party: Pokemon[]) => {
-    return party.some(p => {
-      const sid = p.getSpeciesForm(true).speciesId;
-      const held = p.getHeldItems().map(i => ({
-        ctor: i.constructor?.name,
-        type: i.type,
-        typeKey: (i as any).type?.toString?.(),
-      }));
-      console.log("[LP_WEIGHT_CHECK]", p.getName?.(), sid, held);
-
-      if (sid !== SpeciesId.ARCEUS) return false;
-
-      const has = p.getHeldItems().some(i => i.type === ModifierType.LEGEND_PLATE);
-      return !has;
-    }) ? 12 : 0;
   },
   12,
 ),
@@ -1251,7 +1251,7 @@ function initUltraModifierPool() {
     new WeightedModifierType(modifierTypes.AROMA_INCENSE, 4),
     new WeightedModifierType(modifierTypes.UNAWARE_BAND, 4),
     new WeightedModifierType(modifierTypes.COIN_CASE, skipInLastClassicWaveOrDefault(4)),
-    new WeightedModifierType(modifierTypes.MINT, 4),
+
     new WeightedModifierType(modifierTypes.MIRROR_HERB, 5),
     new WeightedModifierType(modifierTypes.UNNERVE_INCENSE, 4),
     new WeightedModifierType(modifierTypes.DAMP_INCENSE, 4),

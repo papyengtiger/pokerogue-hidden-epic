@@ -10,4 +10,5 @@ export enum ShopCursorTarget {
   SHOP,
   /** Cursor points to Check Team row */
   CHECK_TEAM,
+  BANK,
 }

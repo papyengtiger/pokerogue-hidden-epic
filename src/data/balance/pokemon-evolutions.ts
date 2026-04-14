@@ -506,10 +506,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.KABUTOPS, 40, null, null)
   ],
   [SpeciesId.DRATINI]: [
-    new SpeciesEvolution(SpeciesId.DRAGONAIR, 30, null, null)
+    new SpeciesEvolution(SpeciesId.DRAGONAIR, 20, null, null)
   ],
   [SpeciesId.DRAGONAIR]: [
-    new SpeciesEvolution(SpeciesId.DRAGONITE, 55, null, null)
+    new SpeciesEvolution(SpeciesId.DRAGONITE, 45, null, null)
   ],
   [SpeciesId.CHIKORITA]: [
     new SpeciesEvolution(SpeciesId.BAYLEEF, 16, null, null)
@@ -594,10 +594,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.DONPHAN, 25, null, null)
   ],
   [SpeciesId.LARVITAR]: [
-    new SpeciesEvolution(SpeciesId.PUPITAR, 30, null, null)
+    new SpeciesEvolution(SpeciesId.PUPITAR, 20, null, null)
   ],
   [SpeciesId.PUPITAR]: [
-    new SpeciesEvolution(SpeciesId.TYRANITAR, 55, null, null)
+    new SpeciesEvolution(SpeciesId.TYRANITAR, 45, null, null)
   ],
   [SpeciesId.TREECKO]: [
     new SpeciesEvolution(SpeciesId.GROVYLE, 16, null, null)
@@ -748,10 +748,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.WALREIN, 44, null, null)
   ],
   [SpeciesId.BAGON]: [
-    new SpeciesEvolution(SpeciesId.SHELGON, 30, null, null)
+    new SpeciesEvolution(SpeciesId.SHELGON, 20, null, null)
   ],
   [SpeciesId.SHELGON]: [
-    new SpeciesEvolution(SpeciesId.SALAMENCE, 50, null, null)
+    new SpeciesEvolution(SpeciesId.SALAMENCE, 45, null, null)
   ],
   [SpeciesId.BELDUM]: [
     new SpeciesEvolution(SpeciesId.METANG, 20, null, null)
@@ -830,10 +830,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.BRONZONG, 33, null, null)
   ],
   [SpeciesId.GIBLE]: [
-    new SpeciesEvolution(SpeciesId.GABITE, 24, null, null)
+    new SpeciesEvolution(SpeciesId.GABITE, 20, null, null)
   ],
   [SpeciesId.GABITE]: [
-    new SpeciesEvolution(SpeciesId.GARCHOMP, 48, null, null)
+    new SpeciesEvolution(SpeciesId.GARCHOMP, 45, null, null)
   ],
   [SpeciesId.HIPPOPOTAS]: [
     new SpeciesEvolution(SpeciesId.HIPPOWDON, 34, null, null)
@@ -1027,10 +1027,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.MANDIBUZZ, 30, null, null)
   ],
   [SpeciesId.DEINO]: [
-    new SpeciesEvolution(SpeciesId.ZWEILOUS, 30, null, null)
+    new SpeciesEvolution(SpeciesId.ZWEILOUS, 20, null, null)
   ],
   [SpeciesId.ZWEILOUS]: [
-    new SpeciesEvolution(SpeciesId.HYDREIGON, 55, null, null)
+    new SpeciesEvolution(SpeciesId.HYDREIGON, 45, null, null)
   ],
   [SpeciesId.LARVESTA]: [
     new SpeciesEvolution(SpeciesId.VOLCARONA, 40, null, null)
@@ -1106,11 +1106,11 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.AURORUS, 39, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]})
   ],
   [SpeciesId.GOOMY]: [
-    new SpeciesEvolution(SpeciesId.HISUI_SLIGGOO, 40, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}),
-    new SpeciesEvolution(SpeciesId.SLIGGOO, 40, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]})
+    new SpeciesEvolution(SpeciesId.HISUI_SLIGGOO, 20, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}),
+    new SpeciesEvolution(SpeciesId.SLIGGOO, 20, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]})
   ],
   [SpeciesId.SLIGGOO]: [
-    new SpeciesEvolution(SpeciesId.GOODRA, 50, null, {key: EvoCondKey.WEATHER, weather: [ WeatherType.RAIN, WeatherType.FOG, WeatherType.HEAVY_RAIN ]}, [50, 60, 70])
+    new SpeciesEvolution(SpeciesId.GOODRA, 45, null, {key: EvoCondKey.WEATHER, weather: [ WeatherType.RAIN, WeatherType.FOG, WeatherType.HEAVY_RAIN ]}, [50, 60, 70])
   ],
   [SpeciesId.BERGMITE]: [
     new SpeciesEvolution(SpeciesId.HISUI_AVALUGG, 37, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}),
@@ -1184,7 +1184,7 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.PALOSSAND, 42, null, null)
   ],
   [SpeciesId.JANGMO_O]: [
-    new SpeciesEvolution(SpeciesId.HAKAMO_O, 35, null, null)
+    new SpeciesEvolution(SpeciesId.HAKAMO_O, 20, null, null)
   ],
   [SpeciesId.HAKAMO_O]: [
     new SpeciesEvolution(SpeciesId.KOMMO_O, 45, null, null)
@@ -1296,10 +1296,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.COPPERAJAH, 34, null, null)
   ],
   [SpeciesId.DREEPY]: [
-    new SpeciesEvolution(SpeciesId.DRAKLOAK, 50, null, null)
+    new SpeciesEvolution(SpeciesId.DRAKLOAK, 20, null, null)
   ],
   [SpeciesId.DRAKLOAK]: [
-    new SpeciesEvolution(SpeciesId.DRAGAPULT, 60, null, null)
+    new SpeciesEvolution(SpeciesId.DRAGAPULT, 45, null, null)
   ],
   [SpeciesId.GALAR_MEOWTH]: [
     new SpeciesEvolution(SpeciesId.PERRSERKER, 28, null, null)
@@ -1432,10 +1432,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.HOUNDSTONE, 30, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]})
   ],
   [SpeciesId.FRIGIBAX]: [
-    new SpeciesEvolution(SpeciesId.ARCTIBAX, 35, null, null)
+    new SpeciesEvolution(SpeciesId.ARCTIBAX, 20, null, null)
   ],
   [SpeciesId.ARCTIBAX]: [
-    new SpeciesEvolution(SpeciesId.BAXCALIBUR, 54, null, null)
+    new SpeciesEvolution(SpeciesId.BAXCALIBUR, 45, null, null)
   ],
   [SpeciesId.PALDEA_WOOPER]: [
     new SpeciesEvolution(SpeciesId.CLODSIRE, 20, null, null)

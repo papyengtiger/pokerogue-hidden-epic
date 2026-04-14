@@ -42,8 +42,10 @@ import {
   SplashZCritBoostTag,
   CritStackingTag,
   BideTag,
+  BeastStackTag,
 } from "#data/battler-tags";
-import { getDailyEventSeedBoss } from "#data/daily-run";
+import { getDailyEventSeedBoss, isDailyForcedWaveHiddenAbility } from "#data/daily-seed/daily-run";
+import { isDailyEventSeed, isDailyFinalBoss } from "#data/daily-seed/daily-seed-utils";
 import { allAbilities, allMoves } from "#data/data-lists";
 import { getLevelTotalExp } from "#data/exp";
 import {
@@ -617,6 +619,45 @@ isGigantamaxForm(pokemon: PlayerPokemon): boolean {
   console.log(`[isGigantamaxForm] ${pokemon.name} formKey=${formKey}, result=${result}`);
   
   return result;
+}
+
+private grantBattleRoguePoints(
+  source: Pokemon | undefined,
+  result: DamageResult,
+  isCritical: boolean,
+  appliedDamage: number,
+  isIndirectDamage: boolean,
+): void {
+  if (!source || source === this || isIndirectDamage || appliedDamage <= 0) {
+    return;
+  }
+
+  let gainedRp = 0;
+
+  if (result === HitResult.SUPER_EFFECTIVE) {
+    gainedRp += 2;
+  }
+
+  if (result === HitResult.EXTREMELY_EFFECTIVE) {
+    gainedRp += 5;
+  }
+
+  if (result === HitResult.NOT_VERY_EFFECTIVE) {
+    gainedRp += 1;
+  }
+
+  if (result === HitResult.NO_EFFECT) {
+    gainedRp += 1;
+  }
+
+  if (isCritical) {
+    gainedRp += 3;
+  }
+
+  if (gainedRp > 0) {
+    globalScene.gameData.addRoguePoints(gainedRp);
+    globalScene.updateroguePointText();
+  }
 }
 
 private updateDynamaxVisuals(isDynamaxed: boolean): void {
@@ -2768,18 +2809,24 @@ public applyAbilityAttrsByKey<P extends AbAttrBaseParams>(
    * @returns the kg of the Pokemon (minimum of 0.1)
    */
   public getWeight(): number {
-    const autotomizedTag = this.getTag(AutotomizedTag);
-    let weightRemoved = 0;
-    if (autotomizedTag != null) {
-      weightRemoved = 100 * autotomizedTag.autotomizeCount;
-    }
-    const minWeight = 0.1;
-    const weight = new NumberHolder(this.species.weight - weightRemoved);
-
-    // This will trigger the ability overlay so only call this function when necessary
-    applyAbAttrs("WeightMultiplierAbAttr", { pokemon: this, weight });
-    return Math.max(minWeight, weight.value);
+  const autotomizedTag = this.getTag(AutotomizedTag);
+  let weightRemoved = 0;
+  if (autotomizedTag != null) {
+    weightRemoved = 100 * autotomizedTag.autotomizeCount;
   }
+
+  const beastStackTag = this.getTag(BeastStackTag);
+  let weightAdded = 0;
+  if (beastStackTag != null) {
+    weightAdded = beastStackTag.weightAdded;
+  }
+
+  const minWeight = 0.1;
+  const weight = new NumberHolder(this.species.weight - weightRemoved + weightAdded);
+
+  applyAbAttrs("WeightMultiplierAbAttr", { pokemon: this, weight });
+  return Math.max(minWeight, weight.value);
+}
 
   /**
    * @returns the pokemon's current tera {@linkcode PokemonType}
@@ -5474,18 +5521,51 @@ if (!simulated) {
 
 // 14) HitResult by type effectiveness
 let hitResult: HitResult;
-if (typeMultiplier < 1) {
-  hitResult = HitResult.NOT_VERY_EFFECTIVE;
+
+if (typeMultiplier === 0) {
+  hitResult = HitResult.NO_EFFECT;
+} else if (typeMultiplier > 2) {
+  hitResult = HitResult.EXTREMELY_EFFECTIVE;
 } else if (typeMultiplier > 1) {
   hitResult = HitResult.SUPER_EFFECTIVE;
+} else if (typeMultiplier < 0.5) {
+  hitResult = HitResult.MOSTLY_INEFFECTIVE;
+} else if (typeMultiplier < 1) {
+  hitResult = HitResult.NOT_VERY_EFFECTIVE;
 } else {
   hitResult = HitResult.EFFECTIVE;
 }
+
+let gainedRp = 0;
+
+if (!simulated && this !== source) {
+
+  // 기본 1배
+  if (hitResult === HitResult.EFFECTIVE) gainedRp += 1;
+
+  // 2배
+  if (hitResult === HitResult.SUPER_EFFECTIVE) gainedRp += 2;
+
+  // 4배
+  if (hitResult === HitResult.EXTREMELY_EFFECTIVE) gainedRp += 5;
+
+  // 반감
+  if (hitResult === HitResult.NOT_VERY_EFFECTIVE) gainedRp += 1;
+
+  // 무효
+  if (hitResult === HitResult.NO_EFFECT) gainedRp += 1;
+
+  // 급소
+  if (isCritical) gainedRp += 3;
+}
+
+console.log("[RP][RETURN]", hitResult, gainedRp); // ← 여기
 
 return {
   cancelled: cancelled.value,
   result: hitResult,
   damage: damage.value,
+  roguePointGain: gainedRp,
 };
 }
 
@@ -5652,41 +5732,31 @@ if (this.hp <= 1 || damage >= this.hp) {
     isCritical = false,
     ignoreSegments = false,
     ignoreFaintPhase = false,
-
     source = undefined,
-
-    // 공격 정보 (둘 중 하나만 있어도 됨)
     move = undefined,
     moveId = undefined,
-
-    // 약점/반감 등 아이템 판정용
     moveType = undefined,
     movePower = 0,
-
-    // ✅ 보강 옵션들
-    indirect = undefined,                 // 간접피해 강제 지정 (없으면 result 기반)
-    recordAttacksReceived = true,         // attacksReceived 기록 on/off
-    accumulateBide = true,                // bide 누적 on/off
-    postDamageOncePerMove = true,         // 멀티히트에서 PostDamage를 1회만 실행할지
+    indirect = undefined,
+    recordAttacksReceived = true,
+    accumulateBide = true,
+    postDamageOncePerMove = true,
+    roguePointGain = 0, // 추가
   }: {
-    result?: DamageResult;
+    result?: DamageResult | HitResult;
     isCritical?: boolean;
     ignoreSegments?: boolean;
     ignoreFaintPhase?: boolean;
-
     source?: Pokemon;
-
     move?: Move;
     moveId?: MoveId;
-
     moveType?: Type;
     movePower?: number;
-
-    // ✅ 보강 옵션
     indirect?: boolean;
     recordAttacksReceived?: boolean;
     accumulateBide?: boolean;
     postDamageOncePerMove?: boolean;
+    roguePointGain?: number; // 추가
   } = {},
 ): number {
   // 0) moveId 정규화
@@ -5754,39 +5824,49 @@ console.trace("[DAU_TRACE]", {
   }
 
   // 7) 실제 체력에 반영 (세그먼트/간접/기절페이즈 옵션 포함)
-  damage = this.damage(damage, ignoreSegments, isIndirectDamage, ignoreFaintPhase);
+damage = this.damage(damage, ignoreSegments, isIndirectDamage, ignoreFaintPhase);
 
-  // 8) 애니메이션에도 “실제 적용된 데미지” 반영
-  damagePhase.updateAmount(damage);
+// 8) 애니메이션에도 “실제 적용된 데미지” 반영
+damagePhase.updateAmount(damage);
 
-  // ✅ appliedDamage 확정 (여기부터는 이 값만 사용)
-  const appliedDamage = damage;
+// ✅ appliedDamage 확정 (여기부터는 이 값만 사용)
+const appliedDamage = damage;
 
-  // ----------------------------
-  // 9) Bide 누적 (선택)
-  // ----------------------------
-  if (accumulateBide) {
-    const bd = this.battleData as any;
-    if (bd?.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
-      if (
-        source &&
-        resolvedMoveId != null &&
-        !isIndirectDamage &&
-        appliedDamage > 0
-      ) {
-        const srcIdx = source.getBattlerIndex();
-        const myIdx = this.getBattlerIndex();
+console.log("[RP][AWARD]", roguePointGain, appliedDamage); // ← 여기
 
-        if (srcIdx !== myIdx && !areAllies(myIdx, srcIdx)) {
-          const category = allMoves[resolvedMoveId]?.category;
-          if (category !== MoveCategory.STATUS) {
-            bd.bideDamage = (bd.bideDamage ?? 0) + appliedDamage;
-            bd.bideLastAttackerIndex = srcIdx;
-          }
+if (!isIndirectDamage && appliedDamage > 0 && source && source !== this && roguePointGain > 0) {
+  globalScene.gameData.addRoguePoints(roguePointGain);
+  globalScene.updateroguePointText();
+}
+
+// ✅ 로그포인트 지급
+this.grantBattleRoguePoints(source, result, isCritical, appliedDamage, isIndirectDamage);
+
+// ----------------------------
+// 9) Bide 누적 (선택)
+// ----------------------------
+if (accumulateBide) {
+  const bd = this.battleData as any;
+  if (bd?.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
+    if (
+      source &&
+      resolvedMoveId != null &&
+      !isIndirectDamage &&
+      appliedDamage > 0
+    ) {
+      const srcIdx = source.getBattlerIndex();
+      const myIdx = this.getBattlerIndex();
+
+      if (srcIdx !== myIdx && !areAllies(myIdx, srcIdx)) {
+        const category = allMoves[resolvedMoveId]?.category;
+        if (category !== MoveCategory.STATUS) {
+          bd.bideDamage = (bd.bideDamage ?? 0) + appliedDamage;
+          bd.bideLastAttackerIndex = srcIdx;
         }
       }
     }
   }
+}
 
   // ----------------------------
   // 10) attacksReceived 기록 (카운터/미러코트/메탈버스트용)
@@ -5857,7 +5937,7 @@ console.trace("[DAU_TRACE]", {
 }
 
   isMega(): boolean {
-    const megaForms = [ SpeciesFormKey.MEGA, SpeciesFormKey.MEGA_X, SpeciesFormKey.MEGA_Y, SpeciesFormKey.MEGA_Z, SpeciesFormKey.PRIMAL ] as string[];
+    const megaForms = [ SpeciesFormKey.MEGA, SpeciesFormKey.MEGA_X, SpeciesFormKey.MEGA_Y, SpeciesFormKey.MEGA_Z, SpeciesFormKey.MEGA_ORIGINAL, SpeciesFormKey.MEGA_CURLY, SpeciesFormKey.MEGA_DROOPY, SpeciesFormKey.MEGA_STRETCHY, SpeciesFormKey.PRIMAL ] as string[];
     return megaForms.includes(this.getFormKey()) || (!!this.getFusionFormKey() && megaForms.includes(this.getFusionFormKey()!));
   }
 
@@ -8373,9 +8453,53 @@ export class EnemyPokemon extends Pokemon {
     }
 
     this.bossSegments =
-      bossSegments ??
-      globalScene.getEncounterBossSegments(globalScene.currentBattle.waveIndex, this.level, this.species, true);
+      bossSegments
+      ?? globalScene.getEncounterBossSegments(globalScene.currentBattle.waveIndex, this.level, this.species, true);
     this.bossSegmentIndex = this.bossSegments - 1;
+  }
+
+  /**
+   * Helper method to apply the custom daily config to this pokemon.
+   */
+  private applyCustomDailyConfig(): void {
+    if (!isDailyEventSeed()) {
+      return;
+    }
+
+    if (isDailyForcedWaveHiddenAbility() && this.species.abilityHidden) {
+      this.abilityIndex = 2;
+    }
+  }
+
+  /**
+   * Helper method to apply the custom daily boss config to this pokemon.
+   */
+  private applyCustomDailyBossConfig(): void {
+    if (!isDailyFinalBoss()) {
+      return;
+    }
+
+    const bossConfig = getDailyEventSeedBoss();
+    if (!bossConfig) {
+      return;
+    }
+
+    if (bossConfig.formIndex != null) {
+      this.formIndex = bossConfig.formIndex;
+    }
+
+    if (bossConfig.variant != null) {
+      this.shiny = true;
+      this.variant = bossConfig.variant;
+    }
+
+    if (bossConfig.nature != null) {
+      this.setNature(bossConfig.nature);
+    }
+
+    if (bossConfig.moveset != null) {
+      this.tryPopulateMoveset(bossConfig.moveset, true);
+    }
   }
 
   generateAndPopulateMoveset(formIndex?: number): void {

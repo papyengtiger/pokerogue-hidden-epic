@@ -281,21 +281,21 @@ function handleNextTurn() {
     if (healthRatio < 0.03) {
       // Grand prize
       setEncounterRewards({
-        guaranteedModifierTypeFuncs: [modifierTypes.MULTI_LENS],
+        guaranteedModifierTypeFuncs: [modifierTypes.MOLD_BREAKER_BRACER],
         fillRemaining: false,
       });
       resultMessageKey = `${namespace}:bestResult`;
     } else if (healthRatio < 0.15) {
       // 2nd prize
       setEncounterRewards({
-        guaranteedModifierTypeFuncs: [modifierTypes.SCOPE_LENS],
+        guaranteedModifierTypeFuncs: [modifierTypes.POWER_UP_WEIGHT],
         fillRemaining: false,
       });
       resultMessageKey = `${namespace}:greatResult`;
     } else if (healthRatio < 0.33) {
       // 3rd prize
       setEncounterRewards({
-        guaranteedModifierTypeFuncs: [modifierTypes.WIDE_LENS],
+        guaranteedModifierTypeFuncs: [modifierTypes.CLEAR_AMULET],
         fillRemaining: false,
       });
       resultMessageKey = `${namespace}:goodResult`;

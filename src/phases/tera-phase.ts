@@ -35,22 +35,30 @@ export class TeraPhase extends BattlePhase {
   }
 
   end() {
-    this.pokemon.isTerastallized = true;
-    this.pokemon.updateSpritePipelineData();
+  this.pokemon.isTerastallized = true;
+  this.pokemon.updateSpritePipelineData();
 
-    if (this.pokemon.isPlayer()) {
-      globalScene.arena.playerTerasUsed += 1;
+  if (this.pokemon.isPlayer()) {
+    globalScene.arena.playerTerasUsed += 1;
+
+    let gainedRp = 10;
+    if (this.pokemon.getTeraType() === PokemonType.STELLAR) {
+      gainedRp = 50;
     }
 
-    globalScene.triggerPokemonFormChange(this.pokemon, SpeciesFormChangeTeraTrigger);
+    globalScene.gameData.addRoguePoints(gainedRp);
+    globalScene.updateroguePointText();
+  }
 
-    if (this.pokemon.isPlayer()) {
-      globalScene.validateAchv(achvs.TERASTALLIZE);
-      if (this.pokemon.getTeraType() === PokemonType.STELLAR) {
-        globalScene.validateAchv(achvs.STELLAR_TERASTALLIZE);
-      }
+  globalScene.triggerPokemonFormChange(this.pokemon, SpeciesFormChangeTeraTrigger);
+
+  if (this.pokemon.isPlayer()) {
+    globalScene.validateAchv(achvs.TERASTALLIZE);
+    if (this.pokemon.getTeraType() === PokemonType.STELLAR) {
+      globalScene.validateAchv(achvs.STELLAR_TERASTALLIZE);
     }
+  }
 
-    super.end();
+  super.end();
   }
 }

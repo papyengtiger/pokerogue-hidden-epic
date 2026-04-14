@@ -212,26 +212,25 @@ export class Battle {
   }
 
   addBattleScore(): void {
-    let partyMemberTurnMultiplier = globalScene.getEnemyParty().length / 2 + 0.5;
-    if (this.double) {
-      partyMemberTurnMultiplier /= 1.5;
-    }
-    for (const p of globalScene.getEnemyParty()) {
-      if (p.isBoss()) {
-        partyMemberTurnMultiplier *= p.bossSegments / 1.5 / globalScene.getEnemyParty().length;
-      }
-    }
-    const turnMultiplier = Phaser.Tweens.Builders.GetEaseFunction("Sine.easeIn")(
-      1 - Math.min(this.turn - 2, 10 * partyMemberTurnMultiplier) / (10 * partyMemberTurnMultiplier),
-    );
-    const finalBattleScore = Math.ceil(this.battleScore * turnMultiplier);
-    globalScene.score += finalBattleScore;
-    console.log(
-      `Battle Score: ${finalBattleScore} (${this.turn - 1} Turns x${Math.floor(turnMultiplier * 100) / 100})`,
-    );
-    console.log(`Total Score: ${globalScene.score}`);
-    globalScene.updateScoreText();
+  let partyMemberTurnMultiplier = globalScene.getEnemyParty().length / 2 + 0.5;
+  if (this.double) {
+    partyMemberTurnMultiplier /= 1.5;
   }
+  for (const p of globalScene.getEnemyParty()) {
+    if (p.isBoss()) {
+      partyMemberTurnMultiplier *= p.bossSegments / 1.5 / globalScene.getEnemyParty().length;
+    }
+  }
+  const turnMultiplier = Phaser.Tweens.Builders.GetEaseFunction("Sine.easeIn")(
+    1 - Math.min(this.turn - 2, 10 * partyMemberTurnMultiplier) / (10 * partyMemberTurnMultiplier),
+  );
+  const finalBattleScore = Math.ceil(this.battleScore * turnMultiplier);
+
+  globalScene.score += finalBattleScore;
+  
+  globalScene.updateScoreText();
+  globalScene.updateroguePointText();
+}
 
   getBgmOverride(): string | null {
     if (this.isBattleMysteryEncounter() && this.mysteryEncounter?.encounterMode === MysteryEncounterMode.DEFAULT) {

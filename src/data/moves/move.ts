@@ -28,6 +28,7 @@ import {
   SnatchReadyTag,
   MeFirstInterruptedTag,
   MeFirstPowerTag,
+  ConfusedTag,
 } from "#data/battler-tags";
 import { getBerryEffectFunc, berryResistTypeMap, getBerryName } from "#data/berry";
 import { allAbilities, allMoves } from "#data/data-lists";
@@ -1565,7 +1566,12 @@ if (!simulated && target instanceof Pokemon) {
 
   // 턴 중 첫 번째로 받은 공격의 타입 기준
   const firstAttack = target.turnData?.attacksReceived?.[0];
-  if (firstAttack && firstAttack.result === HitResult.SUPER_EFFECTIVE) {
+
+if (
+  firstAttack &&
+  (firstAttack.result === HitResult.SUPER_EFFECTIVE ||
+   firstAttack.result === HitResult.EXTREMELY_EFFECTIVE)
+) {
 
     // ✅ NATURAL GIFT 등으로 대체된 기술이면 그 기술 타입 기준
     const moveType = effectiveMove.type;
@@ -4058,13 +4064,6 @@ export class StatusEffectAttr extends MoveEffectAttr {
   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
     const moveChance = this.getMoveChance(user, target, move, this.selfTarget, true);
   const roll = user.randBattleSeedInt(100);
-console.log(`[DEBUG][StatusEffectAttr] id=${move.id} name=${move.name} moveChance=${moveChance} attrSelf=${this.selfTarget} override=${this.effectChanceOverride}`);
-console.trace("[TRACE][StatusEffectAttr] callstack");
-console.log(`[DEBUG] move.id=${move.id} move.chance=${move.chance}`);
-
-  console.log(
-    `[DEBUG][StatusEffectAttr] move=${move.name} user=${user.name} target=${target.name} chance=${moveChance} roll=${roll} ok=${moveChance < 0 || moveChance === 100 || roll < moveChance}`
-  );
     const statusCheck = moveChance < 0 || moveChance === 100 || user.randBattleSeedInt(100) < moveChance;
     if (!statusCheck) {
       return false;
@@ -5273,6 +5272,93 @@ if (moveChance > 0) {
       ret += (levels * 4) + (levels > 0 ? -2 : 2);
     }
     return ret;
+  }
+}
+
+interface HighestStatStageChangeAttrOptions extends MoveEffectAttrOptions {
+  condition?: MoveConditionFunc;
+  showMessage?: boolean;
+}
+
+export class HighestStatStageChangeAttr extends MoveEffectAttr {
+  public stages: number;
+  protected override options?: HighestStatStageChangeAttrOptions;
+
+  constructor(stages: number, selfTarget = true, options?: HighestStatStageChangeAttrOptions) {
+    super(selfTarget, options);
+    this.stages = stages;
+    this.options = options;
+  }
+
+  private get condition() {
+    return this.options?.condition ?? null;
+  }
+
+  private get showMessage() {
+    return this.options?.showMessage ?? true;
+  }
+
+  apply(user: Pokemon, target: Pokemon, move: Move, args?: any[]): boolean {
+    const can = super.apply(user, target, move, args);
+    if (!can) {
+      return false;
+    }
+
+    if (this.condition && !this.condition(user, target, move)) {
+      return false;
+    }
+
+    const moveChance = this.getMoveChance(user, target, move, this.selfTarget, true);
+
+    // 0이면 발동 안 함
+    if (moveChance === 0) {
+      return false;
+    }
+
+    // 1~100이면 확률 판정
+    if (moveChance > 0) {
+      const roll = Phaser.Math.Between(1, 100);
+      if (roll > moveChance) {
+        return false;
+      }
+    }
+
+    const battler = this.selfTarget ? user : target;
+
+    let highestStat: BattleStat | null = null;
+    let highestValue = -Infinity;
+
+    // HP 제외, 실전 능력치만 비교
+    const statsToCheck: BattleStat[] = [
+      Stat.ATK,
+      Stat.DEF,
+      Stat.SPATK,
+      Stat.SPDEF,
+      Stat.SPD
+    ];
+
+    for (const stat of statsToCheck) {
+      const value = battler.getStat(stat, false);
+      if (value > highestValue) {
+        highestValue = value;
+        highestStat = stat;
+      }
+    }
+
+    if (highestStat === null) {
+      return false;
+    }
+
+    globalScene.phaseManager.unshiftNew(
+      "StatStageChangePhase",
+      battler.getBattlerIndex(),
+      this.selfTarget,
+      [highestStat],
+      this.stages,
+      this.showMessage
+    );
+
+    return true;
   }
 }
 
@@ -7109,6 +7195,34 @@ export class DefAtkAttr extends VariableAtkAttr {
   }
 }
 
+export class SpdefSpatkAttr extends VariableAtkAttr {
+  constructor() {
+    super();
+  }
+
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    (args[0] as NumberHolder).value = user.getEffectiveStat(Stat.SPDEF, target);
+    return true;
+  }
+}
+
+function useDefense(user: Pokemon): boolean {
+  return user.getCategoryCompareStat(Stat.DEF) >
+         user.getCategoryCompareStat(Stat.SPDEF);
+}
+
+export class DefOrSpdefAtkAttr extends VariableAtkAttr {
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    const atk = args[0] as NumberHolder;
+
+    atk.value = useDefense(user)
+      ? user.getEffectiveStat(Stat.DEF, target)
+      : user.getEffectiveStat(Stat.SPDEF, target);
+
+    return true;
+  }
+}
+
 export class VariableDefAttr extends MoveAttr {
   constructor() {
     super();
@@ -7238,6 +7352,21 @@ export class BlizzardAccuracyAttr extends VariableAccuracyAttr {
   }
 }
 
+export class VolcanicBoltAccuracyAttr extends VariableAccuracyAttr {
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    if (!globalScene.arena.weather?.isEffectSuppressed()) {
+      const accuracy = args[0] as NumberHolder;
+      const weatherType = globalScene.arena.weather?.weatherType || WeatherType.NONE;
+      if (weatherType === WeatherType.SUNNY || weatherType === WeatherType.HARSH_SUN) {
+        accuracy.value = -1;
+        return true;
+      }
+    }
+
+    return false;
+  }
+}
+
 export class SandTornadoAccuracyAttr extends VariableAccuracyAttr {
   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
     if (!globalScene.arena.weather?.isEffectSuppressed()) {
@@ -7295,18 +7424,19 @@ export class PhotonGeyserCategoryAttr extends VariableMoveCategoryAttr {
 
     category.value = result;
 
-    // 🔎 디버그 로그
-    console.log(
-      `[PHOTON_CATEGORY] atkCompare=${atk} spaCompare=${spa} ` +
-      `result=${result === MoveCategory.PHYSICAL ? "PHYSICAL" : "SPECIAL"} ` +
-      `ability=${user.getAbility?.() ?? user.abilityId}`
-    );
-    console.log(
-      `[STAGE] ATK=${user.getStatStage(Stat.ATK)} ` +
-      `SPATK=${user.getStatStage(Stat.SPATK)}`
-    );
-
     return true; // 항상 적용
+  }
+}
+
+export class DefOrSpdefCategoryAttr extends VariableMoveCategoryAttr {
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    const category = args[0] as NumberHolder;
+
+    category.value = useDefense(user)
+      ? MoveCategory.PHYSICAL
+      : MoveCategory.SPECIAL;
+
+    return true;
   }
 }
 
@@ -7880,6 +8010,17 @@ export class NeutralDamageAgainstFairyTypeMultiplierAttr extends VariableMoveTyp
   }
 }
 
+export class NeutralDamageAgainstGroundTypeMultiplierAttr extends VariableMoveTypeMultiplierAttr {
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    const multiplier = args[0] as NumberHolder;
+    // 악타입 대상일 경우 첫 히트는 항상 1배 대미지
+    if (target.isOfType(PokemonType.GROUND)) {
+      multiplier.value = 1;
+    }
+    return true;
+  }
+}
+
 export class IceNoEffectTypeAttr extends VariableMoveTypeMultiplierAttr {
   /**
    * Checks to see if the Target is Ice-Type or not. If so, the move will have no effect.
@@ -7892,6 +8033,25 @@ export class IceNoEffectTypeAttr extends VariableMoveTypeMultiplierAttr {
   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
     const multiplier = args[0] as NumberHolder;
     if (target.isOfType(PokemonType.ICE)) {
+      multiplier.value = 0;
+      return true;
+    }
+    return false;
+  }
+}
+
+export class WaterNoEffectTypeAttr extends VariableMoveTypeMultiplierAttr {
+  /**
+   * Checks to see if the Target is Ice-Type or not. If so, the move will have no effect.
+   * @param user n/a
+   * @param target The {@linkcode Pokemon} targeted by the move
+   * @param move n/a
+   * @param args `[0]` a {@linkcode NumberHolder | NumberHolder} containing a type effectiveness multiplier
+   * @returns `true` if this Ice-type immunity applies; `false` otherwise
+   */
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    const multiplier = args[0] as NumberHolder;
+    if (target.isOfType(PokemonType.WATER)) {
       multiplier.value = 0;
       return true;
     }
@@ -8835,30 +8995,23 @@ export class ConfuseAttr extends AddBattlerTagAttr {
     if (!this.selfTarget && target.isSafeguarded(user)) {
       if (move.category === MoveCategory.STATUS) {
         globalScene.phaseManager.queueMessage(
-          i18next.t("moveTriggers:safeguard", { targetName: getPokemonNameWithAffix(target) })
+          i18next.t("moveTriggers:safeguard", {
+            targetName: getPokemonNameWithAffix(target),
+          })
         );
       }
       return false;
     }
 
-    // ✅ AddBattlerTagAttr의 2~5턴 로직과 동일
-    console.log("[CONFUSE_ATTR][APPLY]", {
-  user: user.name,
-  userId: user.id,
-  target: target.name,
-  move: MoveId[move.id],
-});
+    // 추가효과 확률 체크 (염동력은 10%)
+    if (move.chance != null && move.chance > 0) {
+      if (target.randBattleSeedInt(100) >= move.chance) {
+        return false;
+      }
+    }
 
-const turns = target.randBattleSeedIntRange(2, 5);
-
-console.log("[CONFUSE_ATTR][ADD_TAG]", {
-  turns,
-  sourceId: user.id,
-  sourceName: user.name,
-});
-
-    // ✅ sourceId=user.id를 넣어서 ConfusedTag 생성
-    return target.addTag(new ConfusedTag(turns, move.id, user.id));
+    const turns = target.randBattleSeedIntRange(2, 5);
+    return target.addTag(BattlerTagType.CONFUSED, turns, move.id, user.id);
   }
 }
 
@@ -9066,7 +9219,9 @@ export class AddArenaTagAttr extends MoveEffectAttr {
   if (
     this.tagType === ArenaTagType.REFLECT ||
     this.tagType === ArenaTagType.LIGHT_SCREEN ||
-    this.tagType === ArenaTagType.AURORA_VEIL
+    this.tagType === ArenaTagType.AURORA_VEIL ||
+    this.tagType === ArenaTagType.SAND_BARRIER ||
+    this.tagType === ArenaTagType.FLORA_VEIL
   ) {
     const modifiers = globalScene
       .getModifiers(WeakenMoveScreenModifier)
@@ -9198,16 +9353,19 @@ export class RemoveArenaTrapAttr extends MoveEffectAttr {
       globalScene.arena.removeTagOnSide(ArenaTagType.SPIKES, ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.TOXIC_SPIKES, ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.STEALTH_ROCK, ArenaTagSide.PLAYER);
+      globalScene.arena.removeTagOnSide(ArenaTagType.ICE_SPIKE, ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.STICKY_WEB, ArenaTagSide.PLAYER);
 
       globalScene.arena.removeTagOnSide(ArenaTagType.SPIKES, ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.TOXIC_SPIKES, ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.STEALTH_ROCK, ArenaTagSide.ENEMY);
+      globalScene.arena.removeTagOnSide(ArenaTagType.ICE_SPIKE, ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.STICKY_WEB, ArenaTagSide.ENEMY);
     } else {
       globalScene.arena.removeTagOnSide(ArenaTagType.SPIKES, target.isPlayer() ? ArenaTagSide.ENEMY : ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.TOXIC_SPIKES, target.isPlayer() ? ArenaTagSide.ENEMY : ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.STEALTH_ROCK, target.isPlayer() ? ArenaTagSide.ENEMY : ArenaTagSide.PLAYER);
+      globalScene.arena.removeTagOnSide(ArenaTagType.ICE_SPIKE, target.isPlayer() ? ArenaTagSide.ENEMY : ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.STICKY_WEB, target.isPlayer() ? ArenaTagSide.ENEMY : ArenaTagSide.PLAYER);
     }
 
@@ -9234,14 +9392,20 @@ export class RemoveScreensAttr extends MoveEffectAttr {
       globalScene.arena.removeTagOnSide(ArenaTagType.REFLECT, ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.LIGHT_SCREEN, ArenaTagSide.PLAYER);
       globalScene.arena.removeTagOnSide(ArenaTagType.AURORA_VEIL, ArenaTagSide.PLAYER);
+      globalScene.arena.removeTagOnSide(ArenaTagType.SAND_BARRIER, ArenaTagSide.PLAYER);
+      globalScene.arena.removeTagOnSide(ArenaTagType.FLORA_VEIL, ArenaTagSide.PLAYER);
 
       globalScene.arena.removeTagOnSide(ArenaTagType.REFLECT, ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.LIGHT_SCREEN, ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.AURORA_VEIL, ArenaTagSide.ENEMY);
+      globalScene.arena.removeTagOnSide(ArenaTagType.SAND_BARRIER, ArenaTagSide.ENEMY);
+      globalScene.arena.removeTagOnSide(ArenaTagType.FLORA_VEIL, ArenaTagSide.ENEMY);
     } else {
       globalScene.arena.removeTagOnSide(ArenaTagType.REFLECT, target.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.LIGHT_SCREEN, target.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY);
       globalScene.arena.removeTagOnSide(ArenaTagType.AURORA_VEIL, target.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY);
+      globalScene.arena.removeTagOnSide(ArenaTagType.SAND_BARRIER, target.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY);
+      globalScene.arena.removeTagOnSide(ArenaTagType.FLORA_VEIL, target.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY);
     }
 
     return true;
@@ -9873,25 +10037,42 @@ export class CopyBiomeTypeAttr extends MoveEffectAttr {
 }
 
 export class ChangeTypeAttr extends MoveEffectAttr {
-  private type: PokemonType;
+  private readonly type: PokemonType;
 
   constructor(type: PokemonType) {
     super(false);
-
     this.type = type;
   }
 
-  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
-    target.summonData.types = [ this.type ];
+  apply(_user: Pokemon, target: Pokemon, _move: Move, _args: any[]): boolean {
+    if (!target) {
+      return false;
+    }
+
+    target.summonData.types = [this.type];
     target.updateInfo();
 
-    globalScene.phaseManager.queueMessage(i18next.t("moveTriggers:transformedIntoType", { pokemonName: getPokemonNameWithAffix(target), typeName: i18next.t(`pokemonInfo:Type.${PokemonType[this.type]}`) }));
+    globalScene.phaseManager.queueMessage(
+      i18next.t("moveTriggers:transformedIntoType", {
+        pokemonName: getPokemonNameWithAffix(target),
+        typeName: i18next.t(`pokemonInfo:type.${toCamelCase(PokemonType[this.type])}`),
+      }),
+    );
 
     return true;
   }
 
   getCondition(): MoveConditionFunc {
-    return (user, target, move) => !target.isTerastallized && !target.hasAbility(AbilityId.MULTITYPE) && !target.hasAbility(AbilityId.RKS_SYSTEM) && !(target.getTypes().length === 1 && target.getTypes()[0] === this.type);
+    return (_user, target, _move) => {
+      if (!target) {
+        return false;
+      }
+
+      return !target.isTerastallized
+        && !target.hasAbility(AbilityId.MULTITYPE)
+        && !target.hasAbility(AbilityId.RKS_SYSTEM)
+        && !(target.getTypes().length === 1 && target.getTypes()[0] === this.type);
+    };
   }
 }
 
@@ -11548,6 +11729,7 @@ const MoveAttrs = Object.freeze({
   FixedDamageAttr,
   UserHpDamageAttr,
   TargetHalfHpDamageAttr,
+  TargetFractionHpDamageAttr,
   MatchHpAttr,
   CounterDamageAttr,
   BideRedirectAttr,
@@ -11598,6 +11780,7 @@ const MoveAttrs = Object.freeze({
   DelayedAttackAttr,
   AwaitCombinedPledgeAttr,
   StatStageChangeAttr,
+  HighestStatStageChangeAttr,
   SecretPowerAttr,
   NaturalGiftAttr,
   PostVictoryStatStageChangeAttr,
@@ -11649,6 +11832,8 @@ const MoveAttrs = Object.freeze({
   VariableAtkAttr,
   TargetAtkUserAtkAttr,
   DefAtkAttr,
+  SpdefSpatkAttr,
+  DefOrSpdefAtkAttr,
   VariableDefAttr,
   DefDefAttr,
   VariableAccuracyAttr,
@@ -11657,8 +11842,10 @@ const MoveAttrs = Object.freeze({
   AlwaysHitMinimizeAttr,
   ToxicAccuracyAttr,
   BlizzardAccuracyAttr,
+  VolcanicBoltAccuracyAttr,
   VariableMoveCategoryAttr,
   PhotonGeyserCategoryAttr,
+  DefOrSpdefCategoryAttr,
   TeraMoveCategoryAttr,
   TeraBlastPowerAttr,
   StatusCategoryOnAllyAttr,
@@ -11679,6 +11866,7 @@ const MoveAttrs = Object.freeze({
   VariableMoveTypeMultiplierAttr,
   NeutralDamageAgainstFlyingTypeMultiplierAttr,
   IceNoEffectTypeAttr,
+  WaterNoEffectTypeAttr,
   FlyingTypeMultiplierAttr,
   VariableMoveTypeChartAttr,
   FreezeDryAttr,
@@ -11758,6 +11946,7 @@ const MoveAttrs = Object.freeze({
   BypassFreezeDamageReductionAttr,
   NeutralDamageAgainstDarkTypeMultiplierAttr,
   NeutralDamageAgainstFairyTypeMultiplierAttr,
+  NeutralDamageAgainstGroundTypeMultiplierAttr,
   DragonTypeMultiplierAttr,
   RolloutAttr,
   RolloutProgressAttr,
@@ -11982,8 +12171,8 @@ export function initMoves() {
       .target(MoveTarget.USER_SIDE),
     new AttackMove(MoveId.WATER_GUN, PokemonType.WATER, MoveCategory.SPECIAL, 40, 100, 25, -1, 0, 1),
     new AttackMove(MoveId.HYDRO_PUMP, PokemonType.WATER, MoveCategory.SPECIAL, 120, 85, 5, -1, 0, 1),
-    new AttackMove(MoveId.SURF, PokemonType.WATER, MoveCategory.SPECIAL, 100, 100, 15, -1, 0, 1)
-      .target(MoveTarget.ALL_NEAR_OTHERS)
+    new AttackMove(MoveId.SURF, PokemonType.WATER, MoveCategory.SPECIAL, 95, 100, 15, -1, 0, 1)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(HitsTagForDoubleDamageAttr, BattlerTagType.UNDERWATER)
       .attr(GulpMissileTagAttr),
     new AttackMove(MoveId.ICE_BEAM, PokemonType.ICE, MoveCategory.SPECIAL, 95, 100, 10, 10, 0, 1)
@@ -12126,7 +12315,7 @@ export function initMoves() {
       .attr(HitsTagForDoubleDamageAttr, BattlerTagType.UNDERGROUND)
       .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && target.isGrounded() ? 0.5 : 1)
       .makesContact(false)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.FISSURE, PokemonType.GROUND, MoveCategory.PHYSICAL, 250, 30, 5, -1, 0, 1)
       .attr(OneHitKOAttr)
       .attr(OneHitKOAccuracyAttr)
@@ -12697,7 +12886,7 @@ export function initMoves() {
       .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && target.isGrounded() ? 0.5 : 1)
       .attr(HitsTagForDoubleDamageAttr, BattlerTagType.UNDERGROUND)
       .makesContact(false)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.DYNAMIC_PUNCH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 150, 50, 5, 100, 0, 2)
       .attr(ConfuseAttr)
       .punchingMove(),
@@ -13230,7 +13419,7 @@ export function initMoves() {
        .attr(ZStatStageChangeAttr, [Stat.SPD], 1, true)
       .target(MoveTarget.USER)
       .attr(StatStageChangeAttr, [ Stat.SPATK, Stat.SPDEF ], 1, true),
-    new AttackMove(MoveId.LEAF_BLADE, PokemonType.GRASS, MoveCategory.PHYSICAL, 90, 100, 15, -1, 0, 3)
+    new AttackMove(MoveId.LEAF_BLADE, PokemonType.GRASS, MoveCategory.SPECIAL, 90, 100, 15, -1, 0, 3)
       .attr(HighCritAttr)
       .slicingMove(),
     new SelfStatusMove(MoveId.DRAGON_DANCE, PokemonType.DRAGON, -1, 20, -1, 0, 3)
@@ -13442,7 +13631,7 @@ export function initMoves() {
       .ballBombMove(),
     new SelfStatusMove(MoveId.ROCK_POLISH, PokemonType.ROCK, -1, 20, -1, 0, 4)
       .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.SPATK ], 2, true)
-      .attr(StatStageChangeAttr, [ Stat.SPD ], 2, true),
+      .attr(StatStageChangeAttr, [ Stat.SPD ], 3, true),
     new AttackMove(MoveId.POISON_JAB, PokemonType.POISON, MoveCategory.PHYSICAL, 80, 100, 20, 30, 0, 4)
       .spearMove()
       .beakMove()
@@ -13543,7 +13732,7 @@ export function initMoves() {
     new AttackMove(MoveId.ROCK_CLIMB, PokemonType.ROCK, MoveCategory.PHYSICAL, 90, 85, 20, 20, 0, 4)
       .attr(ConfuseAttr),
     new StatusMove(MoveId.DEFOG, PokemonType.FLYING, -1, 15, -1, 0, 4)
-       .attr(StatStageChangeAttr, [ Stat.EVA ], -1)
+      .attr(StatStageChangeAttr, [ Stat.EVA ], -1)
       .attr(ZStatStageChangeAttr, [Stat.ACC], 1, true)
       .target(MoveTarget.NEAR_OTHER)
       .attr(ClearWeatherAttr, WeatherType.FOG)
@@ -13561,12 +13750,12 @@ export function initMoves() {
     new AttackMove(MoveId.DRACO_METEOR, PokemonType.DRAGON, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(StatStageChangeAttr, [ Stat.SPATK ], -2, true),
-    new AttackMove(MoveId.DISCHARGE, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 100, 100, 15, 30, 0, 4)
+    new AttackMove(MoveId.DISCHARGE, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 15, 30, 0, 4)
       .attr(StatusEffectAttr, StatusEffect.PARALYSIS)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
-    new AttackMove(MoveId.LAVA_PLUME, PokemonType.FIRE, MoveCategory.SPECIAL, 100, 100, 15, 30, 0, 4)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.LAVA_PLUME, PokemonType.FIRE, MoveCategory.SPECIAL, 80, 100, 15, 30, 0, 4)
       .attr(StatusEffectAttr, StatusEffect.BURN)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.LEAF_STORM, PokemonType.GRASS, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(StatStageChangeAttr, [ Stat.SPATK ], -2, true),
@@ -13622,21 +13811,22 @@ export function initMoves() {
       .attr(FormChangeItemTypeAttr),
     new AttackMove(MoveId.BUG_BITE, PokemonType.BUG, MoveCategory.PHYSICAL, 60, 100, 20, -1, 0, 4)
       .attr(StealEatBerryAttr),
-    new AttackMove(MoveId.CHARGE_BEAM, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 40, 100, 10, 100, 0, 4)
+    new AttackMove(MoveId.CHARGE_BEAM, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 50, 100, 10, 100, 0, 4)
       .beamMove()
       .lightMove()
-      .attr(StatStageChangeAttr, [ Stat.SPATK ], 2, true),
+      .attr(StatStageChangeAttr, [ Stat.SPATK ], 1, true),
     new AttackMove(MoveId.WOOD_HAMMER, PokemonType.GRASS, MoveCategory.PHYSICAL, 120, 100, 15, -1, 0, 4)
       .attr(RecoilAttr, false, 0.33)
       .hammerMove()
       .recklessMove(),
     new AttackMove(MoveId.AQUA_JET, PokemonType.WATER, MoveCategory.PHYSICAL, 40, 100, 20, -1, 1, 4),
     new AttackMove(MoveId.ATTACK_ORDER, PokemonType.BUG, MoveCategory.PHYSICAL, 90, 100, 15, -1, 0, 4)
-      .target(MoveTarget.USER)
-      .attr(StatStageChangeAttr, [ Stat.DEF, Stat.SPDEF ], 2, true),
+      .attr(HighCritAttr)
+      .makesContact(false)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new SelfStatusMove(MoveId.DEFEND_ORDER, PokemonType.BUG, -1, 10, -1, 0, 4)
       .attr(ZStatStageChangeAttr, [ Stat.DEF, Stat.SPDEF ], 1, true)
-      .attr(StatStageChangeAttr, [ Stat.DEF, Stat.SPDEF ], 1, true),
+      .attr(StatStageChangeAttr, [ Stat.DEF, Stat.SPDEF ], 2, true),
     new SelfStatusMove(MoveId.HEAL_ORDER, PokemonType.BUG, -1, 5, -1, 0, 4)
       .attr(HealAttr, 0.5)
       .attr(ZHealBeforeMoveAttr, 1)
@@ -13647,7 +13837,7 @@ export function initMoves() {
       .recklessMove(),
     new AttackMove(MoveId.DOUBLE_HIT, PokemonType.NORMAL, MoveCategory.PHYSICAL, 50, 100, 10, -1, 0, 4)
       .attr(MultiHitAttr, MultiHitType._2),
-    new AttackMove(MoveId.ROAR_OF_TIME, PokemonType.DRAGON, MoveCategory.SPECIAL, 150, 90, 5, -1, 0, 4)
+    new AttackMove(MoveId.ROAR_OF_TIME, PokemonType.DRAGON, MoveCategory.SPECIAL, 150, 90, 5, 30, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(FlinchAttr)
       .soundBased()
@@ -13655,7 +13845,7 @@ export function initMoves() {
         const turnMove = user.getLastXMoves(1);
         return !turnMove.length || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
       }),
-    new AttackMove(MoveId.SPACIAL_REND, PokemonType.DRAGON, MoveCategory.SPECIAL, 120, 95, 5, -1, 0, 4)
+    new AttackMove(MoveId.SPACIAL_REND, PokemonType.DRAGON, MoveCategory.SPECIAL, 130, 95, 5, -1, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(HighCritAttr),
     new SelfStatusMove(MoveId.LUNAR_DANCE, PokemonType.PSYCHIC, -1, 10, -1, 0, 4)
@@ -13750,9 +13940,9 @@ export function initMoves() {
       .attr(CritOnlyAttr),
     new AttackMove(MoveId.FLAME_BURST, PokemonType.FIRE, MoveCategory.SPECIAL, 70, 100, 15, -1, 0, 5)
       .attr(FlameBurstAttr),
-    new AttackMove(MoveId.SLUDGE_WAVE, PokemonType.POISON, MoveCategory.SPECIAL, 100, 100, 10, 10, 0, 5)
+    new AttackMove(MoveId.SLUDGE_WAVE, PokemonType.POISON, MoveCategory.SPECIAL, 95, 100, 10, 10, 0, 5)
       .attr(StatusEffectAttr, StatusEffect.POISON)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new SelfStatusMove(MoveId.QUIVER_DANCE, PokemonType.BUG, -1, 20, -1, 0, 5)
       .attr(StatStageChangeAttr, [ Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
       .attr(ZStatStageChangeAttr, [ Stat.SPATK, Stat.SPDEF, Stat.SPD ], 2, true)
@@ -13762,8 +13952,9 @@ export function initMoves() {
       .attr(AlwaysHitMinimizeAttr)
       .attr(CompareWeightPowerAttr)
       .attr(HitsTagForDoubleDamageAttr, BattlerTagType.MINIMIZED),
-    new AttackMove(MoveId.SYNCHRONOISE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 120, 100, 10, -1, 0, 5)
-      .target(MoveTarget.ALL_NEAR_OTHERS)
+    new AttackMove(MoveId.SYNCHRONOISE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 180, 100, 10, -1, 0, 5)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(NeutralDamageAgainstDarkTypeMultiplierAttr)
       .condition(unknownTypeCondition)
       .attr(HitsSameTypeAttr),
     new AttackMove(MoveId.ELECTRO_BALL, PokemonType.ELECTRIC, MoveCategory.SPECIAL, -1, 100, 10, -1, 0, 5)
@@ -13944,7 +14135,7 @@ export function initMoves() {
       .attr(StatStageChangeAttr, [ Stat.SPD ], -1)
       .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && target.isGrounded() ? 0.5 : 1)
       .makesContact(false)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.FROST_BREATH, PokemonType.ICE, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 5)
       .attr(CritOnlyAttr),
     new AttackMove(MoveId.DRAGON_TAIL, PokemonType.DRAGON, MoveCategory.PHYSICAL, 60, 90, 10, -1, -6, 5)
@@ -13952,9 +14143,10 @@ export function initMoves() {
       .tailMove()
       .hidesTarget(),
     new SelfStatusMove(MoveId.WORK_UP, PokemonType.NORMAL, -1, 30, -1, 0, 5)
-      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.SPATK, Stat.SPD ], 1, true, false, 1, 1, false, false, true)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.SPATK ], 1, true, false, 1, 1, false, false, true)
       .target(MoveTarget.USER)
-      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.SPATK, Stat.SPD], 1, true),
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.SPATK ], 2, true)
+      .attr(ZStatStageChangeAttr, [ Stat.SPD ], 3, true),
     new AttackMove(MoveId.ELECTROWEB, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 55, 95, 15, 100, 0, 5)
       .attr(StatStageChangeAttr, [ Stat.SPD ], -1)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
@@ -13982,11 +14174,11 @@ export function initMoves() {
       .attr(AlwaysHitMinimizeAttr)
       .attr(CompareWeightPowerAttr)
       .attr(HitsTagForDoubleDamageAttr, BattlerTagType.MINIMIZED),
-    new AttackMove(MoveId.LEAF_TORNADO, PokemonType.GRASS, MoveCategory.SPECIAL, 65, 90, 10, 50, 0, 5)
+    new AttackMove(MoveId.LEAF_TORNADO, PokemonType.GRASS, MoveCategory.SPECIAL, 65, 90, 10, 100, 0, 5)
       .spinMove()
       .windMove()
       .attr(StatStageChangeAttr, [ Stat.ACC ], -1),
-    new AttackMove(MoveId.STEAMROLLER, PokemonType.BUG, MoveCategory.PHYSICAL, 65, 100, 20, 30, 0, 5)
+    new AttackMove(MoveId.STEAMROLLER, PokemonType.BUG, MoveCategory.PHYSICAL, 75, 100, 20, 30, 0, 5)
       .attr(AlwaysHitMinimizeAttr)
       .wheelMove()
       .attr(HitsTagForDoubleDamageAttr, BattlerTagType.MINIMIZED)
@@ -14006,7 +14198,7 @@ export function initMoves() {
       .attr(ConfuseAttr)
       .attr(HitsTagAttr, BattlerTagType.FLYING)
       .windMove(),
-    new AttackMove(MoveId.HEAD_CHARGE, PokemonType.NORMAL, MoveCategory.PHYSICAL, 120, 100, 15, -1, 0, 5)
+    new AttackMove(MoveId.HEAD_CHARGE, PokemonType.NORMAL, MoveCategory.PHYSICAL, 130, 100, 15, -1, 0, 5)
       .attr(RecoilAttr)
       .headMove()
       .recklessMove(),
@@ -14015,17 +14207,18 @@ export function initMoves() {
     new AttackMove(MoveId.SEARING_SHOT, PokemonType.FIRE, MoveCategory.SPECIAL, 100, 100, 5, 30, 0, 5)
       .attr(StatusEffectAttr, StatusEffect.BURN)
       .ballBombMove()
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.TECHNO_BLAST, PokemonType.NORMAL, MoveCategory.SPECIAL, 120, 100, 5, -1, 0, 5)
       .attr(TechnoBlastTypeAttr),
-    new AttackMove(MoveId.RELIC_SONG, PokemonType.NORMAL, MoveCategory.SPECIAL, 75, 100, 10, 10, 0, 5)
+    new AttackMove(MoveId.RELIC_SONG, PokemonType.NORMAL, MoveCategory.SPECIAL, 85, 100, 10, 30, 0, 5)
       .attr(StatusEffectAttr, StatusEffect.SLEEP)
+      .attr(PhotonGeyserCategoryAttr)
       .soundBased()
       .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.SECRET_SWORD, PokemonType.FIGHTING, MoveCategory.SPECIAL, 85, 100, 10, -1, 0, 5)
       .attr(DefDefAttr)
       .slicingMove(),
-    new AttackMove(MoveId.GLACIATE, PokemonType.ICE, MoveCategory.SPECIAL, 100, 100, 10, 100, 0, 5)
+    new AttackMove(MoveId.GLACIATE, PokemonType.ICE, MoveCategory.SPECIAL, 100, 85, 10, 100, 0, 5)
       .attr(StatStageChangeAttr, [ Stat.SPD ], -1)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.BOLT_STRIKE, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 130, 85, 5, 20, 0, 5)
@@ -14037,19 +14230,17 @@ export function initMoves() {
     new AttackMove(MoveId.FIERY_DANCE, PokemonType.FIRE, MoveCategory.SPECIAL, 100, 100, 10, 50, 0, 5)
       .attr(StatStageChangeAttr, [ Stat.SPATK ], 1, true)
       .danceMove(),
-    new ChargingAttackMove(MoveId.FREEZE_SHOCK, PokemonType.ICE, MoveCategory.PHYSICAL, 140, 90, 5, 30, 0, 5)
+    new ChargingAttackMove(MoveId.FREEZE_SHOCK, PokemonType.ICE, MoveCategory.PHYSICAL, 140, 90, 5, -1, 0, 5)
       .chargeText(i18next.t("moveTriggers:becameCloakedInFreezingLight", { pokemonName: "{USER}" }))
       .chargeAttr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPD ], 1, true)
       .chargeAttr(InstantChargeAttr, (user, move) => { return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier) })
-      .attr(StatusEffectAttr, StatusEffect.PARALYSIS)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .makesContact(false),
-    new ChargingAttackMove(MoveId.ICE_BURN, PokemonType.ICE, MoveCategory.SPECIAL, 140, 90, 5, 30, 0, 5)
+    new ChargingAttackMove(MoveId.ICE_BURN, PokemonType.ICE, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 5)
       .chargeText(i18next.t("moveTriggers:becameCloakedInFreezingAir", { pokemonName: "{USER}" }))
       .chargeAttr(InstantChargeAttr, (user, move) => { return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier) })
       .chargeAttr(StatStageChangeAttr, [ Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
-      .target(MoveTarget.ALL_NEAR_ENEMIES)
-      .attr(StatusEffectAttr, StatusEffect.BURN),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.SNARL, PokemonType.DARK, MoveCategory.SPECIAL, 55, 95, 15, 100, 0, 5)
       .attr(StatStageChangeAttr, [ Stat.SPATK ], -1)
       .soundBased()
@@ -14060,7 +14251,7 @@ export function initMoves() {
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .makesContact(false),
     new AttackMove(MoveId.V_CREATE, PokemonType.FIRE, MoveCategory.PHYSICAL, 180, 95, 5, -1, 0, 5)
-      .attr(StatStageChangeAttr, [ Stat.DEF, Stat.SPDEF, Stat.SPD ], -1, true),
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], -1, true),
     new AttackMove(MoveId.FUSION_FLARE, PokemonType.FIRE, MoveCategory.SPECIAL, 100, 100, 5, -1, 0, 5)
       .attr(HealStatusEffectAttr, true, StatusEffect.FREEZE)
       .attr(LastMoveDoublePowerAttr, MoveId.FUSION_BOLT),
@@ -14149,7 +14340,7 @@ export function initMoves() {
       .reflectable()
       .target(MoveTarget.NEAR_OTHER)
       .attr(ZStatStageChangeAttr, [Stat.ATK], 1, true),
-    new AttackMove(MoveId.DRAINING_KISS, PokemonType.FAIRY, MoveCategory.SPECIAL, 50, 100, 10, -1, 0, 6)
+    new AttackMove(MoveId.DRAINING_KISS, PokemonType.FAIRY, MoveCategory.SPECIAL, 60, 100, 10, -1, 0, 6)
       .attr(HitHealAttr, 0.75)
       .makesContact()
       .triageMove(),
@@ -14213,7 +14404,7 @@ export function initMoves() {
       .attr(StatStageChangeAttr, [ Stat.DEF ], 2, true, { firstTargetOnly: true })
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.STEAM_ERUPTION, PokemonType.WATER, MoveCategory.SPECIAL, 110, 95, 5, 30, 0, 6)
+    new AttackMove(MoveId.STEAM_ERUPTION, PokemonType.WATER, MoveCategory.SPECIAL, 120, 95, 5, 30, 0, 6)
       .attr(HealStatusEffectAttr, true, StatusEffect.FREEZE)
       .attr(HealStatusEffectAttr, false, StatusEffect.FREEZE)
       .attr(StatusEffectAttr, StatusEffect.BURN),
@@ -14325,7 +14516,7 @@ export function initMoves() {
       .attr(RemoveBattlerTagAttr, [ BattlerTagType.FLYING, BattlerTagType.FLOATING, BattlerTagType.TELEKINESIS ])
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.THOUSAND_WAVES, PokemonType.GROUND, MoveCategory.PHYSICAL, 110, 100, 10, 100, 0, 6)
+    new AttackMove(MoveId.THOUSAND_WAVES, PokemonType.GROUND, MoveCategory.SPECIAL, 110, 100, 10, 100, 0, 6)
       .attr(AddBattlerTagAttr, BattlerTagType.TRAPPED, false, false, 1, 1, true)
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
@@ -14583,7 +14774,7 @@ new AttackMove(MoveId.CATASTROPIKA, PokemonType.ELECTRIC, MoveCategory.PHYSICAL,
     new AttackMove(MoveId.DRAGON_HAMMER, PokemonType.DRAGON, MoveCategory.PHYSICAL, 90, 100, 15, -1, 0, 7) 
       .hammerMove(),
     new AttackMove(MoveId.BRUTAL_SWING, PokemonType.DARK, MoveCategory.PHYSICAL, 75, 100, 20, -1, 0, 7)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new StatusMove(MoveId.AURORA_VEIL, PokemonType.ICE, -1, 20, -1, 0, 7)
       .attr(ZStatStageChangeAttr, [Stat.SPD], 1, false )
       .target(MoveTarget.NEAR_OTHER)
@@ -14593,31 +14784,31 @@ new AttackMove(MoveId.CATASTROPIKA, PokemonType.ELECTRIC, MoveCategory.PHYSICAL,
     new AttackMove(MoveId.SINISTER_ARROW_RAID, PokemonType.GHOST, MoveCategory.PHYSICAL, 180, -1, 10, -1, 0, 7)
   .attr(AddBattlerTagAttr, BattlerTagType.TRAPPED, false, false, 1, 1, true)
   .ignoresProtect()
-  .setZMoveDamageRate(0.25)
+  .setZMoveDamageRate(0.5)
   .makesContact(false),
 new AttackMove(MoveId.MALICIOUS_MOONSAULT, PokemonType.DARK, MoveCategory.PHYSICAL, 180, -1, 10, -1, 0, 7)
   .attr(AlwaysHitMinimizeAttr)
   .ignoresProtect()
-  .setZMoveDamageRate(0.25)
+  .setZMoveDamageRate(0.5)
   .attr(IgnoreOpponentStatStagesAttr)
   .attr(HitsTagAttr, BattlerTagType.MINIMIZED, true),
 new AttackMove(MoveId.OCEANIC_OPERETTA, PokemonType.WATER, MoveCategory.SPECIAL, 195, -1, 10, -1, 0, 7)
   .soundBased()
   .ignoresProtect()
-  .setZMoveDamageRate(0.25),
+  .setZMoveDamageRate(0.5),
 new AttackMove(MoveId.GUARDIAN_OF_ALOLA, PokemonType.FAIRY, MoveCategory.SPECIAL, -1, -1, 10, -1, 0, 7)
   .ignoresProtect()
-  .setZMoveDamageRate(0.25)
+  .setZMoveDamageRate(0.5)
   .attr(TargetFractionHpDamageAttr, 0.75),
 new AttackMove(MoveId.SOUL_STEALING_7_STAR_STRIKE, PokemonType.GHOST, MoveCategory.PHYSICAL, 195, -1, 10, -1, 0, 7)
   .ignoresProtect()
-  .setZMoveDamageRate(0.25),
+  .setZMoveDamageRate(0.5),
 new AttackMove(MoveId.STOKED_SPARKSURFER, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 175, -1, 10, 100, 0, 7)
   .ignoresProtect()
-  .setZMoveDamageRate(0.25),
+  .setZMoveDamageRate(0.5),
 new AttackMove(MoveId.PULVERIZING_PANCAKE, PokemonType.NORMAL, MoveCategory.PHYSICAL, 210, -1, 10, -1, 0, 7)
   .ignoresProtect()
-  .setZMoveDamageRate(0.25),
+  .setZMoveDamageRate(0.5),
 new SelfStatusMove(MoveId.EXTREME_EVOBOOST, PokemonType.NORMAL, -1, 10, -1, 0, 7)
   .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 2, true),
     new AttackMove(MoveId.GENESIS_SUPERNOVA, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 185, -1, 10, 100, 0, 7)
@@ -14680,7 +14871,7 @@ new SelfStatusMove(MoveId.EXTREME_EVOBOOST, PokemonType.NORMAL, -1, 10, -1, 0, 7
     new AttackMove(MoveId.TEN_MILLION_VOLT_THUNDERBOLT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 195, -1, 10, -1, 0, 7)
       .ignoresProtect()
       .setZMoveDamageRate(0.25),
-    new AttackMove(MoveId.MIND_BLOWN, PokemonType.FIRE, MoveCategory.SPECIAL, 150, 100, 5, -1, 0, 7)
+    new AttackMove(MoveId.MIND_BLOWN, PokemonType.FIRE, MoveCategory.SPECIAL, 160, 100, 5, -1, 0, 7)
       .condition(failIfDampCondition)
       .attr(HalfSacrificialAttr)
       .target(MoveTarget.ALL_NEAR_OTHERS),
@@ -14717,9 +14908,9 @@ new AttackMove(MoveId.CLANGOROUS_SOULBLAZE, PokemonType.DRAGON, MoveCategory.SPE
   .ignoresProtect()
   .setZMoveDamageRate(0.25)
   .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.ZIPPY_ZAP, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 80, 100, 15, -1, 2, 7) // LGPE Implementation
+    new AttackMove(MoveId.ZIPPY_ZAP, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 60, 100, 15, -1, 2, 7) // LGPE Implementation
       .attr(CritOnlyAttr),
-    new AttackMove(MoveId.SPLISHY_SPLASH, PokemonType.WATER, MoveCategory.SPECIAL, 120, 85, 15, 30, 0, 7)
+    new AttackMove(MoveId.SPLISHY_SPLASH, PokemonType.WATER, MoveCategory.SPECIAL, 120, 85, 15, 40, 0, 7)
       .attr(StatusEffectAttr, StatusEffect.PARALYSIS)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(MoveId.FLOATY_FALL, PokemonType.FLYING, MoveCategory.PHYSICAL, 90, 100, 15, 30, 0, 7)
@@ -14782,14 +14973,14 @@ new AttackMove(MoveId.CLANGOROUS_SOULBLAZE, PokemonType.DRAGON, MoveCategory.SPE
       })
       .edgeCase(), // Stuff Cheeks should not be selectable when the user does not have a berry, see wiki
     new SelfStatusMove(MoveId.NO_RETREAT, PokemonType.FIGHTING, -1, 5, -1, 0, 8)
-      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 3, true)
       .attr(AddBattlerTagAttr, BattlerTagType.NO_RETREAT, true, false)
       .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true )
       .target(MoveTarget.USER)
       .condition((user, target, move) => user.getTag(TrappedTag)?.tagType !== BattlerTagType.NO_RETREAT), // fails if the user is currently trapped by No Retreat
     new StatusMove(MoveId.TAR_SHOT, PokemonType.ROCK, 100, 15, -1, 0, 8)
       .attr(StatStageChangeAttr, [ Stat.SPD ], -1)
-      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, false )
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
       .attr(AddBattlerTagAttr, BattlerTagType.TAR_SHOT, false)
       .target(MoveTarget.NEAR_OTHER)
       .reflectable(),
@@ -14810,7 +15001,7 @@ new AttackMove(MoveId.CLANGOROUS_SOULBLAZE, PokemonType.DRAGON, MoveCategory.SPE
       .target(MoveTarget.ALL),
     new StatusMove(MoveId.OCTOLOCK, PokemonType.FIGHTING, 100, 15, -1, 0, 8)
       .condition(failIfGhostTypeCondition)
-      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, false )
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
       .attr(AddBattlerTagAttr, BattlerTagType.OCTOLOCK, false, true, 1),
     new AttackMove(MoveId.BOLT_BEAK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 85, 100, 10, -1, 0, 8)
       .beakMove()
@@ -14820,7 +15011,7 @@ new AttackMove(MoveId.CLANGOROUS_SOULBLAZE, PokemonType.DRAGON, MoveCategory.SPE
       .pinchMove()
       .bitingMove(),
     new StatusMove(MoveId.COURT_CHANGE, PokemonType.NORMAL, 100, 10, -1, 0, 8)
-      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, false )
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
       .attr(SwapArenaTagsAttr, [ ArenaTagType.AURORA_VEIL, ArenaTagType.LIGHT_SCREEN, ArenaTagType.MIST, ArenaTagType.REFLECT, ArenaTagType.SPIKES, ArenaTagType.STEALTH_ROCK, ArenaTagType.STICKY_WEB, ArenaTagType.TAILWIND, ArenaTagType.TOXIC_SPIKES, ArenaTagType.SAFEGUARD, ArenaTagType.FIRE_GRASS_PLEDGE, ArenaTagType.WATER_FIRE_PLEDGE, ArenaTagType.GRASS_WATER_PLEDGE ]),
     new AttackMove(MoveId.MAX_FLARE, PokemonType.FIRE, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
   .target(MoveTarget.NEAR_ENEMY)
@@ -14962,6 +15153,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .ignoresProtect(),
     new AttackMove(MoveId.DRUM_BEATING, PokemonType.GRASS, MoveCategory.PHYSICAL, 80, 100, 10, 100, 0, 8)
       .attr(StatStageChangeAttr, [ Stat.SPD ], -1)
+      .soundBased()
       .makesContact(false),
     new AttackMove(MoveId.SNAP_TRAP, PokemonType.GRASS, MoveCategory.PHYSICAL, 35, 100, 15, -1, 0, 8)
       .attr(TrapAttr, BattlerTagType.SNAP_TRAP),
@@ -15049,7 +15241,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
     new AttackMove(MoveId.SHELL_SIDE_ARM, PokemonType.POISON, MoveCategory.SPECIAL, 100, 100, 10, 20, 0, 8)
       .attr(ShellSideArmCategoryAttr)
       .attr(StatusEffectAttr, StatusEffect.POISON),
-    new AttackMove(MoveId.MISTY_EXPLOSION, PokemonType.FAIRY, MoveCategory.SPECIAL, 100, 100, 5, -1, 0, 8)
+    new AttackMove(MoveId.MISTY_EXPLOSION, PokemonType.FAIRY, MoveCategory.SPECIAL, 200, 100, 5, -1, 0, 8)
       .attr(SacrificialAttr)
       .target(MoveTarget.ALL_NEAR_OTHERS)
       .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.MISTY && user.isGrounded() ? 1.5 : 1)
@@ -15103,7 +15295,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .attr(ZHealBeforeMoveAttr, 1)
       .target(MoveTarget.USER_AND_ALLIES)
       .triageMove(),
-    new AttackMove(MoveId.WICKED_BLOW, PokemonType.DARK, MoveCategory.PHYSICAL, 80, 100, 5, -1, 0, 8)
+    new AttackMove(MoveId.WICKED_BLOW, PokemonType.DARK, MoveCategory.PHYSICAL, 90, 100, 5, -1, 0, 8)
       .attr(CritOnlyAttr)
       .punchingMove(),
     new AttackMove(MoveId.SURGING_STRIKES, PokemonType.WATER, MoveCategory.PHYSICAL, 25, 100, 5, -1, 0, 8)
@@ -15149,7 +15341,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .attr(StatStageChangeAttr, [ Stat.ATK ], -1)
       .windMove()
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.MYSTICAL_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 70, 90, 10, 100, 0, 8)
+    new AttackMove(MoveId.MYSTICAL_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 90, 90, 10, 100, 0, 8)
       .attr(StatStageChangeAttr, [ Stat.SPATK ], 1, true),
     new AttackMove(MoveId.RAGING_FURY, PokemonType.FIRE, MoveCategory.PHYSICAL, 120, 100, 10, -1, 0, 8)
       .makesContact(false)
@@ -15162,9 +15354,10 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .recklessMove(),
     new AttackMove(MoveId.CHLOROBLAST, PokemonType.GRASS, MoveCategory.SPECIAL, 150, 95, 5, -1, 0, 8)
       .attr(RecoilAttr, true, 0.5),
-    new AttackMove(MoveId.MOUNTAIN_GALE, PokemonType.ICE, MoveCategory.PHYSICAL, 100, 85, 10, 30, 0, 8)
+    new AttackMove(MoveId.MOUNTAIN_GALE, PokemonType.ICE, MoveCategory.PHYSICAL, 120, 85, 10, 30, 0, 8)
       .makesContact(false)
-      .attr(FlinchAttr),
+      .attr(FlinchAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
     new SelfStatusMove(MoveId.VICTORY_DANCE, PokemonType.FIGHTING, -1, 10, -1, 0, 8)
       .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPD ], 1, true)
       .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPD ], 1, true)
@@ -15192,7 +15385,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .arrowMove()
       .attr(StatStageChangeAttr, [ Stat.DEF ], -1, false, { effectChanceOverride: 50 })
       .attr(FlinchAttr),
-    new AttackMove(MoveId.INFERNAL_PARADE, PokemonType.GHOST, MoveCategory.SPECIAL, 60, 100, 15, 30, 0, 8)
+    new AttackMove(MoveId.INFERNAL_PARADE, PokemonType.GHOST, MoveCategory.SPECIAL, 75, 100, 15, 50, 0, 8)
       .attr(StatusEffectAttr, StatusEffect.BURN)
       .attr(MovePowerMultiplierAttr, (user, target, move) => target.status ? 2 : 1),
     new AttackMove(MoveId.CEASELESS_EDGE, PokemonType.DARK, MoveCategory.PHYSICAL, 65, 90, 15, 100, 0, 8)
@@ -15630,7 +15823,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
     new AttackMove(MoveId.HYPER_DRILL, PokemonType.NORMAL, MoveCategory.PHYSICAL, 100, 100, 5, -1, 0, 9)
       .drillMove()
       .ignoresProtect(),
-    new AttackMove(MoveId.TWIN_BEAM, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 50, 100, 10, -1, 0, 9)
+    new AttackMove(MoveId.TWIN_BEAM, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 60, 100, 10, -1, 0, 9)
       .beamMove()
       .lightMove()
       .attr(MultiHitAttr, MultiHitType._2),
@@ -15643,7 +15836,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .attr(HitHealAttr)
       .slicingMove()
       .triageMove(),
-    new AttackMove(MoveId.DOUBLE_SHOCK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 120, 100, 5, -1, 0, 9)
+    new AttackMove(MoveId.DOUBLE_SHOCK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 130, 100, 5, -1, 0, 9)
       .condition((user) => {
         const userTypes = user.getTypes(true);
         return userTypes.includes(PokemonType.ELECTRIC);
@@ -15740,7 +15933,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
         }
         return (turnCommand.command === Command.FIGHT && !target.turnData.acted && allMoves[turnCommand.move.move].category !== MoveCategory.STATUS);
       }),
-    new AttackMove(MoveId.MIGHTY_CLEAVE, PokemonType.ROCK, MoveCategory.PHYSICAL, 95, 100, 5, -1, 0, 9)
+    new AttackMove(MoveId.MIGHTY_CLEAVE, PokemonType.ROCK, MoveCategory.PHYSICAL, 95, 100, 15, -1, 0, 9)
       .slicingMove()
       .ignoresProtect(),
     new AttackMove(MoveId.TACHYON_CUTTER, PokemonType.STEEL, MoveCategory.SPECIAL, 60, -1, 10, -1, 0, 9)
@@ -15781,12 +15974,12 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
     new AttackMove(MoveId.DOUBLE_PUNCH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 15, 0, 0, 224)
       .punchingMove()
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.MIGHTY_PUNCHER, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 140, 85, 5, 0, 0, 224)
+    new AttackMove(MoveId.MIGHTY_PUNCHER, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 140, 100, 10, 0, 0, 224)
       .punchingMove()
       .target(MoveTarget.ALL_NEAR_OTHERS),
     new AttackMove(MoveId.WIDE_ATTACK, PokemonType.NORMAL, MoveCategory.PHYSICAL, 80, 100, 15, 0, 0, 224)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.WIDE_IMPACT, PokemonType.NORMAL, MoveCategory.PHYSICAL, 140, 100, 5, 0, 0, 224)
+    new AttackMove(MoveId.WIDE_IMPACT, PokemonType.NORMAL, MoveCategory.PHYSICAL, 140, 100, 10, 0, 0, 224)
       .target(MoveTarget.ALL_NEAR_OTHERS),
     new StatusMove(MoveId.FROSTBITE, PokemonType.ICE, 85, 15, -1, 0, 224)
       .attr(StatusEffectAttr, StatusEffect.FROSTBITE)
@@ -16664,7 +16857,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .condition(failOnGravityCondition)
       .recklessMove()
       .kickMove(),
-   new AttackMove(MoveId.ELECTRIC_KICK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 75, 100, 20, 10, 0, 224)
+   new AttackMove(MoveId.ELECTRIC_KICK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 85, 100, 20, 10, 0, 224)
       .attr(HighCritAttr)
       .kickMove()
       .attr(StatusEffectAttr, StatusEffect.PARALYSIS),
@@ -16733,7 +16926,8 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
    new AttackMove(MoveId.ANCIENT_SPEAR, PokemonType.ROCK, MoveCategory.PHYSICAL, 130, 100, 5, -1, 0, 224)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .spearMove(),
-   new AttackMove(MoveId.OCEAN_SPEAR, PokemonType.WATER, MoveCategory.PHYSICAL, 130, 85, 5, -1, 0, 224)
+   new AttackMove(MoveId.OCEAN_SPEAR, PokemonType.WATER, MoveCategory.PHYSICAL, 130, 100, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
       .spearMove(),
    new AttackMove(MoveId.ZEN_JAB, PokemonType.PSYCHIC, MoveCategory.PHYSICAL, 85, 90, 15, -1, 0, 224)
       .beakMove()
@@ -17087,10 +17281,10 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
     new AttackMove(MoveId.QUAKE_DRAIN, PokemonType.GROUND, MoveCategory.PHYSICAL, 75, 100, 10, -1, 0, 224)
       .attr(HitHealAttr)
       .triageMove(),
-    new AttackMove(MoveId.BLACK_DRAIN, PokemonType.DARK, MoveCategory.SPECIALL, 100, 100, 10, -1, 0, 224)
+    new AttackMove(MoveId.BLACK_DRAIN, PokemonType.DARK, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
       .attr(HitHealAttr)
       .triageMove(),
-    new AttackMove(MoveId.SOUL_DRAIN, PokemonType.GHOST, MoveCategory.SPECIALL, 100, 100, 10, -1, 0, 224)
+    new AttackMove(MoveId.SOUL_DRAIN, PokemonType.GHOST, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
       .attr(HitHealAttr)
       .triageMove(),
     new AttackMove(MoveId.DRAIN_CLAW, PokemonType.DRAGON, MoveCategory.PHYSICAL, 75, 100, 10, -1, 0, 224)
@@ -17116,6 +17310,781 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .attr(NeutralDamageAgainstFairyTypeMultiplierAttr)
       .attr(PhotonGeyserCategoryAttr)
       .attr(IgnoreOpponentStatStagesAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new StatusMove(MoveId.FLORA_VEIL, PokemonType.GRASS, -1, 20, -1, 3, 224)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, false)
+      .condition(() => globalScene.arena.getTerrainType() === TerrainType.GRASSY && !globalScene.arena.terrain?.isEffectSuppressed?.())
+      .attr(AddArenaTagAttr, ArenaTagType.FLORA_VEIL, 5, true)
+      .target(MoveTarget.USER_SIDE),
+    new AttackMove(MoveId.OVER_DRAIN, PokemonType.GRASS, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.PHYTON_CHARGE, PokemonType.FAIRY, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .attr(CritOnlyAttr)
+      .triageMove(),
+    new AttackMove(MoveId.VOLCANIC_BOLT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 130, 70, 10, 33, 0, 224)
+      .attr(VolcanicBoltAccuracyAttr)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS, StatusEffect.BURN ]),
+    new AttackMove(MoveId.LAVA_DRAIN, PokemonType.FIRE, MoveCategory.SPECIAL, 90, 100, 10, 30, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.MAGMA_WAVE, PokemonType.FIRE, MoveCategory.SPECIAL, 100, 100, 10, 50, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .triageMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.SCREW_DRILL, PokemonType.WATER, MoveCategory.PHYSICAL, 80, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.SPD ], 1, true)
+      .spinMove()
+      .bitingMove()
+      .drillMove(),
+    new AttackMove(MoveId.MEGA_FANG, PokemonType.DRAGON, MoveCategory.PHYSICAL, 90, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .bitingMove(),
+    new AttackMove(MoveId.FROST_FANG, PokemonType.ICE, MoveCategory.PHYSICAL, 90, 100, 10, -1, 0, 224)
+      .attr(RemoveScreensAttr)
+      .bitingMove(),
+    new AttackMove(MoveId.WOOD_BLADE, PokemonType.GRASS, MoveCategory.PHYSICAL, 90, 100, 15, -1, 0, 3)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .slicingMove(),
+    new AttackMove(MoveId.DRAGON_SLASH, PokemonType.DRAGON, MoveCategory.SPECIAL, 75, 100, 10, -1, 0, 224)
+      .slicingMove()
+      .attr(CritOnlyAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.GROUND_CUTTER, PokemonType.GROUND, MoveCategory.SPECIAL, 70, 100, 10, -1, 0, 224)
+      .slicingMove()
+      .attr(CritOnlyAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.DRAIN_KICK, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 75, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .kickMove(),
+    new AttackMove(MoveId.MUD_BREAK, PokemonType.GROUND, MoveCategory.PHYSICAL, 85, 100, 10, -1, 0, 224)
+      .attr(RemoveScreensAttr),
+    new AttackMove(MoveId.AQUA_DRAIN, PokemonType.WATER, MoveCategory.PHYSICAL, 75, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove(),
+    new AttackMove(MoveId.COLD_SWAP, PokemonType.ICE, MoveCategory.PHYSICAL, 85, 100, 10, 40, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.FROSTBITE ]),
+    new AttackMove(MoveId.GROUND_ROOT, PokemonType.GRASS, MoveCategory.PHYSICAL, 85, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new ChargingSelfStatusMove(MoveId.GEO_BOOST, PokemonType.GROUND, -1, 10, -1, 0, 224)
+      .chargeText(i18next.t("moveTriggers:isChargingPower", { pokemonName: "{USER}" }))
+      .chargeAttr(HealAttr, 0.5)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, true)
+      .target(MoveTarget.USER)
+      .chargeAttr(HealStatusEffectAttr, true, [ StatusEffect.PARALYSIS, StatusEffect.POISON, StatusEffect.TOXIC, StatusEffect.BURN, StatusEffect.FROSTBITE ])
+      .chargeAttr(InstantChargeAttr, (user, move) => { return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier) })
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true),
+    new AttackMove(MoveId.PYRO_STICK, PokemonType.FIRE, MoveCategory.PHYSICAL, 130, 100, 10, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .ignoresAbilities()
+      .makesContact(false),
+    new AttackMove(MoveId.INFERNO_BASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, 50, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.SPATK, Stat.SPD ], 1, true)
+      .makesContact(false),
+    new AttackMove(MoveId.PYRO_THUNDER, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 100, 85, 10, 40, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS, StatusEffect.BURN ])
       .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .makesContact(false),
+    new AttackMove(MoveId.ROYAL_WAVE, PokemonType.WATER, MoveCategory.SPECIAL, 120, 85, 10, 30, 0, 224)
+      .attr(FlinchAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.METAL_BLIZZARD, PokemonType.STEEL, MoveCategory.SPECIAL, 120, 85, 10, 30, 0, 224)
+      .slicingMove()
+      .windMove()
+      .attr(MultiStatusEffectAttr, [ StatusEffect.FROSTBITE ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.AURORA_WING, PokemonType.ICE, MoveCategory.SPECIAL, 80, 100, 10, 50, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPD ], 1, true)
+      .wingMove(),
+    new AttackMove(MoveId.ROOT_BREAK, PokemonType.GRASS, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+    new AttackMove(MoveId.GRASS_BIND, PokemonType.GRASS, MoveCategory.SPECIAL, 100, 85, 5, -1, 0, 224)
+      .attr(TrapAttr, BattlerTagType.GRASS_BIND),
+    new AttackMove(MoveId.ROYAL_CHARGE, PokemonType.GRASS, MoveCategory.SPECIAL, 180, 90, 10, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], -1, true),
+    new AttackMove(MoveId.BRAVE_LANCE, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 130, 100, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .spearMove(),
+    new AttackMove(MoveId.ARMOR_BREAK, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 150, 90, 5, -1, 0, 224)
+      .attr(RecoilAttr, false, 0.25)
+      .attr(StatStageChangeAttr, [ Stat.DEF, Stat.SPDEF ], -1, true)
+      .attr(StatStageChangeAttr, [ Stat.SPD ], 1, true)
+      .recklessMove(),
+    new AttackMove(MoveId.BRAVE_WAVE, PokemonType.WATER, MoveCategory.SPECIAL, 120, 85, 5, 30, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.SPATK, Stat.SPD ], 1, true),
+    new AttackMove(MoveId.TIDAL_BLADE, PokemonType.WATER, MoveCategory.PHYSICAL, 150, 100, 5, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .target(MoveTarget.ALL_NEAR_OTHERS)
+      .slicingMove(),
+    new AttackMove(MoveId.BLIZZARD_SWORD, PokemonType.ICE, MoveCategory.PHYSICAL, 90, 100, 15, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .slicingMove(),
+    new AttackMove(MoveId.GRASS_SPEAR, PokemonType.GRASS, MoveCategory.PHYSICAL, 130, 100, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .spearMove(),
+    new AttackMove(MoveId.SPIKE_HAMMER, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 120, 85, 5, -1, 0, 224)
+      .attr(HighCritAttr)
+      .makesContact(false)
+      .attr(StatStageChangeAttr, [ Stat.SPD ], -2, false)
+      .hammerMove(),
+    new AttackMove(MoveId.PSYCHIC_FLARE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 120, 85, 5, 30, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ]),
+    new AttackMove(MoveId.DELPHIC_BOLT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+    new AttackMove(MoveId.LUNAR_SLASH, PokemonType.DARK, MoveCategory.PHYSICAL, 90, 100, 15, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .slicingMove(),
+    new AttackMove(MoveId.FEATHER_ARROWS, PokemonType.FLYING, MoveCategory.PHYSICAL, 25, 100, 20, -1, 1, 224)
+      .arrowMove()
+      .attr(MultiHitAttr),    
+    new AttackMove(MoveId.PILEDRIVER, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 90, 90, 10, -1, 0, 224)
+      .attr(AlwaysHitMinimizeAttr)
+      .throwMove()
+      .attr(CritOnlyAttr)
+      .attr(HitsTagForDoubleDamageAttr, BattlerTagType.MINIMIZED),
+    new AttackMove(MoveId.WILD_DRIVE, PokemonType.FIRE, MoveCategory.PHYSICAL, 150, 85, 10, 40, 0, 224)
+      .attr(RecoilAttr, false, 0.25)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPD ], 1, true)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .recklessMove(),
+    new AttackMove(MoveId.LUNAR_LULLABY, PokemonType.FAIRY, MoveCategory.SPECIAL, 75, 85, 10, 30, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.SLEEP ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .soundBased(),
+    new AttackMove(MoveId.AURORA_HARMONY, PokemonType.ICE, MoveCategory.SPECIAL, 80, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPATK ], 1, true)
+      .soundBased(),
+    new AttackMove(MoveId.FOREST_ROCK, PokemonType.ROCK, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 224)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER)
+      .soundBased(),
+    new AttackMove(MoveId.GROUND_BEAT, PokemonType.GROUND, MoveCategory.PHYSICAL, 70, 100, 20, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && target.isGrounded() ? 2 : 1)
+      .soundBased(),
+    new AttackMove(MoveId.DRIFT_KICK, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPD ], 1, true)
+      .kickMove(),
+    new AttackMove(MoveId.SIDEBREAK, PokemonType.DARK, MoveCategory.SPECIAL, 95, 100, 15, -1, 0, 224)
+      .attr(RemoveScreensAttr)
+      .attr(DefDefAttr)
+      .ignoresProtect(),
+    new SelfStatusMove(MoveId.VEILED_ORDER, PokemonType.DARK, -1, 10, -1, 4, 224)
+      .attr(ProtectAttr)
+      .attr(ZStatStageChangeAttr, [Stat.EVA], 3, true)
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true)
+      .attr(StatStageChangeAttr, [ Stat.SPATK, Stat.SPD ], 2, true)
+      .target(MoveTarget.USER),
+   new AttackMove(MoveId.MAGICIAN_TRICK, PokemonType.DARK, MoveCategory.PHYSICAL, 80, -1, 10, 30, 0, 224)
+      .attr(CritOnlyAttr)
+      .attr(FlinchAttr)
+      .makesContact(false),
+   new AttackMove(MoveId.WONDER_TRICK, PokemonType.FAIRY, MoveCategory.PHYSICAL, 80, -1, 10, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .makesContact(false),
+   new AttackMove(MoveId.SPECTER_SHOUTING, PokemonType.GHOST, MoveCategory.SPECIAL, 120, 85, 10, 30, 0, 224)
+      .attr(FlinchAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .soundBased(),
+   new AttackMove(MoveId.LAST_LULLABY, PokemonType.GHOST, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr)
+      .soundBased(),
+   new AttackMove(MoveId.POWERFUL_STEP, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK ], 1, true)
+      .danceMove(),
+   new AttackMove(MoveId.VORTEX_STEP, PokemonType.FLYING, MoveCategory.PHYSICAL, 110, 85, 10, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .spinMove()
+      .danceMove(),
+   new AttackMove(MoveId.INFERNO_FORCE, PokemonType.FIGHTING, MoveCategory.SPECIAL, 120, 85, 10, 40, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.WANDERED_ARROW, PokemonType.FLYING, MoveCategory.PHYSICAL, 80, -1, 10, -1, 0, 224)
+      .arrowMove(),
+   new AttackMove(MoveId.FROST_EDGE, PokemonType.ICE, MoveCategory.PHYSICAL, 80, -1, 10, -1, 2, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .slicingMove(),
+   new SelfStatusMove(MoveId.SACRED_HOWL, PokemonType.NORMAL, -1, 15, -1, 0, 224)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, true)
+      .target(MoveTarget.USER)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPDEF, Stat.SPATK, Stat.SPD ], 1, true),
+   new AttackMove(MoveId.LIGHTNING_SPEED, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 5, -1, 2, 224),
+   new AttackMove(MoveId.LIGHTNING_SHOUTING, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 140, 100, 10, -1, 0, 224)
+      .soundBased()
+      .target(MoveTarget.ALL_NEAR_OTHERS),
+   new AttackMove(MoveId.FROST_BLITZ, PokemonType.ICE, MoveCategory.SPECIAL, 130, 85, 10, 30, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS, StatusEffect.FROSTBITE ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.BLACK_GALE, PokemonType.FLYING, MoveCategory.SPECIAL, 120, 85, 10, 40, 0, 224)
+      .attr(StatusEffectAttr, StatusEffect.PARALYSIS)
+      .attr(FlinchAttr)
+      .windMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.INFERNO_DASH, PokemonType.FIRE, MoveCategory.PHYSICAL, 80, 100, 5, -1, 2, 224),
+   new AttackMove(MoveId.VOLCANIC_WRATH, PokemonType.FIRE, MoveCategory.PHYSICAL, 140, 85, 10, 20, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .makesContact(false)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.PYRO_BOLT, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 120, 85, 10, 20, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS, StatusEffect.BURN ])
+      .makesContact(false)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.MAGMA_ROCK, PokemonType.ROCK, MoveCategory.PHYSICAL, 120, 85, 10, 20, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .attr(FlinchAttr)
+      .throwMove()
+      .makesContact(false)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.DRAIN_WAVE, PokemonType.WATER, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr, 0.75)
+      .triageMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new SelfStatusMove(MoveId.AURORA_HEAL, PokemonType.ICE, -1, 5, -1, 0, 224)
+      .attr(HealAttr, 0.75)
+      .attr(ZHealBeforeMoveAttr, 1)
+      .triageMove()
+      .attr(HealStatusEffectAttr, true, [ StatusEffect.PARALYSIS, StatusEffect.POISON, StatusEffect.TOXIC, StatusEffect.BURN, StatusEffect.FROSTBITE ])
+      .condition((user, target, move) => !!user.status && (user.status.effect === StatusEffect.PARALYSIS || user.status.effect === StatusEffect.POISON || user.status.effect === StatusEffect.TOXIC || user.status.effect === StatusEffect.BURN || user.status.effect === StatusEffect.FROSTBITE)),
+   new StatusMove(MoveId.SACRED_WIND, PokemonType.FLYING, -1, 15, -1, 0, 224)
+      .attr(RemoveScreensAttr, false)
+      .attr(RemoveArenaTrapAttr, true)
+      .attr(ClearWeatherAttr, WeatherType.FOG)
+      .attr(ClearTerrainAttr)
+      .windMove()
+      .attr(AddBattlerTagAttr, BattlerTagType.SPLASH_Z_CRIT_BOOST, [], 0, true)
+      .attr(AddArenaTagAttr, ArenaTagType.TAILWIND, 4, true)
+      .target(MoveTarget.USER_SIDE),
+   new AttackMove(MoveId.WAVE_BREAK, PokemonType.WATER, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+   new SelfStatusMove(MoveId.ANCIENT_FORCE, PokemonType.NORMAL, -1, 15, -1, 0, 224)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, true)
+      .target(MoveTarget.USER)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPDEF, Stat.SPATK, Stat.SPD ], 1, true),
+   new AttackMove(MoveId.ANTIQUE_POWER, PokemonType.PSYCHIC, MoveCategory.PHYSICAL, -1, 90, 10, -1, 0, 224)
+      .attr(TargetHalfHpDamageAttr),
+   new AttackMove(MoveId.ROCK_CURSE, PokemonType.ROCK, MoveCategory.PHYSICAL, 60, 100, 15, 100, 0, 224)
+      .attr(AddBattlerTagAttr, BattlerTagType.ROCK_CURSE)
+      .makesContact(false),
+   new StatusMove(MoveId.SAND_BARRIER, PokemonType.ROCK, -1, 20, -1, 0, 224)
+      .attr(ZStatStageChangeAttr, [Stat.SPDEF], 1, false )
+      .target(MoveTarget.NEAR_OTHER)
+      .condition((user, target, move) => (globalScene.arena.weather?.weatherType === WeatherType.SANDSTORM) && !globalScene.arena.weather?.isEffectSuppressed())
+      .attr(AddArenaTagAttr, ArenaTagType.SAND_BARRIER, 5, true)
+      .target(MoveTarget.USER_SIDE),
+   new AttackMove(MoveId.STONE_PRESS, PokemonType.ROCK, MoveCategory.PHYSICAL, 100, 100, 10, -1, 0, 224)
+      .attr(DefAtkAttr),
+   new AttackMove(MoveId.COLD_CURSE, PokemonType.ICE, MoveCategory.SPECIAL, 60, 100, 15, 100, 0, 224)
+      .attr(AddBattlerTagAttr, BattlerTagType.COLD_CURSE),
+   new AttackMove(MoveId.AURORA_PRESS, PokemonType.ICE, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
+      .attr(SpdefSpatkAttr),
+   new StatusMove(MoveId.ICE_SPIKE, PokemonType.ICE, -1, 20, -1, 0, 224)
+      .attr(AddArenaTrapTagAttr, ArenaTagType.ICE_SPIKE)
+      .attr(ZStatStageChangeAttr, [Stat.SPDEF], 1, true)
+      .target(MoveTarget.NEAR_OTHER)
+      .target(MoveTarget.ENEMY_SIDE)
+      .reflectable(),
+   new AttackMove(MoveId.SNOW_FLAKE, PokemonType.ICE, MoveCategory.SPECIAL, 85, 90, 15, 100, 0, 224)
+      .attr(AddArenaTrapTagHitAttr, ArenaTagType.ICE_SPIKE),
+   new AttackMove(MoveId.RUSTED_CURSE, PokemonType.STEEL, MoveCategory.SPECIAL, 60, 100, 15, 100, 0, 224)
+      .attr(AddBattlerTagAttr, BattlerTagType.RUSTED_CURSE),
+   new AttackMove(MoveId.GYRO_PRESS, PokemonType.STEEL, MoveCategory.PHYSICAL, 100, 100, 10, -1, 0, 224)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr),
+   new StatusMove(MoveId.METAL_SPIKE, PokemonType.STEEL, -1, 20, -1, 0, 224)
+      .attr(AddArenaTrapTagAttr, ArenaTagType.METAL_SPIKE)
+      .attr(ZStatStageChangeAttr, [Stat.DEF, Stat.SPDEF], 1, true)
+      .target(MoveTarget.NEAR_OTHER)
+      .target(MoveTarget.ENEMY_SIDE)
+      .reflectable(),
+   new AttackMove(MoveId.GEAR_GLIND, PokemonType.STEEL, MoveCategory.PHYSICAL, 85, 90, 15, 100, 0, 224)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr)
+      .attr(AddArenaTrapTagHitAttr, ArenaTagType.METAL_SPIKE),
+   new AttackMove(MoveId.JET_DRIVE, PokemonType.DRAGON, MoveCategory.SPECIAL, 95, 100, 5, -1, 2, 224)
+      .attr(DefDefAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.INFINITE_SLASH, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 60, -1, 10, -1, 0, 224)
+      .attr(MultiHitAttr, MultiHitType._2)
+      .slicingMove(),
+   new AttackMove(MoveId.POWERKINESIS, PokemonType.FIGHTING, MoveCategory.SPECIAL, 100, 95, 5, -1, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPDEF ], -2, false),
+   new AttackMove(MoveId.MIRAGE_IMPULSE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 150, -1, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .condition((user, target, move) => {
+        const turnMove = user.getLastXMoves(1);
+        return !turnMove.length || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
+      })
+      .pulseMove(),
+   new AttackMove(MoveId.SHINE_PULSE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, -1, 5, -1, 2, 224)
+      .attr(NeutralDamageAgainstDarkTypeMultiplierAttr)
+      .lightMove()
+      .pulseMove(),
+   new AttackMove(MoveId.SONIC_ACE, PokemonType.FAIRY, MoveCategory.SPECIAL, 80, -1, 5, -1, 2, 224)
+      .ignoresAbilities(),
+   new AttackMove(MoveId.ETERNAL_BLAST, PokemonType.DRAGON, MoveCategory.SPECIAL, 150, 90, 5, -1, 0, 8)
+      .lightMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .condition((user, target, move) => {
+        const turnMove = user.getLastXMoves(1);
+        return !turnMove.length || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
+      }),
+   new AttackMove(MoveId.MIND_BREAK, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+   new AttackMove(MoveId.BRAIN_BURST, PokemonType.PSYCHIC, MoveCategory.SPECIAL, -1, 100, 10, -1, -1, 224)
+      .attr(CounterDamageAttr, 2)
+      .attr(CounterRedirectAttr)
+      .condition(counterAttackConditionBoth, 3)
+      .makesContact(false)
+      .target(MoveTarget.ATTACKER),
+   new AttackMove(MoveId.KNOWLEDGE_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 100, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.DEF, Stat.SPDEF, Stat.SPD ], 1, true)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr),
+   new AttackMove(MoveId.KNOWLEDGE_CURSE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 60, 100, 15, 100, 0, 224)
+      .attr(AddBattlerTagAttr, BattlerTagType.KNOWLEDGE_CURSE),
+   new AttackMove(MoveId.EMOTION_FORCE, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 95, 100, 15, -1, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.EMOTION_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(NeutralDamageAgainstDarkTypeMultiplierAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.BRAIN_STORM, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 160, 100, 10, -1, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], -2, true)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.MIND_DRAIN, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 90, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr, 0.75)
+      .triageMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.WILL_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 120, 90, 15, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(NeutralDamageAgainstDarkTypeMultiplierAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.MAGICKINESIS, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 90, 100, 15, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .ignoresAbilities(),
+   new AttackMove(MoveId.BRAIN_CANNON, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 90, 100, 15, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(RemoveScreensAttr)
+      .ignoresProtect(),
+   new AttackMove(MoveId.MACHKINESIS, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, -1, 5, -1, 2, 224)
+      .attr(NeutralDamageAgainstDarkTypeMultiplierAttr),
+   new AttackMove(MoveId.MAGMA_DOWN, PokemonType.FIRE, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+   new AttackMove(MoveId.METAL_BLAST, PokemonType.STEEL, MoveCategory.SPECIAL, 120, 85, 15, 30, 0, 224)
+     .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ]),
+   new AttackMove(MoveId.METAL_WAVE, PokemonType.STEEL, MoveCategory.SPECIAL, 140, 100, 10, 30, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPDEF ], -2, false)
+      .target(MoveTarget.ALL_NEAR_OTHERS),
+   new AttackMove(MoveId.LAVA_WAVE, PokemonType.FIRE, MoveCategory.SPECIAL, 140, 100, 10, 40, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.BURN ])
+      .target(MoveTarget.ALL_NEAR_OTHERS),
+   new AttackMove(MoveId.LUNAKINESIS, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 120, 100, 5, -1, 0, 224)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .ignoresAbilities(),
+   new AttackMove(MoveId.DREAM_BREAK, PokemonType.FAIRY, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+   new StatusMove(MoveId.LUNAR_DRAIN, PokemonType.PSYCHIC, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr, null, Stat.SPATK)
+      .attr(SplashZBoostAccuracyAttr)
+      .target(MoveTarget.NEAR_OTHER)
+      .attr(ZStatStageChangeAttr, [Stat.SPDEF], 1, true)
+      .attr(StatStageChangeAttr, [ Stat.SPATK ], -1)
+      .condition((user, target, move) => target.getStatStage(Stat.SPATK) > -6)
+      .triageMove()
+      .reflectable(),
+   new AttackMove(MoveId.IRON_CUTTER, PokemonType.STEEL, MoveCategory.PHYSICAL, 80, 100, 25, -1, 0, 224)
+      .attr(HighCritAttr)
+      .slicingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.JUSTICE_BLADE, PokemonType.STEEL, MoveCategory.PHYSICAL, 120, 100, 5, -1, 0, 224)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr)
+      .slicingMove()
+      .ignoresAbilities(),
+   new AttackMove(MoveId.CHILLY_SLASH, PokemonType.ICE, MoveCategory.PHYSICAL, 95, 100, 10, 30, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.FROSTBITE ])
+      .slicingMove(),
+   new AttackMove(MoveId.DOUBLE_SLASH, PokemonType.STEEL, MoveCategory.PHYSICAL, 60, -1, 10, -1, 0, 224)
+      .attr(MultiHitAttr, MultiHitType._2)
+      .slicingMove(),
+   new AttackMove(MoveId.STONE_CUT, PokemonType.ROCK, MoveCategory.PHYSICAL, 85, 100, 15, -1, 0, 224)
+      .slicingMove()
+      .attr(RemoveScreensAttr),
+   new AttackMove(MoveId.POWERFUL_AXE, PokemonType.ROCK, MoveCategory.PHYSICAL, 120, 85, 5, -1, 0, 224)
+      .slicingMove()
+      .ignoresAbilities()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.STONE_CUTTER, PokemonType.ROCK, MoveCategory.PHYSICAL, 80, 100, 25, -1, 0, 224)
+      .attr(HighCritAttr)
+      .slicingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.GROUND_AXE, PokemonType.GROUND, MoveCategory.PHYSICAL, 150, 90, 5, -1, 0, 8)
+      .slicingMove()
+      .condition((user, target, move) => {
+        const turnMove = user.getLastXMoves(1);
+        return !turnMove.length || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
+      }),
+   new AttackMove(MoveId.WOOD_CUTTER, PokemonType.GRASS, MoveCategory.PHYSICAL, 90, 100, 25, -1, 0, 224)
+      .attr(HighCritAttr)
+      .slicingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.WIND_BLADE, PokemonType.GRASS, MoveCategory.PHYSICAL, 80, 100, 5, -1, 2, 224)
+      .windMove()
+      .slicingMove(),
+   new AttackMove(MoveId.JADE_SLASH, PokemonType.ROCK, MoveCategory.PHYSICAL, 80, -1, 10, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .makesContact(false)
+      .slicingMove(),
+   new AttackMove(MoveId.LEAF_KNIFE, PokemonType.GRASS, MoveCategory.PHYSICAL, 95, 100, 5, -1, 0, 224)
+      .attr(HitHealAttr, 0.75)
+      .triageMove()
+      .slicingMove()
+      .ignoresAbilities()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new StatusMove(MoveId.RAGE_WIND_FORCE, PokemonType.FLYING, -1, 15, -1, 0, 224)
+      .windMove()
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 2, true)
+      .attr(AddArenaTagAttr, ArenaTagType.TAILWIND, 5, true)
+      .attr(RemoveArenaTrapAttr, true)
+      .target(MoveTarget.USER_SIDE),
+   new AttackMove(MoveId.SACRED_WING, PokemonType.FLYING, MoveCategory.SPECIAL, 100, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPD ], 1, true)
+      .wingMove(),
+   new AttackMove(MoveId.DRAIN_WIND, PokemonType.FLYING, MoveCategory.SPECIAL, 90, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .wingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.CLOUD_JET, PokemonType.FLYING, MoveCategory.SPECIAL, 80, 100, 5, -1, 2, 224)
+      .windMove(),
+   new AttackMove(MoveId.SACRED_THUNDER, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.SPATK ], 1, true),
+   new AttackMove(MoveId.THUNDER_BREAK, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 95, 100, 15, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(RemoveScreensAttr)
+      .ignoresProtect(),
+    new AttackMove(MoveId.CLOUD_BLAST, PokemonType.FLYING, MoveCategory.SPECIAL, 120, 85, 10, 30, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .windMove(),
+    new AttackMove(MoveId.SACRED_GROUND, PokemonType.GROUND, MoveCategory.PHYSICAL, 80, 100, 10, 100, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK ], 1, true),
+    new AttackMove(MoveId.GROUND_WRATH, PokemonType.GROUND, MoveCategory.PHYSICAL, 95, 100, 15, 30, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(FlinchAttr)
+      .ignoresAbilities()
+      .ignoresProtect(),
+    new AttackMove(MoveId.FERTILED_CLOUD, PokemonType.FLYING, MoveCategory.PHYSICAL, 120, 85, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .windMove(),
+    new AttackMove(MoveId.SACRED_BLOOM, PokemonType.FAIRY, MoveCategory.SPECIAL, 150, 85, 10, -1, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], -1, true)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.SPRING_COLD, PokemonType.FLYING, MoveCategory.SPECIAL, 95, 100, 15, 40, 0, 224)
+      .attr(MultiStatusEffectAttr, [ StatusEffect.FROSTBITE ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new SelfStatusMove(MoveId.WARMING_CLOUD, PokemonType.FAIRY, -1, 5, -1, 0, 1)
+      .attr(HealAttr, 0.33, true, false)
+      .attr(ZHealBeforeMoveAttr, 1)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, true)
+      .target(MoveTarget.NEAR_OTHER)
+      .attr(HealStatusEffectAttr, false, getNonVolatileStatusEffects())
+      .target(MoveTarget.USER_AND_ALLIES)
+      .triageMove(),
+    new AttackMove(MoveId.LIGHTNING_CANNON, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 100, 100, 5, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .ignoresAbilities(),
+    new AttackMove(MoveId.HYPER_THUNDER, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 95, 100, 5, -1, 0, 224)
+      .attr(NeutralDamageAgainstGroundTypeMultiplierAttr)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.DRAGON_TIDAL, PokemonType.DRAGON, MoveCategory.SPECIAL, 100, 100, 5, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .windMove(),
+    new AttackMove(MoveId.DRAGON_STRIKE, PokemonType.DRAGON, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+    new AttackMove(MoveId.UNLIMITED_POWER, PokemonType.NORMAL, MoveCategory.PHYSICAL, 40, 100, 15, -1, 0, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(PositiveStatStagePowerAttr)
+      .attr(FormChangeItemTypeAttr),
+    new AttackMove(MoveId.ULTRA_DRAIN, PokemonType.NORMAL, MoveCategory.SPECIAL, 90, 100, 10, -1, 0, 224)
+      .attr(HitHealAttr)
+      .triageMove()
+      .attr(FormChangeItemTypeAttr),
+    new StatusMove(MoveId.HYPER_HOWLING, PokemonType.NORMAL, -1, 10, -1, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPDEF, Stat.SPATK, Stat.SPD ], 1, true)
+      .soundBased()
+      .target(MoveTarget.NEAR_OTHER)
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPDEF, Stat.SPATK, Stat.SPD ], 1, true )
+      .target(MoveTarget.USER_AND_ALLIES),
+    new AttackMove(MoveId.BEAST_BREAK, PokemonType.NORMAL, MoveCategory.PHYSICAL, 95, 100, 15, 30, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .attr(FormChangeItemTypeAttr)
+      .ignoresAbilities()
+      .ignoresProtect()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+    new AttackMove(MoveId.THUNDER_SHOUTING, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+    new AttackMove(MoveId.MIRACLE_BEAK, PokemonType.FAIRY, MoveCategory.PHYSICAL, 75, 100, 20, -1, 0, 224)
+      .beakMove()
+      .attr(MovePowerMultiplierAttr, (_user, target) => target.turnData.acted ? 1 : 2)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && target.isGrounded() ? 2 : 1),
+   new AttackMove(MoveId.GEO_BOLT, PokemonType.GROUND, MoveCategory.SPECIAL, 80, 100, 10, 20, 0, 224)
+      .ignoresAbilities()
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS ])
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+   new AttackMove(MoveId.GYRO_ICICLE, PokemonType.ICE, MoveCategory.SPECIAL, 80, 100, 10, 20, 0, 224)
+      .ignoresProtect()
+      .attr(MultiStatusEffectAttr, [ StatusEffect.PARALYSIS, StatusEffect.FROSTBITE ])
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+    new AttackMove(MoveId.MIRACLE_WING, PokemonType.FAIRY, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .wingMove()
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+    new AttackMove(MoveId.WEIRD_WIND, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 85, 100, 20, -1, 0, 224)
+      .windMove()
+      .attr(MovePowerMultiplierAttr, (_user, target) => target.turnData.acted ? 1 : 2)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && target.isGrounded() ? 2 : 1),
+   new AttackMove(MoveId.GEOKINESIS, PokemonType.GROUND, MoveCategory.SPECIAL, 80, 100, 10, 20, 0, 224)
+      .ignoresAbilities()
+      .attr(StatStageChangeAttr, [ Stat.SPDEF ], -1, false)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+   new AttackMove(MoveId.SHADE_FORCE, PokemonType.GHOST, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .ignoresProtect()
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.PSYCHIC && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+   new AttackMove(MoveId.FRONDAGE_FORCE, PokemonType.GRASS, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+    new AttackMove(MoveId.MIRACLE_SPEAR, PokemonType.FAIRY, MoveCategory.PHYSICAL, 75, 100, 20, -1, 0, 224)
+      .spearMove()
+      .attr(MovePowerMultiplierAttr, (_user, target) => target.turnData.acted ? 1 : 2)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && target.isGrounded() ? 2 : 1),
+   new AttackMove(MoveId.RISING_EDGE, PokemonType.GROUND, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 224)
+      .ignoresAbilities()
+      .attr(HighCritAttr)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? 1.5 : 1)
+      .attr(VariableTargetAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? MoveTarget.ALL_NEAR_ENEMIES : MoveTarget.NEAR_OTHER),
+   new AttackMove(MoveId.CLIFF_RUSH, PokemonType.ROCK, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 224)
+      .ignoresProtect()
+      .attr(IncrementMovePriorityAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded())
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.GRASSY && user.isGrounded() ? 1.5 : 1),
+   new AttackMove(MoveId.DROWNED_CURSE, PokemonType.WATER, MoveCategory.SPECIAL, 60, 100, 15, 100, 0, 224)
+      .attr(AddBattlerTagAttr, BattlerTagType.DROWNED_CURSE)
+      .makesContact(false),
+   new AttackMove(MoveId.WHITE_OUT, PokemonType.ICE, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(ResetStatsAttr, false)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.MISTY && target.isGrounded() ? 1.5 : 1),
+  new AttackMove(MoveId.DROWN, PokemonType.WATER, MoveCategory.SPECIAL, 250, 30, 5, -1, 0, 224)
+      .attr(WaterNoEffectTypeAttr)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+  new AttackMove(MoveId.MIRACLE_ENERGY, PokemonType.FAIRY, MoveCategory.SPECIAL, 80, 100, 5, -1, 0, 224)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .ignoresAbilities()
+      .attr(MovePowerMultiplierAttr, (user, target, move) => globalScene.arena.getTerrainType() === TerrainType.MISTY && target.isGrounded() ? 2 : 1),
+  new SelfStatusMove(MoveId.ULTRA_CHARGE, PokemonType.PSYCHIC, -1, 10, -1, 0, 224)
+      .attr(HighestStatStageChangeAttr, 1, true)
+      .attr(ZStatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true),
+  new AttackMove(MoveId.MINERAL_SHOCK, PokemonType.ROCK, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
+      .attr(DefDefAttr),
+  new AttackMove(MoveId.BEAST_TOXIC, PokemonType.POISON, MoveCategory.SPECIAL, 110, 100, 15, 50, 0, 224)
+      .attr(ConfuseAttr)
+      .ignoresAbilities(),
+  new AttackMove(MoveId.POWERFUL_MASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 90, 100, 5, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .ignoresAbilities(),
+  new AttackMove(MoveId.HARD_BREAK, PokemonType.BUG, MoveCategory.PHYSICAL, 85, 100, 15, -1, 0, 224)
+      .attr(RemoveScreensAttr)
+      .ignoresProtect(),
+  new AttackMove(MoveId.BULK_PRESS, PokemonType.BUG, MoveCategory.PHYSICAL, 100, 100, 10, -1, 0, 224)
+      .attr(DefAtkAttr),
+  new AttackMove(MoveId.BEAST_POWER, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 20, 50, 0, 224)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF ], 2, true)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.MACH_SPEED, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 15, -1, 2, 224),
+  new AttackMove(MoveId.BEAST_SPEED, PokemonType.FIGHTING, MoveCategory.SPECIAL, 80, 100, 15, -1, 2, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.LIGHTNING_ROOT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(DefDefAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.SPARKLING_SHINE, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 10, 30, 0, 224)
+      .lightMove()
+      .attr(ConfuseAttr)
+      .attr(StatStageChangeAttr, [ Stat.ACC ], -1, false)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.ELECTRO_STRIKE, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .ignoresAbilities(),
+  new AttackMove(MoveId.BEAST_BOLT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 80, 100, 20, 10, 0, 224)
+      .attr(NeutralDamageAgainstGroundTypeMultiplierAttr)
+      .attr(StatStageChangeAttr, [ Stat.SPATK ], 2, true),
+  new AttackMove(MoveId.RISING_ROOT, PokemonType.GRASS, MoveCategory.SPECIAL, -1, 90, 10, -1, 0, 224)
+      .attr(TargetFractionHpDamageAttr, 0.75)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.TURBO_JET, PokemonType.FLYING, MoveCategory.SPECIAL, 80, 100, 15, -1, 2, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .ignoresAbilities()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.TRUNK_MASH, PokemonType.STEEL, MoveCategory.PHYSICAL, 90, 100, 15, -1, 2, 224)
+      .ignoresProtect()
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.BEAST_TURBO, PokemonType.FLYING, MoveCategory.SPECIAL, 70, 100, 10, 30, 2, 224)
+      .attr(PhotonGeyserCategoryAttr)
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD ], 1, true),
+  new AttackMove(MoveId.ORIGAMI_SLASH, PokemonType.STEEL, MoveCategory.PHYSICAL, 95, 100, 15, -1, 0, 224)
+      .attr(RemoveScreensAttr)
+      .slicingMove(),
+  new AttackMove(MoveId.BREAK_SLASH, PokemonType.GRASS, MoveCategory.PHYSICAL, 100, 100, 15, -1, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .ignoresProtect()
+      .slicingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.SPIKE_CUTTER, PokemonType.STEEL, MoveCategory.PHYSICAL, 100, 100, 15, -1, 0, 224)
+      .ignoresAbilities()
+      .slicingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.BEAST_BLADE, PokemonType.GRASS, MoveCategory.PHYSICAL, 80, 100, 20, 100, 0, 224)
+      .slicingMove()
+      .attr(StatStageChangeAttr, [ Stat.DEF ], -2, false),
+  new AttackMove(MoveId.GLUTTON_BITE, PokemonType.DARK, MoveCategory.PHYSICAL, 85, 100, 25, -1, 0, 224)
+      .ignoresAbilities()
+      .bitingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.GUZZ_DRIVE, PokemonType.DRAGON, MoveCategory.PHYSICAL, 120, 85, 25, -1, 0, 224)
+      .attr(IgnoreOpponentStatStagesAttr)
+      .bitingMove()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.BEAST_BITE, PokemonType.DRAGON, MoveCategory.PHYSICAL, 100, 95, 25, -1, 0, 224)
+      .attr(HitHealAttr, 0.75)
+      .triageMove()
+      .bitingMove()
+      .attr(NeutralDamageAgainstFairyTypeMultiplierAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.VENOM_FLARE, PokemonType.POISON, MoveCategory.SPECIAL, 120, 85, 5, 30, 0, 224)
+      .attr(StatusEffectAttr, [ StatusEffect.BURN, StatusEffect.TOXIC ])
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.STING_SPIKE, PokemonType.POISON, MoveCategory.SPECIAL, 100, 100, 10, -1, 0, 224)
+      .attr(DefDefAttr),
+  new AttackMove(MoveId.ULTRA_GEYSER, PokemonType.DRAGON, MoveCategory.SPECIAL, 130, 85, 10, -1, 0, 224)
+      .beamMove()
+      .lightMove()
+      .attr(SuppressAbilitiesAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.BEAST_BURST, PokemonType.DRAGON, MoveCategory.SPECIAL, 85, 100, 10, -1, 0, 224)
+      .attr(MovePowerMultiplierAttr, (_user, target) => target.turnData.acted ? 1 : 2)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+  new AttackMove(MoveId.STOCK_POWER, PokemonType.ROCK, MoveCategory.PHYSICAL, -1, 100, 10, -1, 0, 224)
+      .attr(CounterDamageAttr, 1.5)
+      .attr(CounterRedirectAttr)
+      .condition(counterAttackConditionBoth, 3)
+      .makesContact(false)
+      .target(MoveTarget.ATTACKER),
+   new AttackMove(MoveId.MOUNTAIN_BREAK, PokemonType.ROCK, MoveCategory.PHYSICAL, 250, 30, 5, -1, 0, 224)
+      .attr(OneHitKOAttr)
+      .attr(OneHitKOAccuracyAttr),
+   new AttackMove(MoveId.ULTRA_SLAM, PokemonType.STEEL, MoveCategory.PHYSICAL, 120, 100, 5, -1, 0, 224)
+      .attr(DefOrSpdefCategoryAttr)
+      .attr(DefOrSpdefAtkAttr)
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.BEAST_STACK, PokemonType.STEEL, MoveCategory.PHYSICAL, 50, 100, 15, -1, 0, 224)
+      .attr(AddBattlerTagAttr, BattlerTagType.BEAST_STACK)
+      .makesContact(false),
+   new AttackMove(MoveId.INFERNO_PARADE, PokemonType.FIRE, MoveCategory.PHYSICAL, 160, 100, 5, -1, 0, 224)
+      .condition(failIfDampCondition)
+      .attr(HalfSacrificialAttr)
+      .target(MoveTarget.ALL_NEAR_OTHERS),
+   new AttackMove(MoveId.JESTER_SHOUTING, PokemonType.GHOST, MoveCategory.SPECIAL, 160, 100, 5, -1, 0, 224)
+      .condition(failIfDampCondition)
+      .attr(HalfSacrificialAttr)
+      .target(MoveTarget.ALL_NEAR_OTHERS)
+      .soundBased(),
+   new AttackMove(MoveId.BEAST_PARADE, PokemonType.GHOST, MoveCategory.PHYSICAL, 160, 100, 5, -1, 0, 224)
+      .condition(failIfDampCondition)
+      .attr(HalfSacrificialAttr)
+      .target(MoveTarget.ALL_NEAR_OTHERS),
+   new AttackMove(MoveId.BREAK_SMASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 5, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .punchingMove()
+      .ignoresAbilities()
+      .target(MoveTarget.ALL_NEAR_ENEMIES),
+   new AttackMove(MoveId.METAL_BREAK, PokemonType.STEEL, MoveCategory.PHYSICAL, 80, 100, 5, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .punchingMove()
+      .attr(RemoveBattlerTagAttr, [ BattlerTagType.PROTECTED ])
+      .attr(RemoveArenaTagsAttr, [ ArenaTagType.QUICK_GUARD, ArenaTagType.WIDE_GUARD, ArenaTagType.MAT_BLOCK, ArenaTagType.CRAFTY_SHIELD ], false),
+   new AttackMove(MoveId.MOUNTAIN_STRIKE, PokemonType.GROUND, MoveCategory.PHYSICAL, 80, 100, 5, -1, 0, 224)
+      .attr(CritOnlyAttr)
+      .punchingMove()
+      .attr(RemoveScreensAttr),
+   new AttackMove(MoveId.GLACIAL_STRIKES, PokemonType.ICE, MoveCategory.PHYSICAL, 25, 100, 5, -1, 0, 224)
+      .attr(MultiHitAttr, MultiHitType._3)
+      .attr(CritOnlyAttr)
+      .punchingMove()
+      .attr(RemoveBattlerTagAttr, [ BattlerTagType.PROTECTED ])
+      .attr(RemoveArenaTagsAttr, [ ArenaTagType.QUICK_GUARD, ArenaTagType.WIDE_GUARD, ArenaTagType.MAT_BLOCK, ArenaTagType.CRAFTY_SHIELD ], false),
+   new AttackMove(MoveId.BLIZZARD_STRIKES, PokemonType.GROUND, MoveCategory.PHYSICAL, 25, 100, 5, -1, 0, 224)
+      .attr(MultiHitAttr, MultiHitType._3)
+      .attr(CritOnlyAttr)
+      .punchingMove()
+      .attr(RemoveScreensAttr),
+   new ChargingSelfStatusMove(MoveId.THOUSAND_TRIAL, PokemonType.FIGHTING, -1, 10, -1, 0, 224)
+      .chargeText(i18next.t("moveTriggers:isChargingPower", { pokemonName: "{USER}" }))
+      .chargeAttr(HealAttr, 0.5)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, true)
+      .target(MoveTarget.USER)
+      .chargeAttr(HealStatusEffectAttr, true, [ StatusEffect.PARALYSIS, StatusEffect.POISON, StatusEffect.TOXIC, StatusEffect.BURN ])
+      .chargeAttr(InstantChargeAttr, (user, move) => { return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier) })
+      .attr(StatStageChangeAttr, [ Stat.ATK, Stat.DEF, Stat.SPD ], 2, true),
   );
 }

@@ -228,14 +228,15 @@ export class SaveSlotSelectUiHandler extends MessageUiHandler {
               break;
 
             case SaveSlotUiMode.SAVE: {
-              const saveAndCallback = () => {
-                const originalCallback = this.saveSlotSelectCallback;
-                this.saveSlotSelectCallback = null;
-                ui.revertMode();
-                ui.showText("", 0);
-                ui.setMode(UiMode.MESSAGE);
-                originalCallback?.(cursor);
-              };
+              const saveAndCallback = async () => {
+  const originalCallback = this.saveSlotSelectCallback;
+  this.saveSlotSelectCallback = null;
+
+  await ui.revertMode();
+  ui.showText("", 0);
+
+  originalCallback?.(cursor);
+};
               if (this.sessionSlots[cursor].hasData) {
                 ui.showText(i18next.t("saveSlotSelectUiHandler:overwriteData"), null, () => {
                   ui.setOverlayMode(
@@ -619,9 +620,11 @@ class SessionSlot extends Phaser.GameObjects.Container {
     continue;
   }
   const modifier = m.toModifier(ctor);
-      if (modifier instanceof Modifier.PokemonHeldItemModifier) {
-        continue;
-      }
+if (!modifier) continue;
+
+if (modifier instanceof Modifier.PokemonHeldItemModifier) {
+  continue;
+}
       const icon = modifier?.getIcon(false);
       if (icon) {
         icon.setPosition(24 * visibleModifierIndex, 0);

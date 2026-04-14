@@ -406,51 +406,58 @@ export class EvolutionPhase extends Phase {
   }
 
   private postEvolve(evolvedPokemon: Pokemon): void {
-    const learnSituation: LearnMoveSituation = this.fusionSpeciesEvolved
-      ? LearnMoveSituation.EVOLUTION_FUSED
-      : this.pokemon.fusionSpecies
-        ? LearnMoveSituation.EVOLUTION_FUSED_BASE
-        : LearnMoveSituation.EVOLUTION;
-    const levelMoves = this.pokemon
-      .getLevelMoves(this.lastLevel + 1, true, false, false, learnSituation)
-      .filter(lm => lm[0] === EVOLVE_MOVE);
-    for (const lm of levelMoves) {
-      globalScene.phaseManager.unshiftNew("LearnMovePhase", globalScene.getPlayerParty().indexOf(this.pokemon), lm[1]);
-    }
-    globalScene.phaseManager.unshiftNew("EndEvolutionPhase");
+  // ✅ 진화 성공 시 고정 로그포인트 지급
+  globalScene.gameData.addRoguePoints(10);
+  globalScene.updateroguePointText();
 
-    globalScene.playSound("se/shine");
-    this.doSpray();
+  const learnSituation: LearnMoveSituation = this.fusionSpeciesEvolved
+    ? LearnMoveSituation.EVOLUTION_FUSED
+    : this.pokemon.fusionSpecies
+      ? LearnMoveSituation.EVOLUTION_FUSED_BASE
+      : LearnMoveSituation.EVOLUTION;
 
-    globalScene.tweens.chain({
-      targets: null,
-      tweens: [
-        {
-          targets: this.evolutionOverlay,
-          alpha: 1,
-          duration: 250,
-          easing: "Sine.easeIn",
-          onComplete: () => {
-            this.evolutionBgOverlay.setAlpha(1);
-            this.evolutionBg.setVisible(false);
-          },
-        },
-        {
-          targets: [this.evolutionOverlay, this.pokemonEvoTintSprite],
-          alpha: 0,
-          duration: 2000,
-          delay: 150,
-          easing: "Sine.easeIn",
-        },
-        {
-          targets: this.evolutionBgOverlay,
-          alpha: 0,
-          duration: 250,
-          onComplete: () => this.onEvolutionComplete(evolvedPokemon),
-        },
-      ],
-    });
+  const levelMoves = this.pokemon
+    .getLevelMoves(this.lastLevel + 1, true, false, false, learnSituation)
+    .filter(lm => lm[0] === EVOLVE_MOVE);
+
+  for (const lm of levelMoves) {
+    globalScene.phaseManager.unshiftNew("LearnMovePhase", globalScene.getPlayerParty().indexOf(this.pokemon), lm[1]);
   }
+
+  globalScene.phaseManager.unshiftNew("EndEvolutionPhase");
+
+  globalScene.playSound("se/shine");
+  this.doSpray();
+
+  globalScene.tweens.chain({
+    targets: null,
+    tweens: [
+      {
+        targets: this.evolutionOverlay,
+        alpha: 1,
+        duration: 250,
+        easing: "Sine.easeIn",
+        onComplete: () => {
+          this.evolutionBgOverlay.setAlpha(1);
+          this.evolutionBg.setVisible(false);
+        },
+      },
+      {
+        targets: [this.evolutionOverlay, this.pokemonEvoTintSprite],
+        alpha: 0,
+        duration: 2000,
+        delay: 150,
+        easing: "Sine.easeIn",
+      },
+      {
+        targets: this.evolutionBgOverlay,
+        alpha: 0,
+        duration: 250,
+        onComplete: () => this.onEvolutionComplete(evolvedPokemon),
+      },
+    ],
+  });
+}
 
   /**
    * Handles a successful evolution

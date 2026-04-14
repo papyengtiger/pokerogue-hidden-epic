@@ -285,6 +285,7 @@ export class BattleScene extends SceneBase {
   private biomeWaveText: Phaser.GameObjects.Text;
   private moneyText: Phaser.GameObjects.Text;
   private scoreText: Phaser.GameObjects.Text;
+  private roguePointText: Phaser.GameObjects.Text;
   private luckLabelText: Phaser.GameObjects.Text;
   private luckText: Phaser.GameObjects.Text;
   private modifierBar: ModifierBar;
@@ -549,9 +550,14 @@ export class BattleScene extends SceneBase {
     this.fieldUI.add(this.moneyText);
 
     this.scoreText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
-    this.scoreText.setName("text-score");
-    this.scoreText.setOrigin(1, 0.5);
-    this.fieldUI.add(this.scoreText);
+this.scoreText.setName("text-score");
+this.scoreText.setOrigin(1, 0.5);
+this.fieldUI.add(this.scoreText);
+
+this.roguePointText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
+this.roguePointText.setName("text-log-points");
+this.roguePointText.setOrigin(1, 0.5);
+this.fieldUI.add(this.roguePointText);
 
     this.luckText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
     this.luckText.setName("text-luck");
@@ -654,37 +660,38 @@ export class BattleScene extends SceneBase {
   }
 
   initSession(): void {
-    if (this.sessionPlayTime === null) {
-      this.sessionPlayTime = 0;
-    }
-    if (this.lastSavePlayTime === null) {
-      this.lastSavePlayTime = 0;
-    }
-
-    if (this.playTimeTimer) {
-      this.playTimeTimer.destroy();
-    }
-
-    this.playTimeTimer = this.time.addEvent({
-      delay: fixedInt(1000),
-      repeat: -1,
-      callback: () => {
-        if (this.gameData) {
-          this.gameData.gameStats.playTime++;
-        }
-        if (this.sessionPlayTime !== null) {
-          this.sessionPlayTime++;
-        }
-        if (this.lastSavePlayTime !== null) {
-          this.lastSavePlayTime++;
-        }
-      },
-    });
-
-    this.updateBiomeWaveText();
-    this.updateMoneyText();
-    this.updateScoreText();
+  if (this.sessionPlayTime === null) {
+    this.sessionPlayTime = 0;
   }
+  if (this.lastSavePlayTime === null) {
+    this.lastSavePlayTime = 0;
+  }
+
+  if (this.playTimeTimer) {
+    this.playTimeTimer.destroy();
+  }
+
+  this.playTimeTimer = this.time.addEvent({
+    delay: fixedInt(1000),
+    repeat: -1,
+    callback: () => {
+      if (this.gameData) {
+        this.gameData.gameStats.playTime++;
+      }
+      if (this.sessionPlayTime !== null) {
+        this.sessionPlayTime++;
+      }
+      if (this.lastSavePlayTime !== null) {
+        this.lastSavePlayTime++;
+      }
+    },
+  });
+
+  this.updateBiomeWaveText();
+  this.updateMoneyText();
+  this.updateScoreText();
+  this.updateroguePointText();
+}
 
   async initExpSprites(): Promise<void> {
     if (expSpriteKeys.size > 0) {
@@ -1271,11 +1278,14 @@ return pokemon;
     this.moneyText.setVisible(false);
 
     this.updateScoreText();
-    this.scoreText.setVisible(false);
+this.scoreText.setVisible(false);
 
-    [this.luckLabelText, this.luckText].forEach(t => {
-      t.setVisible(false);
-    });
+this.updateroguePointText();
+this.roguePointText.setVisible(false);
+
+[this.luckLabelText, this.luckText].forEach(t => {
+  t.setVisible(false);
+});
 
     this.newArena(Overrides.STARTING_BIOME_OVERRIDE || BiomeId.TOWN);
 
@@ -1723,9 +1733,10 @@ return pokemon;
       case SpeciesId.MAGEARNA:
       case SpeciesId.ZARUDE:
       case SpeciesId.SQUAWKABILLY:
-      case SpeciesId.TATSUGIRI:
       case SpeciesId.PALDEA_TAUROS:
         return randSeedInt(species.forms.length);
+      case SpeciesId.TATSUGIRI:
+        return randSeedInt(3);
       case SpeciesId.MAUSHOLD:
       case SpeciesId.DUDUNSPARCE:
         return !randSeedInt(4) ? 1 : 0;
@@ -2103,6 +2114,12 @@ return pokemon;
     this.scoreText.setVisible(this.gameMode.isDaily);
   }
 
+  updateroguePointText(): void {
+  const roguePoints = this.gameData?.roguePoints ?? 0;
+  this.roguePointText.setText(`RP: ${roguePoints}`);
+  this.roguePointText.setVisible(true);
+}
+
   /**
    * Displays the current luck value.
    * @param duration The time for this label to fade in, if it is not already visible.
@@ -2150,32 +2167,43 @@ return pokemon;
   }
 
   updateUIPositions(): void {
-    const enemyModifierCount = this.enemyModifiers.filter(m => m.isIconVisible()).length;
-    const biomeWaveTextHeight = this.biomeWaveText.getBottomLeft().y - this.biomeWaveText.getTopLeft().y;
-    this.biomeWaveText.setY(
-      -this.scaledCanvas.height +
-        (enemyModifierCount ? (enemyModifierCount <= 12 ? 15 : 24) : 0) +
-        biomeWaveTextHeight / 2,
-    );
-    this.moneyText.setY(this.biomeWaveText.y + 10);
-    this.scoreText.setY(this.moneyText.y + 10);
-    [this.luckLabelText, this.luckText].map(l =>
-      l.setY((this.scoreText.visible ? this.scoreText : this.moneyText).y + 10),
-    );
-    const offsetY = (this.scoreText.visible ? this.scoreText : this.moneyText).y + 15;
-    this.partyExpBar.setY(offsetY);
-    this.candyBar.setY(offsetY + 15);
-    this.ui?.achvBar.setY(this.scaledCanvas.height + offsetY);
-  }
+  const enemyModifierCount = this.enemyModifiers.filter(m => m.isIconVisible()).length;
+  const biomeWaveTextHeight = this.biomeWaveText.getBottomLeft().y - this.biomeWaveText.getTopLeft().y;
+
+  this.biomeWaveText.setY(
+    -this.scaledCanvas.height +
+      (enemyModifierCount ? (enemyModifierCount <= 12 ? 15 : 24) : 0) +
+      biomeWaveTextHeight / 2,
+  );
+
+  this.moneyText.setY(this.biomeWaveText.y + 10);
+  this.scoreText.setY(this.moneyText.y + 10);
+  this.roguePointText.setY((this.scoreText.visible ? this.scoreText : this.moneyText).y + 10);
+
+  const bottomInfoText = this.roguePointText.visible
+    ? this.roguePointText
+    : this.scoreText.visible
+      ? this.scoreText
+      : this.moneyText;
+
+  [this.luckLabelText, this.luckText].forEach(l => l.setY(bottomInfoText.y + 10));
+
+  const offsetY = bottomInfoText.y + 15;
+
+  this.partyExpBar.setY(offsetY);
+  this.candyBar.setY(offsetY + 15);
+  this.ui?.achvBar.setY(this.scaledCanvas.height + offsetY);
+}
 
   /**
    * Pushes all {@linkcode Phaser.GameObjects.Text} objects in the top right to the bottom of the canvas
    */
   sendTextToBack(): void {
-    this.fieldUI.sendToBack(this.biomeWaveText);
-    this.fieldUI.sendToBack(this.moneyText);
-    this.fieldUI.sendToBack(this.scoreText);
-  }
+  this.fieldUI.sendToBack(this.biomeWaveText);
+  this.fieldUI.sendToBack(this.moneyText);
+  this.fieldUI.sendToBack(this.scoreText);
+  this.fieldUI.sendToBack(this.roguePointText);
+}
 
   addFaintedEnemyScore(enemy: EnemyPokemon): void {
     let scoreIncrease =
@@ -2717,98 +2745,101 @@ return pokemon;
   }
 
   addModifier(
-    modifier: Modifier | null,
-    ignoreUpdate?: boolean,
-    playSound?: boolean,
-    virtual?: boolean,
-    instant?: boolean,
-    cost?: number,
-  ): boolean {
-    // We check against modifier.type to stop a bug related to loading in a pokemon that has a form change item, which prior to some patch
-    // that changed form change modifiers worked, had previously set the `type` field to null.
-    // TODO: This is not the right place to check for this; it should ideally go in a session migrator.
-    if (!modifier || !modifier.type) {
-      return false;
-    }
-    let success = false;
-    const soundName = modifier.type.soundName;
-    this.validateAchvs(ModifierAchv, modifier);
-    const modifiersToRemove: PersistentModifier[] = [];
-    if (modifier instanceof PersistentModifier) {
-      if ((modifier as PersistentModifier).add(this.modifiers, !!virtual)) {
-        if (modifier instanceof PokemonFormChangeItemModifier) {
-          const pokemon = this.getPokemonById(modifier.pokemonId);
-          if (pokemon) {
-            success = modifier.apply(pokemon, true);
-          }
+  modifier: Modifier | null,
+  ignoreUpdate?: boolean,
+  playSound?: boolean,
+  virtual?: boolean,
+  instant?: boolean,
+  cost?: number,
+): boolean {
+  if (!modifier || !modifier.type) {
+    return false;
+  }
+
+  let success = false;
+  const soundName = modifier.type.soundName;
+  this.validateAchvs(ModifierAchv, modifier);
+  const modifiersToRemove: PersistentModifier[] = [];
+
+  if (modifier instanceof PersistentModifier) {
+    if ((modifier as PersistentModifier).add(this.modifiers, !!virtual)) {
+      success = true; // ← 이 줄 추가
+
+      if (modifier instanceof PokemonFormChangeItemModifier) {
+        const pokemon = this.getPokemonById(modifier.pokemonId);
+        if (pokemon) {
+          success = modifier.apply(pokemon, true);
         }
-        if (playSound && !this.sound.get(soundName)) {
-          this.playSound(soundName);
-        }
-      } else if (!virtual) {
-        const defaultModifierType = getDefaultModifierTypeForTier(modifier.type.tier);
-        this.phaseManager.queueMessage(
-          i18next.t("battle:itemStackFull", {
-            fullItemName: modifier.type.name,
-            itemName: defaultModifierType.name,
-          }),
-          undefined,
-          false,
-          3000,
-        );
-        return this.addModifier(defaultModifierType.newModifier(), ignoreUpdate, playSound, false, instant);
       }
 
-      for (const rm of modifiersToRemove) {
-        this.removeModifier(rm);
-      }
-
-      if (!ignoreUpdate && !virtual) {
-        this.updateModifiers(true, instant);
-      }
-    } else if (modifier instanceof ConsumableModifier) {
       if (playSound && !this.sound.get(soundName)) {
         this.playSound(soundName);
       }
+    } else if (!virtual) {
+      const defaultModifierType = getDefaultModifierTypeForTier(modifier.type.tier);
+      this.phaseManager.queueMessage(
+        i18next.t("battle:itemStackFull", {
+          fullItemName: modifier.type.name,
+          itemName: defaultModifierType.name,
+        }),
+        undefined,
+        false,
+        3000,
+      );
+      return this.addModifier(defaultModifierType.newModifier(), ignoreUpdate, playSound, false, instant);
+    }
 
-      if (modifier instanceof ConsumablePokemonModifier) {
-        for (const p in this.party) {
-          const pokemon = this.party[p];
+    for (const rm of modifiersToRemove) {
+      this.removeModifier(rm);
+    }
 
-          const args: unknown[] = [];
-          if (modifier instanceof PokemonHpRestoreModifier) {
-            if (!(modifier as PokemonHpRestoreModifier).fainted) {
-              const hpRestoreMultiplier = new NumberHolder(1);
-              this.applyModifiers(HealingBoosterModifier, true, hpRestoreMultiplier);
-              args.push(hpRestoreMultiplier.value);
-            } else {
-              args.push(1);
-            }
-          } else if (modifier instanceof FusePokemonModifier) {
-            args.push(this.getPokemonById(modifier.fusePokemonId) as PlayerPokemon);
-          } else if (modifier instanceof RememberMoveModifier && cost != null) {
-            args.push(cost);
+    if (!ignoreUpdate && !virtual) {
+      this.updateModifiers(true, instant);
+    }
+  } else if (modifier instanceof ConsumableModifier) {
+    if (playSound && !this.sound.get(soundName)) {
+      this.playSound(soundName);
+    }
+
+    if (modifier instanceof ConsumablePokemonModifier) {
+      for (const p in this.party) {
+        const pokemon = this.party[p];
+
+        const args: unknown[] = [];
+        if (modifier instanceof PokemonHpRestoreModifier) {
+          if (!(modifier as PokemonHpRestoreModifier).fainted) {
+            const hpRestoreMultiplier = new NumberHolder(1);
+            this.applyModifiers(HealingBoosterModifier, true, hpRestoreMultiplier);
+            args.push(hpRestoreMultiplier.value);
+          } else {
+            args.push(1);
           }
-
-          if (modifier.shouldApply(pokemon, ...args)) {
-            const result = modifier.apply(pokemon, ...args);
-            success ||= result;
-          }
+        } else if (modifier instanceof FusePokemonModifier) {
+          args.push(this.getPokemonById(modifier.fusePokemonId) as PlayerPokemon);
+        } else if (modifier instanceof RememberMoveModifier && cost != null) {
+          args.push(cost);
         }
 
-        this.party.forEach(p => {
-          p.updateInfo(instant);
-        });
-      } else {
-        const args = [this];
-        if (modifier.shouldApply(...args)) {
-          const result = modifier.apply(...args);
+        if (modifier.shouldApply(pokemon, ...args)) {
+          const result = modifier.apply(pokemon, ...args);
           success ||= result;
         }
       }
+
+      this.party.forEach(p => {
+        p.updateInfo(instant);
+      });
+    } else {
+      const args = [this];
+      if (modifier.shouldApply(...args)) {
+        const result = modifier.apply(...args);
+        success ||= result;
+      }
     }
-    return success;
   }
+
+  return success;
+}
 
   addModifierToSide(
   modifier: Modifier | null,
@@ -3620,20 +3651,26 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
   }
 
   validateAchv(achv: Achv, args?: unknown[]): boolean {
-    if (
-      (!this.gameData.achvUnlocks.hasOwnProperty(achv.id) || Overrides.ACHIEVEMENTS_REUNLOCK_OVERRIDE) &&
-      achv.validate(args)
-    ) {
-      this.gameData.achvUnlocks[achv.id] = Date.now();
-      this.ui.achvBar.showAchv(achv);
-      if (vouchers.hasOwnProperty(achv.id)) {
-        this.validateVoucher(vouchers[achv.id]);
-      }
-      return true;
-    }
+  if (
+    (!this.gameData.achvUnlocks.hasOwnProperty(achv.id) || Overrides.ACHIEVEMENTS_REUNLOCK_OVERRIDE) &&
+    achv.validate(args)
+  ) {
+    this.gameData.achvUnlocks[achv.id] = Date.now();
 
-    return false;
+    // ⭐ 여기 추가
+    this.gameData.addRoguePoints(achv.score);
+
+    this.ui.achvBar.showAchv(achv);
+    this.ui.showText(`+${achv.score} RP`);
+
+    if (vouchers.hasOwnProperty(achv.id)) {
+      this.validateVoucher(vouchers[achv.id]);
+    }
+    return true;
   }
+
+  return false;
+}
 
   validateVoucher(voucher: Voucher, args?: unknown[]): boolean {
     if (!this.gameData.voucherUnlocks.hasOwnProperty(voucher.id) && voucher.validate(args)) {

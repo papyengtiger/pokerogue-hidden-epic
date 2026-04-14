@@ -78,6 +78,7 @@ export enum CommonAnim {
   RAGING_BULL_WATER,
   SALT_CURE,
   POWDER,
+  FROSTBITE,
   SUNNY = 2100,
   RAIN,
   SANDSTORM,
