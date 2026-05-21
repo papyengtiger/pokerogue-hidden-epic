@@ -36,6 +36,32 @@ export class FaintPhase extends PokemonPhase {
     
     const faintPokemon = this.getPokemon();
 
+    console.log("[FAINT_PHASE_ENTER]", {
+    name: faintPokemon?.getName?.(),
+    hp: faintPokemon?.hp,
+    isPlayer: faintPokemon?.isPlayer?.(),
+    isPractice: (globalScene.currentBattle as any)?.isPracticeBattle,
+  });
+
+    const battle = globalScene.currentBattle as any;
+
+if (
+  battle?.isPracticeBattle &&
+  faintPokemon.isPlayer()
+) {
+  console.log("[PRACTICE_PLAYER_AUTO_REVIVE]", {
+    pokemon: faintPokemon.getName(),
+    hpBefore: faintPokemon.hp,
+    maxHp: faintPokemon.getMaxHp(),
+  });
+
+  faintPokemon.hp = faintPokemon.getMaxHp();
+  faintPokemon.doSetStatus(StatusEffect.NONE);
+  faintPokemon.updateInfo();
+
+  return this.end();
+}
+
     if (this.source) {
       faintPokemon.getTag(BattlerTagType.DESTINY_BOND)?.lapse(this.source, BattlerTagLapseType.CUSTOM);
       faintPokemon.getTag(BattlerTagType.GRUDGE)?.lapse(faintPokemon, BattlerTagLapseType.CUSTOM, this.source);
@@ -207,7 +233,11 @@ for (const m of reinsMods) {
       globalScene.phaseManager.pushNew("SwitchPhase", SwitchType.SWITCH, this.fieldIndex, true, false);
     }
   } else {
-      globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
+      if ((globalScene.currentBattle as any).isPracticeBattle) {
+  globalScene.phaseManager.unshiftNew("PracticeDummyResetPhase");
+} else {
+  globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
+}
       if ([BattleType.TRAINER, BattleType.MYSTERY_ENCOUNTER].includes(globalScene.currentBattle.battleType)) {
         const hasReservePartyMember =
           globalScene
@@ -238,19 +268,30 @@ for (const m of reinsMods) {
         y: pokemon.y + 150,
         ease: "Sine.easeIn",
         onComplete: () => {
-          pokemon.lapseTags(BattlerTagLapseType.FAINT);
+  pokemon.lapseTags(BattlerTagLapseType.FAINT);
 
-          pokemon.y -= 150;
-          pokemon.doSetStatus(StatusEffect.FAINT);
-          if (pokemon.isPlayer()) {
-            globalScene.currentBattle.removeFaintedParticipant(pokemon as PlayerPokemon);
-          } else {
-            globalScene.addFaintedEnemyScore(pokemon as EnemyPokemon);
-            globalScene.currentBattle.addPostBattleLoot(pokemon as EnemyPokemon);
-          }
-          pokemon.leaveField();
-          this.end();
-        },
+  pokemon.y -= 150;
+  pokemon.doSetStatus(StatusEffect.FAINT);
+
+  if (pokemon.isPlayer()) {
+    globalScene.currentBattle.removeFaintedParticipant(pokemon as PlayerPokemon);
+  } else {
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      globalScene.refreshPracticeDummy?.();
+    } else {
+      globalScene.addFaintedEnemyScore(pokemon as EnemyPokemon);
+      globalScene.currentBattle.addPostBattleLoot(pokemon as EnemyPokemon);
+    }
+  }
+
+  if ((globalScene.currentBattle as any)?.isPracticeBattle && !pokemon.isPlayer()) {
+  globalScene.refreshPracticeDummy?.();
+} else {
+  pokemon.leaveField();
+}
+
+this.end();
+},
       });
     });
   }

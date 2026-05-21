@@ -6,8 +6,8 @@ import { getModifierTypeFuncById, ModifierTypeGenerator } from "#modifiers/modif
 export class ModifierData {
   public player: boolean;
   public typeId: string;
-  public typePregenArgs: any[];
-  public args: any[];
+  public typePregenArgs: any[] = [];
+  public args: any[] = [];
   public stackCount: number;
   public className: string;
 
@@ -40,12 +40,20 @@ export class ModifierData {
   }
 
   toModifier(_constructor: any): PersistentModifier | null {
-    
-    const typeFunc = getModifierTypeFuncById(this.typeId);
-    if (!typeFunc) {
-      console.warn("[LOAD][DROP_NO_TYPEFUNC]", this.typeId, this.className, this);
-      return null;
-    }
+
+  let typeFunc = getModifierTypeFuncById(this.typeId);
+
+if (!typeFunc) {
+  console.warn("[DROP_DEBUG]", {
+    typeId: this.typeId,
+    className: this.className,
+    args: this.args,
+    typePregenArgs: this.typePregenArgs,
+  });
+
+  console.warn("[LOAD][DROP_NO_TYPEFUNC]", this.typeId, this.className, this);
+  return null;
+}
 
     try {
       let type: ModifierType | null = typeFunc();

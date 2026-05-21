@@ -153,19 +153,67 @@ export class FightUiHandler extends UiHandler implements InfoToggle {
     const cursor = this.getCursor();
 
     switch (button) {
-      case Button.ACTION:
-        if (
-          (globalScene.phaseManager.getCurrentPhase() as CommandPhase).handleCommand(
-            this.fromCommand,
-            cursor,
-            MoveUseMode.NORMAL,
-          )
-        ) {
-          success = true;
-        } else {
-          ui.playError();
-        }
-        break;
+     case Button.ACTION: {
+  const phase =
+    globalScene.phaseManager.getCurrentPhase() as CommandPhase;
+
+  const pokemon = phase.getPokemon();
+  const pokemonMove = pokemon.getMoveset()[cursor];
+
+  const moveId =
+    pokemonMove?.moveId ??
+    pokemonMove?.getMove?.()?.id;
+
+  const restrictingTag =
+    moveId !== undefined
+      ? pokemon.getRestrictingTag(moveId, pokemon)
+      : null;
+
+  if (restrictingTag) {
+  ui.playError();
+
+  const message =
+    restrictingTag.selectionDeniedText(pokemon);
+
+  this.movesContainer.removeAll(true);
+  this.cursorObj?.setVisible(false);
+  this.setInfoVis(false);
+  this.moveInfoOverlay.clear();
+
+  const errorText = addTextObject(
+    0,
+    0,
+    message,
+    TextStyle.WINDOW,
+  );
+
+  errorText.setName("move-restrict-error");
+  this.movesContainer.add(errorText);
+
+  globalScene.time.delayedCall(1000, () => {
+    this.movesContainer.removeAll(true);
+    this.displayMoves();
+    this.cursorObj?.setVisible(true);
+    this.setMoveInfo(this.getCursor());
+  });
+
+  return true;
+}
+
+  if (
+    phase.handleCommand(
+      this.fromCommand,
+      cursor,
+      MoveUseMode.NORMAL,
+    )
+  ) {
+    success = true;
+  } else {
+    ui.playError();
+  }
+
+  break;
+}
       case Button.CANCEL: {
         // Cannot back out of fight menu if skipToFightInput is enabled
         const { battleType, mysteryEncounter } = globalScene.currentBattle;
@@ -288,8 +336,14 @@ export class FightUiHandler extends UiHandler implements InfoToggle {
     this.moveInfoOverlay.show(pokemonMove.getMove());
 
     pokemon.getOpponents().forEach(opponent => {
-      (opponent as EnemyPokemon).updateEffectiveness(this.getEffectivenessText(pokemon, opponent, pokemonMove));
-    });
+  if ((opponent as any).isPracticeDummy) {
+    return;
+  }
+
+  (opponent as EnemyPokemon).updateEffectiveness(
+    this.getEffectivenessText(pokemon, opponent, pokemonMove)
+  );
+});
   }
 
   setCursor(cursor: number): boolean {
@@ -323,23 +377,28 @@ export class FightUiHandler extends UiHandler implements InfoToggle {
    * Gets multiplier text for a pokemon's move against a specific opponent
    */
   private getEffectivenessText(pokemon: Pokemon, opponent: Pokemon, pokemonMove: PokemonMove): string | undefined {
-    const effectiveness = opponent.getMoveEffectiveness(
-      pokemon,
-      pokemonMove.getMove(),
-      !opponent.waveData.abilityRevealed,
-      undefined,
-      undefined,
-      true,
-    );
-    if (pokemonMove.getMove().category === MoveCategory.STATUS) {
-      if (effectiveness === 0) {
-        return "0x";
-      }
-      return "1x";
-    }
+  const hideAbility =
+    !(opponent as any).isPracticeDummy &&
+    !opponent.waveData?.abilityRevealed;
 
-    return `${effectiveness}x`;
+  const effectiveness = opponent.getMoveEffectiveness(
+    pokemon,
+    pokemonMove.getMove(),
+    hideAbility,
+    undefined,
+    undefined,
+    true,
+  );
+
+  if (pokemonMove.getMove().category === MoveCategory.STATUS) {
+    if (effectiveness === 0) {
+      return "0x";
+    }
+    return "1x";
   }
+
+  return `${effectiveness}x`;
+}
 
   displayMoves() {
     const pokemon = (globalScene.phaseManager.getCurrentPhase() as CommandPhase).getPokemon();
@@ -418,8 +477,12 @@ export class FightUiHandler extends UiHandler implements InfoToggle {
 
     const opponents = (globalScene.phaseManager.getCurrentPhase() as CommandPhase).getPokemon().getOpponents();
     opponents.forEach(opponent => {
-      (opponent as EnemyPokemon).updateEffectiveness();
-    });
+  if ((opponent as any).isPracticeDummy) {
+    return;
+  }
+
+  (opponent as EnemyPokemon).updateEffectiveness();
+});
   }
 
   eraseCursor() {

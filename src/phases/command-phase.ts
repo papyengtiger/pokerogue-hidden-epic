@@ -293,15 +293,19 @@ if (td._autoConfirmNaturalGift) {
     return;
   }
 
-  if (
-    globalScene.currentBattle.isBattleMysteryEncounter()
-    && globalScene.currentBattle.mysteryEncounter?.skipToFightInput
-  ) {
-    globalScene.ui.clearText();
-    globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-  } else {
-    globalScene.ui.setMode(UiMode.COMMAND, this.fieldIndex);
-  }
+  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+  globalScene.ui.clearText();
+  globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+}
+else if (
+  globalScene.currentBattle.isBattleMysteryEncounter()
+  && globalScene.currentBattle.mysteryEncounter?.skipToFightInput
+) {
+  globalScene.ui.clearText();
+  globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+} else {
+  globalScene.ui.setMode(UiMode.COMMAND, this.fieldIndex);
+}
 }
 
   /**
@@ -520,7 +524,12 @@ if (moveId === MoveId.NATURAL_GIFT) {
 
   globalScene.currentBattle.preTurnCommands[this.fieldIndex] = preTurnCommand;
   globalScene.currentBattle.turnCommands[this.fieldIndex] = turnCommand;
-
+  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+  console.log("[PRACTICE] player command set", {
+    fieldIndex: this.fieldIndex,
+    command: globalScene.currentBattle.turnCommands[this.fieldIndex],
+  });
+}
   return true;
 }
 

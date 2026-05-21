@@ -41,6 +41,8 @@ import {
   UrshifuGloveAbilityBypassModifier,
   SpeciesStatBoosterModifier,
   PokemonHeldItemModifier,
+  TypeSpecificMoveBoosterModifier,
+  StackingRiskyPowerBoosterModifier,
 } from "#app/modifier/modifier";
 import { applyFilteredMoveAttrs, applyMoveAttrs } from "#moves/apply-attrs";
 import type { Move, MoveAttr } from "#moves/move";
@@ -68,6 +70,7 @@ import { BerryType } from "#enums/berry-type";
 import { PokemonTurnData } from "#data/pokemon-data";
 import { BerryUsedEvent } from "#events/battle-scene";
 import { ArenaTagType } from "#enums/arena-tag-type";
+import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 
 export type HitCheckEntry = [HitCheckResult, TypeDamageMultiplier];
 
@@ -169,19 +172,14 @@ export class MoveEffectPhase extends PokemonPhase {
 
 // ✅ ODD_JAR만
 const hasOddJar = evMods.some(m =>
-  (m as any).typeKey === "ODD_JAR" || (m as any).getKey?.() === "ODD_JAR"
+  (m as any).getKey?.() === "ODD_JAR"
 );
 
-if (!hasOddJar) {
-  // ODD_JAR 아니면 프리뷰/반사 로직 자체를 스킵
-  // (아래 로직 전체를 if(hasOddJar)로 감싸도 됨)
-}
-
-  const hasEvasionItem = evMods.length > 0;
+const hasEvasionItem = hasOddJar;
 
   // ✅ 1) MISS 대비: "맞았다고 가정한" 프리뷰 데미지 계산 (회피 아이템 있을 때만)
   let previewDamage = 0;
-  if (hasEvasionItem && this.move && this.move.category !== MoveCategory.STATUS) {
+  if (hasOddJar && this.move && this.move.category !== MoveCategory.STATUS) {
     try {
       const preview = target.getAttackDamage({
         source: user,
@@ -204,6 +202,46 @@ if (!hasOddJar) {
   }
 
   const hitCheck = this.hitCheck(target);
+
+if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+  const practiceResult = (globalScene as any).practiceTurnResult;
+
+  if (practiceResult) {
+    const accuracyFactors: string[] = [];
+
+    if (hitCheck[0] === HitCheckResult.MISS) {
+      accuracyFactors.push("빗나감");
+
+      if (user.isPlayer?.()) {
+        practiceResult.playerMissCount++;
+      } else {
+        practiceResult.enemyMissCount++;
+      }
+    }
+
+    if (hitCheck[0] === HitCheckResult.NO_EFFECT) {
+      accuracyFactors.push("효과 없음");
+    }
+
+    if (hitCheck[0] === HitCheckResult.PROTECTED) {
+      accuracyFactors.push("방어됨");
+    }
+
+    if (hitCheck[0] === HitCheckResult.REFLECTED) {
+      accuracyFactors.push("반사됨");
+    }
+
+    if (accuracyFactors.length) {
+      if (user.isPlayer?.()) {
+        practiceResult.playerAccuracyFactors ??= [];
+        practiceResult.playerAccuracyFactors.push(...accuracyFactors);
+      } else {
+        practiceResult.enemyAccuracyFactors ??= [];
+        practiceResult.enemyAccuracyFactors.push(...accuracyFactors);
+      }
+    }
+  }
+}
 
   // ✅ 2) MISS면 반사: "프리뷰 데미지의 1/2"를 공격자에게 간접 데미지로
   if (hitCheck[0] === HitCheckResult.MISS && hasEvasionItem) {
@@ -389,12 +427,23 @@ private applyToTargets(user: Pokemon, targets: Pokemon[]): void {
         applyMoveAttrs("MissEffectAttr", user, target, this.move);
 
         // ✅ MissEffectModifier (허탕보험)
-        for (const modifier of globalScene.getModifiers(MissEffectModifier)) {
-          if (modifier instanceof MissEffectModifier && modifier.pokemonId === user.id) {
-            const success = modifier.apply(user, this.move);
-            if (success) globalScene.updateModifiers(this.player);
-          }
-        }
+        // ✅ MissEffectModifier (허탕보험)
+for (const modifier of globalScene.getModifiers(
+  MissEffectModifier,
+  user.isPlayer(),
+)) {
+  if (
+    modifier instanceof MissEffectModifier &&
+    modifier.pokemonId === user.id
+  ) {
+    const success = modifier.apply(user, this.move);
+
+    if (success) {
+      globalScene.updateModifiers(user.isPlayer());
+      user.updateInfo();
+    }
+  }
+}
         break;
 
       case HitCheckResult.REFLECTED:
@@ -708,6 +757,37 @@ if (
   (Array.isArray(move.getAttrs("MoveEffectAttr")) &&
    move.getAttrs("MoveEffectAttr").some(attr => attr.trigger === MoveEffectTrigger.POST_TARGET))
 ) {
+// ✅ 주얼 메시지: 실제 기술 실행 직전에만 출력
+if (this.firstHit && this.move.category !== MoveCategory.STATUS) {
+  const moveType = user.getMoveType(this.move, true);
+
+  const booster = globalScene
+    .getModifiers(TypeSpecificMoveBoosterModifier, user.isPlayer())
+    .find(mod =>
+      mod.pokemonId === user.id &&
+      mod.moveType === moveType
+    ) as TypeSpecificMoveBoosterModifier | undefined;
+
+  const hasHitTarget = this.hitChecks.some(
+    ([result]) => result === HitCheckResult.HIT,
+  );
+
+  if (
+    booster &&
+    hasHitTarget &&
+    !(user.turnData as any).typeSpecificMoveBoosterMessageShown
+  ) {
+    (user.turnData as any).typeSpecificMoveBoosterMessageShown = true;
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("modifier:typeSpecificMoveBoostApply", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(user),
+        itemName: booster.type.name,
+      }),
+    );
+  }
+}
+
   const firstTarget = this.getFirstTarget();
   const currentMove = move; // ✅ move를 안전하게 캡처
 
@@ -885,29 +965,27 @@ this.postAnimCallback(user, targets, move);
 
     // ✅ 2) 접촉 페널티(아이템/상태이상 등)도 같은 플래그로 차단
     if (isContact && !suppressContactReactions) {
-      // --- 울퉁불퉁멧(접촉 반사딜) ---
-      const existingContactDamageModifier = globalScene
-        .getModifiers(ContactDamageModifier)
-        .find(mod => mod.pokemonId === target.id);
+  const holderIsPlayer = target.isPlayer();
 
-      const hasRockyHelmet =
-        existingContactDamageModifier ||
-        (target.hasRockyHelmet?.name === "울퉁불퉁멧" &&
-          (globalScene.applyModifier(ContactDamageModifier, this.player, target) as ContactDamageModifier | null));
+  const rockyHelmet = globalScene
+    .getModifiers(ContactDamageModifier, holderIsPlayer)
+    .find(mod => mod.pokemonId === target.id);
 
-      if (hasRockyHelmet) {
-        const recoil = Math.floor(user.getMaxHp() / 6);
-        user.damageAndUpdate(recoil, { result: HitResult.INDIRECT });
+  if (rockyHelmet) {
+    const recoil = Math.max(Math.floor(user.getMaxHp() / 6), 1);
 
-        const message = i18next.t("modifier:contactDamageApplied", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(user),
-          itemName: "울퉁불퉁멧",
-        });
-        globalScene.phaseManager.queueMessage(message);
-      }
+    user.damageAndUpdate(recoil, HitResult.INDIRECT);
 
-      // TODO: 거친피부/철가시/불꽃몸/정전기 등도 여기로 이동
-    }
+    globalScene.phaseManager.queueMessage(
+      i18next.t("modifier:contactDamageApplied", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(user),
+        itemName: "울퉁불퉁멧",
+      }),
+    );
+  }
+
+  // TODO: 거친피부/철가시/불꽃몸/정전기 등
+}
   }
 
   // ✅ 반응형 베리(자보/애터/악키/타라프) - 피격 즉시 발동
@@ -999,26 +1077,63 @@ this.postAnimCallback(user, targets, move);
   } while (false);
 
   // TypeImmunityModifier 제거 및 풍선 처리
-  const modifiers = globalScene
-    .getModifiers(TypeImmunityModifier)
-    .filter(mod => mod.pokemonId === target.id);
+if (damage > 0) {
+  const balloonMods = [
+    ...globalScene.getModifiers(TypeImmunityModifier, true),
+    ...globalScene.getModifiers(TypeImmunityModifier, false),
+  ].filter(
+    mod =>
+      mod.pokemonId === target.id &&
+      (
+        (mod as any).sourceItem?.name === "air_balloon" ||
+        (mod as any).type?.id === "AIR_BALLOON" ||
+        (mod as any).type?.name === "풍선"
+      ),
+  ) as TypeImmunityModifier[];
 
-  modifiers.forEach(mod => {
-    globalScene.removeModifier(mod);
-
-    if (mod.sourceItem?.name === "air_balloon") {
-      if (target.heldItem?.name === "air_balloon") {
-        const message = i18next.t("modifier:balloonPopped", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(target),
-          itemName: target.heldItem.name,
-        });
-        globalScene.queueMessage(message);
-
-        target.loseHeldItem(target.heldItem);
-        globalScene.updateModifiers(target.player);
-      }
+  if (balloonMods.length > 0) {
+    for (const mod of balloonMods) {
+      globalScene.removeModifier(mod);
     }
-  });
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("modifier:balloonPopped", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(target),
+        itemName: balloonMods[0].type?.name ?? "풍선",
+      }),
+    );
+
+    const heldBalloon = target.getHeldItems?.().find(i =>
+      i === balloonMods[0] ||
+      (i as any).sourceItem?.name === "air_balloon" ||
+      (i as any).type?.id === "AIR_BALLOON" ||
+      (i as any).type?.name === "풍선"
+    );
+
+    if (heldBalloon) {
+      target.loseHeldItem(heldBalloon);
+    }
+
+    globalScene.updateModifiers(true);
+    globalScene.updateModifiers(false);
+console.log("[BALLOON_AFTER_POP]", {
+  target: target.name,
+  heldItems: target.getHeldItems?.().map(i => ({
+    ctor: i.constructor?.name,
+    pokemonId: (i as any).pokemonId,
+    sourceItemName: (i as any).sourceItem?.name,
+    typeId: (i as any).type?.id,
+    typeName: (i as any).type?.name,
+    name: (i as any).name,
+  })),
+  playerTypeImmunity: globalScene.getModifiers(TypeImmunityModifier, true)
+    .filter(m => m.pokemonId === target.id),
+  enemyTypeImmunity: globalScene.getModifiers(TypeImmunityModifier, false)
+    .filter(m => m.pokemonId === target.id),
+});
+    target.turnData.moveEffectiveness = null;
+  }
+}
 
   // 🔹 치명타 특성 효과 처리
   if (wasCritical) {
@@ -1517,6 +1632,18 @@ this.postAnimCallback(user, targets, move);
       roguePointGain: roguePointGain ?? 0, // ✅ 추가
     });
 
+    if (damage > 0) {
+  const riskyMod = globalScene
+    .getModifiers(StackingRiskyPowerBoosterModifier, user.isPlayer())
+    .find(mod => mod.pokemonId === user.id);
+
+  riskyMod?.applyHpLossIfNeeded(
+    user,
+    this.move.id,
+    globalScene.currentBattle.turn,
+  );
+}
+
     if (isCritical) {
       globalScene.phaseManager.queueMessage(i18next.t("battle:hitResultCriticalHit"));
     }
@@ -1681,6 +1808,33 @@ this.postAnimCallback(user, targets, move);
     hitResult,
     damage: damage,
   });
+
+{
+  const pendingBooster = (user.turnData as any)
+    .pendingTypeSpecificMoveBooster as TypeSpecificMoveBoosterModifier | undefined;
+
+  const successHit =
+    hitResult !== HitResult.MISS &&
+    hitResult !== HitResult.NO_EFFECT &&
+    hitResult !== HitResult.NO_EFFECT_NO_MESSAGE &&
+    hitResult !== (HitResult as any).FAIL;
+
+  if (pendingBooster && successHit && damage > 0) {
+  recordRecycleSnapshot(user, pendingBooster, { args: [] });
+
+  if (pendingBooster.stackCount > 1) {
+    pendingBooster.stackCount--;
+  } else {
+    user.loseHeldItem(pendingBooster);
+  }
+
+  delete (user.turnData as any).pendingTypeSpecificMoveBooster;
+
+  globalScene.updateModifiers(user.isPlayer());
+  user.updateInfo();
+  }
+}
+
  // ✅ TRICK: 선택한 아이템을 실제로 교환
 if (this.move.id === MoveId.TRICK && !this.move.hitsSubstitute(user, target)) {
   const td: any = user.turnData;

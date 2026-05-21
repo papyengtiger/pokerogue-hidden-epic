@@ -69,6 +69,7 @@ import type { SpeciesFormChange } from "#data/pokemon-forms";
 import type { PokemonSpeciesForm } from "#data/pokemon-species";
 import { PokemonSpecies } from "#data/pokemon-species";
 import { getRandomStatus, getStatusEffectOverlapText, Status, getStatusEffectHealText } from "#data/status-effect";
+import { TerrainType } from "#enums/terrain-type";
 import { getTerrainBlockMessage, TerrainType } from "#data/terrain";
 import type { TypeDamageMultiplier } from "#data/type";
 import { getTypeDamageMultiplier, getTypeRgb } from "#data/type";
@@ -136,7 +137,6 @@ import {
   SurviveDamageModifier,
   TempCritBoosterModifier,
   TempStatStageBoosterModifier,
-  StatBoostModifier, 
   SuperEffectiveBoosterModifier, 
   StackingRiskyPowerBoosterModifier, 
   StackingPowerBoosterModifier, 
@@ -283,6 +283,14 @@ import { tmPoolTiers } from "#balance/tms";
 import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import type { RecycleSnapshot } from "#moves/recycle-snapshot";
 import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
+import {
+  RecoilAttr,
+  MultiHitAttr,
+  NeutralDamageAgainstFlyingTypeMultiplierAttr,
+  InstantChargeAttr,
+  MissEffectAttr,
+  BypassFreezeDamageReductionAttr,
+} from "#app/data/moves/move";
 
 /** Base typeclass for damage parameter methods, used for DRY */
 type damageParams = {
@@ -1258,8 +1266,12 @@ enableHpTraceOnce() {
   }
 
   getBattleSpriteKey(back?: boolean, ignoreOverride?: boolean): string {
-    return `pkmn__${this.getBattleSpriteId(back, ignoreOverride)}`;
+  if ((this as any).isPracticeDummy) {
+    return "pkmn__sub";
   }
+
+  return `pkmn__${this.getBattleSpriteId(back, ignoreOverride)}`;
+}
 
   getFusionSpriteId(ignoreOverride?: boolean): string {
     const fusionFormIndex = this.summonData.illusion?.fusionFormIndex ?? this.fusionFormIndex;
@@ -1460,14 +1472,25 @@ enableHpTraceOnce() {
   }
 
   getHeldItems(): PokemonHeldItemModifier[] {
-    if (!globalScene) {
-      return [];
-    }
-    return globalScene.findModifiers(
-      m => m instanceof PokemonHeldItemModifier && m.pokemonId === this.id,
-      this.isPlayer(),
-    ) as PokemonHeldItemModifier[];
+  if (!globalScene) {
+    return [];
   }
+
+  const isPracticeDummy = (this as any).isPracticeDummy === true;
+
+  if (isPracticeDummy) {
+    return ((globalScene as any).practiceRentalModifiers ?? [])
+      .filter((m: any) =>
+        m instanceof PokemonHeldItemModifier &&
+        m.pokemonId === this.id
+      ) as PokemonHeldItemModifier[];
+  }
+
+  return globalScene.findModifiers(
+    m => m instanceof PokemonHeldItemModifier && m.pokemonId === this.id,
+    this.isPlayer(),
+  ) as PokemonHeldItemModifier[];
+}
 
   updateScale(): void {
     this.setScale(this.getSpriteScale());
@@ -1723,7 +1746,35 @@ enableHpTraceOnce() {
   const stackingStage = critStackTag?.getCritStage?.() ?? 0;
   critStage.value += stackingStage;
 
-  return critStage.value;
+
+if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+  const result = (globalScene as any).practiceTurnResult;
+
+  if (result) {
+    const critFactors =
+      source.isPlayer?.()
+        ? (result.playerCritFactors ??= [])
+        : (result.enemyCritFactors ??= []);
+
+    if (critStage.value > 0) {
+      critFactors.push(`급소 랭크 +${critStage.value}`);
+    }
+
+    if (hasZAccess && source.getTag(BattlerTagType.SPLASH_Z_CRIT_BOOST)) {
+      critFactors.push("Z응원 급소 보정");
+    }
+
+    if (critBoostTag) {
+      critFactors.push("급소 상승 태그");
+    }
+
+    if (stackingStage > 0) {
+      critFactors.push(`급소 누적 +${stackingStage}`);
+    }
+  }
+}
+
+return critStage.value;
 }
 
 getCritStackStage(): number {
@@ -1779,9 +1830,118 @@ getCritStackStage(): number {
   console.debug(`[STAT CHECK] ${this.name} - ${Stat[stat]} before modifiers: ${statVal.value}`);
   console.debug(`[EFFECTIVE STAT] ${this.name} ${Stat[stat]} 계산 시작`);
 
+const watchStatValue = (
+  label: string,
+  callback: () => void,
+) => {
+  const before = statVal.value;
+  callback();
+  const after = statVal.value;
+
+  if (
+    !simulated &&
+    (globalScene.currentBattle as any)?.isPracticeBattle &&
+    before !== after
+  ) {
+    const result = (globalScene as any).practiceTurnResult;
+    if (!result) return;
+
+    const arr = this.isPlayer()
+      ? (result.playerDamageFactors ??= [])
+      : (result.enemyDamageFactors ??= []);
+
+    const practiceLabel =
+      (statVal as any).__practiceLabel ?? label;
+
+    arr.push(
+      `${practiceLabel} ${Math.floor(before)}→${Math.floor(after)}`
+    );
+
+    (statVal as any).__practiceLabel = undefined;
+  }
+};
+
   if (!ignoreHeldItems) {
-  // ✅ 기존의 아이템 배율 처리
-  globalScene.applyModifiers(StatBoosterModifier, this.isPlayer(), this, stat, statVal);
+  console.log("[STAT_BOOST_BEFORE]", {
+    pokemon: this.name,
+    stat: Stat[stat],
+    value: statVal.value,
+    isPlayer: this.isPlayer(),
+    held: this.getHeldItems().map((m: any) => ({
+      ctor: m.constructor.name,
+      type: m.type?.id,
+      pokemonId: m.pokemonId,
+      stack: m.stackCount,
+    })),
+  });
+
+  globalScene.applyModifiers(
+    StatBoosterModifier,
+    this.isPlayer(),
+    this,
+    stat,
+    statVal,
+  );
+
+if (stat === Stat.SPATK) {
+  const spAtkMod = this.getHeldItems().find(
+    item => item instanceof SpAtkStatModifier && item.stackCount > 0,
+  );
+
+  if (spAtkMod) {
+    watchStatValue("구애안경", () => {
+      globalScene.applyModifier(
+        SpAtkStatModifier,
+        this.isPlayer(),
+        this,
+        stat,
+        statVal,
+      );
+    });
+  }
+}
+
+if (stat === Stat.ATK) {
+  const mod = this.getHeldItems().find(
+    item => item instanceof AtkStatModifier && item.stackCount > 0,
+  );
+
+  if (mod) {
+    watchStatValue("구애머리띠", () => {
+      globalScene.applyModifier(AtkStatModifier, this.isPlayer(), this, stat, statVal);
+    });
+  }
+}
+
+if (stat === Stat.SPD) {
+  const mod = this.getHeldItems().find(
+    item => item instanceof SpeedStatModifier && item.stackCount > 0,
+  );
+
+  if (mod) {
+    watchStatValue("구애스카프", () => {
+      globalScene.applyModifier(SpeedStatModifier, this.isPlayer(), this, stat, statVal);
+    });
+  }
+}
+
+if (stat === Stat.DEF || stat === Stat.SPDEF) {
+  const mod = this.getHeldItems().find(
+    item => item instanceof PokemonDefensiveStatModifier && item.stackCount > 0,
+  );
+
+  if (mod) {
+    watchStatValue("돌격조끼", () => {
+      globalScene.applyModifier(PokemonDefensiveStatModifier, this.isPlayer(), this, stat, statVal);
+    });
+  }
+}
+
+  console.log("[STAT_BOOST_AFTER]", {
+    pokemon: this.name,
+    stat: Stat[stat],
+    value: statVal.value,
+  });
 }
 
   // ✅ 필드 전체에 영향을 주는 특성 (Ruins 4종 등)
@@ -1801,17 +1961,26 @@ getCritStackStage(): number {
   // ✅ 개별 포켓몬 능력 (근성, 허슬 등)
 if (!ignoreAbility) {
 
-  applyAbAttrs("StatMultiplierAbAttr", {
-    pokemon: this,
-    stat,
-    statVal,
-    simulated,
-    move: move ?? allMoves[MoveId.NONE],
+  watchStatValue("특성 스탯 보정", () => {
+    applyAbAttrs("StatMultiplierAbAttr", {
+      pokemon: this,
+      stat,
+      statVal,
+      simulated,
+      move: move ?? allMoves[MoveId.NONE],
+    });
   });
 
-  globalScene.applyModifiers(PowerUpDiskModifier, this.isPlayer(), this, stat, statVal);
+  watchStatValue("파워업디스크", () => {
+    globalScene.applyModifiers(
+      PowerUpDiskModifier,
+      this.isPlayer(),
+      this,
+      stat,
+      statVal,
+    );
+  });
 }
-
   // ✅ 아군 보조 특성 (플라워기프트 등)
   const ally = this.getAlly();
   if (ally) {
@@ -1831,58 +2000,144 @@ if (!ignoreAbility) {
   }
 
     let ret =
-      statVal.value *
-      this.getStatStageMultiplier(stat, opponent, move, ignoreOppAbility, isCritical, simulated, ignoreHeldItems);
+  statVal.value *
+  this.getStatStageMultiplier(
+    stat,
+    opponent,
+    move,
+    ignoreOppAbility,
+    isCritical,
+    simulated,
+    ignoreHeldItems,
+  );
 
-    switch (stat) {
-      case Stat.ATK:
-        if (this.getTag(BattlerTagType.SLOW_START)) {
-          ret >>= 1;
-        }
-        break;
-      case Stat.DEF:
-        if (this.isOfType(PokemonType.ICE) && globalScene.arena.weather?.weatherType === WeatherType.SNOW) {
-          ret *= 1.5;
-        }
-        break;
-      case Stat.SPATK:
-        break;
-      case Stat.SPDEF:
-        if (this.isOfType(PokemonType.ROCK) && globalScene.arena.weather?.weatherType === WeatherType.SANDSTORM) {
-          ret *= 1.5;
-        }
-        break;
-      case Stat.SPD: {
-        const side = this.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY;
-        if (globalScene.arena.getTagOnSide(ArenaTagType.TAILWIND, side)) {
-          ret *= 2;
-        }
-        if (globalScene.arena.getTagOnSide(ArenaTagType.GRASS_WATER_PLEDGE, side)) {
-          ret >>= 2;
-        }
+const logRetFactor = (
+  label: string,
+  before: number,
+  after: number,
+) => {
+  if (
+    !simulated &&
+    (globalScene.currentBattle as any)?.isPracticeBattle &&
+    before !== after
+  ) {
+    const result = (globalScene as any).practiceTurnResult;
+    if (!result) return;
 
-        if (this.getTag(BattlerTagType.SLOW_START)) {
-          ret >>= 1;
-        }
-        if (this.status && this.status.effect === StatusEffect.PARALYSIS) {
-          ret >>= 1;
-        }
-        if (this.getTag(BattlerTagType.UNBURDEN) && this.hasAbility(AbilityId.UNBURDEN)) {
-          ret *= 2;
-        }
-        break;
-      }
-    }
+    const arr = this.isPlayer()
+      ? (result.playerDamageFactors ??= [])
+      : (result.enemyDamageFactors ??= []);
 
-    const highestStatBoost = this.findTag(
-      t => t instanceof HighestStatBoostTag && (t as HighestStatBoostTag).stat === stat,
-    ) as HighestStatBoostTag;
-    if (highestStatBoost) {
-      ret *= highestStatBoost.multiplier;
-    }
-
-    return Math.floor(ret);
+    arr.push(
+      `${label} ${Math.floor(before)}→${Math.floor(after)}`
+    );
   }
+};
+
+const applyRetFactor = (
+  label: string,
+  callback: () => void,
+) => {
+  const before = ret;
+  callback();
+  logRetFactor(label, before, ret);
+};
+
+switch (stat) {
+  case Stat.ATK:
+    if (this.getTag(BattlerTagType.SLOW_START)) {
+      applyRetFactor("슬로스타트(공격)", () => {
+        ret >>= 1;
+      });
+    }
+    break;
+
+  case Stat.DEF:
+    if (
+      this.isOfType(PokemonType.ICE) &&
+      globalScene.arena.weather?.weatherType === WeatherType.SNOW
+    ) {
+      applyRetFactor("눈(방어)", () => {
+        ret *= 1.5;
+      });
+    }
+    break;
+
+  case Stat.SPATK:
+    break;
+
+  case Stat.SPDEF:
+    if (
+      this.isOfType(PokemonType.ROCK) &&
+      globalScene.arena.weather?.weatherType === WeatherType.SANDSTORM
+    ) {
+      applyRetFactor("모래바람(특방)", () => {
+        ret *= 1.5;
+      });
+    }
+    break;
+
+  case Stat.SPD: {
+    const side = this.isPlayer()
+      ? ArenaTagSide.PLAYER
+      : ArenaTagSide.ENEMY;
+
+    if (globalScene.arena.getTagOnSide(ArenaTagType.TAILWIND, side)) {
+      applyRetFactor("순풍(스피드)", () => {
+        ret *= 2;
+      });
+    }
+
+    if (globalScene.arena.getTagOnSide(ArenaTagType.GRASS_WATER_PLEDGE, side)) {
+      applyRetFactor("습지초원맹세(스피드)", () => {
+        ret >>= 2;
+      });
+    }
+
+    if (this.getTag(BattlerTagType.SLOW_START)) {
+      applyRetFactor("슬로스타트(스피드)", () => {
+        ret >>= 1;
+      });
+    }
+
+    if (this.status && this.status.effect === StatusEffect.PARALYSIS) {
+      applyRetFactor("마비(스피드)", () => {
+        ret >>= 1;
+      });
+    }
+
+    if (
+      this.getTag(BattlerTagType.UNBURDEN) &&
+      this.hasAbility(AbilityId.UNBURDEN)
+    ) {
+      applyRetFactor("곡예(스피드)", () => {
+        ret *= 2;
+      });
+    }
+
+    break;
+  }
+}
+
+const highestStatBoost = this.findTag(
+  t =>
+    t instanceof HighestStatBoostTag &&
+    (t as HighestStatBoostTag).stat === stat,
+) as HighestStatBoostTag;
+
+if (highestStatBoost) {
+  const label =
+    (highestStatBoost as any).label ??
+    (highestStatBoost as any).name ??
+    "고대활성/쿼크차지";
+
+  applyRetFactor(`${label}(${Stat[stat]})`, () => {
+    ret *= highestStatBoost.multiplier;
+  });
+}
+
+return Math.floor(ret);
+}
 
   calculateStats(): void {
     if (!this.stats) {
@@ -1960,38 +2215,7 @@ if (!ignoreAbility) {
           statHolder,
         );
       }
-      // Apply PokemonDefensiveStatModifier to increase DEF and SPDEF
-  if (s === Stat.DEF || s === Stat.SPDEF) {
-    const defensiveModifier = this.getHeldItems().find(item => item instanceof PokemonDefensiveStatModifier);
-    if (defensiveModifier && defensiveModifier.stackCount > 0) {
-      globalScene.applyModifier(PokemonDefensiveStatModifier, this.isPlayer(), this, s, statHolder);
-    }
-  }
-
-      // Apply SpeedStatModifier to increase SPEED
-if (s === Stat.SPD) {
-  const speedModifier = this.getHeldItems().find(item => item instanceof SpeedStatModifier);
-  if (speedModifier && speedModifier.stackCount > 0) {
-    globalScene.applyModifier(SpeedStatModifier, this.isPlayer(), this, s, statHolder);
-  }
-}
-
-     // Apply SpAtkStatModifier to increase SPECIAL ATTACK
-if (s === Stat.SPATK) {
-  const spAtkModifier = this.getHeldItems().find(item => item instanceof SpAtkStatModifier);
-  if (spAtkModifier && spAtkModifier.stackCount > 0) {
-    globalScene.applyModifier(SpAtkStatModifier, this.isPlayer(), this, s, statHolder);
-  }
-}
-
-      // Apply AtkStatModifier to increase ATTACK
-if (s === Stat.ATK) {
-  const atkModifier = this.getHeldItems().find(item => item instanceof AtkStatModifier);
-  if (atkModifier && atkModifier.stackCount > 0) {
-    globalScene.applyModifier(AtkStatModifier, this.isPlayer(), this, s, statHolder);
-  }
-}
-      statHolder.value = Phaser.Math.Clamp(
+        statHolder.value = Phaser.Math.Clamp(
         statHolder.value,
         1,
         Number.MAX_SAFE_INTEGER,
@@ -2013,7 +2237,7 @@ if (s === Stat.ATK) {
       applyChallenges(ChallengeType.FLIP_STAT, this, fusionBaseStats);
 
       for (const s of PERMANENT_STATS) {
-        baseStats[s] = Math.ceil((baseStats[s] + fusionBaseStats[s]) / 2);
+        baseStats[s] = Math.ceil((baseStats[s] + fusionBaseStats[s]) / 2 * 1.5);
       }
     } else if (globalScene.gameMode.isSplicedOnly) {
       for (const s of PERMANENT_STATS) {
@@ -2498,30 +2722,47 @@ setDynamax(state: boolean) {
    * @returns The non-passive {@linkcode Ability} of this Pokemon.
    */
   public getAbility(ignoreOverride = false): Ability {
-    if (!ignoreOverride && this.summonData.ability) {
-      return allAbilities[this.summonData.ability];
-    }
-    if (Overrides.ABILITY_OVERRIDE && this.isPlayer()) {
-      return allAbilities[Overrides.ABILITY_OVERRIDE];
-    }
-    if (Overrides.ENEMY_ABILITY_OVERRIDE && this.isEnemy()) {
-      return allAbilities[Overrides.ENEMY_ABILITY_OVERRIDE];
-    }
-    if (this.isFusion()) {
-      if (this.fusionCustomPokemonData?.ability != null && this.fusionCustomPokemonData.ability !== -1) {
-        return allAbilities[this.fusionCustomPokemonData.ability];
-      }
-      return allAbilities[this.getFusionSpeciesForm(ignoreOverride).getAbility(this.fusionAbilityIndex)];
-    }
-    if (this.customPokemonData.ability != null && this.customPokemonData.ability !== -1) {
-      return allAbilities[this.customPokemonData.ability];
-    }
-    let abilityId = this.getSpeciesForm(ignoreOverride).getAbility(this.abilityIndex);
-    if (abilityId === AbilityId.NONE) {
-      abilityId = this.species.ability1;
-    }
-    return allAbilities[abilityId];
+  if (!ignoreOverride && this.summonData.ability) {
+    return allAbilities[this.summonData.ability];
   }
+  
+  if (!ignoreOverride && (this as any).practiceAbilityId !== undefined) {
+   console.log("[GET_ABILITY_CHECK]", {
+  name: this.name,
+  isDummy: (this as any).isPracticeDummy,
+  practiceAbilityId: (this as any).practiceAbilityId,
+  normalAbilityIndex: this.abilityIndex,
+  result: allAbilities[(this as any).practiceAbilityId]?.name,
+});
+    return allAbilities[(this as any).practiceAbilityId];
+  }
+
+  if (Overrides.ABILITY_OVERRIDE && this.isPlayer()) {
+    return allAbilities[Overrides.ABILITY_OVERRIDE];
+  }
+
+  if (Overrides.ENEMY_ABILITY_OVERRIDE && this.isEnemy()) {
+    return allAbilities[Overrides.ENEMY_ABILITY_OVERRIDE];
+  }
+
+  if (this.isFusion()) {
+    if (this.fusionCustomPokemonData?.ability != null && this.fusionCustomPokemonData.ability !== -1) {
+      return allAbilities[this.fusionCustomPokemonData.ability];
+    }
+    return allAbilities[this.getFusionSpeciesForm(ignoreOverride).getAbility(this.fusionAbilityIndex)];
+  }
+
+  if (this.customPokemonData.ability != null && this.customPokemonData.ability !== -1) {
+    return allAbilities[this.customPokemonData.ability];
+  }
+
+  let abilityId = this.getSpeciesForm(ignoreOverride).getAbility(this.abilityIndex);
+  if (abilityId === AbilityId.NONE) {
+    abilityId = this.species.ability1;
+  }
+
+  return allAbilities[abilityId];
+}
 
   /**
    * Gets the passive ability of the pokemon. This should rarely be called, most of the time
@@ -2531,9 +2772,14 @@ setDynamax(state: boolean) {
    * @returns The passive {@linkcode Ability} of the pokemon
    */
   public getPassiveAbility(): Ability {
-    if (Overrides.PASSIVE_ABILITY_OVERRIDE && this.isPlayer()) {
-      return allAbilities[Overrides.PASSIVE_ABILITY_OVERRIDE];
-    }
+  if ((this as any).practicePassiveAbilityId !== undefined) {
+    return allAbilities[(this as any).practicePassiveAbilityId];
+  }
+
+  if (Overrides.PASSIVE_ABILITY_OVERRIDE && this.isPlayer()) {
+    return allAbilities[Overrides.PASSIVE_ABILITY_OVERRIDE];
+  }
+
     if (Overrides.ENEMY_PASSIVE_ABILITY_OVERRIDE && this.isEnemy()) {
       return allAbilities[Overrides.ENEMY_PASSIVE_ABILITY_OVERRIDE];
     }
@@ -2865,6 +3111,20 @@ public applyAbilityAttrsByKey<P extends AbAttrBaseParams>(
     );
   }
 
+public increaseMovePower(mult: number, label = "기술 위력 보정"): void {
+  const move = (this as any).currentMove;
+  if (!move) return;
+
+  (this as any).turnData ??= {};
+  const td = (this as any).turnData;
+
+  const before = td.movePowerMultiplier ?? 1;
+  const after = before * mult;
+
+  td.movePowerMultiplier = after;
+  td.lastPowerBoostName = label;
+}
+
 public getHeldBerryTypes(): BerryType[] {
   const mods = globalScene
     .getModifiers(BerryModifier, this.isPlayer())
@@ -2979,6 +3239,7 @@ private consumePriorityBerry(user: Pokemon, berryType: BerryType) {
     applyMoveAttrs("VariableMoveTypeAttr", this, null, move, moveTypeHolder);
 
     const power = new NumberHolder(move.power);
+    
     applyAbAttrs("MoveTypeChangeAbAttr", {
       pokemon: this,
       move,
@@ -3057,16 +3318,6 @@ if (plate?.tryApplyLegendPlate) {
   });
 }
 
-console.log("[LP][Against] held=", held.map((m:any)=>({
-  ctor: m?.constructor?.name,
-  type: m?.type,
-  typeId: m?.typeId,
-  typeObjId: m?.type?.id,
-  localeKey: m?.localeKey ?? m?.type?.localeKey,
-})));
-
-console.log("[LP][Against] plateFound=", !!plate, "ctor=", plate?.constructor?.name);
-
   // 이후 ion deluge / electrify 등 기존 로직 유지
   globalScene.arena.applyTags(ArenaTagType.ION_DELUGE, simulated, moveTypeHolder);
   if (this.getTag(BattlerTagType.ELECTRIFIED)) {
@@ -3121,6 +3372,8 @@ console.log("[LP][Against] plateFound=", !!plate, "ctor=", plate?.constructor?.n
 
   const cancelledHolder = cancelled ?? new BooleanHolder(false);
 
+  const holderIsPlayer = this.isPlayer();
+
   globalScene.applyModifiers(
   TypeImmunityModifier,
   this.isPlayer(), // 두 번째 인자: 어느 진영인지
@@ -3134,8 +3387,9 @@ console.log("[LP][Against] plateFound=", !!plate, "ctor=", plate?.constructor?.n
 
   if (moveType === PokemonType.GROUND) {
 
-    const hasAirBalloon = globalScene.getModifiers(TypeImmunityModifier)
-      .some(mod => mod.pokemonId === this.id);
+    const hasAirBalloon = globalScene
+  .getModifiers(TypeImmunityModifier, holderIsPlayer)
+  .some(mod => mod.pokemonId === this.id);
 
     if (hasAirBalloon) {
       const isAllyMove = source.isPlayer() === this.isPlayer() && source !== this;
@@ -3167,8 +3421,9 @@ console.log("[LP][Against] plateFound=", !!plate, "ctor=", plate?.constructor?.n
 
   if (move.category === MoveCategory.STATUS) {
 
-    const hasGoldenBody = globalScene.getModifiers(GoldenBodyItemModifier)
-      .some(mod => mod.pokemonId === this.id);
+    const hasGoldenBody = globalScene
+  .getModifiers(GoldenBodyItemModifier, holderIsPlayer)
+  .some(mod => mod.pokemonId === this.id);
 
     if (hasGoldenBody) {
       const isAllyMove = source.isPlayer() === this.isPlayer() && source !== this;
@@ -3266,10 +3521,10 @@ if (source !== this) {
   // 1. Modifier 적용
   globalScene.applyModifiers(
   PreventPriorityMoveItemModifier,
-  this.isPlayer(),
+  holderIsPlayer,
   cancelledHolder,
   source,
-  move
+  move,
 );
 
   // 2. HeldItemModifiers도 별도로 적용
@@ -3469,7 +3724,7 @@ if (ignoreImmunity.value && typeMultiplier.value === 0) {
     ) {
       multiplier /= 2;
       if (!simulated) {
-        globalScene.queueMessage(i18next.t("weather:strongWindsEffectMessage"));
+        globalScene.phaseManager.queueMessage(i18next.t("weather:strongWindsEffectMessage"));
       }
     }
     return multiplier as TypeDamageMultiplier;
@@ -4476,17 +4731,26 @@ applyAbAttrs("ShinyChanceAbAttr", {
       applyMoveAttrs("IgnoreOpponentStatStagesAttr", this, opponent, move, ignoreStatStage);
     }
 
-    // ⬇️ 여기 추가된 부분: 상대의 아이템이 랭크무시 효과가 있을 경우
-    if (!ignoreHeldItems) {
-      globalScene.applyModifiers(
-        UnawareItemModifier,
-        opponent.isPlayer(),
-        stat,
-        ignoreStatStage,
-      );
+    // ✅ 천진밴드: 상대 랭크 무시
+if (!ignoreHeldItems && opponent) {
+  const opponentHasUnawareItem = opponent.getHeldItems?.().some(
+    item => item instanceof UnawareItemModifier,
+  );
+
+  if (opponentHasUnawareItem) {
+    switch (stat) {
+      case Stat.ATK:
+      case Stat.SPATK:
+      case Stat.DEF:
+      case Stat.SPDEF:
+      case Stat.ACC:
+      case Stat.EVA:
+        ignoreStatStage.value = true;
+        break;
     }
-  } // ← 여기까지가 if (opponent) 블록
-  
+  }
+}
+}
 
   if (!ignoreStatStage.value) {
     const statStageMultiplier = new NumberHolder(
@@ -4518,15 +4782,7 @@ applyAbAttrs("ShinyChanceAbAttr", {
 }
 
 private getCategoryCompareStat(stat: Stat): number {
-  const base = this.getStat(stat, false);
-  const stage = this.getStatStage(stat); // -6..+6
-
-  // 랭크 배율 (본가 공식)
-  const mult = Math.max(2, 2 + stage) / Math.max(2, 2 - stage);
-
-  // 너 함수에서 최댓값 4로 캡 하던데, 본가 랭크는 +6이면 4배, -6이면 0.25배라서
-  // 이 캡은 사실상 필요 없지만(이미 공식이 그 범위), 안전하게 남겨도 됨.
-  return Math.floor(base * mult);
+  return this.getEffectiveStat(stat);
 }
 
   /**
@@ -4555,6 +4811,32 @@ private getCategoryCompareStat(stat: Stat): number {
     applyAbAttrs("IgnoreOpponentStatStagesAbAttr", { pokemon: target, stat: Stat.ACC, ignored: ignoreAccStatStage });
     applyAbAttrs("IgnoreOpponentStatStagesAbAttr", { pokemon: this, stat: Stat.EVA, ignored: ignoreEvaStatStage });
     applyMoveAttrs("IgnoreOpponentStatStagesAttr", this, target, sourceMove, ignoreEvaStatStage);
+
+// ✅ 천진밴드: 명중/회피 랭크 무시
+if (!isOhko) {
+  const defenderUnaware = target.getHeldItems?.().some(
+    item => item instanceof UnawareItemModifier,
+  );
+
+  // ✅ 천진밴드: 명중/회피 랭크 무시
+const defenderHasUnawareItem = target.getHeldItems?.().some(
+  item => item instanceof UnawareItemModifier,
+);
+
+// 방어자가 천진밴드를 들고 있으면 공격자의 명중 랭크 무시
+if (defenderHasUnawareItem) {
+  ignoreAccStatStage.value = true;
+}
+
+const attackerHasUnawareItem = this.getHeldItems?.().some(
+  item => item instanceof UnawareItemModifier,
+);
+
+// 공격자가 천진밴드를 들고 있으면 방어자의 회피 랭크 무시
+if (attackerHasUnawareItem) {
+  ignoreEvaStatStage.value = true;
+}
+}
 
     globalScene.applyModifiers(TempStatStageBoosterModifier, this.isPlayer(), Stat.ACC, userAccStage);
 
@@ -4643,6 +4925,32 @@ private getCategoryCompareStat(stat: Stat): number {
     /** A base damage multiplier based on the source's level */
     const levelMultiplier = (2 * source.level) / 5 + 2;
 
+    const applyPracticeBasePowerFactor = (
+  label: string,
+  before: number,
+  after: number,
+) => {
+  if (
+    (globalScene.currentBattle as any)?.isPracticeBattle &&
+    before !== after
+  ) {
+    const result =
+      (globalScene as any).practiceTurnResult ??= {};
+
+    const arr = source.isPlayer()
+      ? (result.playerDamageFactors ??= [])
+      : (result.enemyDamageFactors ??= []);
+
+    arr.push(`${label} ${Math.floor(before)}→${Math.floor(after)}`);
+
+    console.log("[PRACTICE_POWER_FACTOR_ADD]", {
+      label,
+      before,
+      after,
+      list: arr,
+    });
+  }
+};
     /** The power of the move after power boosts from abilities, etc. have applied */
 let power = move.calculateBattlePower(source, this, simulated);
 
@@ -4669,11 +4977,33 @@ if (globalScene.arena.hasTag(ArenaTagType.WONDER_ROOM)) {
     // 1) 역치환
     power = wonderRoomInvertPower(power);
 
+    if (
+      (globalScene.currentBattle as any)?.isPracticeBattle &&
+      before !== power
+    ) {
+      applyPracticeBasePowerFactor(
+  "원더룸 위력 역전",
+  before,
+  power,
+);
+    }
+
     // 2) 역치환 결과가 65~75면 1.5배 버프
     if (power >= 65 && power <= 75) {
       const beforeBuff = power;
-      power = Math.floor(power * 1.5); // 정수로 맞추기(추천)
-      // power = toDmgValue(power * 1.5); // 너 엔진 스타일이 이쪽이면 이걸로
+      power = Math.floor(power * 1.5);
+
+      if (
+        (globalScene.currentBattle as any)?.isPracticeBattle &&
+        beforeBuff !== power
+      ) {
+        applyPracticeBasePowerFactor(
+  "원더룸 중위력 보정",
+  beforeBuff,
+  power,
+);
+      }
+
       if (!simulated) {
         console.log("[WONDER_ROOM][mid buff x1.5]", move.name, beforeBuff, "=>", power);
       }
@@ -4731,7 +5061,8 @@ if (globalScene.arena.hasTag(ArenaTagType.WONDER_ROOM)) {
     if (!simulated) {
       console.log("base damage", baseDamage, move.name, power, sourceAtk.value, targetDef.value);
     }
-
+    console.log("move power =", move.power);
+console.log("after modifier =", power);
     return baseDamage;
   }
 
@@ -4882,7 +5213,68 @@ if (matchesSourceType && moveType !== PokemonType.STELLAR) {
   }: getAttackDamageParams): DamageCalculationResult {
   
     const damage = new NumberHolder(0);
-    const defendingSide = this.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY;
+    const defendingSide = this.isPlayer()
+  ? ArenaTagSide.PLAYER
+  : ArenaTagSide.ENEMY;
+
+    const screenSide = this.isPlayer()
+  ? ArenaTagSide.PLAYER
+  : ArenaTagSide.ENEMY;
+
+    const practiceDamageFactors: string[] = [];
+
+const applyPracticeFactor = (
+  label: string,
+  before: number,
+  after: number,
+) => {
+  if (
+    (globalScene.currentBattle as any)?.isPracticeBattle &&
+    before !== after
+  ) {
+    const result =
+      (globalScene as any).practiceTurnResult ??= {};
+
+    const arr = source.isPlayer()
+      ? (result.playerDamageFactors ??= [])
+      : (result.enemyDamageFactors ??= []);
+
+    arr.push(`${label} ${Math.floor(before)}→${Math.floor(after)}`);
+
+    console.log("[PRACTICE_FACTOR_ADD]", {
+      label,
+      before,
+      after,
+      list: arr,
+    });
+  }
+};
+
+const watchDamageValue = (
+  label: string,
+  callback: () => void,
+) => {
+  const before = damage.value;
+
+  callback();
+
+  const after = damage.value;
+
+  applyPracticeFactor(label, before, after);
+};
+
+const watchTotalChange = (
+  label: string,
+  callback: () => void,
+) => {
+  const before = total;
+
+  callback();
+
+  const after = total;
+
+  applyPracticeFactor(label, before, after);
+};
 
     const variableCategory = new NumberHolder(move.category);
 applyMoveAttrs("VariableMoveCategoryAttr", source, this, move, variableCategory);
@@ -4890,7 +5282,6 @@ const moveCategory = variableCategory.value as MoveCategory;
 
 /** The move's type after type-changing effects are applied */
 let moveType = source.getMoveTypeAgainst(move, this, simulated);
-console.log(`[DEBUG][getAttackDamage] MoveType = ${PokemonType[moveType]}, move.id = ${MoveId[move.id]}`);
 
 if (move.id === MoveId.BIDE) {
   const tag = this.getTag(BideTag) as BideTag | undefined;
@@ -4921,6 +5312,60 @@ const typeMultiplier =
       globalScene.arena.getAttackTypeMultiplier(moveType, source.isGrounded()),
     );
     applyMoveAttrs("IgnoreWeatherTypeDebuffAttr", source, this, move, arenaAttackTypeMultiplier);
+
+    const getArenaAttackTypeFactorLabel = (): string => {
+  const weatherType = globalScene.arena.weather?.weatherType;
+  const terrainType = globalScene.arena.terrain?.terrainType;
+
+  if (weatherType != null) {
+    switch (weatherType) {
+      case WeatherType.SUNNY:
+      case WeatherType.HARSH_SUN:
+        if (moveType === PokemonType.FIRE) return "날씨: 쾌청 불꽃 강화";
+        if (moveType === PokemonType.WATER) return "날씨: 쾌청 물 약화";
+        break;
+
+      case WeatherType.RAIN:
+      case WeatherType.HEAVY_RAIN:
+        if (moveType === PokemonType.WATER) return "날씨: 비 물 강화";
+        if (moveType === PokemonType.FIRE) return "날씨: 비 불꽃 약화";
+        break;
+
+      case WeatherType.SANDSTORM:
+        if (moveType === PokemonType.ROCK) return "날씨: 모래바람 바위 강화";
+        break;
+
+      case WeatherType.SNOW:
+      case WeatherType.HAIL:
+        if (moveType === PokemonType.ICE) return "날씨: 눈 얼음 강화";
+        break;
+    }
+  }
+
+  if (terrainType != null) {
+    switch (terrainType) {
+      case TerrainType.ELECTRIC:
+        if (moveType === PokemonType.ELECTRIC) return "필드: 일렉트릭필드 전기 강화";
+        break;
+
+      case TerrainType.GRASSY:
+        if (moveType === PokemonType.GRASS) return "필드: 그래스필드 풀 강화";
+        break;
+
+      case TerrainType.PSYCHIC:
+        if (moveType === PokemonType.PSYCHIC) return "필드: 사이코필드 에스퍼 강화";
+        break;
+
+      case TerrainType.MISTY:
+        if (moveType === PokemonType.DRAGON && this.isGrounded()) {
+          return "필드: 미스트필드 드래곤 약화";
+        }
+        break;
+    }
+  }
+
+  return "날씨/필드 보정";
+};
 
     const isTypeImmune = typeMultiplier * arenaAttackTypeMultiplier.value === 0;
 
@@ -4957,11 +5402,6 @@ if (!simulated && this !== source) {
     const resistType = berryResistTypeMap[berryType];
     const isChilan = berryType === BerryType.CHILAN;
 
-    // 🔹 주요 디버그 정보
-    console.log(
-      `[DEBUG][ResistBerryCheck] berryType=${BerryType[berryType]} moveType=${PokemonType[moveTypeForBerry]} resistType=${resistType !== undefined ? PokemonType[resistType] : "undefined"} typeMultNow=${typeMultiplierNow}`
-    );
-
     const typeMatch = isChilan
       ? moveTypeForBerry === PokemonType.NORMAL
       : resistType === moveTypeForBerry && typeMultiplierNow > 1;
@@ -4992,15 +5432,8 @@ globalScene.phaseManager.queueMessage(
       effectValue: resistBerryMultiplier,
     });
 
-    console.log(
-      `[DEBUG][ResistBerry] move=${MoveId[move.id]} resistType=${PokemonType[resistType]} berryType=${BerryType[berryType]} matched=true`
-    );
-
     break; // ✅ 한 번만 발동
   }
-
-  // 🔹 루프 결과만 마지막에 출력
-  console.log(`[DEBUG][ResistBerryMult] final = x${resistBerryMultiplier.value} (match=${matchFound})`);
 }
 
     // If the attack deals fixed damage, return a result with that much damage
@@ -5102,6 +5535,51 @@ applyAbAttrs("MultCritAbAttr", {
 console.log("[CRIT][AFTER_ABILITY]", {
   critMult: criticalMultiplier.value,
 });
+
+// ✅ 여기에 추가
+const critDamageMod = source.getHeldItems().find(
+  m => m instanceof CritDamageBoostModifier,
+);
+
+if (critDamageMod && criticalMultiplier.value > 1) {
+  const modName =
+    (critDamageMod as any).getPracticeLogName?.()
+    ?? (critDamageMod as any).type?.name
+    ?? (critDamageMod as any).type?.id
+    ?? critDamageMod.constructor.name;
+
+  const before = criticalMultiplier.value;
+
+  globalScene.applyModifier(
+    CritDamageBoostModifier,
+    source.isPlayer(),
+    source,
+    criticalMultiplier,
+  );
+
+  const after = criticalMultiplier.value;
+
+  console.log("[CRIT_DAMAGE_ITEM]", {
+    item: modName,
+    before,
+    after,
+  });
+
+  if (
+    !simulated &&
+    (globalScene.currentBattle as any)?.isPracticeBattle &&
+    before !== after
+  ) {
+    const result = (globalScene as any).practiceTurnResult;
+    if (result) {
+      const arr = source.isPlayer()
+        ? (result.playerDamageFactors ??= [])
+        : (result.enemyDamageFactors ??= []);
+
+      arr.push(`${modName} 급소배율 ${before}→${after}`);
+    }
+  }
+}
 
 const glove = source.getHeldItems().find(
   (i): i is UrshifuGloveAbilityBypassModifier =>
@@ -5209,18 +5687,37 @@ if (
     /** Reduces damage if this Pokemon has a relevant screen (e.g. Light Screen for special attacks) */
     const screenMultiplier = new NumberHolder(1);
 
-    // Critical hits should bypass screens
-    if (!isCritical) {
-      globalScene.arena.applyTagsForSide(
-        WeakenMoveScreenTag,
-        defendingSide,
-        simulated,
-        source,
-        moveCategory,
-        screenMultiplier,
-      );
-    }
+if (!isCritical) {
+  globalScene.arena.applyTagsForSide(
+  WeakenMoveScreenTag,
+  screenSide,
+  source,
+  moveCategory,
+  screenMultiplier,
+);
+}
 
+console.log("[SCREEN_SIDE_TEST]", {
+  defender: this.name,
+  defenderIsPlayer: this.isPlayer(),
+  screenSide,
+  screenSideName: ArenaTagSide[screenSide],
+  screenMultiplier: screenMultiplier.value,
+});
+
+console.log("[SCREEN_CHECK]", JSON.stringify({
+  simulated,
+  isPractice: (globalScene.currentBattle as any)?.isPracticeBattle,
+  isCritical,
+  defendingSide,
+  moveCategory,
+  screenMultiplier: screenMultiplier.value,
+  tags: globalScene.arena.tags.map(t => ({
+    tagType: ArenaTagType[t.tagType],
+    side: ArenaTagSide[t.side],
+    ctor: t.constructor.name,
+  })),
+}, null, 2));
     /**
      * For each {@linkcode HitsTagAttr} the move has, doubles the damage of the move if:
      * The target has a {@linkcode BattlerTagType} that this move interacts with
@@ -5266,15 +5763,56 @@ let total =
   mistyTerrainMultiplier *
   resistBerryMultiplier.value; // ✅ resist berry here
 
+if (
+  (globalScene.currentBattle as any)?.isPracticeBattle &&
+  arenaAttackTypeMultiplier.value !== 1
+) {
+  const withoutArena = total / arenaAttackTypeMultiplier.value;
+  applyPracticeFactor(
+    getArenaAttackTypeFactorLabel(),
+    withoutArena,
+    total,
+  );
+}
+
+if (
+  (globalScene.currentBattle as any)?.isPracticeBattle &&
+  screenMultiplier.value !== 1
+) {
+  applyPracticeFactor(
+    moveCategory === MoveCategory.PHYSICAL
+      ? "리플렉터/오로라베일"
+      : "빛의장막/오로라베일",
+    total / screenMultiplier.value,
+    total,
+  );
+}
+
 // 2) Apply ONLY the attacker's actually-equipped held item modifiers
 const attackerHeldMods = globalScene.findModifiers(
   m => m instanceof PokemonHeldItemModifier && m.pokemonId === source.id,
 );
 
 // Helper: if attacker has a modifier AND move matches flag => *1.3 and remove contact
-const applyFlagBoost = (ModCtor: any, flag: any, mult = 1.3) => {
-  if (attackerHeldMods.some(m => m instanceof ModCtor) && move.hasFlag(flag)) {
-    total = Math.floor(total * mult);
+const applyFlagBoost = (
+  ModCtor: any,
+  flag: any,
+  mult = 1.3,
+) => {
+  const matchedMod = attackerHeldMods.find(
+    m => m instanceof ModCtor,
+  );
+
+  if (matchedMod && move.hasFlag(flag)) {
+
+    const modName =
+      (matchedMod as any).getPracticeLogName?.()
+      ?? matchedMod.constructor.name;
+
+    watchTotalChange(modName, () => {
+      total = Math.floor(total * mult);
+    });
+
     move.setFlag(MoveFlags.MAKES_CONTACT, false);
   }
 };
@@ -5309,8 +5847,21 @@ applyFlagBoost(WindMoveModifier, MoveFlags.WIND_MOVE);
 applyFlagBoost(DanceMoveModifier, MoveFlags.DANCE_MOVE);
 
 // Drain-type boost (1.5) by having DrainMoveModifier + move has HitHealAttr
-if (attackerHeldMods.some(m => m instanceof DrainMoveModifier) && move.hasAttr("HitHealAttr")) {
-  total = Math.floor(total * 1.5);
+const drainMod = attackerHeldMods.find(
+  m => m instanceof DrainMoveModifier,
+);
+
+if (drainMod && move.hasAttr("HitHealAttr")) {
+
+  const modName =
+    (drainMod as any).getPracticeLogName?.()
+    ?? (drainMod as any).type?.name
+    ?? (drainMod as any).type?.id
+    ?? drainMod.constructor.name;
+
+  watchTotalChange(modName, () => {
+    total = Math.floor(total * 1.5);
+  });
 }
 
 // ✅ SpeciesStatBoosterModifier : WIND_MOVE면 windMoveMult 적용
@@ -5319,15 +5870,25 @@ if (move.hasFlag(MoveFlags.WIND_MOVE)) {
     if (!(m instanceof SpeciesStatBoosterModifier)) continue;
 
     const w = m.getWindMoveMult?.();
-    if (!w) continue;                         // wind 옵션 없는 건 스킵
+    if (!w) continue;
     if (!m.hasMatchingSpecies(source)) continue;
 
-    total = Math.floor(total * w);
+    const modName =
+      (m as any).getPracticeLogName?.()
+      ?? (m as any).type?.name
+      ?? (m as any).type?.id
+      ?? m.constructor.name;
+
+    watchTotalChange(modName, () => {
+      total = Math.floor(total * w);
+    });
+
     console.log(`[SPECIES_BOOSTER][WIND] x${w} applied`);
-    break; // 중복 적용 방지(원하면 제거)
+    break;
   }
 }
 
+// ✅ POISON/TOXIC 대상일 때 추가 배율
 {
   const defender = this;
   const eff = (defender as any)?.status?.effect ?? (defender as any)?.statusEffect;
@@ -5341,13 +5902,22 @@ if (move.hasFlag(MoveFlags.WIND_MOVE)) {
       if (!mult) continue;
       if (!m.hasMatchingSpecies(source)) continue;
 
-      total = Math.floor(total * mult);
+      const modName =
+        (m as any).getPracticeLogName?.()
+        ?? (m as any).type?.name
+        ?? (m as any).type?.id
+        ?? m.constructor.name;
+
+      watchTotalChange(modName, () => {
+        total = Math.floor(total * mult);
+      });
+
       break;
     }
   }
 }
 
-// ✅ SLEEP 대상일 때 추가 배율 (나이트메어배지: x1.3)
+// ✅ SLEEP 대상일 때 추가 배율
 {
   const defender = this;
   const eff = (defender as any)?.status?.effect ?? (defender as any)?.statusEffect;
@@ -5357,22 +5927,40 @@ if (move.hasFlag(MoveFlags.WIND_MOVE)) {
     for (const m of attackerHeldMods) {
       if (!(m instanceof SpeciesStatBoosterModifier)) continue;
 
-      const mult = m.getSleepingTargetMoveMult?.(); // ✅ 새로 만든 getter
+      const mult = m.getSleepingTargetMoveMult?.();
       if (!mult) continue;
       if (!m.hasMatchingSpecies(source)) continue;
 
-      total = Math.floor(total * mult);
-      break; // 중복 적용 방지(원하면 제거)
+      const modName =
+        (m as any).getPracticeLogName?.()
+        ?? (m as any).type?.name
+        ?? (m as any).type?.id
+        ?? m.constructor.name;
+
+      watchTotalChange(modName, () => {
+        total = Math.floor(total * mult);
+      });
+
+      break;
     }
   }
 }
 
-// ✅ CategoryPowerBoostModifier (물리/특수 위력 2배)
+// ✅ CategoryPowerBoostModifier (물리/특수 위력 증가)
 for (const m of attackerHeldMods) {
   if (m instanceof CategoryPowerBoostModifier && move.category === m.category) {
     const stacks = (m as any).getStackCount?.() ?? (m as any).stackCount ?? 1;
     const mult = Math.pow(m.multiplier, stacks);
-    total = Math.floor(total * mult);
+
+    const modName =
+      (m as any).getPracticeLogName?.()
+      ?? (m as any).type?.name
+      ?? (m as any).type?.id
+      ?? m.constructor.name;
+
+    watchTotalChange(modName, () => {
+      total = Math.floor(total * mult);
+    });
   }
 }
 
@@ -5380,64 +5968,204 @@ for (const m of attackerHeldMods) {
 damage.value = toDmgValue(total);
 
 // 4) Item modifiers that apply AFTER base finalization (your custom order)
-if (typeof StackingPowerBoosterModifier !== "undefined") {
-  globalScene.applyModifiers(StackingPowerBoosterModifier, false, damage);
+const stackingPowerMod = attackerHeldMods.find(
+  m => m instanceof StackingPowerBoosterModifier,
+) as StackingPowerBoosterModifier | undefined;
+
+if (
+  stackingPowerMod &&
+  typeof damage.value === "number" &&
+  !isNaN(damage.value)
+) {
+  const modName =
+    (stackingPowerMod as any).getPracticeLogName?.()
+    ?? (stackingPowerMod as any).type?.name
+    ?? (stackingPowerMod as any).type?.id
+    ?? stackingPowerMod.constructor.name;
+
+  watchDamageValue(modName, () => {
+    damage.value = stackingPowerMod.applyMovePowerBoost(
+      move,
+      source,
+      this,
+      damage.value,
+      globalScene.currentBattle,
+    );
+  });
 }
 
 if (typeof IgnoreContactItemModifier !== "undefined") {
-  globalScene.applyModifiers(IgnoreContactItemModifier, false, damage);
+  watchDamageValue("접촉 무시 보정", () => {
+    globalScene.applyModifiers(
+      IgnoreContactItemModifier,
+      source.isPlayer(),
+      damage,
+    );
+  });
 }
 
-// SheerForceItemModifier (only if attacker holds it AND move qualifies)
-const attackerHasSheerForce = attackerHeldMods.some(m => m instanceof SheerForceItemModifier);
+// SheerForceItemModifier
+const sheerForceMod = attackerHeldMods.find(
+  m => m instanceof SheerForceItemModifier,
+);
 
 if (
-  attackerHasSheerForce &&
+  sheerForceMod &&
   damage?.value != null &&
-  move.category !== MoveCategory.STATUS &&     // 공격기만
-  move.chance > 0 &&                           // "부가효과 있는 기술"만
-  !SheerForceItemModifier.isExceptMove(move)   // ✅ 예외 기술 제외
+  move.category !== MoveCategory.STATUS &&
+  move.chance > 0 &&
+  !SheerForceItemModifier.isExceptMove(move)
 ) {
-  damage.value = Math.floor(damage.value * 1.3);
+  const modName =
+    (sheerForceMod as any).getPracticeLogName?.()
+    ?? (sheerForceMod as any).type?.name
+    ?? (sheerForceMod as any).type?.id
+    ?? sheerForceMod.constructor.name;
+
+  watchDamageValue(modName, () => {
+    damage.value = Math.floor(damage.value * 1.3);
+  });
+
   console.log(`[SheerForceItemModifier] ${move.name} → x1.3`);
 }
 
-// ✅ Technique belt (as you wrote: based on damage.value <= 60)
-if (damage.value <= 60) {
-  globalScene.applyModifiers(MovePowerBoostItemModifier, false, damage);
+const movePowerMod = attackerHeldMods.find(
+  m => m instanceof MovePowerBoostItemModifier,
+) as MovePowerBoostItemModifier | undefined;
+
+if (movePowerMod && damage.value <= 60) {
+  const modName =
+    (movePowerMod as any).getPracticeLogName?.()
+    ?? (movePowerMod as any).type?.name
+    ?? (movePowerMod as any).type?.id
+    ?? movePowerMod.constructor.name;
+
+  watchDamageValue(modName, () => {
+    globalScene.applyModifier(
+      MovePowerBoostItemModifier,
+      source.isPlayer(),
+      source,
+      move,
+      damage,
+    );
+  });
 }
 
-// ✅ Recoil booster
-if (typeof RecoilBoosterModifier !== "undefined" && move.hasAttr("RecoilAttr")) {
-  globalScene.applyModifiers(RecoilBoosterModifier, false, damage, move);
-}
-
-// 5) Source ability-based boosts (post-calc offensive AbAttrs)
+// 5) Source ability-based boosts
 if (!ignoreSourceAbility) {
-  applyAbAttrs("MoveDamageBoostAbAttr", {
-    pokemon: source,
-    opponent: this,
-    move,
-    simulated,
-    damage,
+  watchDamageValue("특성 대미지 보정", () => {
+    applyAbAttrs("MoveDamageBoostAbAttr", {
+      pokemon: source,
+      opponent: this,
+      move,
+      simulated,
+      damage,
+    });
   });
 }
 
 // 6) Enemy tokens
 if (!source.isPlayer()) {
-  globalScene.applyModifiers(EnemyDamageBoosterModifier, false, damage);
+  watchDamageValue("적 대미지 강화", () => {
+    globalScene.applyModifiers(
+      EnemyDamageBoosterModifier,
+      false,
+      damage,
+    );
+  });
 }
 
 if (!this.isPlayer()) {
-  globalScene.applyModifiers(EnemyDamageReducerModifier, false, damage);
+  watchDamageValue("적 대미지 감소", () => {
+    globalScene.applyModifiers(
+      EnemyDamageReducerModifier,
+      false,
+      damage,
+    );
+  });
 }
 
-const enemyReducers = globalScene.getModifiers(EnemyDamageReducerModifier as any);
+// 7) Defender-side full HP item
+const defenderHeldMods = globalScene.findModifiers(
+  m => m instanceof PokemonHeldItemModifier && m.pokemonId === this.id,
+  this.isPlayer(),
+);
 
-// 7) Defender-side full HP item (Sturdystone)
-if (Math.floor(this.hp) >= Math.floor(this.getMaxHp())) {
-  globalScene.applyModifiers(SturdystoneItemModifier, false, damage, move, this, source);
-  globalScene.applyModifiers(SturdyMealModifier, false, damage, move, this, source);
+console.log("[DEFENDER_HELD_MODS]", defenderHeldMods.map((m: any) => ({
+  ctor: m.constructor.name,
+  type: m.type?.id ?? m.type?.name,
+  stack: m.stackCount,
+  pokemonId: m.pokemonId,
+})));
+
+if (
+  Math.floor(this.hp) >= Math.floor(this.getMaxHp()) &&
+  typeMultiplier > 1
+) {
+  console.log("[FULL_HP_DEFENSE_CHECK]", {
+    defender: this.name,
+    hp: this.hp,
+    maxHp: this.getMaxHp(),
+    typeMultiplier,
+  });
+
+  const sturdyStone = defenderHeldMods.find(
+    m => m instanceof SturdystoneItemModifier,
+  );
+
+  console.log("[STURDYSTONE_FOUND]", {
+    found: !!sturdyStone,
+    mod: sturdyStone,
+  });
+
+  if (sturdyStone) {
+    const modName =
+      (sturdyStone as any).getPracticeLogName?.()
+      ?? (sturdyStone as any).type?.name
+      ?? (sturdyStone as any).type?.id
+      ?? sturdyStone.constructor.name;
+
+    watchDamageValue(modName, () => {
+      const before = damage.value;
+
+      damage.value = Math.floor(damage.value * 0.75);
+
+      console.log("[STURDYSTONE_APPLIED]", {
+        before,
+        after: damage.value,
+        modName,
+      });
+    });
+  }
+
+  const sturdyMeal = defenderHeldMods.find(
+    m => m instanceof SturdyMealModifier,
+  );
+
+  console.log("[STURDYMEAL_FOUND]", {
+    found: !!sturdyMeal,
+    mod: sturdyMeal,
+  });
+
+  if (sturdyMeal) {
+    const modName =
+      (sturdyMeal as any).getPracticeLogName?.()
+      ?? (sturdyMeal as any).type?.name
+      ?? (sturdyMeal as any).type?.id
+      ?? sturdyMeal.constructor.name;
+
+    watchDamageValue(modName, () => {
+      const before = damage.value;
+
+      damage.value = Math.floor(damage.value * 0.75);
+
+      console.log("[STURDYMEAL_APPLIED]", {
+        before,
+        after: damage.value,
+        modName,
+      });
+    });
+  }
 }
 
 // 8) Defensive AbAttrs + allied ability reductions
@@ -5450,68 +6178,167 @@ const abAttrParams: PreAttackModifyDamageAbAttrParams = {
 };
 
 if (!ignoreAbility) {
-  applyAbAttrs("ReceivedMoveDamageMultiplierAbAttr", abAttrParams);
+  watchDamageValue("받는 대미지 보정", () => {
+    applyAbAttrs("ReceivedMoveDamageMultiplierAbAttr", abAttrParams);
+  });
 
-  // ✅ Defender held-mod damage reductions (sound/wind 0.5x)
   const defenderHeldMods = globalScene.findModifiers(
     m => m instanceof PokemonHeldItemModifier && m.pokemonId === this.id,
   );
 
-  if (defenderHeldMods.some(m => m instanceof SoundMoveModifier) && move.hasFlag(MoveFlags.SOUND_BASED)) {
-    damage.value = Math.floor(damage.value * 0.5);
+  const soundDefMod = defenderHeldMods.find(
+    m => m instanceof SoundMoveModifier,
+  );
+
+  if (soundDefMod && move.hasFlag(MoveFlags.SOUND_BASED)) {
+    const modName =
+      (soundDefMod as any).getPracticeLogName?.()
+      ?? (soundDefMod as any).type?.name
+      ?? (soundDefMod as any).type?.id
+      ?? soundDefMod.constructor.name;
+
+    watchDamageValue(modName, () => {
+      damage.value = Math.floor(damage.value * 0.5);
+    });
+
     console.log(`[SoundMoveModifier] ${move.name} → 사운드 기술 피해 0.5배 감소`);
   }
 
-  if (defenderHeldMods.some(m => m instanceof WindMoveModifier) && move.hasFlag(MoveFlags.WIND_MOVE)) {
-    damage.value = Math.floor(damage.value * 0.5);
+  const windDefMod = defenderHeldMods.find(
+    m => m instanceof WindMoveModifier,
+  );
+
+  if (windDefMod && move.hasFlag(MoveFlags.WIND_MOVE)) {
+    const modName =
+      (windDefMod as any).getPracticeLogName?.()
+      ?? (windDefMod as any).type?.name
+      ?? (windDefMod as any).type?.id
+      ?? windDefMod.constructor.name;
+
+    watchDamageValue(modName, () => {
+      damage.value = Math.floor(damage.value * 0.5);
+    });
+
     console.log(`[WindMoveModifier] ${move.name} → 바람 기술 피해 0.5배 감소`);
   }
 
   const ally = this.getAlly();
   if (globalScene.currentBattle.double && ally != null && ally.isActive(true)) {
-    applyAbAttrs("AlliedFieldDamageReductionAbAttr", {
-      ...abAttrParams,
-      pokemon: ally,
+    watchDamageValue("아군 필드 방어 보정", () => {
+      applyAbAttrs("AlliedFieldDamageReductionAbAttr", {
+        ...abAttrParams,
+        pokemon: ally,
+      });
     });
   }
 }
 
-// 9) Move attrs that can arbitrarily modify damage (keep late)
-applyMoveAttrs("ModifiedDamageAttr", source, this, move, damage);
+watchDamageValue("기술 특수 대미지 보정", () => {
+  applyMoveAttrs("ModifiedDamageAttr", source, this, move, damage);
+});
 
 // 10) StackingRiskyPowerBoosterModifier (attacker-based, after move attrs in your script)
 const attacker = source;
 const defender = this;
 
-const riskyMods = globalScene.getModifiers(StackingRiskyPowerBoosterModifier);
+const riskyMods = globalScene.getModifiers(
+  StackingRiskyPowerBoosterModifier,
+  attacker.isPlayer(),
+);
 const matchedMod = riskyMods?.find(mod => mod.pokemonId === attacker.id);
 
 if (matchedMod && typeof damage.value === "number" && !isNaN(damage.value)) {
-  damage.value = matchedMod.applyMovePowerBoost(move, attacker, defender, damage.value, globalScene.currentBattle);
-}
+  const modName =
+    (matchedMod as any).getPracticeLogName?.()
+    ?? (matchedMod as any).type?.name
+    ?? (matchedMod as any).type?.id
+    ?? matchedMod.constructor.name;
 
+  watchDamageValue(modName, () => {
+    damage.value = matchedMod.applyMovePowerBoost(
+      move,
+      attacker,
+      defender,
+      damage.value,
+      globalScene.currentBattle,
+    );
+  });
+}
 // 11) SuperEffective / NotEffective boosters
 
 // ✅ UltraBeadModifier: "효과가 별로인(<=0.5)"이면 x2 (색안경)
 if (typeMultiplier > 0 && typeMultiplier <= 0.5) {
-  const ultra = attackerHeldMods.find(m => m instanceof UltraBeadModifier) as UltraBeadModifier | undefined;
-  if (ultra && ultra.isUltraActive?.(attacker)) {          // ← public helper 만들어두면 제일 깔끔
+  const ultra = attackerHeldMods.find(
+    m => m instanceof UltraBeadModifier,
+  ) as UltraBeadModifier | undefined;
+
+  if (ultra && ultra.isUltraActive?.(attacker)) {
     const mult = ultra.getNotEffectiveMult?.() ?? 2;
-    damage.value = Math.floor(damage.value * mult);
+
+    const modName =
+      (ultra as any).getPracticeLogName?.()
+      ?? (ultra as any).type?.name
+      ?? (ultra as any).type?.id
+      ?? ultra.constructor.name;
+
+    watchDamageValue(modName, () => {
+      damage.value = Math.floor(damage.value * mult);
+    });
+
     if (!simulated) console.log(`[ULTRA_BEAD][NOT_EFFECTIVE] x${mult} applied`);
   }
 }
 
 if (typeMultiplier > 1) {
-  globalScene.applyModifiers(SuperEffectiveBoosterModifier, false, damage);
-}
-if (typeMultiplier < 1) {
-  globalScene.applyModifiers(NotEffectiveBoostModifier, false, damage);
+  const expertBelt = attackerHeldMods.find(
+    m => m instanceof SuperEffectiveBoosterModifier,
+  ) as SuperEffectiveBoosterModifier | undefined;
+
+  if (expertBelt && expertBelt.shouldApply?.(source, move, typeMultiplier)) {
+    const modName =
+      (expertBelt as any).getPracticeLogName?.()
+      ?? (expertBelt as any).type?.name
+      ?? (expertBelt as any).type?.id
+      ?? expertBelt.constructor.name;
+
+    watchDamageValue(modName, () => {
+      damage.value = expertBelt.applyMovePowerBoost(
+        move,
+        source,
+        this,
+        damage.value,
+        globalScene.currentBattle,
+      );
+    });
+  }
 }
 
-// 12) Full HP endure AbAttr
+if (typeMultiplier < 1) {
+  const notEffectiveMod = attackerHeldMods.find(
+    m => m instanceof NotEffectiveBoostModifier,
+  ) as NotEffectiveBoostModifier | undefined;
+
+  if (notEffectiveMod && notEffectiveMod.shouldApply?.(source, move, typeMultiplier)) {
+    const modName =
+      (notEffectiveMod as any).getPracticeLogName?.()
+      ?? (notEffectiveMod as any).type?.name
+      ?? (notEffectiveMod as any).type?.id
+      ?? notEffectiveMod.constructor.name;
+
+    const mult =
+      (notEffectiveMod as any).multiplier
+      ?? 2;
+
+    watchDamageValue(modName, () => {
+      damage.value = Math.floor(damage.value * mult);
+    });
+  }
+}
+
 if (this.isFullHp() && !ignoreAbility) {
-  applyAbAttrs("PreDefendFullHpEndureAbAttr", abAttrParams);
+  watchDamageValue("풀피 버티기 보정", () => {
+    applyAbAttrs("PreDefendFullHpEndureAbAttr", abAttrParams);
+  });
 }
 
 // 13) Debug output (when not simulated)
@@ -5560,6 +6387,36 @@ if (!simulated && this !== source) {
 }
 
 console.log("[RP][RETURN]", hitResult, gainedRp); // ← 여기
+
+if (!simulated && (globalScene.currentBattle as any)?.isPracticeBattle) {
+  const result = (globalScene as any).practiceTurnResult;
+
+  if (result && practiceDamageFactors.length > 0) {
+    const arr = source.isPlayer()
+      ? (result.playerDamageFactors ??= [])
+      : (result.enemyDamageFactors ??= []);
+
+    arr.push(...practiceDamageFactors);
+  }
+
+  (source as any)._lastPracticeDamageDetail = {
+    moveName: move.name,
+    movePower: move.power,
+    moveType,
+    typeMultiplier,
+    arenaAttackTypeMultiplier: arenaAttackTypeMultiplier.value,
+    criticalMultiplier: criticalMultiplier.value,
+    randomMultiplier,
+    stabMultiplier,
+    burnMultiplier,
+    screenMultiplier: screenMultiplier.value,
+    hitsTagMultiplier: hitsTagMultiplier.value,
+    mistyTerrainMultiplier,
+    resistBerryMultiplier: resistBerryMultiplier.value,
+    finalDamage: damage.value,
+    hitResult,
+  };
+}
 
 return {
   cancelled: cancelled.value,
@@ -5704,11 +6561,34 @@ if (this.hp <= 1 || damage >= this.hp) {
   // ✅ 적용 후 로그(원인 추적에 도움됨)
   console.log(`[DMG_APPLIED] ${this.getName()} applied=${damage} hpAfter=${this.hp}`);
 
-  if (this.isFainted() && !ignoreFaintPhase) {
-    globalScene.phaseManager.queueFaintPhase(this.getBattlerIndex(), preventEndure);
-    this.destroySubstitute();
-    this.lapseTag(BattlerTagType.COMMANDED);
-  }
+  const battle = globalScene.currentBattle as any;
+
+const isPracticeDummy =
+  battle?.isPracticeBattle &&
+  ((this as any).isPracticeDummy || this === battle.practiceDummy);
+
+const allowDummyFaint =
+  globalScene.gameData.practiceDummyConfig
+    ?.rewardFlags
+    ?.allowDummyFaint ?? false;
+
+if (
+  this.hp <= 0 &&
+  (
+    !ignoreFaintPhase ||
+    (isPracticeDummy && allowDummyFaint)
+  )
+) {
+  console.log("[FAINT_QUEUE_PUSH]", this.getName());
+
+  globalScene.phaseManager.queueFaintPhase(
+    this.getBattlerIndex(),
+    preventEndure,
+  );
+
+  this.destroySubstitute();
+  this.lapseTag(BattlerTagType.COMMANDED);
+}
 
   return damage;
 }
@@ -5805,32 +6685,199 @@ console.trace("[DAU_TRACE]", {
     damage = 0;
   }
 
-  // 6) 약점/반감/기타 아이템 판정 (여기서는 moveType/movePower가 들어와야 의미 있음)
-  //    moveType이 undefined면 applyModifier 내부에서 안전 처리되길 기대 (아니면 가드 추가)
-  const itemModifier = this.getHeldItems(WeaknessTypeModifier)[0];
-  if (itemModifier) {
-    const weaknessModifier = globalScene.applyModifier(
-      WeaknessTypeModifier,
-      this.isPlayer(),
-      this,
-      moveType,
-      movePower,
-      result,
-      source,
-    );
-    if (weaknessModifier) {
-      globalScene.updateModifiers(this.isPlayer());
-    }
+  // ✅ 약점보험 판정
+const weaknessModifier = globalScene.applyModifier(
+  WeaknessTypeModifier,
+  this.isPlayer(), // 맞은 포켓몬 기준
+  this,            // 맞은 포켓몬
+  moveType,
+  movePower,
+  result,
+  source,
+) as WeaknessTypeModifier | null;
+
+if (weaknessModifier) {
+  globalScene.updateModifiers(this.isPlayer());
+  this.updateInfo();
+}
+
+  const battle = globalScene.currentBattle as any;
+
+const isPracticeDummy =
+  battle?.isPracticeBattle &&
+  ((this as any).isPracticeDummy || this === battle.practiceDummy);
+
+const allowDummyFaint =
+  globalScene.gameData.practiceDummyConfig
+    ?.rewardFlags
+    ?.allowDummyFaint ?? false;
+
+console.log("[PRACTICE_DUMMY_FAINT_FLAG]", {
+  isPracticeDummy,
+  allowDummyFaint,
+  rewardFlags: globalScene.gameData.practiceDummyConfig?.rewardFlags,
+});
+
+if (isPracticeDummy && !allowDummyFaint) {
+  const shownDamage = Math.max(0, damage);
+
+  damagePhase.updateAmount(shownDamage);
+  damage = shownDamage;
+} else {
+  if (isPracticeDummy && allowDummyFaint) {
+    ignoreFaintPhase = false;
   }
 
-  // 7) 실제 체력에 반영 (세그먼트/간접/기절페이즈 옵션 포함)
-damage = this.damage(damage, ignoreSegments, isIndirectDamage, ignoreFaintPhase);
+  damage = this.damage(
+    damage,
+    ignoreSegments,
+    isIndirectDamage,
+    ignoreFaintPhase,
+  );
 
-// 8) 애니메이션에도 “실제 적용된 데미지” 반영
-damagePhase.updateAmount(damage);
+  if (
+  isPracticeDummy &&
+  allowDummyFaint &&
+  this.hp <= 0
+) {
+  const result =
+    (globalScene as any).practiceTurnResult;
 
-// ✅ appliedDamage 확정 (여기부터는 이 값만 사용)
+  result?.enemyDamageFactors?.push(
+    "대타 기절 허용"
+  );
+
+  console.log(
+    "[PRACTICE_DUMMY_FAINT_QUEUE]"
+  );
+
+  (globalScene as any)
+    .practiceDummyNeedsRefresh = true;
+
+  return result;
+}
+
+  if (
+    battle?.isPracticeBattle &&
+    this.isPlayer() &&
+    this.hp <= 0
+  ) {
+    this.hp = this.getMaxHp();
+    this.doSetStatus?.(StatusEffect.NONE);
+    this.updateInfo?.();
+    ignoreFaintPhase = true;
+  }
+
+  damagePhase.updateAmount(damage);
+}
+
 const appliedDamage = damage;
+const displayDamage = Math.max(appliedDamage, rawDamage);
+
+const practiceResult = (globalScene as any).practiceTurnResult;
+
+if (
+  practiceResult &&
+  (globalScene.currentBattle as any)?.isPracticeBattle &&
+  appliedDamage > 0 &&
+  source &&
+  source !== this
+) {
+console.log("[PRACTICE_RESULT_ADD_DAMAGE]", {
+  appliedDamage,
+  source: source?.getName?.(),
+  target: this.getName?.(),
+  sourceIsPlayer: source?.isPlayer?.(),
+  isPracticeBattle: (globalScene.currentBattle as any)?.isPracticeBattle,
+});
+if (
+  (globalScene.currentBattle as any)?.isPracticeBattle &&
+  source?.isPlayer?.() &&
+  !(source as any).turnData.practiceStackGrown
+) {
+  (source as any).turnData.practiceStackGrown = true;
+  globalScene.applyPracticeStackGrowth(source);
+}
+  const damageFactors: string[] = [];
+  
+  const detail = (source as any)._lastPracticeDamageDetail;
+
+if (detail) {
+  damageFactors.push(`상성 x${detail.typeMultiplier}`);
+
+  if (detail.stabMultiplier !== 1) {
+    damageFactors.push(`자속 x${detail.stabMultiplier}`);
+  }
+
+  if (detail.criticalMultiplier !== 1) {
+    damageFactors.push(`급소 x${detail.criticalMultiplier}`);
+  }
+
+  if (detail.arenaAttackTypeMultiplier !== 1) {
+    damageFactors.push(
+      `날씨/필드 x${detail.arenaAttackTypeMultiplier}`,
+    );
+  }
+
+  if (detail.burnMultiplier !== 1) {
+    damageFactors.push(`화상 x${detail.burnMultiplier}`);
+  }
+
+  if (detail.screenMultiplier !== 1) {
+    damageFactors.push(`벽 x${detail.screenMultiplier}`);
+  }
+
+  if (detail.hitsTagMultiplier !== 1) {
+    damageFactors.push(`특수보정 x${detail.hitsTagMultiplier}`);
+  }
+
+  if (detail.resistBerryMultiplier !== 1) {
+    damageFactors.push(
+      `반감열매 x${detail.resistBerryMultiplier}`,
+    );
+  }
+
+  damageFactors.push(`최종 ${detail.finalDamage}`);
+}
+
+  if (isCritical) {
+    damageFactors.push("급소");
+  }
+
+  if (result === HitResult.SUPER_EFFECTIVE) {
+    damageFactors.push("효과 굉장");
+  } else if (result === HitResult.EXTREMELY_EFFECTIVE) {
+    damageFactors.push("효과 매우 굉장");
+  } else if (result === HitResult.NOT_VERY_EFFECTIVE) {
+    damageFactors.push("효과 별로");
+  } else if (result === HitResult.NO_EFFECT) {
+    damageFactors.push("효과 없음");
+  }
+
+  if (source.isPlayer?.()) {
+    practiceResult.damageDealt += appliedDamage;
+    practiceResult.playerHitCount++;
+
+    if (isCritical) {
+      practiceResult.playerCriticalCount++;
+    }
+
+    practiceResult.playerDamageFactors ??= [];
+    practiceResult.playerDamageFactors.push(...damageFactors);
+  } else {
+    practiceResult.damageTaken += appliedDamage;
+    practiceResult.enemyHitCount++;
+
+    if (isCritical) {
+      practiceResult.enemyCriticalCount++;
+    }
+
+    practiceResult.enemyDamageFactors ??= [];
+    practiceResult.enemyDamageFactors.push(...damageFactors);
+  }
+
+  practiceResult.effectivenessText = HitResult[result as any] ?? String(result);
+}
 
 console.log("[RP][AWARD]", roguePointGain, appliedDamage); // ← 여기
 
@@ -5952,8 +6999,25 @@ if (accumulateBide) {
   // 1️⃣ 특성 기반 면역
   applyAbAttrs("BattlerTagImmunityAbAttr", { pokemon: this, tag: stubTag, cancelled, simulated: true });
 
-  // 2️⃣ 아이템 기반 면역 (수수께끼향로)
-  globalScene.applyModifiers(AromaIncenseItemModifier, this, cancelled, stubTag);
+ // 2️⃣ 아이템 기반 면역 (아로마향로)
+const aromaIncense = this.getHeldItems?.().find(
+  item =>
+    item instanceof AromaIncenseItemModifier &&
+    item.pokemonId === this.id,
+) as AromaIncenseItemModifier | undefined;
+
+if (aromaIncense) {
+  const blocked = aromaIncense.apply(
+    this,
+    cancelled,
+    stubTag,
+  );
+
+  // 이미 막혔으면 더 진행 안함
+  if (blocked || cancelled.value) {
+    return false;
+  }
+}
 
   // 3️⃣ 아군 필드 면역
   const userField = this.getAlliedField();
@@ -6257,17 +7321,55 @@ return false;
    * @param target - {@linkcode Pokemon} the target of the move, optional and used when the target is a factor in the move's restricted status
    * @returns The first tag on this Pokemon that restricts the move, or `null` if the move is not restricted.
    */
-  getRestrictingTag(moveId: MoveId, user?: Pokemon, target?: Pokemon): MoveRestrictionBattlerTag | null {
-    for (const tag of this.findTags(t => t instanceof MoveRestrictionBattlerTag)) {
-      if ((tag as MoveRestrictionBattlerTag).isMoveRestricted(moveId, user)) {
-        return tag as MoveRestrictionBattlerTag;
-      }
-      if (user && target && (tag as MoveRestrictionBattlerTag).isMoveTargetRestricted(moveId, user, target)) {
-        return tag as MoveRestrictionBattlerTag;
-      }
+  getRestrictingTag(
+  moveId: MoveId,
+  user?: Pokemon,
+  target?: Pokemon,
+): MoveRestrictionBattlerTag | null {
+
+  console.log(
+    "[RESTRICT_TAGS]",
+    this.findTags(
+      t => t instanceof MoveRestrictionBattlerTag
+    ).map(t => t.constructor.name)
+  );
+
+  for (const tag of this.findTags(
+    t => t instanceof MoveRestrictionBattlerTag
+  )) {
+
+    console.log(
+      "[CHECK_TAG]",
+      tag.constructor.name,
+      moveId,
+    );
+
+    if (
+      (tag as MoveRestrictionBattlerTag)
+        .isMoveRestricted(
+          moveId,
+          user,
+        )
+    ) {
+      return tag as MoveRestrictionBattlerTag;
     }
-    return null;
+
+    if (
+      user &&
+      target &&
+      (tag as MoveRestrictionBattlerTag)
+        .isMoveTargetRestricted(
+          moveId,
+          user,
+          target,
+        )
+    ) {
+      return tag as MoveRestrictionBattlerTag;
+    }
   }
+
+  return null;
+}
 
   /**
    * Return this Pokemon's move history.
@@ -8647,79 +9749,95 @@ export class EnemyPokemon extends Pokemon {
            * For more information on how benefit scores are calculated, see `docs/enemy-ai.md`.
            */
           const moveScores = movePool.map(() => 0);
-          const moveTargets = Object.fromEntries(movePool.map(m => [m.moveId, this.getNextTargets(m.moveId)]));
+          const moveTargets = Object.fromEntries(
+  movePool.map(m => {
+    const targets = this.getNextTargets(m.moveId);
+    if (!Array.isArray(targets)) {
+      console.log("[getNextTargets] invalid result", {
+        moveId: m.moveId,
+        moveName: m.getMove()?.name,
+        targets
+      });
+    }
+    return [m.moveId, targets];
+  })
+);
           for (const m in movePool) {
-            const pokemonMove = movePool[m];
-            const move = pokemonMove.getMove();
+  const pokemonMove = movePool[m];
+  const move = pokemonMove.getMove();
 
-            let moveScore = moveScores[m];
-            const targetScores: number[] = [];
+  let moveScore = moveScores[m];
+  const targetScores: number[] = [];
 
-            for (const mt of moveTargets[move.id]) {
-              // Prevent a target score from being calculated when the target is whoever attacks the user
-              if (mt === BattlerIndex.ATTACKER) {
-                break;
-              }
+  const targets = moveTargets[pokemonMove.moveId];
 
-              const target = globalScene.getField()[mt];
-              /**
-               * The "target score" of a move is given by the move's user benefit score + the move's target benefit score.
-               * If the target is an ally, the target benefit score is multiplied by -1.
-               */
-              let targetScore =
-                move.getUserBenefitScore(this, target, move) +
-                move.getTargetBenefitScore(this, target, move) * (mt < BattlerIndex.ENEMY === this.isPlayer() ? 1 : -1);
-              if (Number.isNaN(targetScore)) {
-                console.error(`Move ${move.name} returned score of NaN`);
-                targetScore = 0;
-              }
-              /**
-               * If this move is unimplemented, or the move is known to fail when used, set its
-               * target score to -20
-               */
-              if (
-                (move.name.endsWith(" (N)") || !move.applyConditions(this, target, move)) &&
-                ![MoveId.SUCKER_PUNCH, MoveId.UPPER_HAND, MoveId.THUNDERCLAP].includes(move.id)
-              ) {
-                targetScore = -20;
-              } else if (move.is("AttackMove")) {
-                /**
-                 * Attack moves are given extra multipliers to their base benefit score based on
-                 * the move's type effectiveness against the target and whether the move is a STAB move.
-                 */
-                const effectiveness = target.getMoveEffectiveness(
-                  this,
-                  move,
-                  !target.waveData.abilityRevealed,
-                  undefined,
-                  undefined,
-                  true,
-                );
+  if (!Array.isArray(targets) || !targets.length) {
+    console.warn("[Enemy AI] invalid targets", {
+      moveIdFromPool: pokemonMove.moveId,
+      moveIdFromMove: move.id,
+      moveName: move.name,
+      targets,
+      enemy: this.getName?.() ?? this.species?.name
+    });
+    moveScores[m] = -999;
+    continue;
+  }
 
-                if (target.isPlayer() !== this.isPlayer()) {
-                  targetScore *= effectiveness;
-                  if (this.isOfType(move.type)) {
-                    targetScore *= 1.5;
-                  }
-                } else if (effectiveness) {
-                  targetScore /= effectiveness;
-                  if (this.isOfType(move.type)) {
-                    targetScore /= 1.5;
-                  }
-                }
-                /** If a move has a base benefit score of 0, its benefit score is assumed to be unimplemented at this point */
-                if (!targetScore) {
-                  targetScore = -20;
-                }
-              }
-              targetScores.push(targetScore);
-            }
-            // When a move has multiple targets, its score is equal to the maximum target score across all targets
-            moveScore += Math.max(...targetScores);
+  for (const mt of targets) {
+    if (mt === BattlerIndex.ATTACKER) {
+      break;
+    }
 
-            // could make smarter by checking opponent def/spdef
-            moveScores[m] = moveScore;
-          }
+    const target = globalScene.getField()[mt];
+    if (!target) continue;
+
+    let targetScore =
+      move.getUserBenefitScore(this, target, move) +
+      move.getTargetBenefitScore(this, target, move) * (mt < BattlerIndex.ENEMY === this.isPlayer() ? 1 : -1);
+
+    if (Number.isNaN(targetScore)) {
+      console.error(`Move ${move.name} returned score of NaN`);
+      targetScore = 0;
+    }
+
+    if (
+      (move.name.endsWith(" (N)") || !move.applyConditions(this, target, move)) &&
+      ![MoveId.SUCKER_PUNCH, MoveId.UPPER_HAND, MoveId.THUNDERCLAP].includes(move.id)
+    ) {
+      targetScore = -20;
+    } else if (move.is("AttackMove")) {
+      const effectiveness = target.getMoveEffectiveness(
+        this,
+        move,
+        !target.waveData.abilityRevealed,
+        undefined,
+        undefined,
+        true,
+      );
+
+      if (target.isPlayer() !== this.isPlayer()) {
+        targetScore *= effectiveness;
+        if (this.isOfType(move.type)) {
+          targetScore *= 1.5;
+        }
+      } else if (effectiveness) {
+        targetScore /= effectiveness;
+        if (this.isOfType(move.type)) {
+          targetScore /= 1.5;
+        }
+      }
+
+      if (!targetScore) {
+        targetScore = -20;
+      }
+    }
+
+    targetScores.push(targetScore);
+  }
+
+  moveScore += targetScores.length ? Math.max(...targetScores) : -999;
+  moveScores[m] = moveScore;
+}
 
           console.log(moveScores);
 
@@ -9076,4 +10194,300 @@ export class EnemyPokemon extends Pokemon {
   toggleFlyout(visible: boolean): void {
     this.battleInfo.toggleFlyout(visible);
   }
+}
+
+export class PracticeDummyEnemy extends Phaser.GameObjects.Container {
+  public name = "대타출동 인형";
+
+  public hp = 100;
+  public maxHp = 100;
+  public stats = [100, 100, 100, 100, 100, 100];
+  public types = [PokemonType.NORMAL];
+
+  public isPracticeDummy = true;
+
+  // 내부 엔진 호환용 더미 species
+  public species = getPokemonSpecies(SpeciesId.WOBBUFFET);
+  public speciesId = SpeciesId.WOBBUFFET;
+  public formIndex = 0;
+  public level = 1;
+  public bossSegments = 0;
+
+  public fieldPosition = FieldPosition.CENTER;
+
+  public waveData: any = {
+    abilityRevealed: true,
+    abilitiesApplied: new Set(),
+  };
+
+  public summonData: any = {
+    ability: undefined,
+    passiveAbility: undefined,
+    types: this.types,
+    statStages: [0, 0, 0, 0, 0, 0, 0],
+    tags: [],
+  };
+
+  public battleData: any = {};
+  public tempSummonData: any = {};
+  public turnData: any = {};
+
+  private sprite: Phaser.GameObjects.Sprite;
+
+  constructor(x = 0, y = 0) {
+    super(globalScene, x, y);
+
+    this.sprite = globalScene.addFieldSprite(0, 0, "pkmn__sub");
+    this.sprite.setOrigin(0.5, 1);
+    this.add(this.sprite);
+  }
+
+  getSprite(): Phaser.GameObjects.Sprite {
+    return this.sprite;
+  }
+
+  resetTurnData(): void {
+    this.turnData = {
+      acted: false,
+      flinched: false,
+      protected: false,
+      damageDealt: 0,
+      damageTaken: 0,
+    };
+  }
+
+  resetWaveData(): void {}
+  resetBattleData(): void {}
+  resetBattleAndWaveData(): void {}
+  resetTera(): void {}
+
+  resetSummonData(): void {
+    this.summonData.tags = [];
+    this.summonData.statStages = [0, 0, 0, 0, 0, 0, 0];
+  }
+
+  getMaxHp(): number {
+    return this.maxHp;
+  }
+
+  getSpriteScale(): number {
+    return 1;
+  }
+
+  getFieldPositionOffset(): [number, number] {
+    return [0, 0];
+  }
+
+  setFieldPosition(fieldPosition: FieldPosition, _duration?: number): Promise<void> {
+    this.fieldPosition = fieldPosition;
+    return Promise.resolve();
+  }
+
+  fieldSetup(_enemy?: boolean): void {
+    this.setVisible(true);
+    this.setAlpha(1);
+    this.sprite.setVisible(true);
+    this.sprite.setAlpha(1);
+  }
+
+  playAnim(): void {
+    // 정적 대타출동 인형이면 비워둬도 됨
+  }
+
+  isFainted(): boolean {
+    return this.hp <= 0;
+  }
+
+  isActive(): boolean {
+    return !this.isFainted();
+  }
+
+  isAllowedInBattle(): boolean {
+    return !this.isFainted();
+  }
+
+  isOnField(): boolean {
+    return true;
+  }
+
+  isEnemy(): boolean {
+    return true;
+  }
+
+  isPlayer(): boolean {
+    return false;
+  }
+
+  isShiny(_includeTemp?: boolean): boolean {
+    return false;
+  }
+
+  isBoss(): boolean {
+    return false;
+  }
+
+  hasSpecies(speciesId: SpeciesId): boolean {
+    return this.species.speciesId === speciesId;
+  }
+
+  getSpeciesForm() {
+    return this.species;
+  }
+
+  cry(): void {
+    // 울음소리 없음
+  }
+
+  getTypes(): PokemonType[] {
+    return this.types;
+  }
+
+  isOfType(type: PokemonType): boolean {
+    return this.types.includes(type);
+  }
+
+  hasAbility(_ability: AbilityId): boolean {
+    return false;
+  }
+
+  canApplyAbility(): boolean {
+    return false;
+  }
+
+  getAbilityPriorities(): number[] {
+    return [];
+  }
+
+  getAbility() {
+    return { id: AbilityId.NONE, name: "None" };
+  }
+
+  getPassiveAbility() {
+    return { id: AbilityId.NONE, name: "None" };
+  }
+
+  getBattlerIndex(): BattlerIndex {
+    return BattlerIndex.ENEMY;
+  }
+
+  getFieldIndex(): number {
+    return 0;
+  }
+
+  getStat(stat: number): number {
+    return this.stats[stat] ?? 100;
+  }
+
+  getEffectiveStat(stat: number): number {
+  const statVal = new NumberHolder(this.getStat(stat));
+
+  const watchStatValue = (
+    label: string,
+    callback: () => void,
+  ) => {
+    const before = statVal.value;
+    callback();
+    const after = statVal.value;
+
+    if (
+      (globalScene.currentBattle as any)?.isPracticeBattle &&
+      before !== after
+    ) {
+      const result = (globalScene as any).practiceTurnResult;
+      if (!result) return;
+
+      const arr = this.isPlayer()
+        ? (result.playerDamageFactors ??= [])
+        : (result.enemyDamageFactors ??= []);
+
+      arr.push(`${label} ${Math.floor(before)}→${Math.floor(after)}`);
+    }
+  };
+
+  if (stat === Stat.ATK) {
+    watchStatValue("구애머리띠", () => {
+      globalScene.applyModifier(
+        AtkStatModifier,
+        this.isPlayer(),
+        this,
+        stat,
+        statVal,
+      );
+    });
+  }
+
+  if (stat === Stat.SPATK) {
+    watchStatValue("구애안경", () => {
+      globalScene.applyModifier(
+        SpAtkStatModifier,
+        this.isPlayer(),
+        this,
+        stat,
+        statVal,
+      );
+    });
+  }
+
+  if (stat === Stat.SPD) {
+    watchStatValue("구애스카프", () => {
+      globalScene.applyModifier(
+        SpeedStatModifier,
+        this.isPlayer(),
+        this,
+        stat,
+        statVal,
+      );
+    });
+  }
+
+  if (stat === Stat.DEF || stat === Stat.SPDEF) {
+    watchStatValue("돌격조끼", () => {
+      globalScene.applyModifier(
+        PokemonDefensiveStatModifier,
+        this.isPlayer(),
+        this,
+        stat,
+        statVal,
+      );
+    });
+  }
+
+  return statVal.value;
+}
+
+  getMoveEffectiveness(_user: Pokemon, move: Move): number {
+    return getTypeDamageMultiplier(
+      move.type,
+      this.types[0],
+      this.types[1] ?? null,
+    );
+  }
+
+  lapseTags(..._args: any[]): void {}
+  lapseTag(..._args: any[]): void {}
+
+  getTag(..._args: any[]): null {
+    return null;
+  }
+
+  findTag(..._args: any[]): null {
+    return null;
+  }
+
+  addTag(..._args: any[]): boolean {
+    return false;
+  }
+
+  removeTag(..._args: any[]): boolean {
+    return false;
+  }
+
+  findAndRemoveTags(..._args: any[]): void {}
+
+  toggleStats(_visible?: boolean): void {}
+  showInfo(): void {}
+  hideInfo(): void {}
+  updateInfo(): void {}
+  updateHpBar(): void {}
+  updateEffectiveness(_effectiveness?: string): void {}
 }

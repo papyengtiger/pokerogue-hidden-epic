@@ -67,6 +67,10 @@ export interface SpeciesMaxMoves {
   [speciesId: number]: (Moves | [string | Species, Moves])[];
 }
 
+export function isMaxMove(moveId: MoveId): boolean {
+  return moveId in maxmovesSpecies;
+}
+
 const GMaxMovesSet = new Set<Moves>([
   // G-Max Moves
   MoveId.G_MAX_WILDFIRE,
@@ -242,6 +246,5 @@ export const trPoolTiers: TrPoolTiers = {
   [MoveId.G_MAX_ONE_BLOW]: ModifierTier.RARE,
   [MoveId.G_MAX_RAPID_FLOW]: ModifierTier.RARE,
 };
-// 코드 어딘가에
-(window as any).trPoolTiers = trPoolTiers;
+
 

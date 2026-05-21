@@ -29,13 +29,29 @@ export class EnemyCommandPhase extends FieldPhase {
   }
 
   start() {
-    super.start();
+  super.start();
 
-    const enemyPokemon = globalScene.getEnemyField()[this.fieldIndex];
+  const battle = globalScene.currentBattle as any;
 
-    const battle = globalScene.currentBattle;
+  if (battle.isPracticeBattle && battle.skipEnemyBattleTurns) {
+    console.log("[PRACTICE] enemy turn skipped", {
+      fieldIndex: this.fieldIndex,
+    });
 
-    const trainer = battle.trainer;
+    this.end();
+    return;
+  }
+
+  if (battle.isPracticeBattle) {
+    console.log("[PRACTICE] enemy can act", {
+      fieldIndex: this.fieldIndex,
+      enemy: globalScene.getEnemyField()?.[this.fieldIndex]?.getName?.(),
+    });
+  }
+
+  const enemyPokemon = globalScene.getEnemyField()[this.fieldIndex];
+
+  const trainer = battle.trainer;
 
     if (
       battle.double &&
@@ -87,7 +103,22 @@ export class EnemyCommandPhase extends FieldPhase {
     }
 
     /** Select a move to use (and a target to use it against, if applicable) */
-    const nextMove = enemyPokemon.getNextMove();
+    if (battle.isPracticeBattle) {
+  console.log("[PRACTICE] dummy selecting move", {
+    species: enemyPokemon?.species?.name,
+    moves: enemyPokemon?.moveset?.map(m => m?.getName?.()),
+  });
+}
+
+const nextMove = enemyPokemon.getNextMove();
+
+if (battle.isPracticeBattle) {
+  console.log("[PRACTICE] dummy selected move", {
+    move: nextMove?.move?.getName?.()
+      ?? nextMove?.getMove?.()?.name
+      ?? nextMove,
+  });
+}
 
     if (trainer?.shouldTera(enemyPokemon)) {
       globalScene.currentBattle.preTurnCommands[this.fieldIndex + BattlerIndex.ENEMY] = { command: Command.TERA };

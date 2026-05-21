@@ -29,6 +29,7 @@ const NO_SAVE_SLOT = -1;
 export class TitlePhase extends Phase {
   public readonly phaseName = "TitlePhase";
   private loaded = false;
+  private enteringRogueShop = false;
   // TODO: Make `end` take a `GameModes` as a parameter rather than storing it on the class itself
   public gameMode: GameModes;
 
@@ -150,7 +151,7 @@ export class TitlePhase extends Phase {
             },
           });
           globalScene.ui.showText(i18next.t("menu:selectGameMode"), null, () =>
-            globalScene.ui.setOverlayMode(UiMode.OPTION_SELECT, {
+            globalScene.ui.setMode(UiMode.OPTION_SELECT, {
               options,
             }),
           );
@@ -181,12 +182,13 @@ export class TitlePhase extends Phase {
       {
   label: i18next.t("menu:logShop"),
   handler: () => {
-    globalScene.ui.setMode(UiMode.MESSAGE);
-    globalScene.ui.clearText();
-    globalScene.phaseManager.pushNew("RogueShopPhase");
-    super.end();
-    return true;
-  },
+  this.enteringRogueShop = true;
+  globalScene.ui.setMode(UiMode.MESSAGE);
+  globalScene.ui.clearText();
+  globalScene.phaseManager.pushNew("RogueShopPhase");
+  super.end();
+  return true;
+},
 },
       {
         label: i18next.t("menu:settings"),
@@ -346,6 +348,10 @@ export class TitlePhase extends Phase {
 
   // TODO: Refactor this
   end(): void {
+    if (this.enteringRogueShop) {
+    super.end();
+    return;
+  }
     if (!this.loaded && !globalScene.gameMode.isDaily) {
       globalScene.arena.preloadBgm();
       globalScene.gameMode = getGameMode(this.gameMode);

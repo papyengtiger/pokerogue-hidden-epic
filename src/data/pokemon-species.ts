@@ -479,6 +479,8 @@ export abstract class PokemonSpeciesForm {
         case "dawn-wings":
         case "dusk-mane":
         case "ultra":
+        case "single-strike":
+        case "rapid-strike":
         case "ice":
         case "shadow":
           ret += `-${formKey}`;

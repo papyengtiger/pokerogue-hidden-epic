@@ -99,9 +99,16 @@ export class Battle {
    * @defaultValue `false`
    */
   public failedRunAway = false;
+  public isPracticeBattle = false;
+  public practiceWaveLocked = false;
+  public practiceNoRewards = false;
+
+  public practiceNoPpCost = false;
+  public practicePlayerAutoRevive = false;
+  public practiceDummyNoHpLoss = false;
 
   private rngCounter = 0;
-
+  
   constructor(gameMode: GameMode, waveIndex: number, battleType: BattleType, trainer?: Trainer, double = false) {
     this.gameMode = gameMode;
     this.waveIndex = waveIndex;

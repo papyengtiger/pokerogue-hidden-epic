@@ -841,14 +841,27 @@ this.consumeReservedPriorityBerry();
    * Deduct PP from the move being used, accounting for Pressure and other effects.
    */
   protected usePP(): void {
-    if (!isIgnorePP(this.useMode)) {
-      const move = this.move;
-      // "commit" to using the move, deducting PP.
-      const ppUsed = 1 + this.getPpIncreaseFromPressure(this.getActiveTargetPokemon());
-      move.usePp(ppUsed);
-      globalScene.eventTarget.dispatchEvent(new MoveUsedEvent(this.pokemon.id, move.getMove(), move.ppUsed));
-    }
+  const battle = globalScene.currentBattle as any;
+
+  if (
+    battle?.isPracticeBattle &&
+    battle.practiceNoPpCost &&
+    this.pokemon?.isPlayer?.()
+  ) {
+    console.log("[PRACTICE] PP use blocked");
+    return;
   }
+
+  if (!isIgnorePP(this.useMode)) {
+    const move = this.move;
+    const ppUsed = 1 + this.getPpIncreaseFromPressure(this.getActiveTargetPokemon());
+    move.usePp(ppUsed);
+
+    globalScene.eventTarget.dispatchEvent(
+      new MoveUsedEvent(this.pokemon.id, move.getMove(), move.ppUsed)
+    );
+  }
+}
 
   /**
    * Apply PP increasing abilities (currently only {@linkcode AbilityId.PRESSURE | Pressure})

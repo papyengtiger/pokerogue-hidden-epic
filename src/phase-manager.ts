@@ -107,13 +107,19 @@ import { BestowItemSelectPhase } from "#phases/bestow-item-select-phase";
 import { NaturalGiftBerrySelectPhase } from "#phases/natural-gift-berry-select-phase";
 import { WeatherEffectPhase } from "#phases/weather-effect-phase";
 import { RogueShopPhase } from "#phases/rogue-shop-phase";
+import { PracticeEncounterPhase } from "#phases/practice-encounter-phase";
+import { PracticeDummyResetPhase } from "#phases/practice-dummy-reset-phase";
 import type { PhaseMap, PhaseString } from "#types/phase-types";
 import { type Constructor, coerceArray } from "#utils/common";
 import { InitEncounterPhase } from "#phases/init-encounter-phase";
+import { PracticeDummyBattlePhase } from "#phases/practice-dummy-battle-phase";
 import { PhaseTree } from "#app/phase-tree";
 import { DynamicQueueManager } from "#app/dynamic-queue-manager";
 import { PHASE_START_COLOR } from "#app/constants/colors";
 import { DynamicPhaseMarker } from "#phases/dynamic-phase-marker";
+import { PostSummonActivateAbilityPhase } from "#phases/post-summon-activate-ability-phase";
+import { PracticeDummySummonPhase } from "#phases/practice-dummy-summon-phase";
+import { PracticeResultPhase } from "#phases/practice-result-phase";
 
 /*
  * Manager for phases used by battle scene.
@@ -189,6 +195,7 @@ const PHASES = Object.freeze({
   PositionalTagPhase,
   PostGameOverPhase,
   PostSummonPhase,
+  PostSummonActivateAbilityPhase,
   PostTurnStatusEffectPhase,
   QuietFormChangePhase,
   ReloadSessionPhase,
@@ -233,6 +240,11 @@ const PHASES = Object.freeze({
   TrickItemSelectPhase,
   BestowItemSelectPhase,
   NaturalGiftBerrySelectPhase,
+  PracticeDummyBattlePhase,
+  PracticeEncounterPhase,
+  PracticeDummyResetPhase,
+  PracticeDummySummonPhase,
+  PracticeResultPhase,
 });
 
 // This type export cannot be moved to `@types`, as `Phases` is intentionally private to this file

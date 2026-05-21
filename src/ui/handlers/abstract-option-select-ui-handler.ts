@@ -240,27 +240,25 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
       }
       const option = this.config?.options[this.unskippedIndices[this.fullCursor]];
       if (option?.handler()) {
-        if (!option.keepOpen) {
-          this.clear();
-        }
-        playSound = !option.overrideSound;
-      } else {
-        ui.playError();
-      }
+  if (!option.keepOpen) {
+    ui.revertMode();
+  }
+  playSound = !option.overrideSound;
+} else {
+  ui.playError();
+}
     } else if (button === Button.SUBMIT && ui.getMode() === UiMode.AUTO_COMPLETE) {
-      // this is here to differentiate between a Button.SUBMIT vs Button.ACTION within the autocomplete handler
-      // this is here because Button.ACTION is picked up as z on the keyboard, meaning if you're typing and hit z, it'll select the option you've chosen
-      success = true;
-      const option = this.config?.options[this.unskippedIndices[this.fullCursor]];
-      if (option?.handler()) {
-        if (!option.keepOpen) {
-          this.clear();
-        }
-        playSound = !option.overrideSound;
-      } else {
-        ui.playError();
-      }
-    } else {
+  success = true;
+  const option = this.config?.options[this.unskippedIndices[this.fullCursor]];
+  if (option?.handler()) {
+    if (!option.keepOpen) {
+      ui.revertMode();
+    }
+    playSound = !option.overrideSound;
+  } else {
+    ui.playError();
+  }
+} else {
       switch (button) {
         case Button.UP:
           if (this.fullCursor === 0) {

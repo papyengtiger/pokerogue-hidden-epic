@@ -1912,24 +1912,51 @@ export class MoveTypeChangeAbAttr extends PreAttackAbAttr {
    * - The user is not Terastallized and using Tera Blast
    * - The user is not a Terastallized Terapagos using Stellar-type Tera Starstorm
    */
-  override canApply({ pokemon, opponent: target, move }: MoveTypeChangeAbAttrParams): boolean {
-    return (
-      (!this.condition || this.condition(pokemon, target, move))
-      && !noAbilityTypeOverrideMoves.has(move.id)
-      && !(
-        pokemon.isTerastallized
-        && (move.id === MoveId.TERA_BLAST
-          || (move.id === MoveId.TERA_STARSTORM
-            && pokemon.getTeraType() === PokemonType.STELLAR
-            && pokemon.hasSpecies(SpeciesId.TERAPAGOS)))
-      )
-    );
+  override apply({
+  pokemon,
+  moveType,
+  power,
+  passive,
+}: MoveTypeChangeAbAttrParams): void {
+
+  // 현재 기술 타입을 임시 move 로 생성
+  const moveData = {
+    type: moveType.value,
+  };
+
+  // 픽셀레이트/스카이스킨류 조건 체크
+  if (
+    this.condition &&
+    !this.condition(
+      pokemon,
+      null as any,
+      moveData as any,
+    )
+  ) {
+    return;
   }
 
-  override apply({ moveType, power }: MoveTypeChangeAbAttrParams): void {
-    moveType.value = this.newType;
-    power.value *= this.powerMultiplier;
-  }
+  const abilityName =
+    passive
+      ? pokemon.getPassiveAbility?.()?.name ?? "패시브"
+      : pokemon.getAbility?.()?.name ?? "특성";
+
+  const before = power.value;
+
+  moveType.value = this.newType;
+
+  (power as any).__practiceLabel = abilityName;
+
+  power.value = Math.floor(
+    power.value * this.powerMultiplier,
+  );
+
+  (power as any).__practicePowerFactor = {
+    label: abilityName,
+    before,
+    after: power.value,
+  };
+}
 }
 
 /**
@@ -2048,22 +2075,40 @@ export class DamageBoostAbAttr extends PreAttackAbAttr {
   private damageMultiplier: number;
   private condition: PokemonAttackCondition;
 
-  constructor(damageMultiplier: number, condition: PokemonAttackCondition) {
+  constructor(
+    damageMultiplier: number,
+    condition: PokemonAttackCondition,
+  ) {
     super(false);
     this.damageMultiplier = damageMultiplier;
     this.condition = condition;
   }
 
-  override canApply({ pokemon, opponent: target, move }: PreAttackModifyDamageAbAttrParams): boolean {
+  override canApply({
+    pokemon,
+    opponent: target,
+    move,
+  }: PreAttackModifyDamageAbAttrParams): boolean {
     return this.condition(pokemon, target, move);
   }
 
-  /**
-   * Adjust the power by the damage multiplier.
-   */
-  override apply({ damage: power }: PreAttackModifyDamageAbAttrParams): void {
-    power.value = toDmgValue(power.value * this.damageMultiplier);
-  }
+  override apply({
+  pokemon,
+  damage,
+  passive,
+}: PreAttackModifyDamageAbAttrParams): void {
+  const abilityName =
+    passive
+      ? pokemon.getPassiveAbility?.()?.name ?? "패시브"
+      : pokemon.getAbility?.()?.name ?? "특성";
+
+  (damage as any).__practiceLabel =
+    abilityName;
+
+  damage.value = toDmgValue(
+    damage.value * this.damageMultiplier,
+  );
+}
 }
 
 export interface PreAttackModifyPowerAbAttrParams extends AugmentMoveInteractionAbAttrParams {
@@ -2099,9 +2144,23 @@ export class MovePowerBoostAbAttr extends VariableMovePowerAbAttr {
     return this.condition(pokemon, opponent, move);
   }
 
-  override apply({ power }: PreAttackModifyPowerAbAttrParams): void {
-    power.value *= this.powerMultiplier;
-  }
+  override apply({
+  pokemon,
+  power,
+  passive,
+}: PreAttackModifyPowerAbAttrParams): void {
+  const abilityName =
+    passive
+      ? pokemon.getPassiveAbility?.()?.name ?? "패시브"
+      : pokemon.getAbility?.()?.name ?? "특성";
+
+  (power as any).__practiceLabel =
+    abilityName;
+
+  power.value = Math.floor(
+    power.value * this.powerMultiplier,
+  );
+}
 }
 
 export class MoveTypePowerBoostAbAttr extends MovePowerBoostAbAttr {
@@ -2297,18 +2356,54 @@ export class StatMultiplierAbAttr extends AbAttr {
     return this.stats.includes(stat) && (!this.condition || this.condition(pokemon, null, move));
   }
 
-  override apply({ pokemon, statVal, stat }: StatMultiplierAbAttrParams): void {
-  statVal.value *= this.multiplier;
+  override apply({
+  pokemon,
+  statVal,
+  stat,
+  passive,
+}: StatMultiplierAbAttrParams): void {
+  const abilityName =
+    passive
+      ? pokemon.getPassiveAbility?.()?.name ?? "패시브"
+      : pokemon.getAbility?.()?.name ?? "특성";
 
-globalScene.applyModifiers(PowerUpDiskModifier, pokemon.isPlayer(), pokemon, stat, statVal);
+  const statName =
+    Stat[stat] ?? "스탯";
 
-  // VictoryBadge는 기존대로
+  (statVal as any).__practiceLabel =
+    `${abilityName}(${statName})`;
+
+  statVal.value = Math.floor(
+    statVal.value * this.multiplier,
+  );
+
+  globalScene.applyModifiers(
+    PowerUpDiskModifier,
+    pokemon.isPlayer(),
+    pokemon,
+    stat,
+    statVal,
+  );
+
   const isVictoryStarLike =
     Math.abs(this.multiplier - 1.3) < 1e-9 &&
-    [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD, Stat.EVA, Stat.ACC].includes(stat);
+    [
+      Stat.ATK,
+      Stat.DEF,
+      Stat.SPATK,
+      Stat.SPDEF,
+      Stat.SPD,
+      Stat.EVA,
+      Stat.ACC,
+    ].includes(stat);
 
   if (isVictoryStarLike) {
-    globalScene.applyModifiers(VictoryBadgeModifier, pokemon.isPlayer(), pokemon, statVal);
+    globalScene.applyModifiers(
+      VictoryBadgeModifier,
+      pokemon.isPlayer(),
+      pokemon,
+      statVal,
+    );
   }
 }
 }
@@ -5056,79 +5151,41 @@ function getTerrainCondition(...terrainTypes: TerrainType[]): AbAttrCondition {
 
 export class BoostEnergyTagAttr extends AbAttr {
   constructor(
-    private defaultTagType: BattlerTagType = BattlerTagType.HIGHEST_STAT_BOOST
+    private defaultTagType: BattlerTagType = BattlerTagType.HIGHEST_STAT_BOOST,
   ) {
     super();
   }
 
-  override canApply(user: Pokemon, passive: boolean, simulated: boolean, _args: any[]): boolean {
+  override canApply({ pokemon, simulated }: AbAttrBaseParams): boolean {
     if (simulated) return false;
 
-    // ✅ user.getHeldItems()로 검사
-    const hasBoostEnergy = user.getHeldItems().some(
-      item => item instanceof BoostEnergyModifier
-    );
-    if (!hasBoostEnergy) {
-      console.debug(`[BoostEnergyTagAttr] ${user.name}은 Boost Energy를 가지고 있지 않음`);
-      return false;
-    }
-
-    const tagType = this.getTagTypeForAbility(user);
-    if (!user.canAddTag(tagType)) {
-      console.debug(`[BoostEnergyTagAttr] ${user.name}은 이미 태그를 가지고 있음`);
-      return false;
-    }
-
-    const boostItem = globalScene.getModifiers(BoostEnergyModifier)
-      .find(mod => mod.pokemonId === user.id) as BoostEnergyModifier | null;
+    const boostItem = globalScene
+      .getModifiers(BoostEnergyModifier, pokemon.isPlayer())
+      .find(mod => mod.pokemonId === pokemon.id);
 
     if (!boostItem) {
-      console.warn(`[BoostEnergyTagAttr] ${user.name} BoostEnergyModifier 없음`);
+      console.warn(`[BoostEnergyTagAttr] ${pokemon.name} BoostEnergyModifier 없음`);
       return false;
     }
 
-    return true;
+    const tagType = this.getTagTypeForAbility(pokemon);
+
+    return pokemon.canAddTag(tagType);
   }
 
-  override apply(
-    user: Pokemon,
-    _passive: boolean,
-    simulated: boolean,
-    _cancelled: BooleanHolder | null,
-    _args: any[]
-  ): void {
-    console.debug(`[BoostEnergyTagAttr] apply 실행 (${user.name})`);
-    if (!this.canApply(user, false, simulated, _args)) return;
+  override apply({ pokemon, simulated }: AbAttrBaseParams): void {
+    if (simulated) return;
+    if (!this.canApply({ pokemon, simulated })) return;
 
-    // 1️⃣ 태그 부여
-    const tagType = this.getTagTypeForAbility(user);
-    user.addTag(tagType, 0);
-    console.log(`[BoostEnergyTagAttr] ${user.name}에 ${BattlerTagType[tagType]} 태그 부여`);
+    const tagType = this.getTagTypeForAbility(pokemon);
 
-    // 2️⃣ BoostEnergyModifier 가져오기
-    let boostItem = globalScene.getModifiers(BoostEnergyModifier)
-      .find(mod => mod.pokemonId === user.id) as BoostEnergyModifier | null;
+    pokemon.addTag(tagType, 0);
 
-    if (!boostItem) {
-      boostItem = globalScene.applyModifier(BoostEnergyModifier, user.player, user) as BoostEnergyModifier | null;
-      if (!boostItem) return;
-    }
+    console.log(
+      `[BoostEnergyTagAttr] ${pokemon.name}에 ${BattlerTagType[tagType]} 태그 부여`,
+    );
 
-    // 3️⃣ 최고 능력치 계산 + 부스트 적용
-    const stat = user.getHighestBaseStat?.();
-    if (!stat) return;
-
-    boostItem.apply(user, [stat], 1);
-    console.log(`[BoostEnergy] ${user.name}의 ${stat} 능력치 상승`);
-
-    // 4️⃣ 아이템 소모
-    const heldItem = user.getHeldItems().find(item => item instanceof BoostEnergyModifier);
-    if (heldItem) {
-      user.loseHeldItem(heldItem);
-      globalScene.updateModifiers(user.isPlayer());
-      console.log(`[BoostEnergy] ${user.name} Boost Energy 소모 완료`);
-    user.updateInfo();
-    }
+    pokemon.updateInfo();
   }
 
   private getTagTypeForAbility(user: Pokemon): BattlerTagType {
@@ -8428,9 +8485,10 @@ export function initAbilities() {
       .bypassFaint()
       .edgeCase(), // interacts incorrectly with rock head. It's meant to switch abilities before recoil would apply so that a pokemon with rock head would lose rock head first and still take the recoil
     new Ability(AbilityId.GORILLA_TACTICS, 8)
-      .attr(GorillaTacticsAbAttr)
-      // TODO: Verify whether Gorilla Tactics increases struggle's power or not
-      .edgeCase(),
+      .attr(PostSummonAddBattlerTagAbAttr, BattlerTagType.GORILLA_TACTICS, 0)
+  .attr(MovePowerBoostAbAttr, (_user, _target, move) => {
+    return move.category !== MoveCategory.STATUS;
+  }, 1.5),
     new Ability(AbilityId.NEUTRALIZING_GAS, 8, 2)
       .attr(PostSummonAddArenaTagAbAttr, true, ArenaTagType.NEUTRALIZING_GAS, 0)
       .attr(PreLeaveFieldRemoveSuppressAbilitiesSourceAbAttr)

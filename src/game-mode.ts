@@ -132,6 +132,8 @@ export class GameMode implements GameModeConfig {
     switch (this.modeId) {
       case GameModes.DAILY:
         return 20;
+      case GameModes.PRACTICE:
+        return 100;
       default:
         return 5;
     }
@@ -155,6 +157,8 @@ export class GameMode implements GameModeConfig {
           return dailyStartingMoney;
         }
       }
+      case GameModes.PRACTICE:
+        return 9999999;
       default:
         return 1000;
     }
@@ -174,6 +178,8 @@ export class GameMode implements GameModeConfig {
     switch (this.modeId) {
       case GameModes.DAILY:
         return getDailyStartingBiome();
+      case GameModes.PRACTICE:
+        return BiomeId.TUTORIAL_ROOM;
       default:
         return BiomeId.TOWN;
     }
@@ -406,6 +412,8 @@ export class GameMode implements GameModeConfig {
         return i18next.t("gameMode:dailyRun");
       case GameModes.CHALLENGE:
         return i18next.t("gameMode:challenge");
+      case GameModes.PRACTICE:
+        return i18next.t("gameMode:practice");
     }
   }
 
@@ -489,5 +497,13 @@ export function getGameMode(gameMode: GameModes): GameMode {
         },
         classicFixedBattles,
       );
+    case GameModes.PRACTICE:
+      return new GameMode(
+        GameModes.PRACTICE,
+        {
+          hasNoShop:true,
+          hasRandomBiomes:false,
+          hasTrainers:false
+  });
   }
 }

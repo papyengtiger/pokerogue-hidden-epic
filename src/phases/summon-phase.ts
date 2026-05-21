@@ -12,7 +12,8 @@ import { addPokeballOpenParticles } from "#field/anims";
 import type { Pokemon } from "#field/pokemon";
 import { PartyMemberPokemonPhase } from "#phases/party-member-pokemon-phase";
 import i18next from "i18next";
-import { WishingStarModifier } from "#app/modifier/modifier";
+import { WishingStarModifier, TypeImmunityModifier } from "#app/modifier/modifier";
+import { BattlerTagType } from "#enums/battler-tag-type";
 
 export class SummonPhase extends PartyMemberPokemonPhase {
   // The union type is needed to keep typescript happy as these phases extend from SummonPhase
@@ -198,10 +199,36 @@ export class SummonPhase extends PartyMemberPokemonPhase {
                 pokemon.getSprite().clearTint();
                 pokemon.fieldSetup();
 
-                // ✅ 폼체인지 디버깅 로그
-                if (pokemon.summonData.speciesForm) {
-                  pokemon.loadAssets(false);
-                }
+// ✅ 풍선 체크
+const airBalloon = pokemon.getHeldItems?.().find(i =>
+  i instanceof TypeImmunityModifier &&
+  (
+    (i as any).sourceItem?.name === "air_balloon" ||
+    (i as any).type?.id === "AIR_BALLOON" ||
+    (i as any).type?.name === "풍선" ||
+    (i as any).name === "air_balloon"
+  )
+);
+
+if (
+  airBalloon &&
+  !(pokemon.battleData as any).airBalloonFloatMessageShown
+) {
+  (pokemon.battleData as any).airBalloonFloatMessageShown = true;
+
+  pokemon.addTag(BattlerTagType.FLOATING);
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("modifier:airBalloonActivated", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+    }),
+  );
+}
+
+// 기존 코드
+if (pokemon.summonData.speciesForm) {
+  pokemon.loadAssets(false);
+}
                 globalScene.time.delayedCall(1000, () => this.end());
               },
             });
@@ -264,6 +291,32 @@ export class SummonPhase extends PartyMemberPokemonPhase {
         pokemon.cry(pokemon.getHpRatio() > 0.25 ? undefined : { rate: 0.85 });
         pokemon.getSprite().clearTint();
         pokemon.fieldSetup();
+
+// ✅ 풍선 체크
+const airBalloon = pokemon.getHeldItems?.().find(i =>
+  i instanceof TypeImmunityModifier &&
+  (
+    (i as any).sourceItem?.name === "air_balloon" ||
+    (i as any).type?.id === "AIR_BALLOON" ||
+    (i as any).type?.name === "풍선" ||
+    (i as any).name === "air_balloon"
+  )
+);
+
+if (
+  airBalloon &&
+  !(pokemon.battleData as any).airBalloonFloatMessageShown
+) {
+  (pokemon.battleData as any).airBalloonFloatMessageShown = true;
+
+  pokemon.addTag(BattlerTagType.FLOATING);
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("modifier:airBalloonActivated", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+    }),
+  );
+}
         globalScene.updateFieldScale();
         globalScene.time.delayedCall(1000, () => this.end());
       },

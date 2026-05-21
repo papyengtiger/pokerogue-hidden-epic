@@ -51,5 +51,10 @@
   "illNeverForgetYou": "잊지 못할거야, {{pokemonName}}!",
   "untilWeMeetAgain": "다시 만날 때까지, {{pokemonName}}!",
   "sayonara": "사요나라, {{pokemonName}}!",
-  "smellYaLater": "또 보자, {{pokemonName}}!"
+  "smellYaLater": "또 보자, {{pokemonName}}!",
+  "sendToStorage": "창고로 보내기",
+  "bestowSelectItem": "내던질 도구 선택하기",
+  "naturalGiftSelectBerry": "발동시킬 열매 선택하기",
+  "trickGiveSelectItem": "트릭으로 가져올 도구",
+  "trickTakeSelectItem": "트릭으로 줄 도구"
 }

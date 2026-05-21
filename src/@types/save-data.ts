@@ -24,6 +24,48 @@ export interface StoredItemData {
   quantity: number;
 }
 
+export interface PracticeDummyConfig {
+  level?: number;
+
+  baseStats?: {
+    hp: number;
+    atk: number;
+    def: number;
+    spa: number;
+    spd: number;
+    spe: number;
+  };
+
+  types?: PokemonType[];
+
+  abilityId?: string;
+  passiveId?: string;
+
+  canAct?: boolean;
+
+  moveIds?: MoveId[];
+
+  heldItemIds?: string[];
+
+  statusEffect?: number;
+
+  rewardFlags?: {
+    exp?: boolean;
+    money?: boolean;
+    roguePoints?: boolean;
+  };
+
+  statStages?: {
+    atk?: number;
+    def?: number;
+    spa?: number;
+    spd?: number;
+    spe?: number;
+    acc?: number;
+    eva?: number;
+  };
+}
+
 export interface RunItemData {
   itemId: string;
   quantity: number;
@@ -51,6 +93,8 @@ export interface SystemSaveData {
   achvPointsGranted?: boolean;
 
   storageItems?: StoredItemData[];
+  practiceDummyConfig?: PracticeDummyConfig;
+  practiceRentalModifiers?: RunItemData[];
 }
 
 export interface SessionSaveData {
@@ -140,6 +184,9 @@ export interface Starter {
   ivs: number[];
 
   preRunItems?: string[];
+
+  practiceAbilityId?: AbilityId;
+  practicePassiveAbilityId?: AbilityId;
 }
 
 export type RunHistoryData = Record<number, RunEntry>;

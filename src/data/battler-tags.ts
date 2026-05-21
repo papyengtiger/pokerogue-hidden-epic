@@ -632,32 +632,37 @@ export class DisabledTag extends MoveRestrictionBattlerTag {
     );
   }
 
+  override canAdd(pokemon: Pokemon): boolean {
+  return pokemon.canAddTag?.(BattlerTagType.DISABLED) ?? true;
+}
+
   override onAdd(pokemon: Pokemon): void {
-    super.onAdd(pokemon);
-    console.log("DisabledTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+  super.onAdd(pokemon);
 
-    // ✅ 멘탈허브 보유 여부 확인
-    const mentalHerb = globalScene
-      .getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
-
-    if (mentalHerb) {
-      console.log("Mental Herb detected - removing Disable immediately");
-      const removed = mentalHerb.apply(pokemon);
-      if (removed) {
-        console.log("Disable removed by Mental Herb");
-        return; // 멘탈허브 메시지는 apply()에서 출력됨
-      }
-    }
-
-    // 멘탈허브가 없으면 기본 메시지 출력
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battlerTags:disabledOnAdd", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        moveName: allMoves[this.moveId].name,
-      }),
-    );
+  if (!pokemon.getTag(BattlerTagType.DISABLED)) {
+    return;
   }
+
+  console.log("DisabledTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+  const mentalHerb = pokemon.getHeldItems?.().find(
+    item => item instanceof MentalHerbModifier,
+  ) as MentalHerbModifier | undefined;
+
+  if (mentalHerb) {
+    const removed = mentalHerb.apply(pokemon);
+    if (removed) {
+      return;
+    }
+  }
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("battlerTags:disabledOnAdd", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      moveName: allMoves[this.moveId].name,
+    }),
+  );
+}
 
   override lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     const ret = super.lapse(pokemon, lapseType);
@@ -702,56 +707,102 @@ export class DisabledTag extends MoveRestrictionBattlerTag {
  */
 export class GorillaTacticsTag extends MoveRestrictionBattlerTag {
   public override readonly tagType = BattlerTagType.GORILLA_TACTICS;
-  /** ID of the move that the user is locked into using*/
   public readonly moveId: MoveId = MoveId.NONE;
+
   constructor() {
     super(BattlerTagType.GORILLA_TACTICS, BattlerTagLapseType.CUSTOM, 0);
   }
 
-  override isMoveRestricted(move: MoveId): boolean {
-    return move !== this.moveId;
+  private resolveMoveId(move: any): MoveId {
+    return (
+      move?.moveId ??
+      move?.move ??
+      move?.id ??
+      move
+    ) as MoveId;
   }
 
-  /**
-   * Ensures that move history exists on {@linkcode Pokemon} and has a valid move to lock into.
-   * @param pokemon - The {@linkcode Pokemon} to add the tag to
-   * @returns `true` if the tag can be added
-   */
-  override canAdd(pokemon: Pokemon): boolean {
-    // Choice items ignore struggle, so Gorilla Tactics should too
-    const lastSelectedMove = pokemon.getLastNonVirtualMove();
-    return lastSelectedMove != null && lastSelectedMove.move !== MoveId.STRUGGLE;
+  override canAdd(_pokemon: Pokemon): boolean {
+    return true;
   }
 
-  /**
-   * Sets this tag's {@linkcode moveId} and increases the user's Attack by 50%.
-   * @param pokemon - The {@linkcode Pokemon} to add the tag to
-   */
   override onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
 
-    // Bang is justified as tag is not added if prior move doesn't exist
-    (this as Mutable<GorillaTacticsTag>).moveId = pokemon.getLastNonVirtualMove()!.move;
-    pokemon.setStat(Stat.ATK, pokemon.getStat(Stat.ATK, false) * 1.5, false);
+    console.log("[GORILLA_TAG_ADD_CALLED]", pokemon.name);
+
+    const lastMove = pokemon.getLastNonVirtualMove?.();
+
+    (this as Mutable<GorillaTacticsTag>).moveId =
+      lastMove?.move ?? MoveId.NONE;
+
+    console.log("[GORILLA_TAG_ADD]", {
+      pokemon: pokemon.name,
+      lockedMove: this.moveId,
+    });
   }
 
-  /**
-   * Loads the Gorilla Tactics Battler Tag along with its unique class variable moveId
-   * @param source - Object containing the fields needed to reconstruct this tag.
-   */
-  public override loadTag(source: BaseBattlerTag & Pick<GorillaTacticsTag, "tagType" | "moveId">): void {
+  override isMoveRestricted(
+  move: MoveId | any,
+  _user?: Pokemon,
+): boolean {
+  const moveId = this.resolveMoveId(move);
+
+  console.log("[GORILLA_CHECK]", {
+    input: move,
+    resolved: moveId,
+    lockedMove: this.moveId,
+  });
+
+  if (
+    !moveId ||
+    moveId === MoveId.NONE ||
+    moveId === MoveId.STRUGGLE
+  ) {
+    return false;
+  }
+
+  if (this.moveId === MoveId.NONE) {
+    (this as Mutable<GorillaTacticsTag>).moveId = moveId;
+
+    console.log("[GORILLA_LOCKED]", {
+      moveId,
+      moveName: allMoves[moveId]?.name,
+    });
+
+    return false;
+  }
+
+  const restricted =
+    moveId !== this.moveId;
+
+  console.log("[GORILLA_RESTRICT_CHECK]", {
+    inputMove: moveId,
+    lockedMove: this.moveId,
+    restricted,
+  });
+
+  return restricted;
+}
+
+  override isMoveTargetRestricted(
+    move: MoveId | any,
+    _user: Pokemon,
+    _target: Pokemon,
+  ): boolean {
+    return this.isMoveRestricted(move);
+  }
+
+  public override loadTag(
+    source: BaseBattlerTag & Pick<GorillaTacticsTag, "tagType" | "moveId">,
+  ): void {
     super.loadTag(source);
     (this as Mutable<GorillaTacticsTag>).moveId = source.moveId;
   }
 
-  /**
-   * Return the text displayed when a move is restricted.
-   * @param pokemon - The {@linkcode Pokemon} with this tag.
-   * @returns A string containing the text to display when the move is denied
-   */
   override selectionDeniedText(pokemon: Pokemon): string {
     return i18next.t("battle:canOnlyUseMove", {
-      moveName: allMoves[this.moveId].name,
+      moveName: allMoves[this.moveId]?.name ?? "",
       pokemonName: getPokemonNameWithAffix(pokemon),
     });
   }
@@ -1306,41 +1357,47 @@ export class InfatuatedTag extends SerializableBattlerTag {
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-    const source = this.getSourcePokemon();
-    if (!source) {
-      console.warn(`Failed to get source Pokemon for InfatuatedTag canAdd; id: ${this.sourceId}`);
-      return false;
-    }
-
-    return pokemon.isOppositeGender(source);
+  if (!pokemon.canAddTag?.(BattlerTagType.INFATUATED)) {
+    return false;
   }
+
+  const source = this.getSourcePokemon();
+
+  if (!source) {
+    console.warn(`Failed to get source Pokemon for InfatuatedTag canAdd; id: ${this.sourceId}`);
+    return false;
+  }
+
+  return pokemon.isOppositeGender(source);
+}
 
   override onAdd(pokemon: Pokemon): void {
-    super.onAdd(pokemon);
-    console.log("InfatuatedTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+  super.onAdd(pokemon);
 
-    // ✅ 멘탈허브 보유 여부 확인
-    const mentalHerb = globalScene
-      .getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
-
-    if (mentalHerb) {
-      console.log("Mental Herb detected - removing Infatuation immediately");
-      const removed = mentalHerb.apply(pokemon);
-      if (removed) {
-        console.log("Infatuation removed by Mental Herb");
-        return; // 멘탈허브 발동 메시지는 apply() 내부에서 출력됨
-      }
-    }
-
-    // 멘탈허브 없으면 원래 메시지 출력
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battlerTags:infatuatedOnAdd", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        sourcePokemonName: getPokemonNameWithAffix(this.getSourcePokemon()!),
-      }),
-    );
+  if (!pokemon.getTag(BattlerTagType.INFATUATED)) {
+    return;
   }
+
+  console.log("InfatuatedTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+  const mentalHerb = pokemon.getHeldItems?.().find(
+    item => item instanceof MentalHerbModifier,
+  ) as MentalHerbModifier | undefined;
+
+  if (mentalHerb) {
+    const removed = mentalHerb.apply(pokemon);
+    if (removed) {
+      return;
+    }
+  }
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("battlerTags:infatuatedOnAdd", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      sourcePokemonName: getPokemonNameWithAffix(this.getSourcePokemon()!),
+    }),
+  );
+}
 
   override onOverlap(pokemon: Pokemon): void {
     super.onOverlap(pokemon);
@@ -1722,26 +1779,30 @@ export class EncoreTag extends MoveRestrictionBattlerTag {
   }
 
   canAdd(pokemon: Pokemon): boolean {
-    const lastMoves = pokemon.getLastXMoves(1);
-    if (!lastMoves.length) return false;
-
-    const repeatableMove = lastMoves[0];
-    if (!repeatableMove.move || repeatableMove.virtual) return false;
-
-    switch (repeatableMove.move) {
-      case MoveId.MIMIC:
-      case MoveId.MIRROR_MOVE:
-      case MoveId.TRANSFORM:
-      case MoveId.STRUGGLE:
-      case MoveId.SKETCH:
-      case MoveId.SLEEP_TALK:
-      case MoveId.ENCORE:
-        return false;
-    }
-
-    this.moveId = repeatableMove.move;
-    return true;
+  if (!pokemon.canAddTag?.(BattlerTagType.ENCORE)) {
+    return false;
   }
+
+  const lastMoves = pokemon.getLastXMoves(1);
+  if (!lastMoves.length) return false;
+
+  const repeatableMove = lastMoves[0];
+  if (!repeatableMove.move || repeatableMove.virtual) return false;
+
+  switch (repeatableMove.move) {
+    case MoveId.MIMIC:
+    case MoveId.MIRROR_MOVE:
+    case MoveId.TRANSFORM:
+    case MoveId.STRUGGLE:
+    case MoveId.SKETCH:
+    case MoveId.SLEEP_TALK:
+    case MoveId.ENCORE:
+      return false;
+  }
+
+  this.moveId = repeatableMove.move;
+  return true;
+}
 
   override onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
@@ -1749,8 +1810,12 @@ export class EncoreTag extends MoveRestrictionBattlerTag {
 
     // ✅ 멘탈허브 보유 여부 확인
     const mentalHerb = globalScene
-      .getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
+  .getModifiers(MentalHerbModifier, pokemon.isPlayer())
+  .find(
+    mod =>
+      mod instanceof MentalHerbModifier &&
+      mod.pokemonId === pokemon.id,
+  ) as MentalHerbModifier | undefined;
 
     if (mentalHerb) {
       console.log("Mental Herb detected - removing Encore immediately");
@@ -2520,35 +2585,40 @@ export class PerishSongTag extends SerializableBattlerTag {
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-    return !pokemon.isBossImmune();
+  if (!pokemon.canAddTag?.(BattlerTagType.PERISH_SONG)) {
+    return false;
   }
+
+  return !pokemon.isBossImmune();
+}
 
   override onAdd(pokemon: Pokemon): void {
-    super.onAdd(pokemon);
-    console.log("PerishSongTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+  super.onAdd(pokemon);
 
-    // ✅ 멘탈허브 보유 여부 확인
-    const mentalHerb = globalScene
-      .getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
-
-    if (mentalHerb) {
-      console.log("Mental Herb detected - removing Perish Song immediately");
-      const removed = mentalHerb.apply(pokemon);
-      if (removed) {
-        console.log("Perish Song removed by Mental Herb");
-        return; // 멘탈허브 발동 메시지는 apply() 내부에서 출력됨
-      }
-    }
-
-    // 멘탈허브 없으면 기본 메시지 출력
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battlerTags:perishSongOnAdd", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        turnCount: this.turnCount,
-      }),
-    );
+  if (!pokemon.getTag(BattlerTagType.PERISH_SONG)) {
+    return;
   }
+
+  console.log("PerishSongTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+  const mentalHerb = pokemon.getHeldItems?.().find(
+    item => item instanceof MentalHerbModifier,
+  ) as MentalHerbModifier | undefined;
+
+  if (mentalHerb) {
+    const removed = mentalHerb.apply(pokemon);
+    if (removed) {
+      return;
+    }
+  }
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("battlerTags:perishSongOnAdd", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      turnCount: this.turnCount,
+    }),
+  );
+}
 
   override lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     const ret = super.lapse(pokemon, lapseType);
@@ -4413,26 +4483,35 @@ export class HealBlockTag extends MoveRestrictionBattlerTag {
     );
   }
 
+  override canAdd(pokemon: Pokemon): boolean {
+  return pokemon.canAddTag?.(BattlerTagType.HEAL_BLOCK) ?? true;
+}
+
   // ✅ 여기 추가
   override onAdd(pokemon: Pokemon): void {
-    super.onAdd(pokemon);
+  super.onAdd(pokemon);
 
-    // 멘탈허브 체크
-    const mentalHerb = globalScene.getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
-
-    if (mentalHerb) {
-      const removed = mentalHerb.apply(pokemon);
-      if (removed) return; // 이미 태그 제거 + 메시지 출력 → HealBlock 메시지 생략
-    }
-
-    // 기존 메시지 출력
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battle:battlerTagsHealBlock", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-      }),
-    );
+  if (!pokemon.getTag(BattlerTagType.HEAL_BLOCK)) {
+    return;
   }
+
+  const mentalHerb = pokemon.getHeldItems?.().find(
+    item => item instanceof MentalHerbModifier,
+  ) as MentalHerbModifier | undefined;
+
+  if (mentalHerb) {
+    const removed = mentalHerb.apply(pokemon);
+    if (removed) {
+      return;
+    }
+  }
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("battle:battlerTagsHealBlock", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+    }),
+  );
+}
 
   onActivation(pokemon: Pokemon): string {
     return i18next.t("battle:battlerTagsHealBlock", {
@@ -4781,32 +4860,37 @@ export class TormentTag extends MoveRestrictionBattlerTag {
     super(BattlerTagType.TORMENT, BattlerTagLapseType.AFTER_MOVE, 1, MoveId.TORMENT, sourceId);
   }
 
+  override canAdd(pokemon: Pokemon): boolean {
+  return pokemon.canAddTag?.(BattlerTagType.TORMENT) ?? true;
+}
+
   override onAdd(pokemon: Pokemon): void {
-    super.onAdd(pokemon);
-    console.log("TormentTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+  super.onAdd(pokemon);
 
-    // ✅ 멘탈허브 보유 여부 확인
-    const mentalHerb = globalScene
-      .getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
-
-    if (mentalHerb) {
-      console.log("Mental Herb detected - removing Torment immediately");
-      const removed = mentalHerb.apply(pokemon);
-      if (removed) {
-        console.log("Torment removed by Mental Herb");
-        return; // 멘탈허브 발동 메시지는 apply() 내부에서 출력
-      }
-    }
-
-    // 멘탈허브가 없으면 기본 메시지 출력
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battlerTags:tormentOnAdd", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-      }),
-      1500,
-    );
+  if (!pokemon.getTag(BattlerTagType.TORMENT)) {
+    return;
   }
+
+  console.log("TormentTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+  const mentalHerb = pokemon.getHeldItems?.().find(
+    item => item instanceof MentalHerbModifier,
+  ) as MentalHerbModifier | undefined;
+
+  if (mentalHerb) {
+    const removed = mentalHerb.apply(pokemon);
+    if (removed) {
+      return;
+    }
+  }
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("battlerTags:tormentOnAdd", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+    }),
+    1500,
+  );
+}
 
   override lapse(pokemon: Pokemon, _tagType: BattlerTagLapseType): boolean {
     // 토먼트는 배틀에서 나가기 전까지 유지
@@ -4851,14 +4935,26 @@ export class TauntTag extends MoveRestrictionBattlerTag {
     );
   }
 
+  override canAdd(pokemon: Pokemon): boolean {
+  return pokemon.canAddTag?.(BattlerTagType.TAUNT) ?? true;
+}
+
   override onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
     console.log("TauntTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
 
+    if (!pokemon.getTag(BattlerTagType.TAUNT)) {
+    return;
+  }
+
     // ✅ 멘탈허브 보유 여부 확인
-    const mentalHerb = globalScene
-      .getModifiers(MentalHerbModifier)
-      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
+   const mentalHerb = globalScene
+  .getModifiers(MentalHerbModifier, pokemon.isPlayer())
+  .find(
+    mod =>
+      mod instanceof MentalHerbModifier &&
+      mod.pokemonId === pokemon.id,
+  ) as MentalHerbModifier | undefined;
 
     if (mentalHerb) {
       console.log("Mental Herb detected - removing Taunt tag immediately");

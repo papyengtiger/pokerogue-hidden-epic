@@ -78,6 +78,7 @@ import { BooleanHolder, type NumberHolder, toDmgValue } from "#utils/common";
 import { inSpeedOrder } from "#utils/speed-order-generator";
 import i18next from "i18next";
 import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
+import { RoomServiceModifier } from "../modifier/modifier";
 
 /** Interface containing the serializable fields of ArenaTagData. */
 interface BaseArenaTag {
@@ -1294,9 +1295,30 @@ export class TrickRoomTag extends RoomArenaTag {
    * @param speedReversed a {@linkcode BooleanHolder} used to flag if Speed-based
    * turn order should be reversed.
    */
-  override apply(speedReversed: BooleanHolder): void {
-    speedReversed.value = !speedReversed.value;
+  override onAdd(): void {
+  super.onAdd?.();
+
+  for (const pokemon of globalScene.getField(true)) {
+    if (!pokemon?.isActive?.()) {
+      continue;
+    }
+
+    const roomServices = globalScene
+      .getModifiers(RoomServiceModifier, pokemon.isPlayer())
+      .filter(
+        mod =>
+          mod instanceof RoomServiceModifier &&
+          mod.pokemonId === pokemon.id,
+      ) as RoomServiceModifier[];
+
+    for (const mod of roomServices) {
+      mod.apply(pokemon);
+    }
+
+    globalScene.updateModifiers(pokemon.isPlayer());
+    pokemon.updateInfo();
   }
+}
 }
 
 export class MagicRoomTag extends RoomArenaTag {

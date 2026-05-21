@@ -78,7 +78,8 @@ export const biomeLinks: BiomeLinks = {
   [BiomeId.SEWER]: [ BiomeId.POLLUTED_RIVER, BiomeId.POLLUTED_CAVE, [ BiomeId.LABORATORY, 3 ]],
   [BiomeId.BAMBOO_FOREST]: [ BiomeId.DOJO, BiomeId.TEMPLE, [ BiomeId.DRAGON_TEMPLE, 3 ]],
   [BiomeId.DRAGON_TEMPLE]: [ BiomeId.BLAZE_FIELD, BiomeId.BLACK_MOUNTAIN, [ BiomeId.ABANDONED_CASTLE, 3 ]],
-  [BiomeId.GLACIER]: [ BiomeId.ICE_CAVE, BiomeId.SNOWY_FIELD, [ BiomeId.SNOW_MOUNTAIN, 2 ]]
+  [BiomeId.GLACIER]: [ BiomeId.ICE_CAVE, BiomeId.SNOWY_FIELD, [ BiomeId.SNOW_MOUNTAIN, 2 ]],
+  [BiomeId.TUTORIAL_ROOM]: BiomeId.TUTORIAL_ROOM,
 };
 
 export const biomePokemonPools: BiomePokemonPools = {
@@ -3457,6 +3458,14 @@ export const biomePokemonPools: BiomePokemonPools = {
     [BiomePoolTier.BOSS_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [] },
     [BiomePoolTier.BOSS_SUPER_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [] },
     [BiomePoolTier.BOSS_ULTRA_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [] }
+  },
+  [BiomeId.TUTORIAL_ROOM]: {
+    [BiomePoolTier.COMMON]: [],
+    [BiomePoolTier.UNCOMMON]: [],
+    [BiomePoolTier.RARE]: [],
+    [BiomePoolTier.SUPER_RARE]: [],
+    [BiomePoolTier.ULTRA_RARE]: [],
+    [BiomePoolTier.BOSS]: []
   }
 };
 

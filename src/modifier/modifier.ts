@@ -204,6 +204,12 @@ export abstract class Modifier {
     this.type = type;
   }
 
+  getPracticeLogName(): string {
+  return this.type?.name
+    ?? (this.type as any)?.id
+    ?? this.constructor.name;
+}
+
   /**
    * Return whether this modifier is of the given class
    *
@@ -1046,6 +1052,7 @@ export class MaxMoveAccessModifier extends PersistentModifier {
 export abstract class PokemonHeldItemModifier extends PersistentModifier {
   public pokemonId: number;
   public isTransferable = true;
+  public isPracticeRental = false;
 
   private maxBattles?: number;
   private battleCount?: number;
@@ -1667,64 +1674,57 @@ export class PokemonIncrementingStatModifier extends PokemonHeldItemModifier {
  * @see {@linkcode apply}
  */
 export class StatBoosterModifier extends PokemonHeldItemModifier {
-  /** The stats that the held item boosts */
   protected stats: Stat[];
-  /** The multiplier used to increase the relevant stat(s) */
-  protected multiplier: number;
+  protected boostMultiplier: number;
 
-  constructor(type: ModifierType, pokemonId: number, stats: Stat[], multiplier: number, stackCount?: number) {
+  constructor(type: ModifierType, pokemonId: number, stats: Stat[], boostPercent: number, stackCount?: number) {
     super(type, pokemonId, stackCount);
 
     this.stats = stats;
-    this.multiplier = multiplier;
+    this.boostMultiplier = boostPercent * 0.01;
   }
 
   clone() {
-    return new StatBoosterModifier(this.type, this.pokemonId, this.stats, this.multiplier, this.stackCount);
+    return new StatBoosterModifier(
+      this.type,
+      this.pokemonId,
+      this.stats,
+      this.boostMultiplier * 100,
+      this.stackCount,
+    );
   }
 
   getArgs(): any[] {
-    return [...super.getArgs(), this.stats, this.multiplier];
+    return [...super.getArgs(), this.stats, this.boostMultiplier * 100];
   }
 
   matchType(modifier: Modifier): boolean {
-    if (modifier instanceof StatBoosterModifier) {
-      const modifierInstance = modifier as StatBoosterModifier;
-      if (modifierInstance.multiplier === this.multiplier && modifierInstance.stats.length === this.stats.length) {
-        return modifierInstance.stats.every((e, i) => e === this.stats[i]);
-      }
-    }
-
-    return false;
+    return (
+      modifier instanceof StatBoosterModifier
+      && modifier.boostMultiplier === this.boostMultiplier
+      && modifier.stats.length === this.stats.length
+      && modifier.stats.every((s, i) => s === this.stats[i])
+    );
   }
 
-  /**
-   * Checks if the incoming stat is listed in {@linkcode stats}
-   * @param _pokemon the {@linkcode Pokemon} that holds the item
-   * @param _stat the {@linkcode Stat} to be boosted
-   * @param statValue {@linkcode NumberHolder} that holds the resulting value of the stat
-   * @returns `true` if the stat could be boosted, false otherwise
-   */
   override shouldApply(pokemon: Pokemon, stat: Stat, statValue: NumberHolder): boolean {
     return super.shouldApply(pokemon, stat, statValue) && this.stats.includes(stat);
   }
 
-  /**
-   * Boosts the incoming stat by a {@linkcode multiplier} if the stat is listed
-   * in {@linkcode stats}.
-   * @param _pokemon the {@linkcode Pokemon} that holds the item
-   * @param _stat the {@linkcode Stat} to be boosted
-   * @param statValue {@linkcode NumberHolder} that holds the resulting value of the stat
-   * @returns `true` if the stat boost applies successfully, false otherwise
-   * @see shouldApply
-   */
   override apply(_pokemon: Pokemon, _stat: Stat, statValue: NumberHolder): boolean {
-    statValue.value *= this.multiplier;
+    statValue.value = Math.floor(
+      statValue.value * (1 + this.getStackCount() * this.boostMultiplier),
+    );
+
     return true;
   }
 
   getMaxHeldItemCount(_pokemon: Pokemon): number {
-    return 1;
+    return 5;
+  }
+
+  getMaxStackCount(_forThreshold?: boolean): number {
+    return 5;
   }
 }
 
@@ -2419,92 +2419,6 @@ onPostSummon(pokemon: Pokemon, simulated: boolean): void {
   }
 }
 
-export class StatBoostModifier extends PokemonHeldItemModifier {
-  private readonly baseBoostPercent: number = 6; // 1중첩당 증가율
-  private static readonly maxStack: number = 5; // 최대 중첩 개수
-  private static readonly maxHeldItemCount: number = 5; // 최대 장착 가능 아이템 수량
-
-  constructor(type: ModifierType, pokemonId: number, stackCount = 1) {
-    super(type, pokemonId, stackCount);
-  }
-
-  clone() {
-    return new StatBoostModifier(this.type, this.pokemonId, this.stackCount);
-  }
-
-  getArgs(): any[] {
-    return super.getArgs().concat([this.stackCount]);
-  }
-
-  matchType(modifier: PokemonHeldItemModifier): boolean {
-    return modifier instanceof StatBoostModifier;
-  }
-
-  getStackCount(): number {
-    return this.stackCount ?? 1; // 기본적으로 최소 1스택
-  }
-
-  /**
-   * Checks if the {@linkcode StatBoostModifier} should be applied
-   * @param pokemon the {@linkcode Pokemon} that holds the item
-   * @param statHolder {@linkcode NumberHolder} that holds the stat to be boosted
-   * @returns true if the {@linkcode StatBoostModifier} should be applied
-   */
-  override shouldApply(pokemon: Pokemon, statHolder: NumberHolder): boolean {
-    return super.shouldApply(pokemon, statHolder) && this.stackCount < StatBoostModifier.maxStack;
-  }
-
-  /**
-   * Applies {@linkcode StatBoostModifier} and increases the stat
-   * @param pokemon the {@linkcode Pokemon} that holds the item
-   * @param statHolder {@linkcode NumberHolder} that holds the stat to be boosted
-   * @returns true if the stat has been boosted
-   */
-  override apply(_pokemon: Pokemon, moveType: Type, movePower: NumberHolder): boolean {
-    // 아이템 장착 수량이 최대 제한에 도달했는지 확인
-    if (_pokemon.getHeldItems().length >= StatBoostModifier.maxHeldItemCount) {
-      return false; // 최대 장착 수량을 초과하면 적용 불가
-    }
-
-    // 스택 수가 최대 스택 수를 초과했는지 확인
-    if (this.stackCount >= StatBoostModifier.maxStack) {
-      return false; // 최대 스택 수에 도달하면 적용 불가
-    }
-
-    // 공격 타입이 일치하고, movePower가 1 이상인 경우
-    if (moveType === this.moveType && movePower.value >= 1) {
-      // 보정 계산
-      const boostMultiplier = 1 + this.getStackCount() * this.boostMultiplier;
-      movePower.value = Math.floor(movePower.value * boostMultiplier); // 보정된 공격력 적용
-
-      // 스택 수 증가
-      this.stackCount = Math.min(this.stackCount + 1, StatBoostModifier.maxStack);
-
-      // 적용된 보정 정보를 메시지로 전달
-      globalScene.phaseManager.queueMessage(
-        i18next.t("modifier:attackTypeBoostApply", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(_pokemon),
-          moveTypeName: moveType, // 공격 타입 이름
-          boostPercentage: this.boostMultiplier * this.getStackCount(),
-        }),
-      );
-
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * 최대 장착 아이템 수량을 설정
-   * @param _pokemon Pokemon 객체
-   * @returns 최대 장착 가능 아이템 수
-   */
-  getMaxHeldItemCount(_pokemon: Pokemon): number {
-    return StatBoostModifier.maxHeldItemCount; // 최대 5개의 아이템만 장착 가능
-  }
-}
-
 export class SuperEffectiveBoosterModifier extends PokemonHeldItemModifier {
   private readonly baseBoostPercent: number = 6; // 1중첩당 위력 증가량 (20%)
   private static readonly maxStack: number = 5; // 최대 중첩 개수 (5개)
@@ -2619,7 +2533,13 @@ export class StackingRiskyPowerBoosterModifier extends PokemonHeldItemModifier {
   const percents = [0.1, 0.06, 0.02];
   const hpLoss = toDmgValue(attacker.getMaxHp() * percents[Math.min(this.stackCount - 1, 2)]);
   console.log(`[RiskyBooster] 반동 피해 적용: ${hpLoss} to Pokemon ID ${attacker.id}`);
-  attacker.damageAndUpdate(hpLoss, HitResult.OTHER);
+  attacker.damageAndUpdate(hpLoss, {
+  result: HitResult.INDIRECT,
+  indirect: true,
+  source: attacker,
+  recordAttacksReceived: false,
+  accumulateBide: false,
+});
 }
 
   applyMovePowerBoost(move, attacker, defender, power, battleContext): number {
@@ -2628,8 +2548,6 @@ export class StackingRiskyPowerBoosterModifier extends PokemonHeldItemModifier {
 
     const currentTurn = battleContext?.turn ?? attacker.battle?.turnCount ?? 0;
     const moveId = move?.id;
-
-    this.applyHpLossIfNeeded(attacker, moveId, currentTurn);
 
     if (typeof power !== "number" || isNaN(power)) {
       console.error("[RiskyBooster] Invalid power:", power);
@@ -3039,25 +2957,33 @@ export class IgnoreContactItemModifier extends PokemonHeldItemModifier {
    * 비접촉 처리 및 위력 증가 적용
    * @param pokemon 적용 대상 포켓몬
    */
-  override apply(pokemon: Pokemon, moveType: Type, movePower: NumberHolder): boolean {
-    // 아이템 장착 수량이 최대 제한에 도달했는지 확인
-    if (pokemon.getHeldItems().length >= IgnoreContactItemModifier.maxHeldItemCount) {
-      return false; // 최대 장착 수량을 초과하면 적용 불가
-    }
+  override apply(
+  pokemon: Pokemon,
+  moveType: Type,
+  movePower: NumberHolder,
+): boolean {
+  const move = pokemon.currentMove;
 
-    // 현재 기술이 접촉 기술인지 체크
-    if (pokemon.currentMove && this.checkIfMoveMakesContact(pokemon)) {
-      // 기술을 비접촉 기술로 변경
-      pokemon.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
-
-      // 위력 1.3배 적용
-      pokemon.increaseMovePower(1.3);
-
-      return true;
-    }
-
+  if (!move || !(movePower instanceof NumberHolder)) {
     return false;
   }
+
+  // 현재 기술이 접촉 기술인지 체크
+  if (!this.checkIfMoveMakesContact(pokemon)) {
+    return false;
+  }
+
+  // 비접촉 처리
+  move.setFlag(MoveFlags.MAKES_CONTACT, false);
+
+  // 연습 결과창 라벨
+  (movePower as any).__practiceLabel = "방호패드";
+
+  // 위력 1.3배
+  movePower.value = Math.floor(movePower.value * 1.3);
+
+  return true;
+}
 
   /**
    * 기술이 접촉 기술인지 체크
@@ -3065,9 +2991,11 @@ export class IgnoreContactItemModifier extends PokemonHeldItemModifier {
    * @returns true if the move makes contact
    */
   checkIfMoveMakesContact(user: Pokemon): boolean {
-    const move = user.currentMove;
-    return move?.checkFlag(MoveFlags.MAKES_CONTACT, user, null) ?? false;
-  }
+  const move = user.currentMove;
+  if (!move) return false;
+
+  return move.hasFlag(MoveFlags.MAKES_CONTACT);
+}
 
   /**
    * 포켓몬이 장착할 수 있는 아이템 최대 개수 (1로 제한)
@@ -3400,14 +3328,17 @@ export class WeaknessTypeModifier extends PokemonHeldItemModifier {
       );
 
       if (!preserve.value) {
-        recordRecycleSnapshot(pokemon, this, { args: [] });
+  recordRecycleSnapshot(pokemon, this, { args: [] });
 
-        if (this.stackCount > 1) {
-          this.stackCount--;
-        } else {
-          globalScene.removeModifier(this);
-        }
-      }
+  if (this.stackCount > 1) {
+    this.stackCount--;
+  } else {
+    pokemon.loseHeldItem(this);
+  }
+
+  globalScene.updateModifiers(pokemon.isPlayer());
+  pokemon.updateInfo();
+}
 
       return true;
     }
@@ -5823,7 +5754,9 @@ export class BoostEnergyModifier extends PokemonHeldItemModifier {
   }
 
   override apply(pokemon: Pokemon, ...args: any[]): boolean {
-    const ability = pokemon.abilityId;
+    const ability =
+  pokemon.abilityId ??
+  pokemon.getAbility?.()?.id;
 
     // Boost Energy로 발동 가능한 특성 목록
     const allowedAbilities = [
@@ -5851,7 +5784,13 @@ export class BoostEnergyModifier extends PokemonHeldItemModifier {
     }
 
     this.boostedStats.push({ statList, multiplier });
-
+console.log("[BOOST_ENERGY_ABILITY_CHECK]", {
+  pokemon: pokemon.name,
+  ability,
+  rawAbilityId: pokemon.abilityId,
+  getAbilityId: pokemon.getAbility?.()?.id,
+  abilityName: pokemon.getAbility?.()?.name,
+});
     // 특성별 태그 타입 결정
     let tagType: BattlerTagType;
     switch (ability) {
@@ -5885,32 +5824,13 @@ export class BoostEnergyModifier extends PokemonHeldItemModifier {
     }
 
     // 태그 부여
-    new BoostEnergyTagAttr(tagType).apply(pokemon, false, false, null, []);
+    new BoostEnergyTagAttr(tagType).apply({
+  pokemon,
+  simulated: false,
+  passive: false,
+});
 
-    // PreserveItemModifier 적용 여부 판단 후 소모 처리
-    const preserve = new BooleanHolder(false);
-globalScene.applyModifiers(PreserveItemModifier, pokemon.isPlayer(), pokemon, preserve, "item");
-
-if (!preserve.value) {
-  // ✅ 소모 확정 → 리사이클 기록
-  recordRecycleSnapshot(pokemon, this, { args: [] });
-
-  // 메시지 출력 (보존 실패일 때만)
-  globalScene.phaseManager.queueMessage(
-    i18next.t("modifier:boostEnergyItemUsed", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-      itemName: "Boost Energy",
-    }),
-  );
-
-  if (this.stackCount > 1) {
-    this.stackCount--;
-  } else {
-    globalScene.removeModifier(this);
-  }
-}
-
-    return true;
+return true;
   }
 
   override onTurnEnd(): void {
@@ -6834,11 +6754,12 @@ if (!preserve.value) {
   if (this.stackCount > 1) {
     this.stackCount--;
   } else {
-    globalScene.removeModifier(this);
+    pokemon.loseHeldItem(this);
   }
 }
 
-      globalScene.updateModifiers(pokemon); // UI 반영
+globalScene.updateModifiers(pokemon.isPlayer());
+pokemon.updateInfo();
     }
 
     return tagRemoved; // 상태 제거가 있었는지 여부를 반환
@@ -7417,63 +7338,71 @@ console.debug(`[StatusBoostItemModifier] highestStat=${highestStat}, Stat.ATK=${
  * @extends PokemonHeldItemModifier
  */
 export class UnawareItemModifier extends PokemonHeldItemModifier {
-  /** The stats that will be ignored */
   protected ignoredStats: readonly BattleStat[];
 
-  constructor(type: ModifierType, pokemonId: number, ignoredStats: BattleStat[], stackCount?: number) {
+  constructor(
+    type: ModifierType,
+    pokemonId: number,
+    ignoredStats: BattleStat[],
+    stackCount?: number,
+  ) {
     super(type, pokemonId, stackCount);
     this.ignoredStats = ignoredStats;
 
-    // 수동으로 attributes 배열에 추가
     const attr = new IgnoreOpponentStatStagesAbAttr(this.ignoredStats);
-    if (this.attributes) {
-      this.attributes.push(attr); // attributes가 존재하면 속성 추가
-    } else {
-      this.attributes = [attr]; // 없으면 새로 정의
-    }
+    this.attributes ??= [];
+    this.attributes.push(attr);
   }
 
   clone(): UnawareItemModifier {
-    return new UnawareItemModifier(this.type, this.pokemonId, this.stackCount);
+    return new UnawareItemModifier(
+      this.type,
+      this.pokemonId,
+      [...this.ignoredStats],
+      this.stackCount,
+    );
   }
 
   getArgs(): any[] {
-    const args = super.getArgs().concat(this.ignoredStats);
-    console.log("[UnawareItemModifier] getArgs:", args); // args 로깅
-    return args;
+    return super.getArgs().concat([[...this.ignoredStats], this.stackCount]);
   }
 
   matchType(modifier: Modifier): boolean {
     return modifier instanceof UnawareItemModifier;
   }
 
-  /**
-   * Applies the effect by setting the BooleanHolder to true for matching stats
-   * @param _pokemon N/A
-   * @param _passive N/A
-   * @param _simulated N/A
-   * @param _cancelled N/A
-   * @param args [BattleStat, BooleanHolder]
-   */
   override apply(
-    _pokemon: Pokemon,
-    _passive: boolean,
-    _simulated: boolean,
-    _cancelled: Utils.BooleanHolder,
-    args: any[],
-  ): void {
-    if (!args || !Array.isArray(args) || args.length < 2) {
-      console.error("[UnawareItemModifier] Invalid args received:", args);
-      return;
-    }
-
-    const stat: BattleStat = args[0]; // 스탯 인자
-    const holder: Utils.BooleanHolder = args[1]; // BooleanHolder
-
-    if (this.ignoredStats.includes(stat)) {
-      holder.value = true; // 해당 스탯 무시
-    }
+  pokemon: Pokemon,
+  stat: BattleStat,
+  holder: Utils.BooleanHolder,
+): boolean {
+  if (pokemon.id !== this.pokemonId) {
+    return false;
   }
+
+  // 추가
+  if (!this.ignoredStats || !Array.isArray(this.ignoredStats)) {
+    console.warn(
+      "[UNAWARE_ITEM] ignoredStats missing",
+      this,
+    );
+    return false;
+  }
+
+  if (this.ignoredStats.includes(stat)) {
+    holder.value = true;
+
+    console.log(
+      "[UNAWARE_ITEM_APPLY]",
+      pokemon.name,
+      Stat[stat],
+    );
+
+    return true;
+  }
+
+  return false;
+}
 
   getMaxHeldItemCount(_pokemon: Pokemon): number {
     return 1;
@@ -8111,19 +8040,53 @@ export class AromaIncenseItemModifier extends PokemonHeldItemModifier {
   }
 
   /** 🔧 태그 부착 직전 직접 호출될 경우 처리 */
-  override apply(defender: Pokemon, cancelled?: BooleanHolder, arg?: any): boolean {
-    console.debug("[DEBUG] AromaIncense.apply() called for", defender?.name, arg);
+  override apply(
+  defender: Pokemon,
+  passiveOrCancelled?: boolean | BooleanHolder,
+  simulatedOrArg?: boolean | any,
+  cancelledArg?: BooleanHolder,
+  args?: any[],
+): boolean {
+  let cancelled: BooleanHolder | undefined;
+  let tag: BattlerTag | undefined;
 
-    if (!cancelled) return false;
+  // 직접 호출: apply(defender, cancelled, tag)
+  if (passiveOrCancelled instanceof BooleanHolder) {
+    cancelled = passiveOrCancelled;
+    tag = simulatedOrArg;
+  }
 
-    const tagType = arg?.tagType;
-    if (tagType && AromaIncenseItemModifier.IMMUNE_TAGS.includes(tagType)) {
-      cancelled.value = true;
-      console.debug(`[AromaIncense] ${defender.name} → ${BattlerTagType[tagType]} 면역 발동 (태그 취소)`);
-      return true;
-    }
+  // applyModifier식 호출: apply(defender, passive, simulated, cancelled, [tag])
+  else if (cancelledArg instanceof BooleanHolder) {
+    cancelled = cancelledArg;
+    tag = args?.[0];
+  }
+
+  if (!cancelled || !tag) {
     return false;
   }
+
+  const tagType = tag.tagType ?? tag.type ?? tag;
+
+  if (AromaIncenseItemModifier.IMMUNE_TAGS.includes(tagType)) {
+  cancelled.value = true;
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("modifier:aromaIncenseBlocked", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(defender),
+      itemName: this.type.name,
+    }),
+  );
+
+  console.debug(
+    `[AromaIncense] ${defender.name} → ${BattlerTagType[tagType]} 면역 발동`,
+  );
+
+  return true;
+}
+
+  return false;
+}
 
   override onRemove(pokemon: Pokemon): void {
     super.onRemove(pokemon);
@@ -8716,12 +8679,8 @@ export class MoodyItemModifier extends PokemonHeldItemModifier {
    *   네가 PokemonHeldItemModifier.shouldApply에 넣은 정책을 그대로 탄다
    */
   override shouldApply(pokemon: Pokemon, ...args: any[]): boolean {
-    // TurnEnd에서는 보통 "자기 자신"에게 적용이니까 target을 자기로 넘겨주는 게 안전
-    // (네 base shouldApply는 extractTarget로 target을 찾으니까)
-    const target = args.find(a => a && typeof a === "object" && typeof a.id === "number") ?? pokemon;
-
-    return super.shouldApply(target, ...args);
-  }
+  return super.shouldApply(pokemon, ...args);
+}
 
   /**
    * (필수 abstract) - 여기서는 안 쓰면 false로 둬도 OK
@@ -8805,7 +8764,14 @@ export class RoomServiceModifier extends PokemonHeldItemModifier {
     if (!this.canApply(pokemon)) return false;
 
     // 스피드 능력치를 1단계 낮춤
-    globalScene.phaseManager.unshiftNew("StatStageChangePhase"(pokemon.getBattlerIndex(), true, [Stat.SPD], -1, true));
+    globalScene.phaseManager.unshiftNew(
+  "StatStageChangePhase",
+  pokemon.getBattlerIndex(),
+  true,
+  [Stat.SPD],
+  -1,
+  true,
+);
 
     // 아이템 보존 여부 확인
     const preserve = new BooleanHolder(false);
@@ -8816,10 +8782,13 @@ if (!preserve.value) {
   recordRecycleSnapshot(pokemon, this, { args: [] });
 
   if (this.stackCount > 1) {
-    this.stackCount--;
-  } else {
-    globalScene.removeModifier(this);
-  }
+  this.stackCount--;
+} else {
+  pokemon.loseHeldItem(this);
+}
+
+globalScene.updateModifiers(pokemon.isPlayer());
+pokemon.updateInfo();
 }
 
     return true;
@@ -8987,16 +8956,17 @@ export class MissEffectModifier extends PokemonHeldItemModifier {
 globalScene.applyModifiers(PreserveItemModifier, pokemon.isPlayer(), pokemon, preserve, "item");
 
 if (!preserve.value) {
-  // ✅ 실제 소모 확정 → 리사이클 기록
   recordRecycleSnapshot(pokemon, this, { args: [] });
 
   if (this.stackCount > 1) {
     this.stackCount--;
   } else {
-    globalScene.removeModifier(this); // Remove the modifier after item usage
+    pokemon.loseHeldItem(this);
   }
-}
 
+  globalScene.updateModifiers(pokemon.isPlayer());
+  pokemon.updateInfo();
+}
     return true;
   }
 
@@ -9310,44 +9280,37 @@ export class TypeSpecificMoveBoosterModifier extends PokemonHeldItemModifier {
   }
 
   override apply(pokemon: Pokemon, moveType: Type, movePower: NumberHolder): boolean {
-    if (moveType === this.moveType && movePower.value >= 1) {
-      const preserve = new BooleanHolder(false);
-
-// PreserveItemModifier 적용: 열매가 아니므로 "item" 타입
-globalScene.applyModifiers(PreserveItemModifier, pokemon.isPlayer(), pokemon, preserve, "item");
-
-const originalValue = movePower.value;
-movePower.value = Math.floor(movePower.value * this.boostMultiplier);
-
-// 최초에만 원래 장착 수 저장
-if (pokemon.getMetadata && !pokemon.getMetadata("originalHeldItemCount")) {
-  pokemon.setMetadata("originalHeldItemCount", pokemon.getHeldItemCount());
-}
-
-globalScene.phaseManager.queueMessage(
-  i18next.t("modifier:typeSpecificMoveBoostApply", {
-    pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    itemName: this.type.name,
-  }),
-);
-
-// preserve 결과에 따라 스택 감소 또는 유지
-if (!preserve.value) {
-  // ✅ 실제 소모 확정 → 리사이클 기록
-  recordRecycleSnapshot(pokemon, this, { args: [] });
-
-  if (this.stackCount > 1) {
-    this.stackCount--;
-  } else {
-    globalScene.removeModifier(this);
-  }
-}
-
-      return true;
-    }
-
+  if (moveType !== this.moveType || movePower.value < 1) {
     return false;
   }
+
+  const preserve = new BooleanHolder(false);
+
+  globalScene.applyModifiers(
+    PreserveItemModifier,
+    pokemon.isPlayer(),
+    pokemon,
+    preserve,
+    "item",
+  );
+
+  (movePower as any).__practiceLabel = this.type.name;
+
+  movePower.value = Math.floor(
+    movePower.value * this.boostMultiplier,
+  );
+
+  if (pokemon.getMetadata && !pokemon.getMetadata("originalHeldItemCount")) {
+    pokemon.setMetadata("originalHeldItemCount", pokemon.getHeldItemCount());
+  }
+
+// 소모 예약만
+if (!preserve.value) {
+  (pokemon.turnData as any).pendingTypeSpecificMoveBooster = this;
+}
+
+  return true;
+}
 
   override reset(pokemon: Pokemon): void {
     const originalCount = pokemon.getMetadata("originalHeldItemCount");
@@ -12532,7 +12495,6 @@ export const ModifierClassMap = Object.freeze({
   EnemyEndureChanceModifier,
   EnemyFusionChanceModifier,
   MoneyMultiplierModifier,
-  StatBoostModifier,
   StackingRiskyPowerBoosterModifier,
   StackingPowerBoosterModifier,
   RunSuccessModifier,

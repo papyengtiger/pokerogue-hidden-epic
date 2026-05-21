@@ -1,6 +1,6 @@
 import { SpeciesId } from "#enums/species-id";
 
-export const POKERUS_STARTER_COUNT = 5;
+export const POKERUS_STARTER_COUNT = 6;
 
 // #region Friendship constants
 export const CLASSIC_CANDY_FRIENDSHIP_MULTIPLIER = 6;
@@ -109,7 +109,7 @@ export const speciesStarterCosts = {
   [SpeciesId.MEWTWO]: 8,
   [SpeciesId.MEW]: 5,
 
-  [SpeciesId.CHIKORITA]: 2,
+  [SpeciesId.CHIKORITA]: 3,
   [SpeciesId.CYNDAQUIL]: 3,
   [SpeciesId.TOTODILE]: 3,
   [SpeciesId.SENTRET]: 1,

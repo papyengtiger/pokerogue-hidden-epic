@@ -209,7 +209,7 @@ export class PartyUiHandler extends MessageUiHandler {
   private optionsCursorObj: Phaser.GameObjects.Image | null;
   private options: number[];
 
-  private transferMode: boolean;
+  private transferMode = false;
   private transferOptionCursor: number;
   private transferCursor: number;
   /** Current quantity selection for every item held by the pokemon selected for the transfer */
@@ -385,6 +385,11 @@ export class PartyUiHandler extends MessageUiHandler {
 
   this.partyUiMode = args[0] as PartyUiMode;
   this.fieldIndex = args.length > 1 ? (args[1] as number) : -1;
+
+  this.transferMode = false;
+  this.transferAll = false;
+  this.transferCursor = -1;
+  this.transferOptionCursor = 0;
 
   let argIdx = 2;
   this.selectCallback = args.length > argIdx && args[argIdx] instanceof Function ? args[argIdx] : undefined;
@@ -1121,14 +1126,23 @@ export class PartyUiHandler extends MessageUiHandler {
   const option = this.options[this.optionsCursor];
 
   if (button === Button.CANCEL) {
-    this.clearOptions();
-    ui.playSelect();
-    return true;
+  if (this.transferMode) {
+    this.clearTransfer();
   }
 
-  if (button === Button.ACTION) {
-    return this.processActionButtonForOptions(option);
+  // 🔥 추가 (중요)
+  if (this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT) {
+    this.partyUiMode = PartyUiMode.CHECK;
   }
+
+  this.clearOptions();
+  ui.playSelect();
+  return true;
+}
+
+  if (button === Button.ACTION || button === Button.SUBMIT) {
+  return this.processActionButtonForOptions(option);
+}
 
   // ✅ 방향키 처리
   if (button === Button.UP || button === Button.DOWN) {
@@ -1186,13 +1200,13 @@ export class PartyUiHandler extends MessageUiHandler {
       return success;
     }
 
-    if (button === Button.ACTION) {
-      return this.processPartyActionInput();
-    }
+    if (button === Button.ACTION || button === Button.SUBMIT) {
+  return this.processPartyActionInput();
+}
 
-    if (button === Button.CANCEL) {
-      return this.processPartyCancelInput();
-    }
+if (button === Button.CANCEL) {
+  return this.processPartyCancelInput();
+}
 
     if (button === Button.UP || button === Button.DOWN || button === Button.RIGHT || button === Button.LEFT) {
       return this.processPartyDirectionalInput(button);
@@ -1907,9 +1921,6 @@ return all.filter(m => m.isTransferable);
         this.options.push(PartyOption.SELECT);
         this.addCommonOptions(pokemon);
         break;
-      case PartyUiMode.SEND_TO_STORAGE_SELECT:
-  this.updateOptionsWithSendToStorageMode(pokemon);
-  break;
       case PartyUiMode.FLING_ITEM_SELECT:
       case PartyUiMode.BESTOW_ITEM_SELECT: // ✅ 추가
       case PartyUiMode.NATURAL_GIFT_BERRY_SELECT:

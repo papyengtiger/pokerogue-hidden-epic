@@ -575,6 +575,7 @@ function initGreatModifierPool() {
     new WeightedModifierType(modifierTypes.ARMORITE_ORE, 7),
     new WeightedModifierType(modifierTypes.Z_GENERIC, 7),
     new WeightedModifierType(modifierTypes.WISHING_STAR, 17),
+    new WeightedModifierType(modifierTypes.TYPE_SPECIFIC_MOVE_BOOSTER, 7),
     new WeightedModifierType(
       modifierTypes.CLEAR_BELL,
       (party: Pokemon[]) => {

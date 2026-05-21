@@ -38,6 +38,9 @@ import { BattlePhase } from "#phases/battle-phase";
 import { achvs } from "#system/achv";
 import { randSeedInt, randSeedItem } from "#utils/common";
 import i18next from "i18next";
+import { GameModes } from "#enums/game-modes";
+import { SpeciesId } from "#enums/species-id";
+import { getPokemonSpecies } from "#utils/pokemon-utils";
 
 export class EncounterPhase extends BattlePhase {
   // Union type is necessary as this is subclassed, and typescript will otherwise complain

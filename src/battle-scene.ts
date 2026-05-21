@@ -69,7 +69,7 @@ import { NewArenaEvent } from "#events/battle-scene";
 import { Arena, ArenaBase } from "#field/arena";
 import { DamageNumberHandler } from "#field/damage-number-handler";
 import type { Pokemon } from "#field/pokemon";
-import { EnemyPokemon, PlayerPokemon } from "#field/pokemon";
+import { EnemyPokemon, PlayerPokemon, PracticeDummyEnemy } from "#field/pokemon";
 import { PokemonSpriteSparkleHandler } from "#field/pokemon-sprite-sparkle-handler";
 import { Trainer } from "#field/trainer";
 import type { Modifier, ModifierPredicate, TurnHeldItemTransferModifier } from "#modifiers/modifier";
@@ -155,6 +155,7 @@ import Phaser from "phaser";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
 import type UIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin";
 import { FieldPosition } from "#enums/field-position";
+import type { ModifierTypeFunc } from "#types/modifier-types";
 
 const DEBUG_RNG = false;
 
@@ -825,6 +826,32 @@ this.fieldUI.add(this.roguePointText);
     return this.currentBattle?.enemyParty ?? [];
   }
 
+  public getPracticeDummy(): PracticeDummyEnemy | null {
+  return (this.currentBattle as any)?.practiceDummy ?? null;
+}
+
+public refreshPracticeDummy(): void {
+  const dummy = this.getPracticeDummy();
+  if (!dummy) return;
+
+  if (dummy.hp <= 0) {
+    dummy.hp = dummy.maxHp;
+
+    dummy.doSetStatus?.(StatusEffect.NONE);
+    dummy.status = null;
+
+    dummy.resetTurnData?.();
+    dummy.resetSummonData?.();
+  }
+
+  dummy.setVisible(true);
+  dummy.setAlpha(1);
+
+  dummy.showInfo?.();
+  dummy.updateInfo?.();
+  dummy.updateHpBar?.();
+}
+
   /**
    * @returns The first {@linkcode EnemyPokemon} that is {@linkcode getEnemyField | on the field}
    * and {@linkcode EnemyPokemon.isActive | is active}
@@ -833,8 +860,15 @@ this.fieldUI.add(this.roguePointText);
    * @param includeSwitching Whether a pokemon that is currently switching out is valid, default `true`
    */
   public getEnemyPokemon(includeSwitching = true): EnemyPokemon | undefined {
-    return this.getEnemyField().find(p => p.isActive() && (includeSwitching || p.switchOutStatus === false));
+  if ((this.currentBattle as any)?.isPracticeBattle) {
+    const dummy = (this.currentBattle as any).practiceDummy as EnemyPokemon | undefined;
+    return dummy && dummy.isActive?.() ? dummy : undefined;
   }
+
+  return this.getEnemyField().find(
+    p => p.isActive() && (includeSwitching || p.switchOutStatus === false)
+  );
+}
 
   /**
    * Returns an array of EnemyPokemon of length 1 or 2 depending on if in a double battle or not.
@@ -842,9 +876,14 @@ this.fieldUI.add(this.roguePointText);
    * @returns array of {@linkcode EnemyPokemon}
    */
   public getEnemyField(): EnemyPokemon[] {
-    const party = this.getEnemyParty();
-    return party.slice(0, Math.min(party.length, this.currentBattle?.double ? 2 : 1));
+  if ((this.currentBattle as any)?.isPracticeBattle) {
+    const dummy = (this.currentBattle as any).practiceDummy as EnemyPokemon | undefined;
+    return dummy ? [dummy] : [];
   }
+
+  const party = this.getEnemyParty();
+  return party.slice(0, Math.min(party.length, this.currentBattle?.double ? 2 : 1));
+}
 
   /**
    * Returns an array of Pokemon on both sides of the battle - player first, then enemy.
@@ -879,6 +918,232 @@ this.fieldUI.add(this.roguePointText);
   getModifierBar(isEnemy = false): ModifierBar {
     return isEnemy ? this.enemyModifierBar : this.modifierBar;
   }
+
+  public givePracticeRentalModifier(
+  pokemon: Pokemon,
+  modifierTypeFunc: ModifierTypeFunc,
+  stackCount = 1,
+): void {
+  const modifierType = getModifierType(modifierTypeFunc);
+
+  // 지닌도구 타입만 허용
+  if (!(modifierType instanceof PokemonHeldItemModifierType)) {
+    console.warn(
+      "[PRACTICE_RENTAL_INVALID]",
+      modifierType?.id,
+    );
+    return;
+  }
+
+  // 실제 Modifier 생성
+  const modifier = modifierType.newModifier(
+  pokemon.id,
+  stackCount,
+) as PokemonHeldItemModifier;
+
+modifier.pokemonId = pokemon.id;
+modifier.isPracticeRental = true;
+
+  // 적용
+  this.modifiers.push(modifier);
+
+  // UI 갱신
+  this.updateModifiers(true);
+
+  console.log(
+    "[PRACTICE_RENTAL_GRANTED]",
+    pokemon.name,
+    modifier.type?.id,
+    stackCount,
+  );
+}
+
+public applyPracticeStackGrowth(
+  pokemon: Pokemon,
+): void {
+  if (!(this.currentBattle as any)?.isPracticeBattle) {
+    return;
+  }
+
+  if (!pokemon?.isPlayer?.()) {
+    return;
+  }
+
+  const result =
+  (globalScene as any).practiceTurnResult;
+
+if (!result) {
+  return;
+}
+
+result.playerDamageFactors ??= [];
+
+const arr = result.playerDamageFactors;
+
+  const incStack = (
+    mod: any,
+    label: string,
+  ) => {
+    if (!mod) return;
+
+    const max =
+      mod.getMaxHeldItemCount?.(pokemon)
+      ?? mod.getMaxHeldItemCount?.()
+      ?? 1;
+
+    const before =
+      mod.stackCount
+      ?? mod.getStackCount?.()
+      ?? 1;
+
+    if (before >= max) {
+      return;
+    }
+
+    if (
+      typeof mod.incrementStackCount
+      === "function"
+    ) {
+      mod.incrementStackCount();
+    } else {
+      mod.stackCount = before + 1;
+    }
+
+    const after =
+      mod.stackCount
+      ?? mod.getStackCount?.()
+      ?? before + 1;
+
+    arr.push(
+      `${label} 스택 ${before}→${after}`,
+    );
+
+    console.log(
+      "[PRACTICE_STACK_GROWTH]",
+      {
+        pokemon: pokemon.name,
+        label,
+        before,
+        after,
+        max,
+      },
+    );
+  };
+
+  const held = pokemon.getHeldItems();
+
+  incStack(
+    held.find(
+      m =>
+        m instanceof
+        StackingPowerBoosterModifier,
+    ),
+    "누적위력",
+  );
+
+  incStack(
+    held.find(
+      m =>
+        m instanceof
+        PokemonDefensiveStatModifier,
+    ),
+    "돌격조끼",
+  );
+
+  incStack(
+    held.find(
+      m =>
+        m instanceof
+        SpeedStatModifier,
+    ),
+    "구애스카프",
+  );
+
+  incStack(
+    held.find(
+      m =>
+        m instanceof
+        SpAtkStatModifier,
+    ),
+    "구애안경",
+  );
+
+  incStack(
+    held.find(
+      m =>
+        m instanceof
+        AtkStatModifier,
+    ),
+    "구애머리띠",
+  );
+
+  this.updateModifiers(
+    pokemon.isPlayer(),
+    true,
+  );
+
+  pokemon.updateInfo?.();
+}
+
+public givePracticeRentalModifierType(
+  pokemon: Pokemon,
+  modifierType: PokemonHeldItemModifierType,
+  stackCount = 1,
+): void {
+  if (!pokemon || typeof pokemon.id !== "number") {
+    console.warn("[PRACTICE_RENTAL_INVALID_POKEMON]", pokemon);
+    return;
+  }
+
+  const modifier = modifierType.newModifier(
+  pokemon.id,
+  stackCount,
+) as PokemonHeldItemModifier;
+
+modifier.pokemonId = pokemon.id;
+modifier.isPracticeRental = true;
+
+  // 대타출동 인형은 enemy side라 enemyModifiers에 넣어야 함
+  if ((pokemon as any).isPracticeDummy) {
+  modifier.isPracticeRental = true;
+
+  // 실제 전투 계산용
+  this.enemyModifiers.push(modifier);
+
+  // 연습모드 전용 추적용
+  (this as any).practiceRentalModifiers ??= [];
+  (this as any).practiceRentalModifiers.push(modifier);
+
+  console.log("[PRACTICE_RENTAL_DUMMY_DIRECT_ADDED]", {
+    pokemon: pokemon.name,
+    pokemonId: pokemon.id,
+    modifier: modifier.type?.id,
+    count: (this as any).practiceRentalModifiers.length,
+    enemyCount: this.enemyModifiers.length,
+  });
+
+  // 중요
+  this.updateModifiers(false, true);
+
+  return;
+}
+
+  // 일반 플레이어 포켓몬
+  const added = this.addModifier(
+    modifier,
+    false,
+    false,
+    false,
+    true,
+  );
+
+  console.log("[PRACTICE_RENTAL_PLAYER_ADDED]", {
+    pokemon: pokemon.name,
+    pokemonId: pokemon.id,
+    modifier: modifier.type?.id,
+    added,
+  });
+}
 
   // store info toggles to be accessible by the ui
   addInfoToggle(...infoToggles: InfoToggle[]): void {
@@ -982,6 +1247,15 @@ this.fieldUI.add(this.roguePointText);
     pokemon.init();
     return pokemon;
   }
+
+  addPracticeDummyEnemy(): PracticeDummyEnemy {
+  const dummy = new PracticeDummyEnemy(220, 75);
+
+  this.add.existing(dummy);
+  this.field.add(dummy);
+
+  return dummy;
+}
 
   addEnemyPokemon(
     species: PokemonSpecies,
@@ -1287,7 +1561,10 @@ this.roguePointText.setVisible(false);
   t.setVisible(false);
 });
 
-    this.newArena(Overrides.STARTING_BIOME_OVERRIDE || BiomeId.TOWN);
+    this.newArena(
+  Overrides.STARTING_BIOME_OVERRIDE
+    || this.gameMode.getStartingBiome()
+);
 
     this.field.setVisible(true);
 
@@ -1592,6 +1869,9 @@ this.roguePointText.setVisible(false);
     }
 
     return this.currentBattle;
+    console.log("[NEW_BATTLE] phase queue after newBattle", 
+  (this.phaseManager as any).phaseQueue?.map((p: any) => p.phaseName ?? p.constructor?.name)
+);
   }
 
   newArena(biome: BiomeId, playerFaints = 0): Arena {
@@ -1606,20 +1886,43 @@ this.roguePointText.setVisible(false);
   }
 
   updateFieldScale(): Promise<void> {
-    return new Promise(resolve => {
+  return new Promise(resolve => {
+
+    if ((this.currentBattle as any)?.isPracticeBattle) {
+      const playerField = this.getPlayerField();
+      const dummy = this.getPracticeDummy();
+
+      const fieldObjects = [
+        ...playerField,
+        ...(dummy ? [dummy as any] : [])
+      ];
+
+      const highestScale = fieldObjects
+        .map(p => p.getSpriteScale())
+        .reduce((max: number, scale: number) => Math.max(max, scale), 0);
+
       const fieldScale =
-        Math.floor(
-          Math.pow(
-            1 /
-              this.getField(true)
-                .map(p => p.getSpriteScale())
-                .reduce((highestScale: number, scale: number) => (highestScale = Math.max(scale, highestScale)), 0),
-            0.7,
-          ) * 40,
-        ) / 40;
+        Math.floor(Math.pow(1 / highestScale, 0.7) * 40) / 40;
+
       this.setFieldScale(fieldScale).then(() => resolve());
-    });
-  }
+      return;
+    }
+
+    // 기존 로직
+    const fieldScale =
+      Math.floor(
+        Math.pow(
+          1 /
+            this.getField(true)
+              .map(p => p.getSpriteScale())
+              .reduce((highestScale: number, scale: number) => Math.max(scale, highestScale), 0),
+          0.7,
+        ) * 40,
+      ) / 40;
+
+    this.setFieldScale(fieldScale).then(() => resolve());
+  });
+}
 
   setFieldScale(scale: number, instant = false): Promise<void> {
     return new Promise(resolve => {
@@ -2267,30 +2570,41 @@ this.roguePointText.setVisible(false);
   }
 
   generateRandomBiome(waveIndex: number): BiomeId {
-    const relWave = waveIndex % 250;
-    const biomes = getEnumValues(BiomeId).filter(b => b !== BiomeId.TOWN && b !== BiomeId.END);
-    const maxDepth = biomeDepths[BiomeId.END][0] - 2;
-    const depthWeights = new Array(maxDepth + 1)
-      .fill(null)
-      .map((_, i: number) => ((1 - Math.min(Math.abs(i / (maxDepth - 1) - relWave / 250) + 0.25, 1)) / 0.75) * 250);
-    const biomeThresholds: number[] = [];
-    let totalWeight = 0;
-    for (const biome of biomes) {
-      totalWeight += Math.ceil(depthWeights[biomeDepths[biome][0] - 1] / biomeDepths[biome][1]);
-      biomeThresholds.push(totalWeight);
-    }
+  const relWave = waveIndex % 250;
 
-    const randInt = randSeedInt(totalWeight);
+  const biomes = getEnumValues(BiomeId).filter(b =>
+    b !== BiomeId.TOWN
+    && b !== BiomeId.END
+    && b !== BiomeId.TUTORIAL_ROOM
+    && biomeDepths[b] !== undefined
+  );
 
-    for (let i = 0; i < biomes.length; i++) {
-      if (randInt < biomeThresholds[i]) {
-        return biomes[i];
-      }
-    }
+  const maxDepth = biomeDepths[BiomeId.END][0] - 2;
 
-    // TODO: should this use `randSeedItem`?
-    return biomes[randSeedInt(biomes.length)];
+  const depthWeights = new Array(maxDepth + 1)
+    .fill(null)
+    .map((_, i: number) =>
+      ((1 - Math.min(Math.abs(i / (maxDepth - 1) - relWave / 250) + 0.25, 1)) / 0.75) * 250
+    );
+
+  const biomeThresholds: number[] = [];
+  let totalWeight = 0;
+
+  for (const biome of biomes) {
+    totalWeight += Math.ceil(depthWeights[biomeDepths[biome][0] - 1] / biomeDepths[biome][1]);
+    biomeThresholds.push(totalWeight);
   }
+
+  const randInt = randSeedInt(totalWeight);
+
+  for (let i = 0; i < biomes.length; i++) {
+    if (randInt < biomeThresholds[i]) {
+      return biomes[i];
+    }
+  }
+
+  return biomes[randSeedInt(biomes.length)];
+}
 
   isBgmPlaying(): boolean {
     return this.bgm?.isPlaying ?? false;
@@ -2729,11 +3043,25 @@ this.roguePointText.setVisible(false);
   }
 
   addMoney(amount: number): void {
-    this.money = Math.min(this.money + amount, Number.MAX_SAFE_INTEGER);
-    this.updateMoneyText();
-    this.animateMoneyChanged(true);
-    this.validateAchvs(MoneyAchv);
+  if ((this.currentBattle as any)?.isPracticeBattle) {
+    const result = (globalScene as any).practiceTurnResult;
+
+    if (result) {
+      result.moneyGained += amount;
+      result.moneyFactors ??= [];
+      result.moneyFactors.push(`골드 +${amount}`);
+    }
+
+    if (!this.gameData.practiceDummyConfig?.rewardFlags?.money) {
+      return;
+    }
   }
+
+  this.money = Math.min(this.money + amount, Number.MAX_SAFE_INTEGER);
+  this.updateMoneyText();
+  this.animateMoneyChanged(true);
+  this.validateAchvs(MoneyAchv);
+}
 
   getWaveMoneyAmount(moneyMultiplier: number): number {
     const waveIndex = this.currentBattle.waveIndex;
@@ -3348,18 +3676,20 @@ this.roguePointText.setVisible(false);
     for (let m = 0; m < modifiers.length; m++) {
       const modifier = modifiers[m];
       if (
-        modifier instanceof PokemonHeldItemModifier
-        && !this.getPokemonById((modifier as PokemonHeldItemModifier).pokemonId)
-      ) {
-        modifiers.splice(m--, 1);
-      }
+  modifier instanceof PokemonHeldItemModifier
+  && !(modifier as any).isPracticeRental
+  && !this.getPokemonById((modifier as PokemonHeldItemModifier).pokemonId)
+) {
+  modifiers.splice(m--, 1);
+}
       if (
-        modifier instanceof PokemonHeldItemModifier
-        && modifier.getSpecies() != null
-        && !this.getPokemonById(modifier.pokemonId)?.hasSpecies(modifier.getSpecies()!)
-      ) {
-        modifiers.splice(m--, 1);
-      }
+  modifier instanceof PokemonHeldItemModifier
+  && !(modifier as any).isPracticeRental
+  && modifier.getSpecies() != null
+  && !this.getPokemonById(modifier.pokemonId)?.hasSpecies(modifier.getSpecies()!)
+) {
+  modifiers.splice(m--, 1);
+}
     }
     for (const modifier of modifiers) {
       if (modifier instanceof PersistentModifier) {
@@ -3522,26 +3852,59 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
   return this.applyModifiersInternal(modifiers, player, args);
 }
 
-  /** Helper function to apply all passed modifiers */
   applyModifiersInternal<T extends PersistentModifier>(
-    modifiers: T[],
-    player: boolean,
-    args: Parameters<T["apply"]>,
-  ): T[] {
-    const appliedModifiers: T[] = [];
-    for (const modifier of modifiers) {
-  if (typeof (modifier as any)?.apply !== "function") {
-    console.error("[BAD_MODIFIER] no apply():", modifier, "ctor=", (modifier as any)?.constructor?.name);
-    continue; // 임시로 크래시 방지
-  }
-  if ((modifier as any).apply(...args)) {
-        console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
-        appliedModifiers.push(modifier);
-      }
+  modifiers: T[],
+  player: boolean,
+  args: Parameters<T["apply"]>,
+): T[] {
+  const appliedModifiers: T[] = [];
+
+  for (const modifier of modifiers) {
+    if (typeof (modifier as any)?.apply !== "function") {
+      console.error("[BAD_MODIFIER] no apply():", modifier, "ctor=", (modifier as any)?.constructor?.name);
+      continue;
     }
 
-    return appliedModifiers;
+    const beforeArgs = args.map(arg =>
+      arg instanceof NumberHolder ? arg.value : undefined,
+    );
+
+    const applied = (modifier as any).apply(...args);
+
+    if (applied) {
+      console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
+      appliedModifiers.push(modifier);
+
+      if ((this.currentBattle as any)?.isPracticeBattle) {
+        const result = (this as any).practiceTurnResult;
+
+        const changed = args.some((arg, i) =>
+          arg instanceof NumberHolder &&
+          beforeArgs[i] !== arg.value,
+        );
+
+        if (changed && result) {
+          const name =
+            (modifier as any).getPracticeLogName?.()
+            ?? modifier.type?.name
+            ?? modifier.constructor.name;
+
+          const text = `${name} 적용`;
+
+          if (player) {
+            result.playerDamageFactors ??= [];
+            result.playerDamageFactors.push(text);
+          } else {
+            result.enemyDamageFactors ??= [];
+            result.enemyDamageFactors.push(text);
+          }
+        }
+      }
+    }
   }
+
+  return appliedModifiers;
+}
 
   /**
    * Apply the first modifier that matches `modifierType`
@@ -3791,6 +4154,28 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
     if (useWaveIndexMultiplier) {
       expValue = Math.floor((expValue * this.currentBattle.waveIndex) / 5 + 1);
     }
+
+    if (
+  (globalScene.currentBattle as any)?.isPracticeBattle
+) {
+  const result =
+    (globalScene as any).practiceTurnResult;
+
+  if (result) {
+    result.expGained += expValue;
+
+    result.expFactors ??= [];
+
+    result.expFactors.push(
+      `기본 경험치 +${expValue}`,
+    );
+
+    console.log(
+      "[PRACTICE_EXP]",
+      expValue,
+    );
+  }
+}
 
     if (participantIds.size > 0) {
       if (

@@ -181,6 +181,7 @@ import {
 import { getBerryEffectFunc, berryResistTypeMap, TYPE_PRIORITY_BERRIES, TYPE_PRIORITY_TYPE_MAP } from "#data/berry";
 import { NATURAL_GIFT_BERRY_TO_MOVE, hasNaturalGiftMapping, getNaturalGiftCandidateBerries, getNaturalGiftMoveId, getNaturalGiftDisplayText } from "#moves/natural-gift-utils";
 import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
+import { isMaxMove } from "#balance/trs";
 
 /**
  * A function used to conditionally determine execution of a given {@linkcode MoveAttr}.
@@ -885,11 +886,11 @@ doesFlagEffectApply({
 
   switch (flag) {
     case MoveFlags.MAKES_CONTACT:
-      const existingProtectModifier = globalScene.getModifiers(IgnoreContactItemModifier)
-        .find(mod => mod.pokemonId === user.id);
+      const existingProtectModifier = globalScene
+  .getModifiers(IgnoreContactItemModifier, user.isPlayer())
+  .find(mod => mod.pokemonId === user.id);
 
-      const hasProtectivePads = existingProtectModifier || 
-        (user.isPlayer() && globalScene.applyModifier(IgnoreContactItemModifier, this.player, user) as IgnoreContactItemModifier | null);
+const hasProtectivePads = !!existingProtectModifier;
 
       // 🔹 PunchingGloveModifier (펀치기술용)
       const existingPunchingGloveModifier = globalScene
@@ -1273,7 +1274,9 @@ doesFlagEffectApply({
         }
       }
 
-      if (hasProtectivePads) return false;
+      if (hasProtectivePads) {
+  return false;
+}
 
       if (user.hasAbilityWithAttr("IgnoreContactAbAttr") || this.hitsSubstitute(user, target)) {
   // 접촉 판정 무시
@@ -1287,47 +1290,68 @@ doesFlagEffectApply({
       break;
 
    case MoveFlags.IGNORE_ABILITIES: {
+  const holderIsPlayer = user.isPlayer();
+
   // 1) 기존 bypass 아이템
   const existingBypassMod = globalScene
-    .getModifiers(MoveAbilityBypassModifier)
+    .getModifiers(MoveAbilityBypassModifier, holderIsPlayer)
     .find(mod => mod.pokemonId === user.id);
 
   const bypassMod =
     existingBypassMod ||
-    (user.isPlayer() &&
-      (globalScene.applyModifier(MoveAbilityBypassModifier, this.player, user) as MoveAbilityBypassModifier | null));
+    (globalScene.applyModifier(
+      MoveAbilityBypassModifier,
+      holderIsPlayer,
+      user,
+    ) as MoveAbilityBypassModifier | null);
 
   if (bypassMod) {
     const bypass = new BooleanHolder(false);
     bypassMod.apply(user, target, this, bypass);
-    if (bypass.value) return true;
+
+    if (bypass.value) {
+      return true;
+    }
   }
 
   // ✅ 1-b) Urshifu Gloves: held item로 직접 체크
-  const heldGlove = (user.getHeldItems().find(
-  i => i instanceof UrshifuGloveAbilityBypassModifier
-) as UrshifuGloveAbilityBypassModifier | undefined);
+  const heldGlove = user.getHeldItems().find(
+    (i): i is UrshifuGloveAbilityBypassModifier =>
+      i instanceof UrshifuGloveAbilityBypassModifier,
+  );
 
-console.log("[GLOVE CHECK]",
-  user.getHeldItems().map(i => i.constructor.name),
-  "formKey=", user.getFormKey(),
-  "type=", heldGlove?.type
-);
-const heldMods = globalScene
-  .getModifiers(PokemonHeldItemModifier, user.isPlayer())
-  .filter((m: any) => m.pokemonId === user.id);
+  console.log("[GLOVE CHECK]",
+    user.getHeldItems().map(i => i.constructor.name),
+    "formKey=", user.getFormKey(),
+    "type=", heldGlove?.type,
+  );
 
-if (heldGlove) {
-  const bypass = new BooleanHolder(false);
-  heldGlove.apply(user, target, this, bypass);
-  if (bypass.value) return true;
-}
+  const heldMods = globalScene
+    .getModifiers(PokemonHeldItemModifier, holderIsPlayer)
+    .filter((m: any) => m.pokemonId === user.id);
+
+  if (heldGlove) {
+    const bypass = new BooleanHolder(false);
+    heldGlove.apply(user, target, this, bypass);
+
+    if (bypass.value) {
+      return true;
+    }
+  }
 
   // 2) 특성 기반
   if (user.hasAbilityWithAttr("MoveAbilityBypassAbAttr")) {
     const abilityEffectsIgnored = new BooleanHolder(false);
-    applyAbAttrs("MoveAbilityBypassAbAttr", { pokemon: user, cancelled: abilityEffectsIgnored, move: this });
-    if (abilityEffectsIgnored.value) return true;
+
+    applyAbAttrs("MoveAbilityBypassAbAttr", {
+      pokemon: user,
+      cancelled: abilityEffectsIgnored,
+      move: this,
+    });
+
+    if (abilityEffectsIgnored.value) {
+      return true;
+    }
   }
 
   // 3) 기술 자체
@@ -1528,10 +1552,16 @@ return moveAccuracy.value;
    * @returns The calculated power of the move.
    */
  calculateBattlePower(source: Pokemon, target: Pokemon, simulated: boolean = false): number {
+  const fmtPracticeValue = (n: number) => Math.floor(n);
+
   if (this.category === MoveCategory.STATUS) {
     return -1;
   }
   
+  // ✅ 이 기술이 원래 접촉기였는지 먼저 저장
+  const wasContactMove =
+    this.hasFlag(MoveFlags.MAKES_CONTACT);
+
   // ✅ NATURAL GIFT: 이번 턴에 대체될 기술(매핑 기술) 결정
   let effectiveMove: Move = this;
 
@@ -1543,7 +1573,60 @@ return moveAccuracy.value;
     }
   }
 
-  const power = new NumberHolder(effectiveMove.power);
+  const installPracticePowerWatcher = (
+  holder: NumberHolder,
+  user: Pokemon,
+) => {
+  if (
+    simulated ||
+    !(globalScene.currentBattle as any)?.isPracticeBattle
+  ) {
+    return;
+  }
+
+  let current = holder.value;
+
+  // ✅ 기본 라벨
+  (holder as any).__practiceLabel ??= "위력 보정";
+
+  Object.defineProperty(holder, "value", {
+    get() {
+      return current;
+    },
+
+    set(next: number) {
+      if (next !== current) {
+        const result = (globalScene as any).practiceTurnResult;
+
+        if (result) {
+          const label =
+            (holder as any).__practiceLabel
+            ?? "위력 보정";
+
+          const text =
+            `${label} ${fmtPracticeValue(current)}→${fmtPracticeValue(next)}`;
+
+          if (user.isPlayer()) {
+            result.playerDamageFactors ??= [];
+            result.playerDamageFactors.push(text);
+          } else {
+            result.enemyDamageFactors ??= [];
+            result.enemyDamageFactors.push(text);
+          }
+
+          // ✅ 다음엔 다시 기본값으로
+          (holder as any).__practiceLabel = "위력 보정";
+        }
+      }
+
+      current = next;
+    },
+
+    configurable: true,
+  });
+};
+const power = new NumberHolder(effectiveMove.power);
+  installPracticePowerWatcher(power, source);
 
   // ✅ FLING / throwMove 동적 위력 처리
   // - throwMove 기술은 base power가 -1로 정의되어 있음
@@ -1626,7 +1709,39 @@ if (
  // FLING 동적위력 처리 끝난 직후
 
 // 그 다음 VariablePowerAttr
-applyMoveAttrs("VariablePowerAttr", source, target, this, power);
+// 그 다음 VariablePowerAttr
+(power as any).__practiceLabel =
+  effectiveMove.name ?? this.name ?? "기술 효과";
+
+applyMoveAttrs(
+  "VariablePowerAttr",
+  source,
+  target,
+  effectiveMove,
+  power,
+);
+
+// ✅ 이판사판벨트: 반동 계열 기술 위력 1.3배
+const recoilBelt = source.getHeldItems().find(
+  m => m instanceof RecoilBoosterModifier,
+);
+
+const hasRecoilMove =
+  this.hasFlag(MoveFlags.RECKLESS_MOVE) ||
+  this.hasAttr?.(RecoilAttr) ||
+  (this as any).attrs?.some(
+    (a: any) => a.constructor?.name === "RecoilAttr",
+  );
+
+if (recoilBelt && hasRecoilMove) {
+  (power as any).__practiceLabel =
+    "이판사판벨트 적용";
+  const before = power.value;
+
+  power.value = Math.floor(power.value * 1.3);
+
+  const after = power.value;
+}
 
 // ✅ ME FIRST: 복사된 기술 위력 1.5배 (FOLLOW_UP에서만)
 const td: any = (source as any)?.turnData;
@@ -1687,6 +1802,20 @@ if (ally != null && target != null) {
   });
 }
 
+const protectivePads = source.getHeldItems().find(
+  item => item instanceof IgnoreContactItemModifier,
+) as IgnoreContactItemModifier | undefined;
+
+if (
+  protectivePads &&
+  wasContactMove
+) {
+  (power as any).__practiceLabel = "방호패드";
+
+  power.value = Math.floor(
+    power.value * 1.3,
+  );
+}
     // Non-priority, single-hit moves of the user's Tera Type are always a bare minimum of 60 power
 
     const sourceTeraType = source.getTeraType();
@@ -1731,17 +1860,17 @@ if (typeBoost) {
   power.value *= typeBoost.boostValue;
 }
     // 기존 applyModifiers → applyModifier로 바꾸기
+const beforeTypeBoosterPower = power.value;
+
 const typeSpecificMoveBooster = globalScene.applyModifier(
   TypeSpecificMoveBoosterModifier,
   source.isPlayer(),
   source,
-  typeChangeHolder.value, // ✅ 최종 타입
-  power
+  typeChangeHolder.value,
+  power,
 ) as TypeSpecificMoveBoosterModifier;
 
-// 만약 Modifier가 실제로 적용되었다면 (즉, null이 아니면)
 if (typeSpecificMoveBooster) {
-  // Modifier 상태 갱신만 수행 (소모는 Modifier 내부 apply에서 처리됨)
   globalScene.updateModifiers(source.isPlayer());
   source.updateInfo();
 }
@@ -1786,12 +1915,48 @@ if (typeSpecificMoveBooster) {
       power.value *= 1.5;
     }
     
+   // ✅ 다이맥스 맥스무브 1.5배
+if (source.isDynamaxed && isMaxMove(this.id)) {
+  power.value *= 1.5;
+}
     // ✅ ME FIRST: 이 기술이 "선취로 복사된 그 기술"이면 1.5배
    if (source.getTag(MeFirstPowerTag)) {
-      power.value *= 1.5;
-    }
+  power.value *= 1.5;
+}
 
-    return power.value;
+const movePowerMultiplier =
+  td?.movePowerMultiplier;
+
+if (
+  typeof movePowerMultiplier === "number"
+  && movePowerMultiplier !== 1
+) {
+  const boosts =
+  td.powerBoostLabels?.length
+    ? td.powerBoostLabels
+    : [{
+        label: td.lastPowerBoostName ?? "주얼/도구 위력 보정",
+        mult: movePowerMultiplier,
+      }];
+
+for (const boost of boosts) {
+  (power as any).__practiceLabel =
+    boost.label;
+
+  const singleMult =
+    boost.mult ?? 1;
+
+  power.value = Math.floor(
+    power.value * singleMult
+  );
+}
+
+  td.movePowerMultiplier = 1;
+  td.powerBoostLabels = [];
+  td.lastPowerBoostName = undefined;
+}
+
+return power.value;
   }
 
   getPriority(user: Pokemon, simulated: boolean = true) {
@@ -2389,8 +2554,9 @@ export class MoveEffectAttr extends MoveAttr {
   }
 
   // 1) SheerForce 판정 (공격기면 부가효과 제거) - ✅ 예외기술 제외
-const sheerForce =
-  globalScene.getModifiers(SheerForceItemModifier).find(mod => mod.pokemonId === user.id);
+const sheerForce = globalScene
+  .getModifiers(SheerForceItemModifier, user.isPlayer())
+  .find(mod => mod.pokemonId === user.id);
 
 const isDamagingMove = move.category !== MoveCategory.STATUS; // 네 규칙 유지
 
@@ -2409,17 +2575,19 @@ if (sheerForce && isDamagingMove) {
     move
   });
 
-  const sereneGraceItem =
-  globalScene.getModifiers(MoveEffectChanceMultiplierItemModifier)
-    .find(mod => mod.pokemonId === user.id) ?? null;
+  const holderIsPlayer = user.isPlayer();
+
+const sereneGraceItem = globalScene
+  .getModifiers(MoveEffectChanceMultiplierItemModifier, holderIsPlayer)
+  .find(mod => mod.pokemonId === user.id) ?? null;
 
 // ✅ SpeciesStatBooster에서도 부가효과 2배 찾기
-const speciesChanceBoost =
-  globalScene.getModifiers(SpeciesStatBoosterModifier)
-    .find(mod =>
-      mod.pokemonId === user.id &&
-      mod.getEffectChanceMult?.()
-    ) ?? null;
+const speciesChanceBoost = globalScene
+  .getModifiers(SpeciesStatBoosterModifier, user.isPlayer())
+  .find(mod =>
+    mod.pokemonId === user.id &&
+    mod.getEffectChanceMult?.()
+  ) ?? null;
 
 if ((sereneGraceItem || speciesChanceBoost) && moveChance.value > 0) {
   const mult =
@@ -2445,8 +2613,11 @@ if ((sereneGraceItem || speciesChanceBoost) && moveChance.value > 0) {
       chance: moveChance
     });
 
-    const hasCovertCloak = globalScene.getModifiers(IgnoreMoveEffectsItemModifier)
-      .some(mod => mod.pokemonId === target.id);
+    const holderIsPlayer = target.isPlayer();
+
+const hasCovertCloak = globalScene
+  .getModifiers(IgnoreMoveEffectsItemModifier, holderIsPlayer)
+  .some(mod => mod.pokemonId === target.id);
 
     if (hasCovertCloak) moveChance.value = 0;
   }
@@ -7420,11 +7591,26 @@ export class PhotonGeyserCategoryAttr extends VariableMoveCategoryAttr {
     const spa = user.getCategoryCompareStat(Stat.SPATK);
 
     const result =
-      atk > spa ? MoveCategory.PHYSICAL : MoveCategory.SPECIAL;
+      atk > spa
+        ? MoveCategory.PHYSICAL
+        : MoveCategory.SPECIAL;
 
     category.value = result;
 
-    return true; // 항상 적용
+    console.log("[CATEGORY CHECK]", {
+  user: user.name,
+  move: move.name,
+  atk,
+  spa,
+  atkStage: user.getStatStage(Stat.ATK),
+  spaStage: user.getStatStage(Stat.SPATK),
+  result:
+    result === MoveCategory.PHYSICAL
+      ? "PHYSICAL"
+      : "SPECIAL"
+});
+
+    return true;
   }
 }
 
@@ -7456,30 +7642,11 @@ export class TeraMoveCategoryAttr extends VariableMoveCategoryAttr {
     const atk = user.getCategoryCompareStat(Stat.ATK);
     const spa = user.getCategoryCompareStat(Stat.SPATK);
 
-    // ✅ 스테이지도 같이 찍어서, 진짜 ATK/SPATK가 몇 랭크인지 확인
-    const atkStage = user.getStatStage(Stat.ATK);
-    const spaStage = user.getStatStage(Stat.SPATK);
+    category.value = atk > spa
+      ? MoveCategory.PHYSICAL
+      : MoveCategory.SPECIAL;
 
-    // ✅ ability는 object가 아니라 id/name만 찍기
-    const abilityId =
-      (typeof (user as any).getAbilityId === "function"
-        ? (user as any).getAbilityId()
-        : (user as any).abilityId) ?? "unknown";
-
-    const result = atk > spa ? "PHYSICAL" : "SPECIAL";
-
-    console.log(
-      `[TERA_CATEGORY] atkCompare=${atk} spaCompare=${spa} result=${result} ability=${abilityId}`
-    );
-    console.log(`[STAGE] ATK=${atkStage} SPATK=${spaStage}`);
-
-    // ✅ 실제 적용
-    if (atk > spa) {
-      category.value = MoveCategory.PHYSICAL;
-      return true;
-    }
-
-    return false;
+    return true;
   }
 }
 
@@ -12000,7 +12167,7 @@ export function initMoves() {
     new AttackMove(MoveId.GUILLOTINE, PokemonType.NORMAL, MoveCategory.PHYSICAL, 250, 30, 5, -1, 0, 1)
       .attr(OneHitKOAttr)
       .attr(OneHitKOAccuracyAttr),
-    new ChargingAttackMove(MoveId.RAZOR_WIND, PokemonType.FLYING, MoveCategory.SPECIAL, 100, 100, 10, -1, 100, 1)
+    new ChargingAttackMove(MoveId.RAZOR_WIND, PokemonType.FLYING, MoveCategory.SPECIAL, 100, 100, 10, -1, 2, 1)
       .chargeText(i18next.t("moveTriggers:whippedUpAWhirlwind", { pokemonName: "{USER}" }))
       .chargeAttr(StatStageChangeAttr, [ Stat.SPATK ], 2, true)
       .chargeAttr(InstantChargeAttr, (user, move) => { return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier) })
@@ -17677,7 +17844,7 @@ new AttackMove(MoveId.MAX_STEELSPIKE, PokemonType.STEEL, MoveCategory.PHYSICAL, 
       .attr(HitHealAttr, 0.75)
       .triageMove()
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-   new AttackMove(MoveId.WILL_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 120, 90, 15, -1, 0, 224)
+   new AttackMove(MoveId.WILL_POWER, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 130, 100, 15, -1, 0, 224)
       .attr(PhotonGeyserCategoryAttr)
       .attr(NeutralDamageAgainstDarkTypeMultiplierAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES),

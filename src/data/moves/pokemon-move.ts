@@ -84,8 +84,24 @@ export class PokemonMove {
    * @param count - (Default `1`) The amount of PP to use
    */
   public usePp(count = 1): void {
-    this.ppUsed = Math.min(this.ppUsed + count, this.getMovePp());
+  const battle = globalScene.currentBattle as any;
+
+  console.log("[USE_PP_CALLED]",
+    "moveId=", this.moveId,
+    "count=", count,
+    "ppUsedBefore=", this.ppUsed,
+    "maxPp=", this.getMovePp(),
+    "isPracticeBattle=", battle?.isPracticeBattle,
+    "practiceNoPpCost=", battle?.practiceNoPpCost,
+  );
+
+  if (battle?.isPracticeBattle) {
+    console.log("[PRACTICE_PP_SKIP]", "moveId=", this.moveId);
+    return;
   }
+
+  this.ppUsed = Math.min(this.ppUsed + count, this.getMovePp());
+}
 
   // TODO: Rename to `getMaxPP`; the current name is obscure and frankly stupid
   getMovePp(): number {

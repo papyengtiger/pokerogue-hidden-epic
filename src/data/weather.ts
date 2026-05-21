@@ -88,6 +88,17 @@ export class Weather {
           return 1.5;
         }
         break;
+      case WeatherType.SANDSTORM:
+        if (attackType === PokemonType.ROCK) {
+          return 1.5;
+        }
+        break;
+      case WeatherType.SNOW:
+      case WeatherType.HAIL:
+        if (attackType === PokemonType.ICE) {
+          return 1.5;
+        }
+        break;
     }
 
     return 1;

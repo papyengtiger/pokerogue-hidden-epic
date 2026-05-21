@@ -1,11 +1,19 @@
 import { VoucherType } from "#system/voucher";
 import { ModifierTier } from "#enums/modifier-tier";
-import { ModifierTypeOption, type WeightedModifierType } from "#modifiers/modifier-type";
+import {
+  PokemonHeldItemModifier,
+  PersistentModifier
+} from "#modifiers/modifier";
+import { ModifierTypeOption, type WeightedModifierType, type RogueShopPurchaseMode, ModifierTypeGenerator, BaseStatBoosterModifierType, AttackTypeBoosterModifierType, TypeSpecificMoveBoosterModifierType, PokemonHeldItemModifierType, ShopPersistentModifierType, PersistentModifierType } from "#modifiers/modifier-type";
 import { modifierPool, wildModifierPool, dailyStarterModifierPool } from "#modifiers/modifier-pools";
 import type { RogueShopListing } from "#ui/rogue-shop-ui-handler";
 import { modifierTypes } from "#data/data-lists";
-
-export type RogueShopPurchaseMode = "INSTANT" | "SELECT_POKEMON" | "TRAINER_LOADOUT";
+import type { PermanentStat, TempBattleStat } from "#enums/stat";
+import { getStatKey, Stat, TEMP_BATTLE_STATS } from "#enums/stat";
+import { PokemonType } from "#enums/pokemon-type";
+import { TYPE_BOOST_ITEM_BOOST_PERCENT } from "#app/constants";
+import { getBerryEffectDescription, getBerryName } from "#data/berry";
+import { BerryType } from "#enums/berry-type";
 
 export function getVoucherShopTier(v: VoucherType): ModifierTier {
   switch (v) {
@@ -48,111 +56,150 @@ function createListing(
   };
 }
 
-function shouldExcludeFromRogueShop(id: string): boolean {
-  return [
-    // 회복 아이템류
-    "POTION",
-    "SUPER_POTION",
-    "HYPER_POTION",
-    "MAX_POTION",
-    "FULL_RESTORE",
-    "FULL_HEAL",
-    "REVIVE",
-    "MAX_REVIVE",
-    "SACRED_ASH",
-
-    // PP 회복류
-    "ETHER",
-    "MAX_ETHER",
-    "ELIXIR",
-    "MAX_ELIXIR",
-    "PP_UP",
-    "Z_DRINK",
-    "MAX_DRINK",
-
-    // 열매/즉석 소모성 회복류 성격이 강한 것들은 필요시 추가
-    "BERRY",
-  ].includes(id);
-}
-
-function inferPurchaseMode(id: string): RogueShopPurchaseMode {
-  if (
-    [
-      "MEGA_BRACELET",
-      "DYNAMAX_BAND",
-      "Z_RING",
-      "Z_POWER_RING",
-      "WISHING_STAR",
-      "LOCK_CAPSULE",
-      "MAP",
-      "DNA_SPLICERS",
-    ].includes(id)
-  ) {
-    return "TRAINER_LOADOUT";
-  }
-
-  if (
-    [
-      "KINGS_ROCK",
-      "POWER_HERB",
-      "WHITE_HERB",
-      "MENTAL_HERB",
-      "FOCUS_BAND",
-      "QUICK_CLAW",
-      "LUCKY_EGG",
-      "GOLDEN_EGG",
-      "LEFTOVERS",
-      "SHELL_BELL",
-      "LIFE_ORB",
-      "ABILITY_SHIELD",
-      "MOLD_BREAKER_BRACER",
-      "GOLDEN_INCENSE",
-      "MUSCLE_BAND",
-      "WISE_GLASSES",
-      "CLEAR_AMULET",
-      "EXPERT_BELT",
-      "SCOPE_LENS",
-      "FOCUS_SASH",
-      "ASSAULT_VEST",
-      "CHOICE_BAND",
-      "CHOICE_SPECS",
-      "CHOICE_SCARF",
-      "AIR_BALLOON",
-      "BLUNDER_POLICY",
-      "ROOM_SERVICE",
-      "THROAT_SPRAY",
-      "LOADED_DICE",
-      "ROCKY_HELMET",
-      "WIDE_LENS",
-    ].includes(id)
-  ) {
-    return "SELECT_POKEMON";
-  }
-
-  return "INSTANT";
-}
-
 function buildVoucherShopListings(): RogueShopListing[] {
-  const types = [
-    { type: VoucherType.REGULAR, key: "VOUCHER" },
-    { type: VoucherType.PLUS, key: "VOUCHER_PLUS" },
-    { type: VoucherType.PREMIUM, key: "VOUCHER_PREMIUM" },
-    { type: VoucherType.GOLDEN, key: "VOUCHER_GOLDEN" }, // 실제 키가 다르면 수정
+  const entries = [
+    {
+      key: "VOUCHER",
+      tier: getVoucherShopTier(VoucherType.REGULAR),
+      purchaseMode: "INSTANT" as RogueShopPurchaseMode,
+    },
+    {
+      key: "VOUCHER_PLUS",
+      tier: getVoucherShopTier(VoucherType.PLUS),
+      purchaseMode: "INSTANT" as RogueShopPurchaseMode,
+    },
+    {
+      key: "VOUCHER_PREMIUM",
+      tier: getVoucherShopTier(VoucherType.PREMIUM),
+      purchaseMode: "INSTANT" as RogueShopPurchaseMode,
+    },
+    {
+      key: "VOUCHER_GOLDEN",
+      tier: getVoucherShopTier(VoucherType.GOLDEN),
+      purchaseMode: "INSTANT" as RogueShopPurchaseMode,
+    },
+
+    // 로그센터 상점 전용 상품
+    {
+      key: "GOLDEN_EXP_CHARM",
+      tier: ModifierTier.LUXURY,
+      purchaseMode: "TRAINER_LOADOUT" as RogueShopPurchaseMode,
+    },
   ];
 
-  return types.map(t => {
-    const tier = getVoucherShopTier(t.type);
-    const func = (modifierTypes as Record<string, () => any>)[t.key];
+  return entries.map(entry => {
+    const func = (modifierTypes as Record<string, () => any>)[entry.key];
     const type = func().withIdFromFunc(func);
 
     return createListing(
-      t.key,
-      tier,
+      entry.key,
+      entry.tier,
       new ModifierTypeOption(type, 1, 0),
-      "INSTANT",
+      entry.purchaseMode,
       99,
     );
   });
+}
+
+function buildBerryListings(): RogueShopListing[] {
+  const berries = Object.values(BerryType).filter(v => typeof v === "number") as BerryType[];
+
+  const berryFunc = modifierTypes.BERRY;
+  const berryGenerator = berryFunc().withIdFromFunc(berryFunc) as ModifierTypeGenerator;
+
+  const berryTier = ModifierTier.GREAT; // 전부 동일 등급
+  const berryPrice = 150; // 전부 동일 가격
+
+  return berries
+    .map(berryType => {
+      const type = berryGenerator.generateType([], [berryType]);
+      if (!type) {
+        return null;
+      }
+
+      type.setTier(berryTier);
+
+      return {
+        id: `${type.id}_${berryType}`,
+        tier: berryTier,
+        priceRp: berryPrice,
+        stock: 99,
+        purchaseMode: "SELECT_POKEMON" as RogueShopPurchaseMode,
+        option: new ModifierTypeOption(type, 1, 0),
+      };
+    })
+    .filter((listing): listing is RogueShopListing => listing !== null);
+}
+
+function expandGeneratorForShop(type: ModifierType): ModifierType[] {
+  switch (type.id) {
+    case "BASE_STAT_BOOSTER": {
+      const gen = modifierTypes.BASE_STAT_BOOSTER().withIdFromFunc(modifierTypes.BASE_STAT_BOOSTER);
+      return [
+        gen.generateType([], [Stat.HP]),
+        gen.generateType([], [Stat.ATK]),
+        gen.generateType([], [Stat.DEF]),
+        gen.generateType([], [Stat.SPATK]),
+        gen.generateType([], [Stat.SPDEF]),
+        gen.generateType([], [Stat.SPD]),
+      ].filter(Boolean) as ModifierType[];
+    }
+
+    case "ATTACK_TYPE_BOOSTER": {
+      const gen = modifierTypes.ATTACK_TYPE_BOOSTER().withIdFromFunc(modifierTypes.ATTACK_TYPE_BOOSTER);
+      return [
+        gen.generateType([], [PokemonType.NORMAL]),
+        gen.generateType([], [PokemonType.FIGHTING]),
+        gen.generateType([], [PokemonType.FLYING]),
+        gen.generateType([], [PokemonType.POISON]),
+        gen.generateType([], [PokemonType.GROUND]),
+        gen.generateType([], [PokemonType.ROCK]),
+        gen.generateType([], [PokemonType.BUG]),
+        gen.generateType([], [PokemonType.GHOST]),
+        gen.generateType([], [PokemonType.STEEL]),
+        gen.generateType([], [PokemonType.FIRE]),
+        gen.generateType([], [PokemonType.WATER]),
+        gen.generateType([], [PokemonType.GRASS]),
+        gen.generateType([], [PokemonType.ELECTRIC]),
+        gen.generateType([], [PokemonType.PSYCHIC]),
+        gen.generateType([], [PokemonType.ICE]),
+        gen.generateType([], [PokemonType.DRAGON]),
+        gen.generateType([], [PokemonType.DARK]),
+        gen.generateType([], [PokemonType.FAIRY]),
+      ].filter(Boolean) as ModifierType[];
+    }
+
+    case "TYPE_SPECIFIC_MOVE_BOOSTER": {
+      const gen = modifierTypes.TYPE_SPECIFIC_MOVE_BOOSTER().withIdFromFunc(modifierTypes.TYPE_SPECIFIC_MOVE_BOOSTER);
+      return [
+        gen.generateType([], [PokemonType.NORMAL]),
+        gen.generateType([], [PokemonType.FIGHTING]),
+        gen.generateType([], [PokemonType.FLYING]),
+        gen.generateType([], [PokemonType.POISON]),
+        gen.generateType([], [PokemonType.GROUND]),
+        gen.generateType([], [PokemonType.ROCK]),
+        gen.generateType([], [PokemonType.BUG]),
+        gen.generateType([], [PokemonType.GHOST]),
+        gen.generateType([], [PokemonType.STEEL]),
+        gen.generateType([], [PokemonType.FIRE]),
+        gen.generateType([], [PokemonType.WATER]),
+        gen.generateType([], [PokemonType.GRASS]),
+        gen.generateType([], [PokemonType.ELECTRIC]),
+        gen.generateType([], [PokemonType.PSYCHIC]),
+        gen.generateType([], [PokemonType.ICE]),
+        gen.generateType([], [PokemonType.DRAGON]),
+        gen.generateType([], [PokemonType.DARK]),
+        gen.generateType([], [PokemonType.FAIRY]),
+      ].filter(Boolean) as ModifierType[];
+    }
+
+    default:
+       return [type];
+  }
+}
+
+function shouldShowInShop(type: ModifierType): boolean {
+  return type.isRogueShopCandidate?.() ?? false;
 }
 
 function buildListingsFromPool(
@@ -170,26 +217,24 @@ function buildListingsFromPool(
 
     const entries = pool[tier] ?? [];
     for (const entry of entries) {
-      const type = entry.modifierType; // ✅ 이미 ModifierType 객체
-      const id = type.id;
+      const expandedTypes = expandGeneratorForShop(entry.modifierType);
 
-      if (!id) {
-        continue;
+      for (const type of expandedTypes) {
+  const id = type.id;
+  if (!id) continue;
+
+  if (!shouldShowInShop(type)) continue;
+
+  listings.push(
+          createListing(
+            id,
+            tier,
+            new ModifierTypeOption(type, 1, 0),
+            type.getRogueShopPurchaseMode?.() ?? "INSTANT",
+            99,
+          ),
+        );
       }
-
-      if (shouldExcludeFromRogueShop(id)) {
-        continue;
-      }
-
-      listings.push(
-        createListing(
-          id,
-          tier,
-          new ModifierTypeOption(type, 1, 0),
-          inferPurchaseMode(id),
-          99,
-        ),
-      );
     }
   }
 
@@ -213,6 +258,7 @@ function dedupeListings(listings: RogueShopListing[]): RogueShopListing[] {
 
 export function buildRogueShopListings(): RogueShopListing[] {
   const voucherListings = buildVoucherShopListings();
+  const berryListings = buildBerryListings();
 
   const wildListings = buildListingsFromPool(wildModifierPool);
   const dailyStarterListings = buildListingsFromPool(dailyStarterModifierPool);
@@ -220,6 +266,7 @@ export function buildRogueShopListings(): RogueShopListing[] {
 
   return dedupeListings([
     ...voucherListings,
+    ...berryListings,
     ...wildListings,
     ...dailyStarterListings,
     ...normalListings,

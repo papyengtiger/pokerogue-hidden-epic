@@ -470,20 +470,26 @@ globalScene.tweens.add({
         }
       }
     } else if (button === Button.CANCEL) {
-      if (this.player) {
-        success = true;
-        if (this.onActionInput) {
-          const originalOnActionInput = this.onActionInput;
-          this.awaitingActionInput = false;
-          this.onActionInput = null;
-          // TODO: What is a good fallback to pass to this?
-          originalOnActionInput(-1, -1);
-          this.moveInfoOverlayActive = this.moveInfoOverlay.active;
-          this.moveInfoOverlay.setVisible(false);
-          this.moveInfoOverlay.active = false; // don't clear here as we might need to restore the UI in case the user cancels the action
-        }
+  if (this.player) {
+    success = true;
+    if (this.onActionInput) {
+      const originalOnActionInput = this.onActionInput;
+      this.awaitingActionInput = false;
+      this.onActionInput = null;
+
+      const result = originalOnActionInput(-1, -1);
+
+      if (result) {
+        this.moveInfoOverlayActive = this.moveInfoOverlay.active;
+        this.moveInfoOverlay.setVisible(false);
+        this.moveInfoOverlay.active = false;
+      } else {
+        this.awaitingActionInput = true;
+        this.onActionInput = originalOnActionInput;
       }
-    } else {
+    }
+  }
+} else {
       switch (button) {
         case Button.UP:
   if (this.rowCursor === 0 && this.cursor === 5) {

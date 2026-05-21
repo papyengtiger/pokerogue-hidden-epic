@@ -71,8 +71,9 @@ export enum BiomeId {
   SHARP_FIELD,
   GLACIER,
   SEWER,
-  ISLAND = 100,
+  ISLAND = 1000,
   LABORATORY,
-  END = 110
+  END = 1100,
+  TUTORIAL_ROOM = 2000
 }
 

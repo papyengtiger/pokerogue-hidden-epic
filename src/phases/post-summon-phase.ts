@@ -24,12 +24,18 @@ import {
   WeatherRockTrainerModifier,
   TerrainSeedTrainerModifier,
   BeastBoostStartStatBoostModifier,
+  PreserveItemModifier,
 } from "#app/modifier/modifier";
 import { SpeciesId } from "#enums/species-id";
 import { EFFECTIVE_STATS } from "#enums/stat"; // 네 코드에서 사용 중
 import { WeatherType } from "#app/enums/weather-type";
 import { TerrainType } from "#data/terrain";
 import type { Pokemon } from "#field/pokemon";
+import { BATTLE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, EFFECTIVE_STATS, type BattleStat, Stat } from "#enums/stat";
+import { BooleanHolder, NumberHolder } from "#utils/common";
+import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
+import i18next from "i18next";
+import { getPokemonNameWithAffix } from "#app/messages";
 
 export class PostSummonPhase extends PokemonPhase {
   public readonly phaseName = "PostSummonPhase";
@@ -39,7 +45,12 @@ export class PostSummonPhase extends PokemonPhase {
 
     const pokemon = this.getPokemon();
     console.debug(`[PostSummonPhase] Start for ${pokemon.name}`);
-
+    console.log("[POST_SUMMON_START]", {
+    name: pokemon.name,
+    ability: pokemon.getAbility?.()?.name,
+    abilityId: pokemon.abilityId,
+    isPlayer: pokemon.isPlayer(),
+  });
     // 맹독 카운트 초기화
     if (pokemon.status?.effect === StatusEffect.TOXIC) {
       pokemon.status.toxicTurnCount = 0;
@@ -57,6 +68,11 @@ export class PostSummonPhase extends PokemonPhase {
     }
 
     // ✅ Boost Energy 발동 로직(기존 유지)
+console.log(
+  "[BOOST_CALL_BEFORE]",
+  pokemon.name,
+);
+
 this.applyBoostEnergyTag(pokemon);
 
 // ✅ 울트라에너지(기존 유지)
@@ -163,47 +179,130 @@ for (const p of field) {
     this.end();
   }
 
-  private applyBoostEnergyTag(pokemon: Pokemon) {
-    const boostEnergyItem = globalScene
-      .getModifiers(BoostEnergyModifier)
-      .find(mod => mod.pokemonId === pokemon.id) as BoostEnergyModifier | null;
+  protected applyBoostEnergyTag(pokemon: Pokemon) {
+  const normalBoostEnergyItem = globalScene
+  .getModifiers(BoostEnergyModifier, pokemon.isPlayer())
+  .find(mod => mod.pokemonId === pokemon.id) as BoostEnergyModifier | undefined;
 
-    if (!boostEnergyItem) return;
+const practiceBoostEnergyItem = ((globalScene as any).practiceRentalModifiers ?? [])
+  .find((mod: any) =>
+    mod instanceof BoostEnergyModifier &&
+    mod.pokemonId === pokemon.id
+  ) as BoostEnergyModifier | undefined;
 
-    let highestStat: any = null; // 네 원본이 EffectiveStat이면 그 타입으로 바꿔도 됨
-    let highestValue = Number.NEGATIVE_INFINITY;
+const boostEnergyItem =
+  normalBoostEnergyItem ??
+  practiceBoostEnergyItem;
 
-    for (const stat of EFFECTIVE_STATS) {
-      const value = pokemon.getEffectiveStat(
+console.log("[BOOST_ITEM_FOUND]", {
+  name: pokemon.name,
+  isPlayer: pokemon.isPlayer(),
+  pokemonId: pokemon.id,
+  normalFound: !!normalBoostEnergyItem,
+  practiceFound: !!practiceBoostEnergyItem,
+});
+
+if (!boostEnergyItem) {
+  return;
+}
+
+  let highestStat: BattleStat | null = null;
+  let highestValue =
+    Number.NEGATIVE_INFINITY;
+
+  for (const stat of EFFECTIVE_STATS) {
+    const value =
+      pokemon.getEffectiveStat(
         stat,
-        undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-        true
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        true,
       );
-      if (value > highestValue) {
-        highestValue = value;
-        highestStat = stat;
-      }
+
+    if (
+      value >
+      highestValue
+    ) {
+      highestValue =
+        value;
+
+      highestStat =
+        stat as BattleStat;
     }
-
-    if (!highestStat) {
-      console.log("[PostSummonPhase] Could not determine highest stat for", pokemon.name);
-      return;
-    }
-
-    const boostMultiplier = 1.3;
-    boostEnergyItem.apply(pokemon, [highestStat], boostMultiplier);
-    globalScene.updateModifiers(pokemon.isPlayer());
-
-    const heldItem = pokemon.getHeldItems().find(item => item instanceof BoostEnergyModifier);
-    if (heldItem) {
-      pokemon.loseHeldItem(heldItem);
-      globalScene.updateModifiers(pokemon.isPlayer());
-      console.log(`[PostSummonPhase] ${pokemon.name} Boost Energy 소모 완료`);
-    }
-
-    this.activateProtosynthesis(pokemon);
-    this.activateQuarkDrive(pokemon);
   }
+
+  if (
+    highestStat ===
+    null
+  ) {
+    return;
+  }
+
+  const boostMultiplier =
+  highestStat === Stat.SPD
+    ? 1.5
+    : 1.3;
+
+  const applied = boostEnergyItem.apply(
+    pokemon,
+    [highestStat],
+    boostMultiplier,
+  );
+
+  console.log("[BOOST_APPLIED]", {
+    pokemon: pokemon.name,
+    highestStat,
+    highestValue,
+    boostMultiplier,
+    applied,
+  });
+
+  if (!applied) {
+    return;
+  }
+
+  // ✅ 부스터에너지 소모 처리
+  const preserve = new BooleanHolder(false);
+
+  globalScene.applyModifiers(
+    PreserveItemModifier,
+    pokemon.isPlayer(),
+    pokemon,
+    preserve,
+    "item",
+  );
+
+  if (!preserve.value) {
+  recordRecycleSnapshot(
+    pokemon,
+    boostEnergyItem,
+    { args: [] },
+  );
+
+  // ✅ 지닌도구 제거
+  pokemon.loseHeldItem(boostEnergyItem);
+
+  globalScene.phaseManager.queueMessage(
+    i18next.t("modifier:boostEnergyItemUsed", {
+      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      itemName:
+        boostEnergyItem.type?.name ??
+        "부스터에너지",
+    }),
+  );
+}
+
+  globalScene.updateModifiers(
+    pokemon.isPlayer(),
+  );
+
+  pokemon.updateInfo?.();
+}
 
   private activateProtosynthesis(pokemon: Pokemon) {
     if (!pokemon.summonData?.tags) {

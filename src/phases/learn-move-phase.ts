@@ -236,7 +236,7 @@ private getZLearnRoguePoints(learnMoveType: LearnMoveType): number {
   if (!wasKnownZMove) {
     const gainedRp = this.getZLearnRoguePoints(this.learnMoveType);
     if (gainedRp > 0) {
-      globalScene.gameData.addroguePoints(gainedRp);
+      globalScene.gameData.addRoguePoints(gainedRp);
       globalScene.updateroguePointText();
     }
   }

@@ -14,7 +14,33 @@ export class AttemptRunPhase extends FieldPhase {
   public forceFailEscape = false;
 
   start() {
-    super.start();
+  super.start();
+
+  const battle = globalScene.currentBattle as any;
+
+  if (battle?.isPracticeBattle) {
+  globalScene.playSound("se/flee");
+  globalScene.phaseManager.queueMessage("넘어갔다!", null, true, 500);
+
+  const dummy = battle.practiceDummy as any;
+
+  if (dummy) {
+    dummy.hp = dummy.maxHp ?? 100;
+    dummy.status = undefined;
+    dummy.battleData = {};
+    dummy.turnData = {};
+    dummy.summonData = {};
+
+    dummy.setVisible?.(true);
+    dummy.setAlpha?.(1);
+    dummy.dummySprite?.setVisible?.(true);
+    dummy.dummySprite?.setAlpha?.(1);
+  }
+
+  globalScene.phaseManager.pushNew("TurnInitPhase");
+  this.end();
+  return;
+}
 
     // 액티브 플레이어 포켓몬 가져오기
     const playerPokemon = globalScene.getPlayerField(true)[0];

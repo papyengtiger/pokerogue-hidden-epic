@@ -27,7 +27,9 @@ export class TurnStartPhase extends FieldPhase {
    */
   getSpeedOrder(): BattlerIndex[] {
     const playerField = globalScene.getPlayerField().filter(p => p.isActive());
-    const enemyField = globalScene.getEnemyField().filter(p => p.isActive());
+    const enemyField = globalScene
+  .getEnemyField()
+  .filter(p => p.isActive());
 
     // Shuffle first so speed ties are deterministic random per turn
     let orderedTargets = (playerField as Pokemon[]).concat(enemyField);
@@ -41,7 +43,7 @@ export class TurnStartPhase extends FieldPhase {
 
     // Trick Room check
     const speedReversed = new BooleanHolder(false);
-    globalScene.arena.applyTags(TrickRoomTag, false, speedReversed);
+globalScene.arena.applyTags(TrickRoomTag, speedReversed);
 
     orderedTargets.sort((a: Pokemon, b: Pokemon) => {
       const aSpeed = a.getEffectiveStat(Stat.SPD);

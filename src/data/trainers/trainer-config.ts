@@ -4748,6 +4748,7 @@ export const trainerConfigs: TrainerConfigs = {
     .setModifierRewardFuncs(
       () => modifierTypes.SUPER_EXP_CHARM,
       () => modifierTypes.EXP_SHARE,
+      () => modifierTypes.MAP,
     )
     .setPartyMemberFunc(0, getRandomRivalPartyMemberFunc(RIVAL_1_POOL, 0))
     .setPartyMemberFunc(1, getRandomRivalPartyMemberFunc(RIVAL_1_POOL, 1)),
@@ -4777,6 +4778,11 @@ export const trainerConfigs: TrainerConfigs = {
     .setBattleBgm("battle_rival")
     .setMixedBattleBgm("battle_rival")
     .setPartyTemplates(trainerPartyTemplates.RIVAL_3)
+    .setModifierRewardFuncs(
+      () => modifierTypes.TERA_ORB,
+      () => modifierTypes.DYNAMAX_BAND,
+      () => modifierTypes.MEGA_BRACELET,
+    )
     .setPartyMemberFunc(0, getRandomRivalPartyMemberFunc(RIVAL_3_POOL, 0))
     .setPartyMemberFunc(1, getRandomRivalPartyMemberFunc(RIVAL_3_POOL, 1))
     .setPartyMemberFunc(2, getRandomRivalPartyMemberFunc(RIVAL_3_POOL, 2))
@@ -4793,7 +4799,11 @@ export const trainerConfigs: TrainerConfigs = {
     .setBattleBgm("battle_rival_2")
     .setMixedBattleBgm("battle_rival_2")
     .setPartyTemplates(trainerPartyTemplates.RIVAL_4)
-    .setModifierRewardFuncs(() => modifierTypes.TERA_ORB)
+    .setModifierRewardFuncs(
+      () => modifierTypes.ARMORITE_ORE,
+      () => modifierTypes.Z_RING,
+      () => modifierTypes.Z_POWER_RING,
+    )
     .setPartyMemberFunc(0, getRandomRivalPartyMemberFunc(RIVAL_4_POOL, 0))
     .setPartyMemberFunc(1, getRandomRivalPartyMemberFunc(RIVAL_4_POOL, 1))
     .setPartyMemberFunc(2, getRandomRivalPartyMemberFunc(RIVAL_4_POOL, 2))

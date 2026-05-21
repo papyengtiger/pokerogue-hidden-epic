@@ -26,6 +26,7 @@ import { areAllies, canSpeciesTera, willTerastallize } from "#utils/pokemon-util
 import { MoveCategory } from "#enums/move-category";
 import { BerryType } from "#enums/berry-type";
 import { NumberHolder, randSeedInt, toDmgValue } from "#utils/common";
+import { PracticeResultPhase } from "#phases/practice-result-phase";
 
 export class TurnEndPhase extends FieldPhase {
   public readonly phaseName = "TurnEndPhase";
@@ -158,15 +159,17 @@ if (bd.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
       globalScene.applyModifiers(TurnHeldItemTransferModifier, pokemon.isPlayer(), pokemon);
 
       // ✅ MoodyItemModifier 처리 (TurnEndPhase)
-const moodyMod =
-  globalScene.getModifiers(MoodyItemModifier).find(mod => mod.pokemonId === pokemon.id)
-  ?? (pokemon.isPlayer()
-      ? (globalScene.applyModifier(MoodyItemModifier, this.player, pokemon) as MoodyItemModifier | null)
-      : null);
+// ✅ MoodyItemModifier 처리 (TurnEndPhase)
+const moodyMod = globalScene
+  .getModifiers(MoodyItemModifier, pokemon.isPlayer())
+  .find(
+    mod =>
+      mod instanceof MoodyItemModifier &&
+      mod.pokemonId === pokemon.id,
+  ) as MoodyItemModifier | undefined;
 
 if (moodyMod) {
-  // ✅ 이제 무조건 "모디파이어 인스턴스"가 처리하도록
-  moodyMod.applyTurnEnd(pokemon, /* simulated */ false, []);
+  moodyMod.applyTurnEnd(pokemon, false, []);
 }
 
 // ✅ ✅ ✅ 여기! (turnCount 올리기 전에)
@@ -226,6 +229,10 @@ if (moodyMod) {
 
     globalScene.currentBattle.incrementTurn();
 
-    this.end();
+if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+  globalScene.phaseManager.pushNew("PracticeResultPhase");
+}
+
+this.end();
   }
 }

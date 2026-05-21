@@ -85,6 +85,13 @@ export class EggHatchData {
    */
   updatePokemon(showMessage = false) {
     return new Promise<void>(resolve => {
+    console.log("[EGG_HATCH_UPDATE_VARIANT]", {
+  speciesId: this.pokemon.species.speciesId,
+  name: this.pokemon.name,
+  shiny: this.pokemon.shiny,
+  variant: this.pokemon.variant,
+  dexAttr: this.pokemon.getDexAttr().toString(),
+});
       globalScene.gameData.setPokemonCaught(this.pokemon, true, true, showMessage).then(() => {
         globalScene.gameData.updateSpeciesDexIvs(this.pokemon.species.speciesId, this.pokemon.ivs);
         globalScene.gameData.setEggMoveUnlocked(this.pokemon.species, this.eggMoveIndex, showMessage).then(value => {

@@ -494,8 +494,8 @@ export const pokemonFormChanges: PokemonFormChanges = {
     new SpeciesFormChange(SpeciesId.LANDORUS, SpeciesFormKey.INCARNATE, SpeciesFormKey.THERIAN, new SpeciesFormChangeItemTrigger(FormChangeItem.REVEAL_GLASS))
   ],
   [SpeciesId.KYUREM]: [
-    new SpeciesFormChange(SpeciesId.KYUREM, "", "black", new SpeciesFormChangeItemTrigger(FormChangeItem.DARK_SPLICERS), false, getSpeciesDependentFormChangeCondition(SpeciesId.ZEKROM)),
-    new SpeciesFormChange(SpeciesId.KYUREM, "", "white", new SpeciesFormChangeItemTrigger(FormChangeItem.LIGHT_SPLICERS), false, getSpeciesDependentFormChangeCondition(SpeciesId.RESHIRAM))
+    new SpeciesFormChange(SpeciesId.KYUREM, "", "black", new SpeciesFormChangeItemTrigger(FormChangeItem.DARK_SPLICERS)),
+    new SpeciesFormChange(SpeciesId.KYUREM, "", "white", new SpeciesFormChangeItemTrigger(FormChangeItem.LIGHT_SPLICERS))
   ],
   [SpeciesId.KELDEO]: [
     new SpeciesFormChange(SpeciesId.KELDEO, "ordinary", "resolute", new SpeciesFormChangeMoveLearnedTrigger(MoveId.SECRET_SWORD), false, new SpeciesFormChangeCondition(() => globalScene.gameMode.isDaily !== true)),
@@ -598,8 +598,8 @@ export const pokemonFormChanges: PokemonFormChanges = {
     new SpeciesFormChange(SpeciesId.MIMIKYU, "busted", "disguised", new SpeciesFormChangeAbilityTrigger(), true)
   ],
   [SpeciesId.NECROZMA]: [
-    new SpeciesFormChange(SpeciesId.NECROZMA, "", "dawn-wings", new SpeciesFormChangeItemTrigger(FormChangeItem.N_LUNARIZER), false, getSpeciesDependentFormChangeCondition(SpeciesId.LUNALA)),
-    new SpeciesFormChange(SpeciesId.NECROZMA, "", "dusk-mane", new SpeciesFormChangeItemTrigger(FormChangeItem.N_SOLARIZER), false, getSpeciesDependentFormChangeCondition(SpeciesId.SOLGALEO)),
+    new SpeciesFormChange(SpeciesId.NECROZMA, "", "dawn-wings", new SpeciesFormChangeItemTrigger(FormChangeItem.N_LUNARIZER)),
+    new SpeciesFormChange(SpeciesId.NECROZMA, "", "dusk-mane", new SpeciesFormChangeItemTrigger(FormChangeItem.N_SOLARIZER)),
 new SpeciesFormChange(SpeciesId.NECROZMA, "ultra", "dawn-wings", new SpeciesFormChangeMoveLearnedTrigger(MoveId.LIGHT_THAT_BURNS_THE_SKY, false), false, new SpeciesFormChangeCondition(() => globalScene.gameMode.isDaily !== true)),
 new SpeciesFormChange(SpeciesId.NECROZMA, "dawn-wings", "ultra", new SpeciesFormChangeMoveLearnedTrigger(MoveId.LIGHT_THAT_BURNS_THE_SKY), false, new SpeciesFormChangeCondition(() => globalScene.gameMode.isDaily !== true)),
 new SpeciesFormChange(SpeciesId.NECROZMA, "dusk-mane", "ultra", new SpeciesFormChangeMoveLearnedTrigger(MoveId.LIGHT_THAT_BURNS_THE_SKY), false, new SpeciesFormChangeCondition(() => globalScene.gameMode.isDaily !== true)),
@@ -708,8 +708,8 @@ new SpeciesFormChange(SpeciesId.NECROZMA, "ultra", "dusk-mane", new SpeciesFormC
     new SpeciesFormChange(SpeciesId.URSHIFU, "rapid-strike", SpeciesFormKey.GIGANTAMAX_RAPID, new SpeciesFormChangeItemTrigger(FormChangeItem.MAX_HONEY))
   ],
   [SpeciesId.CALYREX]: [
-    new SpeciesFormChange(SpeciesId.CALYREX, "", "ice", new SpeciesFormChangeItemTrigger(FormChangeItem.ICY_REINS_OF_UNITY), false, getSpeciesDependentFormChangeCondition(SpeciesId.GLASTRIER)),
-    new SpeciesFormChange(SpeciesId.CALYREX, "", "shadow", new SpeciesFormChangeItemTrigger(FormChangeItem.SHADOW_REINS_OF_UNITY), false, getSpeciesDependentFormChangeCondition(SpeciesId.SPECTRIER))
+    new SpeciesFormChange(SpeciesId.CALYREX, "", "ice", new SpeciesFormChangeItemTrigger(FormChangeItem.ICY_REINS_OF_UNITY)),
+    new SpeciesFormChange(SpeciesId.CALYREX, "", "shadow", new SpeciesFormChangeItemTrigger(FormChangeItem.SHADOW_REINS_OF_UNITY))
   ],
   [SpeciesId.ENAMORUS]: [
     new SpeciesFormChange(SpeciesId.ENAMORUS, SpeciesFormKey.INCARNATE, SpeciesFormKey.THERIAN, new SpeciesFormChangeItemTrigger(FormChangeItem.REVEAL_GLASS))

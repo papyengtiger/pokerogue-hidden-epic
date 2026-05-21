@@ -2,6 +2,7 @@ import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import type { BattlerIndex } from "#enums/battler-index";
 import { PostSummonPhase } from "#phases/post-summon-phase";
 import { SpeciesStatBoosterModifier, PokemonFormChangeItemModifier, CalyrexReinsUnifiedModifier } from "#app/modifier/modifier";
+import { BATTLE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, EFFECTIVE_STATS, type BattleStat, Stat } from "#enums/stat";
 import { AbilityId } from "#enums/ability-id";
 
 /**
@@ -22,11 +23,23 @@ export class PostSummonActivateAbilityPhase extends PostSummonPhase {
 
   applyAbAttrs("PostSummonAbAttr", { pokemon, passive: this.passive });
 
+  if ((pokemon as any).isPracticeDummy) {
+    globalScene.time.delayedCall(1, () => {
+      (pokemon as any).keepDummySpriteVisible?.();
+    });
+
+    globalScene.time.delayedCall(100, () => {
+      (pokemon as any).keepDummySpriteVisible?.();
+    });
+  }
+
   // ✅ passive 패스에서는 아이템 발동 금지
   if (this.passive) {
     this.end();
     return;
   }
+
+  this.applyBoostEnergyTag(pokemon);
 
   // SpeciesStatBooster
 const boosters = pokemon.getHeldItems().filter(i => i instanceof SpeciesStatBoosterModifier) as SpeciesStatBoosterModifier[];

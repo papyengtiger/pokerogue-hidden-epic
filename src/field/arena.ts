@@ -1143,6 +1143,8 @@ if (existingTag) {
         return 0.0;
       case BiomeId.MYSTERY_WORLD:
         return 0.0;
+      case BiomeId.TUTORIAL_ROOM:
+        return 0.0;
       case BiomeId.END:
         return 17.153;
       default:

@@ -78,6 +78,7 @@ import {
   MoneyRewardModifier,
   EggHatchSpeedUpModifier,
   type PersistentModifier,
+  PersistentModifier,
   PokemonAllMovePpRestoreModifier,
   PokemonBaseStatFlatModifier,
   PokemonBaseStatTotalModifier,
@@ -102,6 +103,7 @@ import {
   ShinyRateBoosterModifier,
   SpeciesCritBoosterModifier,
   SpeciesFormHeldItemModifier,
+  StatBoosterModifier,
   UrshifuGloveAbilityBypassModifier,
   SpeciesStatBoosterModifier,
   SurviveDamageModifier,
@@ -115,7 +117,8 @@ import {
   TurnHealModifier,
   TurnHeldItemTransferModifier,
   TurnStatusEffectModifier,
-  StatBoostModifier,
+  AtkStatBoosterModifier,
+  SpAtkStatBoosterModifier,
   StackingRiskyPowerBoosterModifier,
   StackingPowerBoosterModifier,
   RunSuccessModifier,
@@ -254,6 +257,8 @@ const useMaxWeightForOutput = false;
 
 type NewModifierFunc = (type: ModifierType, args: any[]) => Modifier;
 
+export type RogueShopPurchaseMode = "INSTANT" | "SELECT_POKEMON" | "TRAINER_LOADOUT";
+
 export class ModifierType {
   public id: string;
   public localeKey: string;
@@ -296,6 +301,47 @@ export class ModifierType {
 
   getDescription(): string {
     return i18next.t(`${this.localeKey}.description` as any);
+  }
+
+  getSafeName(): string {
+    const translatedName = this.name;
+    if (
+      !translatedName
+      || translatedName === "NULL.NAME"
+      || translatedName === "null.name"
+      || translatedName === `${this.localeKey}.name`
+      || translatedName === this.localeKey
+    ) {
+      return this.id ?? this.iconImage ?? "이름없음";
+    }
+    return translatedName;
+  }
+
+    isRogueShopExcluded(): boolean {
+    return false;
+  }
+
+  isTrainerLoadoutItem(): boolean {
+  return this.group === "trainer";
+}
+
+    isRogueShopCandidate(): boolean {
+  if (this.isRogueShopExcluded()) return false;
+
+  return (
+    this instanceof PokemonHeldItemModifierType ||
+    this.group === "trainer"
+  );
+}
+
+  getRogueShopPurchaseMode(): RogueShopPurchaseMode {
+    if (this.isTrainerLoadoutItem()) {
+      return "TRAINER_LOADOUT";
+    }
+    if (this instanceof PokemonHeldItemModifierType) {
+      return "SELECT_POKEMON";
+    }
+    return "INSTANT";
   }
 
   setTier(tier: ModifierTier): void {
@@ -412,11 +458,20 @@ export class ModifierTypeGenerator extends ModifierType {
   }
 
   generateType(party: Pokemon[], pregenArgs?: any[]) {
-    const ret = this.genTypeFunc(party, pregenArgs);
-    if (ret) {
-      ret.id = this.id;
-      ret.setTier(this.tier);
+  const ret = this.genTypeFunc(party, pregenArgs);
+
+  if (ret) {
+    if (!ret.id) {
+      if (pregenArgs?.length) {
+        ret.id = `${this.id}_${pregenArgs.join("_")}`;
+      } else {
+        ret.id = this.id;
+      }
     }
+
+    ret.setTier(this.tier);
+  }
+
     return ret;
   }
 }
@@ -575,6 +630,38 @@ export class PokemonHeldItemModifierType extends PokemonModifierType {
 
   newModifier(...args: any[]): PokemonHeldItemModifier {
     return super.newModifier(...args) as PokemonHeldItemModifier;
+  }
+}
+
+export class PersistentModifierType extends ModifierType {
+  constructor(
+    localeKey: string,
+    iconImage: string,
+    newModifierFunc: NewModifierFunc,
+    group?: string,
+    soundName?: string,
+  ) {
+    super(localeKey, iconImage, newModifierFunc, group, soundName);
+  }
+
+  newModifier(...args: any[]): PersistentModifier {
+    return super.newModifier(...args) as PersistentModifier;
+  }
+}
+
+export class ShopPersistentModifierType extends ModifierType {
+  constructor(
+    localeKey: string,
+    iconImage: string,
+    newModifierFunc: NewModifierFunc,
+    group?: string,
+    soundName?: string,
+  ) {
+    super(localeKey, iconImage, newModifierFunc, group, soundName);
+  }
+
+  newModifier(...args: any[]): PersistentModifier {
+    return super.newModifier(...args) as PersistentModifier;
   }
 }
 
@@ -1656,10 +1743,10 @@ export class TypeSpecificMoveBoosterModifierType
   extends PokemonHeldItemModifierType
   implements GeneratedPersistentModifierType
 {
-  public moveType: Type;
+  public moveType: PokemonType;
   public boostPercent: number;
 
-  constructor(moveType: Type, boostPercent: number) {
+  constructor(moveType: PokemonType, boostPercent: number) {
     super(
       "",
       `${TypeSpecificMoveBoosterItem[moveType]?.toLowerCase()}`,
@@ -1678,7 +1765,7 @@ export class TypeSpecificMoveBoosterModifierType
 
   getDescription(): string {
     return i18next.t("modifierType:ModifierType.TypeSpecificMoveBoosterModifierType.description", {
-      moveType: i18next.t(`pokemonInfo:Type.${PokemonType[this.moveType]}`),
+      moveType: i18next.t(`pokemonInfo:type.${toCamelCase(PokemonType[this.moveType])}`),
     });
   }
 
@@ -2007,16 +2094,31 @@ export class MoneyRewardModifierType extends ModifierType {
 export class ExpBoosterModifierType extends ModifierType {
   private boostPercent: number;
 
-  constructor(localeKey: string, iconImage: string, boostPercent: number) {
-    super(localeKey, iconImage, () => new ExpBoosterModifier(this, boostPercent));
+  constructor(
+    localeKey: string,
+    iconImage: string,
+    boostPercent: number,
+    group?: string,
+    soundName?: string,
+  ) {
+    super(
+      localeKey,
+      iconImage,
+      () => new ExpBoosterModifier(this, boostPercent),
+      group,
+      soundName,
+    );
 
     this.boostPercent = boostPercent;
   }
 
   getDescription(): string {
-    return i18next.t("modifierType:ModifierType.ExpBoosterModifierType.description", {
-      boostPercent: this.boostPercent,
-    });
+    return i18next.t(
+      "modifierType:ModifierType.ExpBoosterModifierType.description",
+      {
+        boostPercent: this.boostPercent,
+      },
+    );
   }
 }
 
@@ -2346,7 +2448,7 @@ class TypeSpecificMoveBoosterModifierTypeGenerator extends ModifierTypeGenerator
     super((party: Pokemon[], pregenArgs?: any[]) => {
       // pregenArgs로 타입이 주어지면 해당 타입을 적용하여 보정 생성
       if (pregenArgs && pregenArgs.length === 1 && pregenArgs[0] in PokemonType) {
-        return new TypeSpecificMoveBoosterModifierType(pregenArgs[0] as PokemonType, 20);
+        return new TypeSpecificMoveBoosterModifierType(pregenArgs[0] as PokemonType, 50);
       }
 
       const attackMoveTypes = party.flatMap(p =>
@@ -2399,7 +2501,7 @@ class TypeSpecificMoveBoosterModifierTypeGenerator extends ModifierTypeGenerator
       }
 
       // 해당 타입에 맞는 TypeSpecificMoveBoosterModifier 반환
-      return new TypeSpecificMoveBoosterModifierType(type!, 20);
+      return new TypeSpecificMoveBoosterModifierType(type!, 50);
     });
   }
 }
@@ -2510,7 +2612,7 @@ type SpeciesStatBoosterItemData = {
  * the current list of {@linkcode items}.
  * @extends ModifierTypeGenerator
  */
-class SpeciesStatBoosterModifierTypeGenerator extends ModifierTypeGenerator {
+export class SpeciesStatBoosterModifierTypeGenerator extends ModifierTypeGenerator {
   /** Object comprised of the currently available species-based stat boosting held items */
   public static readonly items = {
     LIGHT_BALL: {
@@ -3762,12 +3864,14 @@ const modifierTypeInitObj = Object.freeze({
       "modifierType:ModifierType.MEGA_BRACELET",
       "mega_bracelet",
       (type, _args) => new MegaEvolutionAccessModifier(type),
+      "trainer",
     ),
   DYNAMAX_BAND: () =>
     new ModifierType(
       "modifierType:ModifierType.DYNAMAX_BAND",
       "dynamax_band",
       (type, _args) => new GigantamaxAccessModifier(type),
+      "trainer",
     ),
   WISHING_STAR: () =>
     new ModifierTypeGenerator((party: Pokemon[], pregenArgs?: any[]) => {
@@ -3787,12 +3891,14 @@ const modifierTypeInitObj = Object.freeze({
       "modifierType:ModifierType.TERA_ORB",
       "tera_orb",
       (type, _args) => new TerastallizeAccessModifier(type),
+      "trainer",
     ),
   Z_RING: () =>
     new ModifierType(
       "modifierType:ModifierType.Z_RING",
       "z_ring",
       (type, _args) => new GenericZMoveAccessModifier(type),
+      "trainer",
     ),
 
   Z_POWER_RING: () =>
@@ -3800,6 +3906,7 @@ const modifierTypeInitObj = Object.freeze({
       "modifierType:ModifierType.Z_POWER_RING",
       "z_power_ring",
       (type, _args) => new ExclusiveZMoveAccessModifier(type),
+      "trainer",
     ),
 
   Z_EXCLUSIVE: () => new ZCrystalMoveModifierTypeGenerator(true),
@@ -3857,10 +3964,11 @@ const modifierTypeInitObj = Object.freeze({
         "modifierType:ModifierType.ARMORITE_ORE",
         "armorite_ore",
         (type, _args) => new MaxMoveAccessModifier(type),
+        "trainer",
       );
     }),
 
-  MAP: () => new ModifierType("modifierType:ModifierType.MAP", "map", (type, _args) => new MapModifier(type)),
+  MAP: () => new ModifierType("modifierType:ModifierType.MAP", "map", (type, _args) => new MapModifier(type), "trainer"),
 
   POTION: () => new PokemonHpRestoreModifierType("modifierType:ModifierType.POTION", "potion", 20, 10),
   SUPER_POTION: () =>
@@ -4223,7 +4331,7 @@ CURSED_BEAD: () =>
   MEMORY_MUSHROOM: () => new RememberMoveModifierType("modifierType:ModifierType.MEMORY_MUSHROOM", "big_mushroom"),
 
   EXP_SHARE: () =>
-    new ModifierType("modifierType:ModifierType.EXP_SHARE", "exp_share", (type, _args) => new ExpShareModifier(type)),
+    new ModifierType("modifierType:ModifierType.EXP_SHARE", "exp_share", (type, _args) => new ExpShareModifier(type), "trainer"),
   EXP_BALANCE: () =>
     new ModifierType(
       "modifierType:ModifierType.EXP_BALANCE",
@@ -4236,12 +4344,13 @@ CURSED_BEAD: () =>
       "modifierType:ModifierType.OVAL_CHARM",
       "oval_charm",
       (type, _args) => new EggHatchSpeedUpModifier(type),
+      "trainer",
     ),
 
-  EXP_CHARM: () => new ExpBoosterModifierType("modifierType:ModifierType.EXP_CHARM", "exp_charm", 25),
-  SUPER_EXP_CHARM: () => new ExpBoosterModifierType("modifierType:ModifierType.SUPER_EXP_CHARM", "super_exp_charm", 60),
+  EXP_CHARM: () => new ExpBoosterModifierType("modifierType:ModifierType.EXP_CHARM", "exp_charm", 50, "trainer"),
+  SUPER_EXP_CHARM: () => new ExpBoosterModifierType("modifierType:ModifierType.SUPER_EXP_CHARM", "super_exp_charm", 75, "trainer"),
   GOLDEN_EXP_CHARM: () =>
-    new ExpBoosterModifierType("modifierType:ModifierType.GOLDEN_EXP_CHARM", "golden_exp_charm", 100),
+    new ExpBoosterModifierType("modifierType:ModifierType.GOLDEN_EXP_CHARM", "golden_exp_charm", 100, "trainer"),
 
   LUCKY_EGG: () => new PokemonExpBoosterModifierType("modifierType:ModifierType.LUCKY_EGG", "lucky_egg", 40),
   GOLDEN_EGG: () => new PokemonExpBoosterModifierType("modifierType:ModifierType.GOLDEN_EGG", "golden_egg", 100),
@@ -4347,17 +4456,20 @@ BLIGHT_BEAD: () =>
   ),
 
   MUSCLE_BAND: () =>
-    new PokemonHeldItemModifierType(
-      "modifierType:ModifierType.MUSCLE_BAND",
-      "muscle_band",
-      (type, args) => new StatBoostModifier(type, (args[0] as Pokemon).id, 1),
-    ),
-  WISE_GLASSES: () =>
-    new PokemonHeldItemModifierType(
-      "modifierType:ModifierType.WISE_GLASSES",
-      "wise_glasses",
-      (type, args) => new StatBoostModifier(type, (args[0] as Pokemon).id, 1),
-    ),
+  new PokemonHeldItemModifierType(
+    "modifierType:ModifierType.MUSCLE_BAND",
+    "muscle_band",
+    (type, args) =>
+      new StatBoosterModifier(type, (args[0] as Pokemon).id, [Stat.ATK], 10),
+  ),
+
+WISE_GLASSES: () =>
+  new PokemonHeldItemModifierType(
+    "modifierType:ModifierType.WISE_GLASSES",
+    "wise_glasses",
+    (type, args) =>
+      new StatBoosterModifier(type, (args[0] as Pokemon).id, [Stat.SPATK], 10),
+  ),
 
   EVIOLITE: () =>
     new PokemonHeldItemModifierType(
@@ -4419,6 +4531,7 @@ BLIGHT_BEAD: () =>
       "modifierType:ModifierType.COIN_CASE",
       "coin_case",
       (type, _args) => new MoneyInterestModifier(type),
+      "trainer",
     ),
 
   LOCK_CAPSULE: () =>
@@ -4426,6 +4539,7 @@ BLIGHT_BEAD: () =>
       "modifierType:ModifierType.LOCK_CAPSULE",
       "lock_capsule",
       (type, _args) => new LockModifierTiersModifier(type),
+      "trainer",
     ),
 
   GRIP_CLAW: () =>
@@ -4439,6 +4553,7 @@ BLIGHT_BEAD: () =>
       "modifierType:ModifierType.HEALING_CHARM",
       "healing_charm",
       (type, _args) => new HealingBoosterModifier(type, 1.1),
+      "trainer",
     ),
   CANDY_JAR: () =>
     new ModifierType(
@@ -4452,6 +4567,7 @@ BLIGHT_BEAD: () =>
       "modifierType:ModifierType.BERRY_POUCH",
       "berry_pouch",
       (type, _args) => new PreserveBerryModifier(type),
+      "trainer",
     ),
 
   STRANGE_BOX: () =>
@@ -4459,6 +4575,7 @@ BLIGHT_BEAD: () =>
       "modifierType:ModifierType.STRANGE_BOX",
       "lens_case",
       (type, _args) => new PreserveItemModifier(type),
+      "trainer",
     ),
 
   FOCUS_BAND: () =>
@@ -5068,22 +5185,25 @@ SCHOLAR_TOME: () =>
       "modifierType:ModifierType.SHINY_CHARM",
       "shiny_charm",
       (type, _args) => new ShinyRateBoosterModifier(type),
+      "trainer",
     ),
   ABILITY_CHARM: () =>
     new ModifierType(
       "modifierType:ModifierType.ABILITY_CHARM",
       "ability_charm",
       (type, _args) => new HiddenAbilityRateBoosterModifier(type),
+      "trainer",
     ),
   CATCHING_CHARM: () =>
     new ModifierType(
       "modifierType:ModifierType.CATCHING_CHARM",
       "catching_charm",
       (type, _args) => new CriticalCatchChanceBoosterModifier(type),
+      "trainer",
     ),
 
   IV_SCANNER: () =>
-    new ModifierType("modifierType:ModifierType.IV_SCANNER", "scanner", (type, _args) => new IvScannerModifier(type)),
+    new ModifierType("modifierType:ModifierType.IV_SCANNER", "scanner", (type, _args) => new IvScannerModifier(type), "trainer"),
 
   DNA_SPLICERS: () => new FusePokemonModifierType("modifierType:ModifierType.DNA_SPLICERS", "dna_splicers"),
 
@@ -5368,7 +5488,28 @@ export interface CustomModifierSettings {
 }
 
 export function getModifierTypeFuncById(id: string): ModifierTypeFunc {
-  return modifierTypeInitObj[id];
+  if (modifierTypeInitObj[id]) {
+    return modifierTypeInitObj[id];
+  }
+
+  if (typeof id === "string" && /^TYPE_SPECIFIC_MOVE_BOOSTER_\d+$/.test(id)) {
+    return modifierTypeInitObj.TYPE_SPECIFIC_MOVE_BOOSTER;
+  }
+
+  if (typeof id === "string" && /^ATTACK_TYPE_BOOSTER_\d+$/.test(id)) {
+    return modifierTypeInitObj.ATTACK_TYPE_BOOSTER;
+  }
+
+  if (typeof id === "string" && id.startsWith("modifierType:SpeciesBoosterItem.")) {
+    const key = id.replace("modifierType:SpeciesBoosterItem.", "");
+    const item = (SpeciesStatBoosterModifierTypeGenerator as any).items?.[key];
+
+    if (item) {
+      return modifierTypeInitObj[item.rare ? "RARE_SPECIES_STAT_BOOSTER" : "SPECIES_STAT_BOOSTER"];
+    }
+  }
+
+  return undefined as any;
 }
 
 /**

@@ -64,6 +64,13 @@ import i18next from "i18next";
 import { AdminUiHandler } from "./handlers/admin-ui-handler";
 import { RenameRunFormUiHandler } from "./handlers/rename-run-ui-handler";
 import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
+import { PracticeLevelFormUiHandler } from "#ui/practice-level-form-ui-handler";
+import { PracticeStatFormUiHandler } from "#ui/practice-stat-form-ui-handler";
+import { PracticeTypeFormUiHandler } from "#ui/practice-type-form-ui-handler";
+import { PracticeAbilityFormUiHandler } from "#ui/practice-ability-form-ui-handler";
+import { PracticeMoveFormUiHandler } from "#ui/practice-move-form-ui-handler";
+import { PracticeRentalModifierSelectUiHandler } from "#ui/practice-rental-modifier-select-ui-handler";
+import { StarterPracticeMoveFormUiHandler } from "#ui/starter-practice-move-form-ui-handler";
 
 const transitionModes = [
   UiMode.SAVE_SLOT,
@@ -112,6 +119,13 @@ const noTransitionModes = [
   UiMode.CHANGE_PASSWORD_FORM,
   UiMode.ROGUE_SHOP,
   UiMode.BANK_AMOUNT_FORM,
+  UiMode.PRACTICE_LEVEL_FORM,
+  UiMode.PRACTICE_STAT_FORM,
+  UiMode.PRACTICE_TYPE_FORM,
+  UiMode.PRACTICE_ABILITY_FORM,
+  UiMode.PRACTICE_MOVE_FORM,
+  UiMode.PRACTICE_RENTAL_MODIFIER_SELECT,
+  UiMode.STARTER_PRACTICE_MOVE_FORM,
 ];
 
 export class UI extends Phaser.GameObjects.Container {
@@ -187,6 +201,13 @@ export class UI extends Phaser.GameObjects.Container {
       new ChangePasswordFormUiHandler(),
       new RogueShopUiHandler(),
       new BankAmountFormUiHandler(),
+      new PracticeLevelFormUiHandler(),
+      new PracticeStatFormUiHandler(),
+      new PracticeTypeFormUiHandler(),
+      new PracticeAbilityFormUiHandler(),
+      new PracticeMoveFormUiHandler(),
+      new PracticeRentalModifierSelectUiHandler(),
+      new StarterPracticeMoveFormUiHandler(),
     ];
   }
 

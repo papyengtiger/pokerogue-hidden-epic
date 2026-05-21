@@ -75,6 +75,7 @@ import type {
   Unlocks,
   VoucherCounts,
   VoucherUnlocks,
+  PracticeDummyConfig,
 } from "#types/save-data";
 import { RUN_HISTORY_LIMIT } from "#ui/run-history-ui-handler";
 import { applyChallenges } from "#utils/challenge-utils";
@@ -162,6 +163,11 @@ export class GameData {
   public storageItems: StoredItemData[];
   public runStorageItems: RunItemData[];
 
+  public practiceDummyConfig: PracticeDummyConfig;
+
+  public pendingRunItems: string[];
+  public lastSelectedStarters: Starter[] = [];
+
   /**
    * @param fromRaw - If true, will skip initialization of fields that are normally randomized on new game start. Used for the admin panel; default `false`
    */
@@ -203,10 +209,47 @@ export class GameData {
     this.initStarterData();
     this.storageItems = [];
     this.runStorageItems = [];
+
+    this.pendingRunItems = [];
+
+    this.lastSelectedStarters = [];
+    this.practiceDummyConfig = {};
   }
 
   public addRoguePoints(amount: number): void {
-  this.roguePoints = Math.max(0, this.roguePoints + amount);
+  const practiceConfig = this.practiceDummyConfig;
+
+  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+    const result =
+      (globalScene as any).practiceTurnResult;
+
+    if (result) {
+      result.roguePointsGained += amount;
+
+      result.roguePointFactors ??= [];
+
+      result.roguePointFactors.push(
+        `RP +${amount}`,
+      );
+
+      console.log(
+        "[PRACTICE_RP]",
+        amount,
+      );
+    }
+
+    // OFF면 표시만 하고 실제 지급 안함
+    if (!practiceConfig?.rewardFlags?.roguePoints) {
+      return;
+    }
+  }
+
+  this.roguePoints = Math.max(
+    0,
+    this.roguePoints + amount,
+  );
+
+  globalScene.updateroguePointText?.();
 }
 
 public spendroguePoints(amount: number): boolean {
@@ -256,6 +299,18 @@ this.money -= amount;
     default:
       return 0;
   }
+}
+
+private togglePracticeDummyFaint(): boolean {
+  const cfg = globalScene.gameData.practiceDummyConfig ??= {};
+  cfg.rewardFlags ??= {};
+
+  cfg.rewardFlags.allowDummyFaint =
+    !cfg.rewardFlags.allowDummyFaint;
+
+  this.refreshList?.();
+
+  return true;
 }
 
 public getTotalStarterCandyCount(): number {
@@ -599,6 +654,8 @@ public hasRunStorageItems(): boolean {
     timestamp: Date.now(),
     eggPity: this.eggPity.slice(0),
     unlockPity: this.unlockPity.slice(0),
+    practiceDummyConfig: this.practiceDummyConfig,
+    pendingRunItems: this.pendingRunItems,
   };
 }
 
@@ -741,6 +798,9 @@ public hasRunStorageItems(): boolean {
 
   this.saveSetting(SettingKeys.Player_Gender, systemData.gender === PlayerGender.FEMALE ? 1 : 0);
 
+  this.pendingRunItems = systemData.pendingRunItems ?? [];
+  this.practiceDummyConfig = systemData.practiceDummyConfig ?? {};
+
   if (systemData.starterData) {
     this.starterData = systemData.starterData;
   } else {
@@ -753,6 +813,17 @@ public hasRunStorageItems(): boolean {
       for (const speciesIdStr of Object.keys(this.starterData)) {
         const speciesId = Number(speciesIdStr) as SpeciesId;
         const species = getPokemonSpecies(speciesId);
+
+if (speciesId === SpeciesId.FROSLASS) {
+  console.log("[FROSLASS_FORMS]",
+    species.forms?.map((f, i) => ({
+      i,
+      name: f.formName,
+      key: f.formKey,
+      isMega: f.formKey === SpeciesFormKey.MEGA,
+    }))
+  );
+}
         const entry = this.starterData[speciesId];
 
         if (!entry) continue;
@@ -2424,26 +2495,37 @@ starterData[speciesId] = {
   const value = 1 << (teraType + 1);
   let unlocked = false;
 
-  const _unlockSpeciesTeraType = (speciesId: SpeciesId) => {
-    const starterEntry = this.starterData[speciesId];
-    if (!starterEntry) {
-      return;
+  let rootSpeciesId = species.speciesId as SpeciesId;
+
+  while (pokemonPrevolutions.hasOwnProperty(rootSpeciesId)) {
+    rootSpeciesId = pokemonPrevolutions[rootSpeciesId] as SpeciesId;
+  }
+
+  for (const speciesIdStr of Object.keys(this.starterData)) {
+    const speciesId = Number(speciesIdStr) as SpeciesId;
+    let currentRootSpeciesId = speciesId;
+
+    while (pokemonPrevolutions.hasOwnProperty(currentRootSpeciesId)) {
+      currentRootSpeciesId = pokemonPrevolutions[currentRootSpeciesId] as SpeciesId;
     }
 
-    // ✅ BigInt 저장 데이터 방어
+    if (currentRootSpeciesId !== rootSpeciesId) {
+      continue;
+    }
+
+    const starterEntry = this.starterData[speciesId];
+    if (!starterEntry) {
+      continue;
+    }
+
     starterEntry.teraTypeAttr = Number(starterEntry.teraTypeAttr ?? 0);
 
     if (!(starterEntry.teraTypeAttr & value)) {
       starterEntry.teraTypeAttr |= value;
       unlocked = true;
     }
+  }
 
-    if (pokemonPrevolutions.hasOwnProperty(speciesId)) {
-      _unlockSpeciesTeraType(pokemonPrevolutions[speciesId]);
-    }
-  };
-
-  _unlockSpeciesTeraType(species.speciesId);
   return unlocked;
 }
 

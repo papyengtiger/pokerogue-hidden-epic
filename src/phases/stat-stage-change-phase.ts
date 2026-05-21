@@ -10,7 +10,8 @@ import { ArenaTagType } from "#enums/arena-tag-type";
 import type { BattlerIndex } from "#enums/battler-index";
 import { type BattleStat, getStatKey, getStatStageChangeDescriptionKey, Stat } from "#enums/stat";
 import type { Pokemon } from "#field/pokemon";
-import { ResetNegativeStatStageModifier, ProtectStatModifier, StatStageChangeCopyModifier, StatStageChangeBoostModifier, StatStageChangeReverseModifier, DuskManeBeadModifier } from "#modifiers/modifier";
+import { ResetNegativeStatStageModifier, ProtectStatModifier, StatStageChangeCopyModifier, StatStageChangeBoostModifier, StatStageChangeReverseModifier, DuskManeBeadModifier, PreserveItemModifier } from "#modifiers/modifier";
+import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import { PokemonPhase } from "#phases/pokemon-phase";
 import type { ConditionalUserFieldProtectStatAbAttrParams, PreStatStageChangeAbAttrParams } from "#types/ability-types";
 import { BooleanHolder, NumberHolder } from "#utils/common";
@@ -136,73 +137,50 @@ if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
     }
 
     // ProtectStatModifier(클리어참)가 적용된 상태인지 확인
-    const existingProtectModifier = globalScene
-      .getModifiers(ProtectStatModifier)
-      .find(mod => mod.pokemonId === pokemon.id);
-
-    // ProtectStatModifier(클리어참) 적용 여부 확인
-    const hasClearAmulet =
-      existingProtectModifier ||
-      (pokemon.isPlayer() &&
-        (globalScene.applyModifier(ProtectStatModifier, this.player, pokemon) as ProtectStatModifier | null));
+    // ✅ 클리어참: 해당 포켓몬이 실제로 들고 있는지 확인
+const hasClearAmulet = pokemon.getHeldItems?.().some(
+  item => item instanceof ProtectStatModifier,
+);
 
     const stages = new NumberHolder(this.stages);
     let statProtected = false; // 보호 여부 변수 추가
     const protectedStats: BattleStat[] = []; // 보호된 능력치 목록 추가
 
-    // 특성 적용 (예: 단순)
-    if (!this.ignoreAbilities) {
-      // 특성(예: 단순)에 의한 배율 적용
-      applyAbAttrs("StatStageChangeMultiplierAbAttr", { pokemon, numStages: stages });
+   // 특성/아이템 배율
+let boostMultiplier = 1;
+let reverseMultiplier = 1;
 
-      // 아이템(예: 단순한밴드)에 의한 배율 적용
-      const existingBoostModifier = globalScene
-        .getModifiers(StatStageChangeBoostModifier)
-        .find(mod => mod.pokemonId === pokemon.id);
+// 특성 적용 (예: 단순)
+if (!this.ignoreAbilities) {
+  applyAbAttrs(
+    "StatStageChangeMultiplierAbAttr",
+    {
+      pokemon,
+      numStages: stages,
+    },
+  );
 
-      if (!existingBoostModifier) {
-        // StatStageChangeBoostModifier(아이템) 적용
-        globalScene.applyModifier(StatStageChangeBoostModifier, pokemon, this.player);
-      }
+  // 단순한밴드
+  const boostModifier = pokemon.getHeldItems?.().find(
+    item => item instanceof StatStageChangeBoostModifier,
+  ) as StatStageChangeBoostModifier | undefined;
 
-      // StatStageChangeReverseModifier 적용 (내맘대로밴드 적용)
-      const existingReverseModifier = globalScene
-        .getModifiers(StatStageChangeReverseModifier)
-        .find(mod => mod.pokemonId === pokemon.id);
+  if (boostModifier) {
+    boostMultiplier = 2;
+  }
 
-      if (!existingReverseModifier) {
-        // StatStageChangeReverseModifier(아이템) 적용
-        globalScene.applyModifier(StatStageChangeReverseModifier, pokemon, this.player);
-      }
-    }
+  // 내맘대로밴드
+  const reverseModifier = pokemon.getHeldItems?.().find(
+    item => item instanceof StatStageChangeReverseModifier,
+  ) as StatStageChangeReverseModifier | undefined;
 
-    // StatStageChangeBoostModifier 적용 배율 로직
-    let boostMultiplier = 1; // 기본 배율 1배
+  if (reverseModifier) {
+    reverseMultiplier = -1;
+  }
+}
 
-    // 예시로 StatStageChangeBoostModifier가 2배 증가 배율을 적용한다고 가정
-    const boostModifier = globalScene
-      .getModifiers(StatStageChangeBoostModifier)
-      .find(mod => mod.pokemonId === pokemon.id);
-    if (boostModifier) {
-      boostMultiplier = 2; // 2배 증가
-    }
-
-    // StatStageChangeReverseModifier 적용 배율 로직
-    let reverseMultiplier = 1; // 기본 배율 1배
-
-    // StatStageChangeReverseModifier가 반대로 적용되는지 확인
-    const reverseModifier = globalScene
-      .getModifiers(StatStageChangeReverseModifier)
-      .find(mod => mod.pokemonId === pokemon.id);
-    if (reverseModifier) {
-      reverseMultiplier = -1; // 능력치 변화 방향을 반대로 적용
-    }
-
-    // Check if stages and holder are properly initialized before applying boosts
-    if (stages.value !== undefined && stages.value !== null) {
-      // 배율 적용 (변화 방향 반영)
-      stages.value *= boostMultiplier * reverseMultiplier;
-    }
+// 최종 배율 적용
+stages.value *= boostMultiplier * reverseMultiplier;
 
     // Ensure holder is initialized and properly used in subsequent logic
     if (stages && stages.value !== undefined) {
@@ -384,19 +362,49 @@ if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
           if (existingPhase) continue;
 
           // ✅ opponent에게 실제 적용된 흉내허브 modifier만 필터링
-          const mirrorHerb = globalScene
-            .getModifiers(StatStageChangeCopyModifier, opponent.isPlayer())
-            .find(mod => mod.pokemonId === opponent.id); // 👈 정확히 해당 포켓몬에게만
+          // ✅ opponent에게 실제 적용된 흉내허브 modifier만 필터링
+const mirrorHerb = opponent.getHeldItems?.().find(
+  item => item instanceof StatStageChangeCopyModifier,
+) as StatStageChangeCopyModifier | undefined;
 
-          if (!mirrorHerb) continue;
+if (!mirrorHerb) {
+  continue;
+}
 
-          const copied = mirrorHerb.apply(opponent, this.statList, this.stage);
+const copied = mirrorHerb.apply(opponent, this.statList, this.stage);
 
-          if (copied) {
-            copiedSet.add(opponent.id);
-            globalScene.updateModifiers(opponent.isPlayer());
-            applyAbAttrs("StatStageChangeCopyAbAttr", { pokemon: opponent, stats: this.stats, numStages: stages.value });
-          }
+if (copied) {
+  copiedSet.add(opponent.id);
+
+  const preserve = new BooleanHolder(false);
+
+  globalScene.applyModifiers(
+    PreserveItemModifier,
+    opponent.isPlayer(),
+    opponent,
+    preserve,
+    "item",
+  );
+
+  if (!preserve.value) {
+    recordRecycleSnapshot(opponent, mirrorHerb, { args: [] });
+
+    if (mirrorHerb.stackCount > 1) {
+      mirrorHerb.stackCount--;
+    } else {
+      opponent.loseHeldItem(mirrorHerb);
+    }
+  }
+
+  globalScene.updateModifiers(opponent.isPlayer());
+  opponent.updateInfo();
+
+  applyAbAttrs("StatStageChangeCopyAbAttr", {
+    pokemon: opponent,
+    stats: this.stats,
+    numStages: stages.value,
+  });
+}
         }
       }
 
@@ -424,10 +432,18 @@ if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
 
       pokemon.updateInfo();
 
-      handleTutorial(Tutorial.Stat_Change).then(() => super.end());
+if ((pokemon as any).isPracticeDummy) {
+  (pokemon as any).keepDummySpriteVisible?.();
+}
+
+handleTutorial(Tutorial.Stat_Change).then(() => super.end());
     };
 
-    if (relLevels.filter(l => l).length && globalScene.moveAnimations) {
+    if (
+  relLevels.filter(l => l).length
+  && globalScene.moveAnimations
+  && !(pokemon as any).isPracticeDummy
+) {
       pokemon.enableMask();
       const pokemonMaskSprite = pokemon.maskSprite;
 
