@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "nomel-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 19,
+				"h": 43
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 12,
+						"w": 17,
+						"h": 20
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 17,
+						"h": 20
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 13,
+						"w": 17,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 23,
+						"w": 17,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:eec537d9f0aa891907cf2305fe318943:b7362deb63c626be4523de5be2e22544:dfc2dce682d6dfd4ca2c7f65c429e9df$"
+	}
+}

@@ -2,6 +2,7 @@ import { globalScene } from "#app/global-scene";
 import type { BiomeId } from "#enums/biome-id";
 import { getBiomeKey } from "#field/arena";
 import { BattlePhase } from "#phases/battle-phase";
+import { questManager } from "#system/quest-manager";
 
 export class SwitchBiomePhase extends BattlePhase {
   public readonly phaseName = "SwitchBiomePhase";
@@ -57,8 +58,40 @@ export class SwitchBiomePhase extends BattlePhase {
             globalScene.arenaNextEnemy.setBiome(this.nextBiome);
             globalScene.arenaBgTransition.setVisible(false);
             globalScene.arenaPlayerTransition.setVisible(false);
+
             if (globalScene.lastEnemyTrainer) {
               globalScene.lastEnemyTrainer.destroy();
+            }
+
+            // ★ REACH_BIOME
+            const completedBiomeQuests = questManager.onBiomeEntered(this.nextBiome);
+
+            if (completedBiomeQuests.length > 0) {
+              const completedQuest = completedBiomeQuests[0];
+
+              console.log("[QUEST_BIOME_EXPLORE_COMPLETED]", {
+                questId: completedQuest.id,
+                title: completedQuest.title,
+                targetBiome: completedQuest.targetBiome,
+              });
+
+              globalScene.ui.showText(
+                "의뢰 지역에 도착했다!\n주변 지역의 탐사를 완료했다.",
+                null,
+                () => {
+                  if (questManager.isAcceptedQuestClear()) {
+                    console.log("[QUEST_ALL_ACCEPTED_CLEAR_BIOME]");
+
+                    globalScene.phaseManager.unshiftNew("QuestClearPromptPhase");
+                  }
+
+                  this.end();
+                },
+                1500,
+                true,
+              );
+
+              return;
             }
 
             this.end();

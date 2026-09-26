@@ -6,6 +6,7 @@ import { Setting, SettingKeys, settingIndex } from "#system/settings";
 import type { MessageUiHandler } from "#ui/message-ui-handler";
 import { PokedexPageUiHandler } from "#ui/pokedex-page-ui-handler";
 import { PokedexUiHandler } from "#ui/pokedex-ui-handler";
+import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
 import { RunInfoUiHandler } from "#ui/run-info-ui-handler";
 import { SettingsAudioUiHandler } from "#ui/settings-audio-ui-handler";
 import { SettingsDisplayUiHandler } from "#ui/settings-display-ui-handler";
@@ -13,7 +14,6 @@ import { SettingsGamepadUiHandler } from "#ui/settings-gamepad-ui-handler";
 import { SettingsKeyboardUiHandler } from "#ui/settings-keyboard-ui-handler";
 import { SettingsUiHandler } from "#ui/settings-ui-handler";
 import { StarterSelectUiHandler } from "#ui/starter-select-ui-handler";
-import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
 import Phaser from "phaser";
 
 type ActionKeys = Record<Button, () => void>;
@@ -94,6 +94,7 @@ export class UiInputs {
       [Button.CYCLE_FORM]: () => this.buttonCycleOption(Button.CYCLE_FORM),
       [Button.CYCLE_GENDER]: () => this.buttonCycleOption(Button.CYCLE_GENDER),
       [Button.CYCLE_ABILITY]: () => this.buttonCycleOption(Button.CYCLE_ABILITY),
+      [Button.CYCLE_MARK]: () => this.buttonCycleOption(Button.CYCLE_MARK),
       [Button.CYCLE_NATURE]: () => this.buttonCycleOption(Button.CYCLE_NATURE),
       [Button.CYCLE_TERA]: () => this.buttonCycleOption(Button.CYCLE_TERA),
       [Button.SPEED_UP]: () => this.buttonSpeedChange(),
@@ -117,6 +118,7 @@ export class UiInputs {
       [Button.CYCLE_FORM]: () => {},
       [Button.CYCLE_GENDER]: () => {},
       [Button.CYCLE_ABILITY]: () => {},
+      [Button.CYCLE_MARK]: () => {},
       [Button.CYCLE_NATURE]: () => {},
       [Button.CYCLE_TERA]: () => this.buttonInfo(false),
       [Button.SPEED_UP]: () => {},
@@ -151,19 +153,14 @@ export class UiInputs {
   }
 
   buttonGoToFilter(button: Button): void {
-  const whitelist = [
-    StarterSelectUiHandler,
-    RogueShopUiHandler,
-    PokedexUiHandler,
-    PokedexPageUiHandler,
-  ];
-  const uiHandler = globalScene.ui?.getHandler();
-  if (whitelist.some(handler => uiHandler instanceof handler)) {
-    globalScene.ui.processInput(button);
-  } else {
-    this.buttonStats(true);
+    const whitelist = [StarterSelectUiHandler, RogueShopUiHandler, PokedexUiHandler, PokedexPageUiHandler];
+    const uiHandler = globalScene.ui?.getHandler();
+    if (whitelist.some(handler => uiHandler instanceof handler)) {
+      globalScene.ui.processInput(button);
+    } else {
+      this.buttonStats(true);
+    }
   }
-}
 
   buttonInfo(pressed = true): void {
     if (globalScene.showMovesetFlyout) {
@@ -210,25 +207,25 @@ export class UiInputs {
   }
 
   buttonCycleOption(button: Button): void {
-  const whitelist = [
-    StarterSelectUiHandler,
-    RogueShopUiHandler,
-    PokedexUiHandler,
-    PokedexPageUiHandler,
-    SettingsUiHandler,
-    RunInfoUiHandler,
-    SettingsDisplayUiHandler,
-    SettingsAudioUiHandler,
-    SettingsGamepadUiHandler,
-    SettingsKeyboardUiHandler,
-  ];
-  const uiHandler = globalScene.ui?.getHandler();
-  if (whitelist.some(handler => uiHandler instanceof handler)) {
-    globalScene.ui.processInput(button);
-  } else if (button === Button.CYCLE_TERA) {
-    this.buttonInfo(true);
+    const whitelist = [
+      StarterSelectUiHandler,
+      RogueShopUiHandler,
+      PokedexUiHandler,
+      PokedexPageUiHandler,
+      SettingsUiHandler,
+      RunInfoUiHandler,
+      SettingsDisplayUiHandler,
+      SettingsAudioUiHandler,
+      SettingsGamepadUiHandler,
+      SettingsKeyboardUiHandler,
+    ];
+    const uiHandler = globalScene.ui?.getHandler();
+    if (whitelist.some(handler => uiHandler instanceof handler)) {
+      globalScene.ui.processInput(button);
+    } else if (button === Button.CYCLE_TERA) {
+      this.buttonInfo(true);
+    }
   }
-}
 
   buttonSpeedChange(up = true): void {
     const settingGameSpeed = settingIndex(SettingKeys.Game_Speed);

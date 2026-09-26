@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "ganlon-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 17,
+				"h": 55
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 6,
+						"w": 15,
+						"h": 26
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 26
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 7,
+						"w": 15,
+						"h": 25
+					},
+					"frame": {
+						"x": 1,
+						"y": 29,
+						"w": 15,
+						"h": 25
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5740ee68938381c34117228214f6b48c:0e82b45fa66910c5c5598d7fb007c780:5a65607a3861e8732ce5ab543a09b0e5$"
+	}
+}

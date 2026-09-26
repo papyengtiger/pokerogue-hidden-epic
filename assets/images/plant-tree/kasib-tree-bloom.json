@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "kasib-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 30
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 4,
+						"w": 15,
+						"h": 28
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 28
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 4,
+						"w": 15,
+						"h": 28
+					},
+					"frame": {
+						"x": 18,
+						"y": 1,
+						"w": 15,
+						"h": 28
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5858867b438fe9d02490d0da635da3ee:adb9ac492c06e3dfa65edf38d0b34e04:e90c50c5e52946c18fe269c3b8bcaadd$"
+	}
+}

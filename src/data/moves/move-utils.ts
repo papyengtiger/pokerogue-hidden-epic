@@ -1,3 +1,4 @@
+import { globalScene } from "#app/global-scene";
 import { allMoves } from "#data/data-lists";
 import type { BattlerIndex } from "#enums/battler-index";
 import { BattlerTagType } from "#enums/battler-tag-type";
@@ -65,7 +66,11 @@ export function getMoveTargets(user: Pokemon, move: MoveId, replaceTarget?: Move
   } else if (move === undefined) {
     moveTarget = MoveTarget.NEAR_ENEMY;
   }
-  const opponents = user.getOpponents(false);
+  let opponents = user.getOpponents(false);
+
+  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+    opponents = globalScene.getEnemyField().filter(p => p?.isActive?.(true));
+  }
 
   let set: Pokemon[] = [];
   let multiple = false;

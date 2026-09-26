@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "charti-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 21
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 13,
+						"w": 15,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 19
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 13,
+						"w": 15,
+						"h": 19
+					},
+					"frame": {
+						"x": 18,
+						"y": 1,
+						"w": 15,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9144ab12a167b836e6a3556b2841a43c:49dfb1411846e10e7eabfee9da2d2c12:d346a8229884b94b8ef424042cce34f0$"
+	}
+}

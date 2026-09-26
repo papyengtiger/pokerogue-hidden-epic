@@ -1,6 +1,11 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
-import { LapsingPersistentModifier, LapsingPokemonHeldItemModifier, PostBattleLootItemModifier } from "#modifiers/modifier";
+import { kecleonShopManager } from "#data/kecleon-shop/kecleon-shop-manager";
+import {
+  LapsingPersistentModifier,
+  LapsingPokemonHeldItemModifier,
+  PostBattleLootItemModifier,
+} from "#modifiers/modifier";
 import { BattlePhase } from "#phases/battle-phase";
 
 export class BattleEndPhase extends BattlePhase {
@@ -8,16 +13,40 @@ export class BattleEndPhase extends BattlePhase {
   /** If true, will increment battles won */
   isVictory: boolean;
 
-  constructor(isVictory: boolean) {
+  constructor(
+    isVictory: boolean,
+    private readonly isQuestRescue = false,
+  ) {
     super();
-
     this.isVictory = isVictory;
   }
 
   start() {
     super.start();
 
-    // cull any extra `BattleEnd` phases from the queue.
+    const isKecleonTheftVictory = this.isVictory && kecleonShopManager.isTheftBattleActive();
+
+    if (isKecleonTheftVictory) {
+      const wave = globalScene.currentBattle.waveIndex;
+      const endWave = kecleonShopManager.getTheftEndWave();
+
+      console.log("[KECLEON_THEFT_WAVE_CLEARED]", {
+        wave,
+        endWave,
+      });
+
+      if (wave >= endWave) {
+        console.log("[KECLEON_THEFT_CHASE_COMPLETE]", {
+          wave,
+          startWave: kecleonShopManager.getTheftStartWave(),
+          endWave,
+        });
+
+        kecleonShopManager.finishTheftChase();
+      }
+    }
+
+    // 기존 BattleEnd 처리 계속
     this.isVictory ||= globalScene.phaseManager.hasPhaseOfType(
       "BattleEndPhase",
       (phase: BattleEndPhase) => phase.isVictory,
@@ -32,7 +61,18 @@ export class BattleEndPhase extends BattlePhase {
       globalScene.gameData.gameStats.highestEndlessWave = globalScene.currentBattle.waveIndex + 1;
     }
 
-    if (this.isVictory) {
+    if (!this.isQuestRescue) {
+      globalScene.gameData.gameStats.battles++;
+
+      if (
+        globalScene.gameMode.isEndless
+        && globalScene.currentBattle.waveIndex + 1 > globalScene.gameData.gameStats.highestEndlessWave
+      ) {
+        globalScene.gameData.gameStats.highestEndlessWave = globalScene.currentBattle.waveIndex + 1;
+      }
+    }
+
+    if (this.isVictory && !this.isQuestRescue) {
       globalScene.currentBattle.addBattleScore();
 
       if (globalScene.currentBattle.trainer) {
@@ -68,7 +108,7 @@ export class BattleEndPhase extends BattlePhase {
         try {
           postBattleLootItem.applyPostBattleIfPossible(pokemon, this.isVictory);
         } catch (e) {
-          console.error(`[PostBattleLootItemModifier] 적용 중 오류`, e);
+          console.error("[PostBattleLootItemModifier] 적용 중 오류", e);
         }
       }
     }

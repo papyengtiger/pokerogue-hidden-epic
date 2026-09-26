@@ -1,13 +1,14 @@
 import { globalScene } from "#app/global-scene";
 import { Button } from "#enums/buttons";
-import { FormModalUiHandler } from "#ui/form-modal-ui-handler";
 import type { InputFieldConfig, ModalConfig } from "#ui/form-modal-ui-handler";
+import { FormModalUiHandler } from "#ui/form-modal-ui-handler";
 
 export class PracticeStatFormUiHandler extends FormModalUiHandler {
   private modalConfig?: ModalConfig;
+  private dummyKey: "dummy1" | "dummy2" = "dummy1";
 
   getModalTitle(_config?: ModalConfig): string {
-    return "능력치를 입력하시오";
+    return this.dummyKey === "dummy1" ? "대타1 능력치를 입력하시오" : "대타2 능력치를 입력하시오";
   }
 
   getWidth(_config?: ModalConfig): number {
@@ -34,37 +35,42 @@ export class PracticeStatFormUiHandler extends FormModalUiHandler {
   }
 
   show(args: any[]): boolean {
+    const config = args[0] as ModalConfig | undefined;
+    this.modalConfig = config;
+    this.dummyKey = config?.dummyKey ?? "dummy1";
+
     if (!super.show(args)) {
       return false;
     }
 
-    const config = args[0] as ModalConfig | undefined;
-    this.modalConfig = config;
+    const rootCfg = (globalScene.gameData.practiceDummyConfig ??= {});
+    rootCfg.dummy1 ??= {};
+    rootCfg.dummy2 ??= {};
 
-    const stats = globalScene.gameData.practiceDummyConfig?.baseStats ?? {
-      hp: 999,
-      atk: 255,
-      def: 255,
-      spa: 255,
-      spd: 255,
-      spe: 255,
-    };
+    const stats = rootCfg[this.dummyKey]?.baseStats
+      ?? rootCfg.baseStats ?? {
+        hp: 999,
+        atk: 255,
+        def: 255,
+        spa: 255,
+        spd: 255,
+        spe: 255,
+      };
 
-    const values = [
-      stats.hp,
-      stats.atk,
-      stats.def,
-      stats.spa,
-      stats.spd,
-      stats.spe,
-    ];
+    const values = [stats.hp, stats.atk, stats.def, stats.spa, stats.spd, stats.spe];
+
+    for (let i = 0; i < values.length; i++) {
+      if (this.inputs?.[i]) {
+        this.inputs[i].text = String(values[i]);
+      }
+    }
 
     this.submitAction = () => {
       this.sanitizeInputs();
 
       const rawValues = this.inputs?.map(input => input.text?.trim?.() ?? "") ?? [];
 
-      if (rawValues.some(v => !v.length)) {
+      if (rawValues.some(v => v.length === 0)) {
         this.showPracticeError("모든 능력치를 입력하세요.");
         return false;
       }
@@ -76,12 +82,13 @@ export class PracticeStatFormUiHandler extends FormModalUiHandler {
         return false;
       }
 
-      const [hp, atk, def, spa, spd, spe] = numbers.map(n =>
-        Phaser.Math.Clamp(n, 1, 999)
-      );
+      const [hp, atk, def, spa, spd, spe] = numbers.map(n => Phaser.Math.Clamp(n, 1, 999));
 
-      globalScene.gameData.practiceDummyConfig ??= {};
-      globalScene.gameData.practiceDummyConfig.baseStats = {
+      const cfg = (globalScene.gameData.practiceDummyConfig ??= {});
+      cfg.dummy1 ??= {};
+      cfg.dummy2 ??= {};
+
+      cfg[this.dummyKey]!.baseStats = {
         hp,
         atk,
         def,
@@ -114,8 +121,7 @@ export class PracticeStatFormUiHandler extends FormModalUiHandler {
     }
 
     if (button === Button.ACTION) {
-      const selectedButtonIndex =
-        (this as any).buttonCursor ?? (this as any).cursor ?? 0;
+      const selectedButtonIndex = (this as any).buttonCursor ?? (this as any).cursor ?? 0;
 
       if (selectedButtonIndex === 1) {
         this.runCancelAction();

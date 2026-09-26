@@ -6,7 +6,6 @@ import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
 import type { BiomeTierTrainerPools, PokemonPools } from "#balance/biomes";
-import { BiomePoolTier } from "#enums/biome-pool-tier";
 import { biomePokemonPools, biomeTrainerPools } from "#balance/biomes";
 import type { ArenaTag } from "#data/arena-tag";
 import { EntryHazardTag, getArenaTag } from "#data/arena-tag";
@@ -23,8 +22,10 @@ import {
 import { AbilityId } from "#enums/ability-id";
 import { ArenaTagSide } from "#enums/arena-tag-side";
 import type { ArenaTagType } from "#enums/arena-tag-type";
+import { ArenaTagType } from "#enums/arena-tag-type";
 import type { BattlerIndex } from "#enums/battler-index";
 import { BiomeId } from "#enums/biome-id";
+import { BiomePoolTier } from "#enums/biome-pool-tier";
 import { CommonAnim } from "#enums/move-anims-common";
 import type { MoveId } from "#enums/move-id";
 import type { PokemonType } from "#enums/pokemon-type";
@@ -34,12 +35,11 @@ import { TrainerType } from "#enums/trainer-type";
 import { WeatherType } from "#enums/weather-type";
 import { TagAddedEvent, TagRemovedEvent, TerrainChangedEvent, WeatherChangedEvent } from "#events/arena";
 import type { Pokemon } from "#field/pokemon";
-import { FieldEffectModifier, WeatherRockTrainerModifier } from "#modifiers/modifier";
+import { FieldEffectModifier } from "#modifiers/modifier";
 import type { Move } from "#moves/move";
 import type { AbstractConstructor } from "#types/type-helpers";
 import { type Constructor, NumberHolder, randSeedInt } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
-import { ArenaTagType } from "#enums/arena-tag-type";
 
 export class Arena {
   public biomeType: BiomeId;
@@ -71,9 +71,9 @@ export class Arena {
   public readonly eventTarget: EventTarget = new EventTarget();
 
   constructor(biome: BiomeId, playerFaints = 0) {
-    this.biomeType = biome;
-    this.bgm = BiomeId[biome].toLowerCase();
-    this.trainerPool = biomeTrainerPools[biome];
+    this.biomeType = isValidBiomeId(biome) ? biome : BiomeId.TOWN;
+    this.bgm = getBiomeKey(this.biomeType);
+    this.trainerPool = biomeTrainerPools[this.biomeType];
     this.updatePoolsForTimeOfDay();
     this.playerFaints = playerFaints;
   }
@@ -118,9 +118,11 @@ export class Arena {
       return overrideSpecies;
     }
     const isBossSpecies =
-      !!globalScene.getEncounterBossSegments(waveIndex, level) &&
-      !!this.pokemonPool[BiomePoolTier.BOSS].length &&
-      (this.biomeType !== BiomeId.END || globalScene.gameMode.isClassic || globalScene.gameMode.isWaveFinal(waveIndex));
+      !!globalScene.getEncounterBossSegments(waveIndex, level)
+      && this.pokemonPool[BiomePoolTier.BOSS].length > 0
+      && (this.biomeType !== BiomeId.END
+        || globalScene.gameMode.isClassic
+        || globalScene.gameMode.isWaveFinal(waveIndex));
     const randVal = isBossSpecies ? 64 : 512;
     // luck influences encounter rarity
     let luckModifier = 0;
@@ -146,14 +148,29 @@ export class Arena {
             ? BiomePoolTier.BOSS_SUPER_RARE
             : BiomePoolTier.BOSS_ULTRA_RARE;
     console.log(BiomePoolTier[tier]);
-    while (!this.pokemonPool[tier]?.length) {
-      console.log(`Downgraded rarity tier from ${BiomePoolTier[tier]} to ${BiomePoolTier[tier - 1]}`);
+    while (this.pokemonPool[tier]?.length === 0) {
+      const fromTier = tier;
+      const toTier = tier - 1;
+
+      console.log("[BIOME_POOL_DOWNGRADE]", {
+        biome: BiomeId[this.biomeType],
+        fromTier,
+        fromTierName: BiomePoolTier[fromTier],
+        toTier,
+        toTierName: BiomePoolTier[toTier],
+        hasFromPool: this.pokemonPool[fromTier]?.length > 0,
+        hasToPool: this.pokemonPool[toTier]?.length > 0,
+        waveIndex,
+        level,
+        isBossSpecies,
+      });
+
       tier--;
     }
     const tierPool = this.pokemonPool[tier];
     let ret: PokemonSpecies;
     let regen = false;
-    if (!tierPool.length) {
+    if (tierPool.length === 0) {
       ret = globalScene.randomSpecies(waveIndex, level);
     } else {
       // TODO: should this use `randSeedItem`?
@@ -205,8 +222,8 @@ export class Arena {
 
   randomTrainerType(waveIndex: number, isBoss = false): TrainerType {
     const isTrainerBoss =
-      !!this.trainerPool[BiomePoolTier.BOSS].length &&
-      (globalScene.gameMode.isTrainerBoss(waveIndex, this.biomeType, globalScene.offsetGym) || isBoss);
+      this.trainerPool[BiomePoolTier.BOSS].length > 0
+      && (globalScene.gameMode.isTrainerBoss(waveIndex, this.biomeType, globalScene.offsetGym) || isBoss);
     console.log(isBoss, this.trainerPool);
     const tierValue = randSeedInt(!isTrainerBoss ? 512 : 64);
     let tier = !isTrainerBoss
@@ -227,12 +244,12 @@ export class Arena {
             ? BiomePoolTier.BOSS_SUPER_RARE
             : BiomePoolTier.BOSS_ULTRA_RARE;
     console.log(BiomePoolTier[tier]);
-    while (tier && !this.trainerPool[tier].length) {
+    while (tier && this.trainerPool[tier].length === 0) {
       console.log(`Downgraded trainer rarity tier from ${BiomePoolTier[tier]} to ${BiomePoolTier[tier - 1]}`);
       tier--;
     }
     const tierPool = this.trainerPool[tier] || [];
-    return !tierPool.length ? TrainerType.BREEDER : tierPool[randSeedInt(tierPool.length)];
+    return tierPool.length === 0 ? TrainerType.BREEDER : tierPool[randSeedInt(tierPool.length)];
   }
 
   getSpeciesFormIndex(species: PokemonSpecies): number {
@@ -290,7 +307,7 @@ export class Arena {
   }
 
   /**
-   * Sets weather to the override specified in overrides.ts
+   * Sets weather to the override specified in Overrides.ts
    * @param weather new {@linkcode WeatherType} to set
    * @returns true to force trySetWeather to return true
    */
@@ -324,8 +341,8 @@ export class Arena {
     const oldWeatherType = this.weather?.weatherType || WeatherType.NONE;
 
     if (
-      this.weather?.isImmutable() &&
-      ![WeatherType.HARSH_SUN, WeatherType.HEAVY_RAIN, WeatherType.STRONG_WINDS, WeatherType.NONE].includes(weather)
+      this.weather?.isImmutable()
+      && ![WeatherType.HARSH_SUN, WeatherType.HEAVY_RAIN, WeatherType.STRONG_WINDS, WeatherType.NONE].includes(weather)
     ) {
       globalScene.phaseManager.unshiftNew(
         "CommonAnimPhase",
@@ -385,9 +402,9 @@ export class Arena {
 
     // 불변 날씨 상태에서는 일반적인 날씨 변경 불가 (단, force인 경우는 예외)
     if (
-      !force &&
-      this.weather?.isImmutable() &&
-      ![WeatherType.HARSH_SUN, WeatherType.HEAVY_RAIN, WeatherType.STRONG_WINDS, WeatherType.NONE].includes(weather)
+      !force
+      && this.weather?.isImmutable()
+      && ![WeatherType.HARSH_SUN, WeatherType.HEAVY_RAIN, WeatherType.STRONG_WINDS, WeatherType.NONE].includes(weather)
     ) {
       if (!ignoreAnim) {
         globalScene.phaseManager.unshiftPhase(
@@ -413,7 +430,9 @@ export class Arena {
 
     if (this.weather) {
       if (!ignoreAnim) {
-        globalScene.phaseManager.unshiftPhase(new CommonAnimPhase(undefined, undefined, CommonAnim.SUNNY + (weather - 1), true));
+        globalScene.phaseManager.unshiftPhase(
+          new CommonAnimPhase(undefined, undefined, CommonAnim.SUNNY + (weather - 1), true),
+        );
       }
       globalScene.phaseManager.queueMessage(getWeatherStartMessage(weather)!);
     } else {
@@ -437,9 +456,13 @@ export class Arena {
   triggerWeatherBasedFormChanges(): void {
     globalScene.getField(true).forEach(p => {
       const isCastformWithForecast = p.hasAbility(AbilityId.FORECAST) && p.species.speciesId === SpeciesId.CASTFORM;
+
       const isCherrimWithFlowerGift = p.hasAbility(AbilityId.FLOWER_GIFT) && p.species.speciesId === SpeciesId.CHERRIM;
 
+      const hasMegaSol = p.getAbility().hasAttr("MegaSolAbAttr") || !!p.getPassiveAbility()?.hasAttr("MegaSolAbAttr");
+
       if (isCastformWithForecast || isCherrimWithFlowerGift) {
+        // 메가솔라 여부까지 포함해서 폼 변경 판정 실행
         globalScene.triggerPokemonFormChange(p, SpeciesFormChangeWeatherTrigger);
       }
     });
@@ -543,7 +566,9 @@ export class Arena {
 
     if (this.terrain) {
       if (!ignoreAnim) {
-        globalScene.phaseManager.unshiftPhase(new CommonAnimPhase(undefined, undefined, CommonAnim.MISTY_TERRAIN + (terrain - 1)));
+        globalScene.phaseManager.unshiftPhase(
+          new CommonAnimPhase(undefined, undefined, CommonAnim.MISTY_TERRAIN + (terrain - 1)),
+        );
       }
       globalScene.phaseManager.queueMessage(getTerrainStartMessage(terrain)!);
     } else {
@@ -579,10 +604,10 @@ export class Arena {
   }
 
   // arena.ts 또는 pokemon.ts 안에서 정의 가능
-public getAllFieldPokemons(): Pokemon[] {
-  const allTeams = [...globalScene.getPlayerParty(), ...globalScene.getEnemyParty()];
-  return allTeams.filter(p => p.isOnField());
-}
+  public getAllFieldPokemons(): Pokemon[] {
+    const allTeams = [...globalScene.getPlayerParty(), ...globalScene.getEnemyParty()];
+    return allTeams.filter(p => p.isOnField());
+  }
 
   getAttackTypeMultiplier(attackType: PokemonType, grounded: boolean): number {
     let weatherMultiplier = 1;
@@ -809,38 +834,39 @@ public getAllFieldPokemons(): Pokemon[] {
     tagType: ArenaTagType,
     turnCount: number,
     sourceMove: MoveId | undefined,
-    sourceId: number,
+    sourceId: number | undefined,
     side: ArenaTagSide = ArenaTagSide.BOTH,
     quiet = false,
   ): boolean {
     const existingTag = this.getTagOnSide(tagType, side);
-if (existingTag) {
-  existingTag.onOverlap(globalScene.getPokemonById(sourceId));
 
-  // ✅ 여기!
-  if (existingTag.tagType === ArenaTagType.MAT_BLOCK) {
-    console.log(
-      "[MAT_BLOCK][OVERLAP]",
-      "turnCount=",
-      existingTag.turnCount,
-      "max=",
-      existingTag.maxDuration,
-      "side=",
-      existingTag.side,
-      "incomingTurnCount=",
-      turnCount,
-      "incomingSide=",
-      side,
-    );
-  }
+    if (existingTag) {
+      existingTag.onOverlap(sourceId != null ? globalScene.getPokemonById(sourceId) : undefined);
 
-  if (existingTag instanceof EntryHazardTag) {
-    const { tagType, side, turnCount, maxDuration, layers, maxLayers } = existingTag as EntryHazardTag;
-    this.eventTarget.dispatchEvent(new TagAddedEvent(tagType, side, turnCount, maxDuration, layers, maxLayers));
-  }
+      // ✅ 여기!
+      if (existingTag.tagType === ArenaTagType.MAT_BLOCK) {
+        console.log(
+          "[MAT_BLOCK][OVERLAP]",
+          "turnCount=",
+          existingTag.turnCount,
+          "max=",
+          existingTag.maxDuration,
+          "side=",
+          existingTag.side,
+          "incomingTurnCount=",
+          turnCount,
+          "incomingSide=",
+          side,
+        );
+      }
 
-  return false;
-}
+      if (existingTag instanceof EntryHazardTag) {
+        const { tagType, side, turnCount, maxDuration, layers, maxLayers } = existingTag as EntryHazardTag;
+        this.eventTarget.dispatchEvent(new TagAddedEvent(tagType, side, turnCount, maxDuration, layers, maxLayers));
+      }
+
+      return false;
+    }
 
     // creates a new tag object
     const newTag = getArenaTag(tagType, turnCount, sourceMove, sourceId, side);
@@ -848,8 +874,16 @@ if (existingTag) {
       newTag.onAdd(quiet);
       this.tags.push(newTag);
       if (newTag?.tagType === ArenaTagType.MAT_BLOCK) {
-  console.log("[MAT_BLOCK][ADD]", "turnCount=", newTag.turnCount, "max=", newTag.maxDuration, "side=", newTag.side);
-}
+        console.log(
+          "[MAT_BLOCK][ADD]",
+          "turnCount=",
+          newTag.turnCount,
+          "max=",
+          newTag.maxDuration,
+          "side=",
+          newTag.side,
+        );
+      }
 
       const { layers = 0, maxLayers = 0 } = newTag instanceof EntryHazardTag ? newTag : {};
 
@@ -963,7 +997,7 @@ if (existingTag) {
   }
 
   removeAllTags(): void {
-    while (this.tags.length) {
+    while (this.tags.length > 0) {
       this.tags[0].onRemove(this);
       this.eventTarget.dispatchEvent(
         new TagRemovedEvent(this.tags[0].tagType, this.tags[0].side, this.tags[0].turnCount),
@@ -1158,7 +1192,21 @@ if (existingTag) {
   }
 }
 
+function isValidBiomeId(value: unknown): value is BiomeId {
+  return typeof value === "number" && typeof BiomeId[value] === "string";
+}
+
 export function getBiomeKey(biome: BiomeId): string {
+  if (!isValidBiomeId(biome)) {
+    console.warn("[INVALID_BIOME_KEY]", {
+      biome,
+      type: typeof biome,
+      lookup: BiomeId[biome as any],
+    });
+
+    return BiomeId[BiomeId.TOWN].toLowerCase();
+  }
+
   return BiomeId[biome].toLowerCase();
 }
 

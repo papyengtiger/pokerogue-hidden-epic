@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "leppa-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 22
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 12,
+						"w": 18,
+						"h": 20
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 20
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 12,
+						"w": 17,
+						"h": 20
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 17,
+						"h": 20
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:82530b581dc11b127cfc862a874a7eea:18b0ee9a0f845097e4a3ca1d826f4c1c:8cf6bb743f420d17b801ac6ec138450a$"
+	}
+}

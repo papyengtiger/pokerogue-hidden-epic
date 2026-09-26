@@ -82,8 +82,6 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
     this.optionSelectIcons = [];
 
     this.scale = getTextStyleOptions(TextStyle.WINDOW).scale;
-
-    this.setCursor(0);
   }
 
   protected setupOptions() {
@@ -240,25 +238,25 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
       }
       const option = this.config?.options[this.unskippedIndices[this.fullCursor]];
       if (option?.handler()) {
-  if (!option.keepOpen) {
-    ui.revertMode();
-  }
-  playSound = !option.overrideSound;
-} else {
-  ui.playError();
-}
+        if (!option.keepOpen) {
+          ui.revertMode();
+        }
+        playSound = !option.overrideSound;
+      } else {
+        ui.playError();
+      }
     } else if (button === Button.SUBMIT && ui.getMode() === UiMode.AUTO_COMPLETE) {
-  success = true;
-  const option = this.config?.options[this.unskippedIndices[this.fullCursor]];
-  if (option?.handler()) {
-    if (!option.keepOpen) {
-      ui.revertMode();
-    }
-    playSound = !option.overrideSound;
-  } else {
-    ui.playError();
-  }
-} else {
+      success = true;
+      const option = this.config?.options[this.unskippedIndices[this.fullCursor]];
+      if (option?.handler()) {
+        if (!option.keepOpen) {
+          ui.revertMode();
+        }
+        playSound = !option.overrideSound;
+      } else {
+        ui.playError();
+      }
+    } else {
       switch (button) {
         case Button.UP:
           if (this.fullCursor === 0) {

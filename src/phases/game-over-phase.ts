@@ -1,5 +1,6 @@
 import { pokerogueApi } from "#api/pokerogue-api";
 import { clientSessionId } from "#app/account";
+import { getGameMode } from "#app/game-mode";
 import { globalScene } from "#app/global-scene";
 import { pokemonEvolutions } from "#balance/pokemon-evolutions";
 import { bypassLogin } from "#constants/app-constants";
@@ -7,6 +8,7 @@ import { modifierTypes } from "#data/data-lists";
 import { getCharVariantFromDialogue } from "#data/dialogue";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { BattleType } from "#enums/battle-type";
+import { GameModes } from "#enums/game-modes";
 import { PlayerGender } from "#enums/player-gender";
 import { TrainerType } from "#enums/trainer-type";
 import { UiMode } from "#enums/ui-mode";
@@ -32,12 +34,16 @@ import i18next from "i18next";
 export class GameOverPhase extends BattlePhase {
   public readonly phaseName = "GameOverPhase";
   private isVictory: boolean;
+
+  private clearType: "NORMAL" | "QUEST";
+
   private firstRibbons: PokemonSpecies[] = [];
 
-  constructor(isVictory = false) {
+  constructor(isVictory = false, clearType: "NORMAL" | "QUEST" = "NORMAL") {
     super();
 
     this.isVictory = isVictory;
+    this.clearType = clearType;
   }
 
   start() {
@@ -74,30 +80,75 @@ export class GameOverPhase extends BattlePhase {
     } else if (this.isVictory || !globalScene.enableRetries) {
       this.handleGameOver();
     } else {
-      globalScene.ui.showText(i18next.t("battle:retryBattle"), null, () => {
+      const isPracticeBattle = (globalScene.currentBattle as any)?.isPracticeBattle === true;
+
+      const retryMessage = isPracticeBattle
+        ? "연습모드에서 모든 포켓몬이 기절했습니다.\n다시 처음부터 도전하시겠습니까?"
+        : i18next.t("battle:retryBattle");
+
+      globalScene.ui.showText(retryMessage, null, () => {
         globalScene.ui.setMode(
           UiMode.CONFIRM,
           () => {
             globalScene.ui.fadeOut(1250).then(() => {
+              const wasPracticeBattle =
+                (globalScene.currentBattle as any)?.isPracticeBattle === true
+                || globalScene.gameMode?.modeId === GameModes.PRACTICE;
+
+              console.log("[RETRY_PRACTICE_CHECK]", { wasPracticeBattle });
+
+              if (wasPracticeBattle) {
+                console.log("[PRACTICE_RETRY_START]");
+
+                (globalScene as any).practiceTurnResult = null;
+                (globalScene as any).practiceLastResult = null;
+
+                globalScene.phaseManager.clearAllPhases();
+                globalScene.ui.clearText();
+
+                globalScene.gameMode = getGameMode(GameModes.PRACTICE);
+
+                const battle = globalScene.newBattle(1, BattleType.WILD, undefined, false) as any;
+
+                battle.turnCommands = [];
+                battle.preTurnCommands = [];
+                battle.commandPhase = null;
+                battle.cancelledMove = false;
+                battle.started = false;
+                battle.enemySwitchCounter = 0;
+
+                battle.isPracticeBattle = true;
+                battle.waveIndex = 1;
+
+                console.log("[PRACTICE_RETRY_RESET]", {
+                  turnCommands: battle.turnCommands,
+                  preTurnCommands: battle.preTurnCommands,
+                  started: battle.started,
+                  waveIndex: battle.waveIndex,
+                });
+
+                globalScene.phaseManager.unshiftNew("PracticeEncounterPhase");
+
+                globalScene.ui.fadeIn(250).then(() => {
+                  console.log("[PRACTICE_RETRY_READY]");
+                  this.end();
+                });
+
+                return;
+              }
+
               globalScene.reset();
               globalScene.phaseManager.clearPhaseQueue();
+
               globalScene.gameData.loadSession(globalScene.sessionSlotId).then(() => {
                 globalScene.phaseManager.pushNew("EncounterPhase", true);
 
                 const availablePartyMembers = globalScene.getPokemonAllowedInBattle().length;
 
                 globalScene.phaseManager.pushNew("SummonPhase", 0);
+
                 if (globalScene.currentBattle.double && availablePartyMembers > 1) {
                   globalScene.phaseManager.pushNew("SummonPhase", 1);
-                }
-                if (
-                  globalScene.currentBattle.waveIndex > 1
-                  && globalScene.currentBattle.battleType !== BattleType.TRAINER
-                ) {
-                  globalScene.phaseManager.pushNew("CheckSwitchPhase", 0, globalScene.currentBattle.double);
-                  if (globalScene.currentBattle.double && availablePartyMembers > 1) {
-                    globalScene.phaseManager.pushNew("CheckSwitchPhase", 1, globalScene.currentBattle.double);
-                  }
                 }
 
                 globalScene.ui.fadeIn(1250);
@@ -156,12 +207,28 @@ export class GameOverPhase extends BattlePhase {
   }
 
   handleGameOver(): void {
+    const isQuestClear = this.clearType === "QUEST";
+
     const doGameOver = (newClear: boolean) => {
       globalScene.disableMenu = true;
       globalScene.time.delayedCall(1000, () => {
         let firstClear = false;
         if (this.isVictory) {
-          if (globalScene.gameMode.isClassic) {
+          if (!isQuestClear && globalScene.gameMode.modeId !== GameModes.PRACTICE) {
+            const bonusRp = globalScene.gameMode.isClassic
+              ? 10000
+              : globalScene.gameMode.isDaily
+                ? 7000
+                : globalScene.gameMode.isEndless
+                  ? 15000
+                  : globalScene.gameMode.isChallenge
+                    ? 12000
+                    : 0;
+
+            globalScene.gameData.addRoguePoints(bonusRp);
+          }
+
+          if (!isQuestClear && globalScene.gameMode.isClassic) {
             firstClear = globalScene.validateAchv(achvs.CLASSIC_VICTORY);
             globalScene.validateAchv(achvs.UNEVOLVED_CLASSIC_VICTORY);
             globalScene.gameData.gameStats.sessionsWon++;
@@ -172,7 +239,7 @@ export class GameOverPhase extends BattlePhase {
               }
             }
             this.awardRibbons();
-          } else if (globalScene.gameMode.isDaily && newClear) {
+          } else if (!isQuestClear && globalScene.gameMode.isDaily && newClear) {
             globalScene.gameData.gameStats.dailyRunSessionsWon++;
             globalScene.validateAchv(achvs.DAILY_VICTORY);
           }
@@ -184,33 +251,50 @@ export class GameOverPhase extends BattlePhase {
         activeBattlers.map(p => p.hideInfo());
         globalScene.ui.fadeOut(fadeDuration).then(() => {
           activeBattlers.map(a => a.setVisible(false));
+
+          globalScene.pbTray?.setVisible(false);
+          globalScene.pbTrayEnemy?.setVisible(false);
+
           globalScene.setFieldScale(1, true);
           globalScene.phaseManager.clearPhaseQueue();
           globalScene.ui.clearText();
 
-          if (this.isVictory && globalScene.gameMode.isChallenge) {
+          if (this.isVictory && !isQuestClear && globalScene.gameMode.isChallenge) {
             globalScene.gameMode.challenges.forEach(c => globalScene.validateAchvs(ChallengeAchv, c));
           }
 
           const clear = (endCardPhase?: EndCardPhase) => {
-            if (this.isVictory && newClear) {
-              this.handleUnlocks();
-
-              for (const species of this.firstRibbons) {
-                globalScene.phaseManager.unshiftNew("RibbonModifierRewardPhase", modifierTypes.VOUCHER_PLUS, species);
+            if (this.isVictory) {
+              // 런 종료 시 아이템 회수/저장
+              if (globalScene.gameMode.modeId !== GameModes.PRACTICE) {
+                globalScene.gameData.depositRemainingRunItemsToStorage();
+                globalScene.gameData.saveSystem();
               }
-              if (!firstClear) {
-                globalScene.phaseManager.unshiftNew("GameOverModifierRewardPhase", modifierTypes.VOUCHER_PREMIUM);
+
+              // ★ 정상 모드 클리어일 때만
+              if (newClear && !isQuestClear) {
+                this.handleUnlocks();
+
+                for (const species of this.firstRibbons) {
+                  globalScene.phaseManager.unshiftNew("RibbonModifierRewardPhase", modifierTypes.VOUCHER_PLUS, species);
+                }
+
+                if (!firstClear) {
+                  globalScene.phaseManager.unshiftNew("GameOverModifierRewardPhase", modifierTypes.VOUCHER_PREMIUM);
+                }
               }
             }
+
             this.getRunHistoryEntry().then(runHistoryEntry => {
-              globalScene.gameData.saveRunHistory(runHistoryEntry, this.isVictory);
+              globalScene.gameData.saveRunHistory(runHistoryEntry, this.isVictory && !isQuestClear);
+
               globalScene.phaseManager.pushNew("PostGameOverPhase", globalScene.sessionSlotId, endCardPhase);
+
               this.end();
             });
           };
 
-          if (this.isVictory && globalScene.gameMode.isClassic) {
+          if (this.isVictory && !isQuestClear && globalScene.gameMode.isClassic) {
             const dialogueKey = "miscDialogue:ending";
 
             if (!globalScene.ui.shouldSkipDialogue(dialogueKey)) {
@@ -257,6 +341,11 @@ export class GameOverPhase extends BattlePhase {
 
     // If Online, execute apiFetch as intended
     // If Offline, execute offlineNewClear() only for victory, a localStorage implementation of newClear daily run checks
+    if (isQuestClear) {
+      doGameOver(false);
+      return;
+    }
+
     if (!bypassLogin || isLocalServerConnected) {
       pokerogueApi.savedata.session
         .newclear({

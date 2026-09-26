@@ -3,10 +3,9 @@
  * Can be safely imported without worrying about circular dependencies.
  */
 
-import type { ModifierPool } from "#types/modifier-types";
-import { ModifierTier } from "#enums/modifier-tier";
+import type { ModifierTier } from "#enums/modifier-tier";
 import { WeightedModifierType } from "#modifiers/modifier-type";
-import type { ModifierTypeFunc, WeightedModifierTypeWeightFunc } from "#types/modifier-types";
+import type { ModifierPool, ModifierTypeFunc, WeightedModifierTypeWeightFunc } from "#types/modifier-types";
 
 export const modifierPool: ModifierPool = {};
 
@@ -17,6 +16,10 @@ export const trainerModifierPool: ModifierPool = {};
 export const enemyBuffModifierPool: ModifierPool = {};
 
 export const dailyStarterModifierPool: ModifierPool = {};
+
+export const weeklyStarterModifierPool: ModifierPool = {};
+
+export const monthlyStarterModifierPool: ModifierPool = {};
 
 // ✅ modifier pool builder helper
 function W(
@@ -29,4 +32,3 @@ function W(
   w.setTier(tier); // ✅ 여기서 "이 아이템의 티어"를 확정
   return w;
 }
-

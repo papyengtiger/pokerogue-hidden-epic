@@ -4,7 +4,9 @@ import {
   dailyStarterModifierPool,
   enemyBuffModifierPool,
   modifierPool,
+  monthlyStarterModifierPool,
   trainerModifierPool,
+  weeklyStarterModifierPool,
   wildModifierPool,
 } from "#modifiers/modifier-pools";
 import type { ModifierType } from "#modifiers/modifier-type";
@@ -22,6 +24,10 @@ export function getModifierPoolForType(poolType: ModifierPoolType): ModifierPool
       return enemyBuffModifierPool;
     case ModifierPoolType.DAILY_STARTER:
       return dailyStarterModifierPool;
+    case ModifierPoolType.WEEKLY_STARTER:
+      return weeklyStarterModifierPool;
+    case ModifierPoolType.MONTHLY_STARTER:
+      return monthlyStarterModifierPool;
   }
 }
 

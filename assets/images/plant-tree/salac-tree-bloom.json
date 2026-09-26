@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "salac-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 17,
+				"h": 45
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 11,
+						"w": 15,
+						"h": 21
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 21
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 12,
+						"w": 15,
+						"h": 20
+					},
+					"frame": {
+						"x": 1,
+						"y": 24,
+						"w": 15,
+						"h": 20
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:81d9faf5e52d77126ed7958bc3f22484:dd968e4ed1b63cdbf308c2900fe5860c:f6d1d26c43546da1e371a94f3e8d677b$"
+	}
+}

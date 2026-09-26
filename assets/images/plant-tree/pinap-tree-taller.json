@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "pinap-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 21,
+				"h": 16
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 18,
+						"w": 8,
+						"h": 14
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 8,
+						"h": 14
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 19,
+						"w": 9,
+						"h": 13
+					},
+					"frame": {
+						"x": 11,
+						"y": 1,
+						"w": 9,
+						"h": 13
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f5a0649921d038e8592be8a02552f8eb:c07fc71f9c7cf03aff5561513cae9892:a10a264c4220610d4f4ef167a4d37418$"
+	}
+}

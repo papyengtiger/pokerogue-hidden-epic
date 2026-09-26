@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "haban-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 20
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 14,
+						"w": 17,
+						"h": 18
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 17,
+						"h": 18
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 14,
+						"w": 17,
+						"h": 18
+					},
+					"frame": {
+						"x": 20,
+						"y": 1,
+						"w": 17,
+						"h": 18
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e5e15c274c7c2473c90e6022f333bbab:4cd95878395ae16d3ed19f1f186f0483:f608cb9946143606be12ad459cd70ee8$"
+	}
+}

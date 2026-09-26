@@ -132,7 +132,7 @@ export const classicFixedBattles: FixedBattleConfigs = {
           [TrainerType.MATT, TrainerType.SHELLY],
           [TrainerType.JUPITER, TrainerType.MARS, TrainerType.SATURN],
           TrainerType.COLRESS,
-          TrainerType.BRYONY,
+          [TrainerType.BRYONY, TrainerType.ALIANA, TrainerType.CELOSIA, TrainerType.MABLE],
           TrainerType.FABA,
           TrainerType.PLUMERIA,
           TrainerType.OLEANA,
@@ -185,7 +185,7 @@ export const classicFixedBattles: FixedBattleConfigs = {
           [TrainerType.MATT, TrainerType.SHELLY],
           [TrainerType.JUPITER, TrainerType.MARS, TrainerType.SATURN],
           TrainerType.ZINZOLIN,
-          [TrainerType.BRYONY, TrainerType.XEROSIC],
+          [TrainerType.BRYONY, TrainerType.ALIANA, TrainerType.CELOSIA, TrainerType.MABLE],
           TrainerType.FABA,
           TrainerType.PLUMERIA,
           TrainerType.OLEANA,
@@ -301,7 +301,7 @@ export const classicFixedBattles: FixedBattleConfigs = {
         TrainerType.SHAUNTAL,
         TrainerType.MALVA,
         [TrainerType.HALA, TrainerType.MOLAYNE],
-        TrainerType.MARNIE_ELITE,
+        [TrainerType.MARNIE_ELITE, TrainerType.BEDE_ELITE],
         TrainerType.RIKA,
         TrainerType.CRISPIN,
       ]),
@@ -394,4 +394,110 @@ export const classicFixedBattles: FixedBattleConfigs = {
       ],
       allowLuckUpgrades: false,
     }),
+};
+
+export const monthlyFixedBattles: FixedBattleConfigs = {
+  // ================================
+  // 사천왕 1
+  // ================================
+  192: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(
+      getRandomTrainerFunc([
+        TrainerType.LORELEI,
+        TrainerType.WILL,
+        TrainerType.SIDNEY,
+        TrainerType.AARON,
+        TrainerType.SHAUNTAL,
+        TrainerType.MALVA,
+        [TrainerType.HALA, TrainerType.MOLAYNE],
+        [TrainerType.MARNIE_ELITE, TrainerType.BEDE_ELITE],
+        TrainerType.RIKA,
+        TrainerType.CRISPIN,
+      ]),
+    ),
+
+  // ================================
+  // 사천왕 2
+  // ================================
+  194: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setSeedOffsetWave(192)
+    .setGetTrainerFunc(
+      getRandomTrainerFunc([
+        TrainerType.BRUNO,
+        TrainerType.KOGA,
+        TrainerType.PHOEBE,
+        TrainerType.BERTHA,
+        TrainerType.MARSHAL,
+        TrainerType.SIEBOLD,
+        TrainerType.OLIVIA,
+        TrainerType.NESSA_ELITE,
+        TrainerType.POPPY,
+        TrainerType.AMARYS,
+      ]),
+    ),
+
+  // ================================
+  // 사천왕 3
+  // ================================
+  196: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setSeedOffsetWave(192)
+    .setGetTrainerFunc(
+      getRandomTrainerFunc([
+        TrainerType.AGATHA,
+        TrainerType.BRUNO,
+        TrainerType.GLACIA,
+        TrainerType.FLINT,
+        TrainerType.GRIMSLEY,
+        TrainerType.WIKSTROM,
+        TrainerType.ACEROLA,
+        [TrainerType.BEA_ELITE, TrainerType.ALLISTER_ELITE],
+        TrainerType.LARRY_ELITE,
+        TrainerType.LACEY,
+      ]),
+    ),
+
+  // ================================
+  // 사천왕 4
+  // ================================
+  198: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setSeedOffsetWave(192)
+    .setGetTrainerFunc(
+      getRandomTrainerFunc([
+        TrainerType.LANCE,
+        TrainerType.KAREN,
+        TrainerType.DRAKE,
+        TrainerType.LUCIAN,
+        TrainerType.CAITLIN,
+        TrainerType.DRASNA,
+        TrainerType.KAHILI,
+        TrainerType.RAIHAN_ELITE,
+        TrainerType.HASSEL,
+        TrainerType.DRAYTON,
+      ]),
+    ),
+
+  // ================================
+  // 챔피언
+  // ================================
+  199: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setSeedOffsetWave(192)
+    .setGetTrainerFunc(
+      getRandomTrainerFunc([
+        TrainerType.BLUE,
+        [TrainerType.RED, TrainerType.LANCE_CHAMPION],
+        [TrainerType.STEVEN, TrainerType.WALLACE],
+        TrainerType.CYNTHIA,
+        [TrainerType.ALDER, TrainerType.IRIS],
+        TrainerType.DIANTHA,
+        [TrainerType.KUKUI, TrainerType.HAU],
+        [TrainerType.LEON, TrainerType.MUSTARD],
+        [TrainerType.GEETA, TrainerType.NEMONA],
+        TrainerType.KIERAN,
+      ]),
+    ),
 };

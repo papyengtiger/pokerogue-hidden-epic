@@ -1,9 +1,11 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import { TypeImmunityModifier, WishingStarModifier } from "#app/modifier/modifier";
 import { SpeciesFormChangeActiveTrigger } from "#data/form-change-triggers";
 import { getPokeballAtlasKey, getPokeballTintColor } from "#data/pokeball";
 import { BattleType } from "#enums/battle-type";
+import { BattlerTagType } from "#enums/battler-tag-type";
 import { FieldPosition } from "#enums/field-position";
 import { MysteryEncounterMode } from "#enums/mystery-encounter-mode";
 import { PlayerGender } from "#enums/player-gender";
@@ -12,8 +14,6 @@ import { addPokeballOpenParticles } from "#field/anims";
 import type { Pokemon } from "#field/pokemon";
 import { PartyMemberPokemonPhase } from "#phases/party-member-pokemon-phase";
 import i18next from "i18next";
-import { WishingStarModifier, TypeImmunityModifier } from "#app/modifier/modifier";
-import { BattlerTagType } from "#enums/battler-tag-type";
 
 export class SummonPhase extends PartyMemberPokemonPhase {
   // The union type is needed to keep typescript happy as these phases extend from SummonPhase
@@ -99,8 +99,8 @@ export class SummonPhase extends PartyMemberPokemonPhase {
       });
       globalScene.time.delayedCall(750, () => this.summon());
     } else if (
-      globalScene.currentBattle.battleType === BattleType.TRAINER ||
-      globalScene.currentBattle.mysteryEncounter?.encounterMode === MysteryEncounterMode.TRAINER_BATTLE
+      globalScene.currentBattle.battleType === BattleType.TRAINER
+      || globalScene.currentBattle.mysteryEncounter?.encounterMode === MysteryEncounterMode.TRAINER_BATTLE
     ) {
       const trainerName = globalScene.currentBattle.trainer?.getName(
         !(this.fieldIndex % 2) ? TrainerSlot.TRAINER : TrainerSlot.TRAINER_PARTNER,
@@ -199,36 +199,34 @@ export class SummonPhase extends PartyMemberPokemonPhase {
                 pokemon.getSprite().clearTint();
                 pokemon.fieldSetup();
 
-// ✅ 풍선 체크
-const airBalloon = pokemon.getHeldItems?.().find(i =>
-  i instanceof TypeImmunityModifier &&
-  (
-    (i as any).sourceItem?.name === "air_balloon" ||
-    (i as any).type?.id === "AIR_BALLOON" ||
-    (i as any).type?.name === "풍선" ||
-    (i as any).name === "air_balloon"
-  )
-);
+                // ✅ 풍선 체크
+                const airBalloon = pokemon
+                  .getHeldItems?.()
+                  .find(
+                    i =>
+                      i instanceof TypeImmunityModifier
+                      && ((i as any).sourceItem?.name === "air_balloon"
+                        || (i as any).type?.id === "AIR_BALLOON"
+                        || (i as any).type?.name === "풍선"
+                        || (i as any).name === "air_balloon"),
+                  );
 
-if (
-  airBalloon &&
-  !(pokemon.battleData as any).airBalloonFloatMessageShown
-) {
-  (pokemon.battleData as any).airBalloonFloatMessageShown = true;
+                if (airBalloon && !(pokemon.battleData as any).airBalloonFloatMessageShown) {
+                  (pokemon.battleData as any).airBalloonFloatMessageShown = true;
 
-  pokemon.addTag(BattlerTagType.FLOATING);
+                  pokemon.addTag(BattlerTagType.FLOATING);
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("modifier:airBalloonActivated", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    }),
-  );
-}
+                  globalScene.phaseManager.queueMessage(
+                    i18next.t("modifier:airBalloonActivated", {
+                      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+                    }),
+                  );
+                }
 
-// 기존 코드
-if (pokemon.summonData.speciesForm) {
-  pokemon.loadAssets(false);
-}
+                // 기존 코드
+                if (pokemon.summonData.speciesForm) {
+                  pokemon.loadAssets(false);
+                }
                 globalScene.time.delayedCall(1000, () => this.end());
               },
             });
@@ -292,39 +290,59 @@ if (pokemon.summonData.speciesForm) {
         pokemon.getSprite().clearTint();
         pokemon.fieldSetup();
 
-// ✅ 풍선 체크
-const airBalloon = pokemon.getHeldItems?.().find(i =>
-  i instanceof TypeImmunityModifier &&
-  (
-    (i as any).sourceItem?.name === "air_balloon" ||
-    (i as any).type?.id === "AIR_BALLOON" ||
-    (i as any).type?.name === "풍선" ||
-    (i as any).name === "air_balloon"
-  )
-);
+        // ✅ 풍선 체크
+        const airBalloon = pokemon
+          .getHeldItems?.()
+          .find(
+            i =>
+              i instanceof TypeImmunityModifier
+              && ((i as any).sourceItem?.name === "air_balloon"
+                || (i as any).type?.id === "AIR_BALLOON"
+                || (i as any).type?.name === "풍선"
+                || (i as any).name === "air_balloon"),
+          );
 
-if (
-  airBalloon &&
-  !(pokemon.battleData as any).airBalloonFloatMessageShown
-) {
-  (pokemon.battleData as any).airBalloonFloatMessageShown = true;
+        if (airBalloon && !(pokemon.battleData as any).airBalloonFloatMessageShown) {
+          (pokemon.battleData as any).airBalloonFloatMessageShown = true;
 
-  pokemon.addTag(BattlerTagType.FLOATING);
+          pokemon.addTag(BattlerTagType.FLOATING);
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("modifier:airBalloonActivated", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    }),
-  );
-}
+          globalScene.phaseManager.queueMessage(
+            i18next.t("modifier:airBalloonActivated", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            }),
+          );
+        }
         globalScene.updateFieldScale();
         globalScene.time.delayedCall(1000, () => this.end());
       },
     });
   }
 
-onEnd(): void {
+  onEnd(): void {
     const pokemon = this.getPokemon();
+
+    console.log("[SUMMON_END_TARGET_DEBUG]", {
+      name: pokemon?.name,
+      id: pokemon?.id,
+      isPlayer: pokemon?.isPlayer?.(),
+      partyMemberIndex: this.partyMemberIndex,
+      phaserFieldIndex: globalScene.field?.getIndex(pokemon),
+      getFieldIndex: pokemon?.getFieldIndex?.(),
+      getBattlerIndex: pokemon?.getBattlerIndex?.(),
+
+      playerField: globalScene.getPlayerField().map(p => ({
+        name: p.name,
+        id: p.id,
+        phaserIndex: globalScene.field?.getIndex(p),
+      })),
+
+      enemyField: globalScene.getEnemyField().map(p => ({
+        name: p.name,
+        id: p.id,
+        phaserIndex: globalScene.field?.getIndex(p),
+      })),
+    });
 
     if (pokemon.isShiny(true)) {
       globalScene.phaseManager.unshiftNew("ShinySparklePhase", pokemon.getBattlerIndex());
@@ -334,9 +352,9 @@ onEnd(): void {
 
     // ✅ [폼체인지 조건 통과 여부 판단]
     if (
-      !this.loaded ||
-      [BattleType.TRAINER, BattleType.MYSTERY_ENCOUNTER].includes(globalScene.currentBattle.battleType) ||
-      globalScene.currentBattle.waveIndex % 10 === 1
+      !this.loaded
+      || [BattleType.TRAINER, BattleType.MYSTERY_ENCOUNTER].includes(globalScene.currentBattle.battleType)
+      || globalScene.currentBattle.waveIndex % 10 === 1
     ) {
       globalScene.triggerPokemonFormChange(pokemon, SpeciesFormChangeActiveTrigger, true);
     }
@@ -346,9 +364,9 @@ onEnd(): void {
 
     // ✅ 다이맥스 상태 복원 시도 (거다이맥스 폼 + 소원의별 있을 때)
     if (
-      globalScene.getModifiers(WishingStarModifier) &&
-      pokemon.formKey?.includes("gigantamax") &&
-      !pokemon.isDynamaxed
+      globalScene.getModifiers(WishingStarModifier)
+      && pokemon.formKey?.includes("gigantamax")
+      && !pokemon.isDynamaxed
     ) {
       pokemon.setDynamax(true);
       if (globalScene.inBattle && globalScene.currentPhase) {

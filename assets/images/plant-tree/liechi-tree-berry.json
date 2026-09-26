@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "liechi-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 29
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 5,
+						"w": 17,
+						"h": 27
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 17,
+						"h": 27
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 5,
+						"w": 17,
+						"h": 27
+					},
+					"frame": {
+						"x": 20,
+						"y": 1,
+						"w": 17,
+						"h": 27
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f382da57fd859cfacf69379d26b80d70:0f178830434926d1ece197a97e3190af:3396bff46278bc7dc1d83aba63544124$"
+	}
+}

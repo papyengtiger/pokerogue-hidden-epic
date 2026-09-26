@@ -1,32 +1,30 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import { TerrainType } from "#data/terrain";
 import { BattlerTagLapseType } from "#enums/battler-tag-lapse-type";
+import { BerryType } from "#enums/berry-type";
+import { MoveCategory } from "#enums/move-category";
 import { WeatherType } from "#enums/weather-type";
 import { TurnEndEvent } from "#events/battle-scene";
 import type { Pokemon } from "#field/pokemon";
 import {
   EnemyStatusEffectHealChanceModifier,
   EnemyTurnHealModifier,
+  MoodyItemModifier,
+  SturdyMealModifier,
+  TerrainSeedTrainerModifier,
   TurnHealModifier,
   TurnHeldItemTransferModifier,
   TurnStatusEffectModifier,
-  MoodyItemModifier,
-  WishingStarModifier,
   WeatherRockTrainerModifier,
-  TerrainSeedTrainerModifier,
-  SturdyMealModifier
+  WishingStarModifier,
 } from "#modifiers/modifier";
 import { FieldPhase } from "#phases/field-phase";
+import { NumberHolder } from "#utils/common";
+import { areAllies } from "#utils/pokemon-utils";
 import i18next from "i18next";
-import { type BattleStat, EFFECTIVE_STATS } from "#enums/stat";
-import { StatStageChangePhase } from "#app/phases/stat-stage-change-phase";
-import { areAllies, canSpeciesTera, willTerastallize } from "#utils/pokemon-utils";
-import { MoveCategory } from "#enums/move-category";
-import { BerryType } from "#enums/berry-type";
-import { NumberHolder, randSeedInt, toDmgValue } from "#utils/common";
-import { PracticeResultPhase } from "#phases/practice-result-phase";
 
 export class TurnEndPhase extends FieldPhase {
   public readonly phaseName = "TurnEndPhase";
@@ -35,7 +33,7 @@ export class TurnEndPhase extends FieldPhase {
     super.start();
 
     const endingTurn = globalScene.currentBattle.turn;
-  globalScene.eventTarget.dispatchEvent(new TurnEndEvent(endingTurn));
+    globalScene.eventTarget.dispatchEvent(new TurnEndEvent(endingTurn));
 
     // 몬스터소굴 턴 카운트 증가
     if (globalScene.isMonsterHouseActive && globalScene.monsterHouseData) {
@@ -49,68 +47,73 @@ export class TurnEndPhase extends FieldPhase {
       p.turnData.attacksReceived
         .filter(ar => {
           // ar.move 없으면(독/날씨/자해/반동 등) 제외
-          if (ar.move == null) return false;
+          if (ar.move == null) {
+            return false;
+          }
 
           const category = allMoves[ar.move].category;
 
           return (
-            category !== MoveCategory.STATUS &&
-            typeof ar.damage === "number" &&
-            ar.damage > 0 &&
-            // 자기 자신이 소스인 피해(반동/자해 등) 제외
-            ar.sourceBattlerIndex !== p.getBattlerIndex() &&
-            // 아군 제외
+            category !== MoveCategory.STATUS
+            && typeof ar.damage === "number"
+            && ar.damage > 0
+            && // 자기 자신이 소스인 피해(반동/자해 등) 제외
+            ar.sourceBattlerIndex !== p.getBattlerIndex()
+            && // 아군 제외
             !areAllies(p.getBattlerIndex(), ar.sourceBattlerIndex)
           );
         })
         .reduce((s, ar) => s + (ar.damage ?? 0), 0);
 
     const lastAttackerIndexThisTurn = (p: Pokemon): number | null => {
-      const last = [...p.turnData.attacksReceived]
-        .reverse()
-        .find(ar => {
-          if (ar.move == null) return false;
+      const last = [...p.turnData.attacksReceived].reverse().find(ar => {
+        if (ar.move == null) {
+          return false;
+        }
 
-          const category = allMoves[ar.move].category;
+        const category = allMoves[ar.move].category;
 
-          return (
-            category !== MoveCategory.STATUS &&
-            typeof ar.damage === "number" &&
-            ar.damage > 0 &&
-            ar.sourceBattlerIndex !== p.getBattlerIndex() &&
-            !areAllies(p.getBattlerIndex(), ar.sourceBattlerIndex)
-          );
-        });
+        return (
+          category !== MoveCategory.STATUS
+          && typeof ar.damage === "number"
+          && ar.damage > 0
+          && ar.sourceBattlerIndex !== p.getBattlerIndex()
+          && !areAllies(p.getBattlerIndex(), ar.sourceBattlerIndex)
+        );
+      });
 
       return last?.sourceBattlerIndex ?? null;
     };
 
     const handlePokemon = (pokemon: Pokemon) => {
       // ✅ ✅ ✅ (A) 제일 먼저: BIDE 누적/감소/마지막 공격자 저장
-const bd = pokemon.battleData as any;
+      const bd = pokemon.battleData as any;
 
-if (bd.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
-  const add = sumCounterableDamageThisTurn(pokemon); // 네가 가진 함수 사용
-  bd.bideDamage = (bd.bideDamage ?? 0) + add;
+      if (bd.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
+        const add = sumCounterableDamageThisTurn(pokemon); // 네가 가진 함수 사용
+        bd.bideDamage = (bd.bideDamage ?? 0) + add;
 
-  // 마지막 공격자 저장(있으면 갱신)
-  const last = [...pokemon.turnData.attacksReceived]
-    .reverse()
-    .find(ar =>
-      allMoves[ar.move].category !== MoveCategory.STATUS &&
-      !areAllies(pokemon.getBattlerIndex(), ar.sourceBattlerIndex) &&
-      typeof ar.damage === "number" &&
-      ar.damage > 0
-    );
-  if (last) bd.bideLastAttackerIndex = last.sourceBattlerIndex;
+        // 마지막 공격자 저장(있으면 갱신)
+        const last = [...pokemon.turnData.attacksReceived]
+          .reverse()
+          .find(
+            ar =>
+              allMoves[ar.move].category !== MoveCategory.STATUS
+              && !areAllies(pokemon.getBattlerIndex(), ar.sourceBattlerIndex)
+              && typeof ar.damage === "number"
+              && ar.damage > 0,
+          );
+        if (last) {
+          bd.bideLastAttackerIndex = last.sourceBattlerIndex;
+        }
 
-  bd.bideTurnsLeft--;
+        bd.bideTurnsLeft--;
 
-  // ✅ 2턴 끝났으면 “다음 턴 방출” 플래그
-  if (bd.bideTurnsLeft <= 0) {
-    bd.bideReleasing = true;
-  }
-}
+        // ✅ 2턴 끝났으면 “다음 턴 방출” 플래그
+        if (bd.bideTurnsLeft <= 0) {
+          bd.bideReleasing = true;
+        }
+      }
 
       if (!pokemon.switchOutStatus) {
         pokemon.lapseTags(BattlerTagLapseType.TURN_END);
@@ -127,7 +130,7 @@ if (bd.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
             i18next.t("battle:turnEndHpRestore", {
               pokemonName: getPokemonNameWithAffix(pokemon),
             }),
-            true
+            true,
           );
         }
 
@@ -143,7 +146,9 @@ if (bd.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
         const wishingStarMods = globalScene.getModifiers(WishingStarModifier);
         for (const mod of wishingStarMods) {
           const poke = mod.getPokemon();
-          if (!poke || !poke.isOnField()) continue;
+          if (!poke || !poke.isOnField()) {
+            continue;
+          }
 
           if (mod.isForbiddenSpecies(poke)) {
             console.log(`[WishingStar] 금지된 종 ${poke.name} 발견, 모디파이어 강제 제거`);
@@ -159,38 +164,48 @@ if (bd.bideActive && (bd.bideTurnsLeft ?? 0) > 0) {
       globalScene.applyModifiers(TurnHeldItemTransferModifier, pokemon.isPlayer(), pokemon);
 
       // ✅ MoodyItemModifier 처리 (TurnEndPhase)
-// ✅ MoodyItemModifier 처리 (TurnEndPhase)
-const moodyMod = globalScene
-  .getModifiers(MoodyItemModifier, pokemon.isPlayer())
-  .find(
-    mod =>
-      mod instanceof MoodyItemModifier &&
-      mod.pokemonId === pokemon.id,
-  ) as MoodyItemModifier | undefined;
+      // ✅ MoodyItemModifier 처리 (TurnEndPhase)
+      const moodyMod = globalScene
+        .getModifiers(MoodyItemModifier, pokemon.isPlayer())
+        .find(mod => mod instanceof MoodyItemModifier && mod.pokemonId === pokemon.id) as MoodyItemModifier | undefined;
 
-if (moodyMod) {
-  moodyMod.applyTurnEnd(pokemon, false, []);
-}
+      if (moodyMod) {
+        moodyMod.applyTurnEnd(pokemon, false, []);
+      }
 
-// ✅ ✅ ✅ 여기! (turnCount 올리기 전에)
-{
-  const bd: any = (pokemon as any).battleData ??= new PokemonBattleData();
+      // ✅ ✅ ✅ 여기! (turnCount 올리기 전에)
+      {
+        const bd: any = ((pokemon as any).battleData ??= new PokemonBattleData());
 
-  // 커스타프 들고 있는지(소모/교체/기프트패스/트릭 등 반영 후 최종 상태)
-  const held = pokemon.getHeldBerryTypes?.() ?? [];
-  const hasCustap = held.includes(BerryType.CUSTAP);
+        // 커스타프 들고 있는지(소모/교체/기프트패스/트릭 등 반영 후 최종 상태)
+        const held = pokemon.getHeldBerryTypes?.() ?? [];
+        const hasCustap = held.includes(BerryType.CUSTAP);
 
-  if (hasCustap && pokemon.hp > 0) {
-    const hpRatioReq = new NumberHolder(0.25);
-    applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
+        if (hasCustap && pokemon.hp > 0) {
+          const hpRatioReq = new NumberHolder(0.25);
+          applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
 
-    // "전 턴 종료 시점에 25% 이하였는가"만 저장 (다음 턴 TurnStart에서 primed로 사용)
-    bd.custapPrimed = pokemon.getHpRatio() <= hpRatioReq.value;
-  } else {
-    // 없거나 기절이면 primed 해제
-    bd.custapPrimed = false;
-  }
-}
+          // "전 턴 종료 시점에 25% 이하였는가"만 저장 (다음 턴 TurnStart에서 primed로 사용)
+          bd.custapPrimed = pokemon.getHpRatio() <= hpRatioReq.value;
+        } else {
+          // 없거나 기절이면 primed 해제
+          bd.custapPrimed = false;
+        }
+      }
+
+      // ✅ 몬스터소굴 우두머리 첫 턴 종료
+      if (
+        monsterHouseManager.isActive()
+        && monsterHouseManager.isBossPokemon(pokemon)
+        && pokemon.tempSummonData.monsterHouseFirstTurn
+      ) {
+        pokemon.tempSummonData.monsterHouseFirstTurn = false;
+
+        console.log("[MONSTER_HOUSE_BOSS_FIRST_TURN_END]", {
+          pokemonId: pokemon.id,
+          pokemon: pokemon.name,
+        });
+      }
 
       pokemon.tempSummonData.turnCount++;
       pokemon.tempSummonData.waveTurnCount++;
@@ -224,15 +239,19 @@ if (moodyMod) {
       .getModifiers(TerrainSeedTrainerModifier, true)
       .filter(m => m instanceof TerrainSeedTrainerModifier) as TerrainSeedTrainerModifier[];
 
-    for (const mod of weatherMods) mod.onTurnEnd();
-    for (const mod of terrainMods) mod.onTurnEnd();
+    for (const mod of weatherMods) {
+      mod.onTurnEnd();
+    }
+    for (const mod of terrainMods) {
+      mod.onTurnEnd();
+    }
 
     globalScene.currentBattle.incrementTurn();
 
-if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  globalScene.phaseManager.pushNew("PracticeResultPhase");
-}
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      globalScene.phaseManager.pushNew("PracticeResultPhase");
+    }
 
-this.end();
+    this.end();
   }
 }

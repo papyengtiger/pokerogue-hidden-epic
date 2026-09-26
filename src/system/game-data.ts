@@ -12,6 +12,9 @@ import { bypassLogin, isBeta, isDev } from "#constants/app-constants";
 import { EntryHazardTag } from "#data/arena-tag";
 import { allMoves, allSpecies } from "#data/data-lists";
 import type { Egg } from "#data/egg";
+import { kecleonShopManager } from "#data/kecleon-shop/kecleon-shop-manager";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
+import { mysteryTimeManager } from "#data/mystery-time/mystery-time-manager";
 import { pokemonFormChanges } from "#data/pokemon-forms";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { loadPositionalTag } from "#data/positional-tags/load-positional-tag";
@@ -19,14 +22,19 @@ import { TerrainType } from "#data/terrain";
 import { AbilityAttr } from "#enums/ability-attr";
 import { BankCurrencyType } from "#enums/bank-currency-type";
 import { BattleType } from "#enums/battle-type";
+import { BiomeId } from "#enums/biome-id";
 import { ChallengeType } from "#enums/challenge-type";
 import { Device } from "#enums/devices";
 import { DexAttr } from "#enums/dex-attr";
+import { ExchangeCurrencyType } from "#enums/exchange-currency-type";
 import { GameDataType } from "#enums/game-data-type";
 import { GameModes } from "#enums/game-modes";
+import { MarkId } from "#enums/mark-id";
+import { MoveId } from "#enums/move-id";
 import type { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import { Nature } from "#enums/nature";
 import { PlayerGender } from "#enums/player-gender";
+import { PokeballType } from "#enums/pokeball";
 import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
@@ -38,15 +46,18 @@ import { TagAddedEvent, TerrainChangedEvent, WeatherChangedEvent } from "#events
 import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
 // biome-ignore lint/performance/noNamespaceImport: Something weird is going on here and I don't want to touch it
 import * as Modifier from "#modifiers/modifier";
+import { ModifierClassMap } from "#modifiers/modifier";
 import { MysteryEncounterSaveData } from "#mystery-encounters/mystery-encounter-save-data";
 import type { Variant } from "#sprites/variant";
 import { achvs } from "#system/achv";
 import { ArenaData, type SerializedArenaData } from "#system/arena-data";
 import { ChallengeData } from "#system/challenge-data";
 import { EggData } from "#system/egg-data";
+import { type ExchangePreviewResult, getExchangePreviewToRp } from "#system/exchange-utils";
 import { GameStats } from "#system/game-stats";
 import { ModifierData as PersistentModifierData } from "#system/modifier-data";
 import { PokemonData } from "#system/pokemon-data";
+import type { QuestEntry } from "#system/quest-manager";
 import { RibbonData } from "#system/ribbons/ribbon-data";
 import { resetSettings, SettingKeys, setSetting } from "#system/settings";
 import { SettingGamepad, setSettingGamepad, settingGamepadDefaults } from "#system/settings-gamepad";
@@ -63,11 +74,16 @@ import { trainerConfigs } from "#trainers/trainer-config";
 import type { DexData, DexEntry } from "#types/dex-data";
 import type {
   AchvUnlocks,
+  BerryPlanterSlotSaveData,
   DexAttrProps,
+  PracticeDummyConfig,
+  PracticePresetData,
+  ResourceInventoryData,
   RunHistoryData,
   RunItemData,
   SeenDialogues,
   SessionSaveData,
+  Starter,
   StarterData,
   StoredItemData,
   SystemSaveData,
@@ -75,7 +91,6 @@ import type {
   Unlocks,
   VoucherCounts,
   VoucherUnlocks,
-  PracticeDummyConfig,
 } from "#types/save-data";
 import { RUN_HISTORY_LIMIT } from "#ui/run-history-ui-handler";
 import { applyChallenges } from "#utils/challenge-utils";
@@ -86,10 +101,6 @@ import { getPokemonSpecies } from "#utils/pokemon-utils";
 import { toCamelCase } from "#utils/strings";
 import { AES, enc } from "crypto-js";
 import i18next from "i18next";
-import { ModifierClassMap, EnemyAttackStatusEffectChanceModifier } from "#modifiers/modifier";
-import { getExchangePreviewToRp, type ExchangePreviewResult } from "#system/exchange-utils";
-import type { SpeciesId } from "#enums/species-id";
-import { ExchangeCurrencyType } from "#enums/exchange-currency-type";
 
 function getDataTypeKey(dataType: GameDataType, slotId = 0): string {
   switch (dataType) {
@@ -155,18 +166,29 @@ export class GameData {
   public eggPity: number[];
   public unlockPity: number[];
   public roguePoints: number;
-  
+
   public bankMoney: number;
   public bankRoguePoints: number;
   public achvPointsGranted = false;
+
+  public questList: QuestEntry[];
 
   public storageItems: StoredItemData[];
   public runStorageItems: RunItemData[];
 
   public practiceDummyConfig: PracticeDummyConfig;
 
+  public practicePresets: PracticePresetData[];
+
   public pendingRunItems: string[];
   public lastSelectedStarters: Starter[] = [];
+
+  public pendingPracticePresetStarters: Starter[] = [];
+
+  public usedCoupons: string[];
+
+  public berryPlanterSlots: BerryPlanterSlotSaveData[];
+  public resourceInventory: ResourceInventoryData;
 
   /**
    * @param fromRaw - If true, will skip initialization of fields that are normally randomized on new game start. Used for the admin panel; default `false`
@@ -200,8 +222,11 @@ export class GameData {
       [VoucherType.GOLDEN]: 0,
     };
     this.roguePoints = 0;
+    this.lastAttendanceDate = "";
+    this.attendanceCount = 0;
     this.bankMoney = 0;
     this.bankRoguePoints = 0;
+    this.questList = [];
     this.eggs = [];
     this.eggPity = [0, 0, 0, 0];
     this.unlockPity = [0, 0, 0, 0];
@@ -213,451 +238,640 @@ export class GameData {
     this.pendingRunItems = [];
 
     this.lastSelectedStarters = [];
-    this.practiceDummyConfig = {};
+    this.practicePresets = [];
+
+    this.pendingPracticePresetStarters = [];
+
+    this.usedCoupons = [];
+
+    this.practiceDummyConfig = {
+      dummy1: {},
+      dummy2: {},
+      battleType: "SINGLE",
+    };
+
+    this.berryPlanterSlots = [
+      { state: "EMPTY", growthStage: 0 },
+      { state: "EMPTY", growthStage: 0 },
+      { state: "EMPTY", growthStage: 0 },
+    ];
+
+    this.resourceInventory = {};
+  }
+
+  public addBankMoney(amount: number): boolean {
+    if (amount <= 0) {
+      return false;
+    }
+
+    this.bankMoney = Math.max(0, (this.bankMoney ?? 0) + Math.floor(amount));
+
+    return true;
+  }
+
+  public addResource(resourceId: string, amount: number): boolean {
+    if (!resourceId || amount <= 0) {
+      return false;
+    }
+
+    const qty = Math.floor(amount);
+
+    this.resourceInventory[resourceId] = (this.resourceInventory[resourceId] ?? 0) + qty;
+
+    return true;
   }
 
   public addRoguePoints(amount: number): void {
-  const practiceConfig = this.practiceDummyConfig;
+    const practiceConfig = this.practiceDummyConfig;
 
-  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-    const result =
-      (globalScene as any).practiceTurnResult;
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      const result = (globalScene as any).practiceTurnResult;
 
-    if (result) {
-      result.roguePointsGained += amount;
+      if (result) {
+        result.roguePointsGained += amount;
 
-      result.roguePointFactors ??= [];
+        result.roguePointFactors ??= [];
 
-      result.roguePointFactors.push(
-        `RP +${amount}`,
-      );
+        result.roguePointFactors.push(`RP +${amount}`);
 
-      console.log(
-        "[PRACTICE_RP]",
-        amount,
-      );
-    }
-
-    // OFF면 표시만 하고 실제 지급 안함
-    if (!practiceConfig?.rewardFlags?.roguePoints) {
-      return;
-    }
-  }
-
-  this.roguePoints = Math.max(
-    0,
-    this.roguePoints + amount,
-  );
-
-  globalScene.updateroguePointText?.();
-}
-
-public spendroguePoints(amount: number): boolean {
-  if (this.roguePoints < amount) {
-    return false;
-  }
-  this.roguePoints -= amount;
-  return true;
-}
-
-public getBankBalance(type: BankCurrencyType): number {
-  switch (type) {
-    case BankCurrencyType.MONEY:
-      return this.bankMoney ?? 0;
-
-    case BankCurrencyType.ROGUE_POINTS:
-      return this.bankRoguePoints ?? 0;
-  }
-
-  return 0;
-}
-
-public getExchangeCurrencyAmount(type: ExchangeCurrencyType, speciesId?: SpeciesId): number {
-  switch (type) {
-    case ExchangeCurrencyType.MONEY:
-      if ((this.money ?? 0) < amount) return false;
-this.money -= amount;
-
-    case ExchangeCurrencyType.CANDY:
-      if (speciesId == null) {
-        return 0;
+        console.log("[PRACTICE_RP]", amount);
       }
-      return this.starterData?.[speciesId]?.candyCount ?? 0;
 
-    case ExchangeCurrencyType.VOUCHER_REGULAR:
-      return this.voucherCounts?.[VoucherType.REGULAR] ?? 0;
-
-    case ExchangeCurrencyType.VOUCHER_PLUS:
-      return this.voucherCounts?.[VoucherType.PLUS] ?? 0;
-
-    case ExchangeCurrencyType.VOUCHER_PREMIUM:
-      return this.voucherCounts?.[VoucherType.PREMIUM] ?? 0;
-
-    case ExchangeCurrencyType.VOUCHER_GOLDEN:
-      return this.voucherCounts?.[VoucherType.GOLDEN] ?? 0;
-
-    default:
-      return 0;
-  }
-}
-
-private togglePracticeDummyFaint(): boolean {
-  const cfg = globalScene.gameData.practiceDummyConfig ??= {};
-  cfg.rewardFlags ??= {};
-
-  cfg.rewardFlags.allowDummyFaint =
-    !cfg.rewardFlags.allowDummyFaint;
-
-  this.refreshList?.();
-
-  return true;
-}
-
-public getTotalStarterCandyCount(): number {
-  let total = 0;
-
-  for (const speciesIdStr of Object.keys(this.starterData ?? {})) {
-    const speciesId = Number(speciesIdStr) as SpeciesId;
-    total += this.starterData[speciesId]?.candyCount ?? 0;
-  }
-
-  return total;
-}
-
-public getExchangeableCandySpecies(minCandy: number = 10): SpeciesId[] {
-  const result: SpeciesId[] = [];
-
-  for (const speciesIdStr of Object.keys(this.starterData ?? {})) {
-    const speciesId = Number(speciesIdStr) as SpeciesId;
-    const candyCount = this.starterData[speciesId]?.candyCount ?? 0;
-
-    if (candyCount >= minCandy) {
-      result.push(speciesId);
-    }
-  }
-
-  return result;
-}
-
-private spendExchangeCurrency(
-  type: ExchangeCurrencyType,
-  amount: number,
-  speciesId?: SpeciesId,
-): boolean {
-  if (amount <= 0) {
-    return false;
-  }
-
-  switch (type) {
-    case ExchangeCurrencyType.MONEY:
-      if ((this.money ?? 0) < amount) return false;
-      this.money -= amount;
-      return true;
-
-    case ExchangeCurrencyType.CANDY: {
-      if (speciesId == null) return false;
-      const entry = this.starterData?.[speciesId];
-      if (!entry || (entry.candyCount ?? 0) < amount) return false;
-      entry.candyCount -= amount;
-      return true;
+      // OFF면 표시만 하고 실제 지급 안함
+      if (!practiceConfig?.rewardFlags?.roguePoints) {
+        return;
+      }
     }
 
-    case ExchangeCurrencyType.VOUCHER_REGULAR:
-      if ((this.voucherCounts?.[VoucherType.REGULAR] ?? 0) < amount) return false;
-      this.voucherCounts[VoucherType.REGULAR] -= amount;
-      return true;
+    this.roguePoints = Math.max(0, this.roguePoints + amount);
 
-    case ExchangeCurrencyType.VOUCHER_PLUS:
-      if ((this.voucherCounts?.[VoucherType.PLUS] ?? 0) < amount) return false;
-      this.voucherCounts[VoucherType.PLUS] -= amount;
-      return true;
+    globalScene.updateroguePointText?.();
+  }
 
-    case ExchangeCurrencyType.VOUCHER_PREMIUM:
-      if ((this.voucherCounts?.[VoucherType.PREMIUM] ?? 0) < amount) return false;
-      this.voucherCounts[VoucherType.PREMIUM] -= amount;
-      return true;
-
-    case ExchangeCurrencyType.VOUCHER_GOLD:
-      if ((this.voucherCounts?.[VoucherType.GOLDEN] ?? 0) < amount) return false;
-      this.voucherCounts[VoucherType.GOLDEN] -= amount;
-      return true;
-
-    default:
+  public spendroguePoints(amount: number): boolean {
+    if (this.roguePoints < amount) {
       return false;
-  }
-}
-
-public exchangeCurrencyToRoguePoints(
-  source: ExchangeCurrencyType,
-  amount: number,
-  speciesId?: SpeciesId,
-): ExchangePreviewResult {
-  if (amount <= 0) {
-    return {
-      success: false,
-      source,
-      requestedAmount: amount,
-      consumedAmount: 0,
-      remainderAmount: amount,
-      gainedRp: 0,
-      speciesId,
-      reason: "수량은 1 이상이어야 합니다.",
-    };
+    }
+    this.roguePoints -= amount;
+    return true;
   }
 
-  if (source === ExchangeCurrencyType.CANDY && speciesId == null) {
-    return {
-      success: false,
-      source,
-      requestedAmount: amount,
-      consumedAmount: 0,
-      remainderAmount: amount,
-      gainedRp: 0,
-      speciesId,
-      reason: "포켓몬사탕 환전에는 speciesId가 필요합니다.",
-    };
+  public getBankBalance(type: BankCurrencyType): number {
+    switch (type) {
+      case BankCurrencyType.MONEY:
+        return this.bankMoney ?? 0;
+
+      case BankCurrencyType.ROGUE_POINTS:
+        return this.bankRoguePoints ?? 0;
+    }
+
+    return 0;
   }
 
-  const ownedAmount = this.getExchangeCurrencyAmount(source, speciesId);
+  public getExchangeCurrencyAmount(type: ExchangeCurrencyType, speciesId?: SpeciesId): number {
+    switch (type) {
+      case ExchangeCurrencyType.MONEY:
+        if ((this.money ?? 0) < amount) {
+          return false;
+        }
+        this.money -= amount;
 
-  if (ownedAmount <= 0) {
-    return {
-      success: false,
-      source,
-      requestedAmount: amount,
-      consumedAmount: 0,
-      remainderAmount: amount,
-      gainedRp: 0,
-      speciesId,
-      reason: "보유량이 부족합니다.",
-    };
+      case ExchangeCurrencyType.CANDY:
+        if (speciesId == null) {
+          return 0;
+        }
+        return this.starterData?.[speciesId]?.candyCount ?? 0;
+
+      case ExchangeCurrencyType.VOUCHER_REGULAR:
+        return this.voucherCounts?.[VoucherType.REGULAR] ?? 0;
+
+      case ExchangeCurrencyType.VOUCHER_PLUS:
+        return this.voucherCounts?.[VoucherType.PLUS] ?? 0;
+
+      case ExchangeCurrencyType.VOUCHER_PREMIUM:
+        return this.voucherCounts?.[VoucherType.PREMIUM] ?? 0;
+
+      case ExchangeCurrencyType.VOUCHER_GOLDEN:
+        return this.voucherCounts?.[VoucherType.GOLDEN] ?? 0;
+
+      default:
+        return 0;
+    }
   }
 
-  const actualAmount = Math.min(amount, ownedAmount);
-  const preview = getExchangePreviewToRp(source, actualAmount, speciesId);
+  private togglePracticeDummyFaint(): boolean {
+    const cfg = (globalScene.gameData.practiceDummyConfig ??= {});
+    cfg.rewardFlags ??= {};
 
-  if (!preview.success) {
+    cfg.rewardFlags.allowDummyFaint = !cfg.rewardFlags.allowDummyFaint;
+
+    this.refreshList?.();
+
+    return true;
+  }
+
+  public getTotalStarterCandyCount(): number {
+    let total = 0;
+
+    for (const speciesIdStr of Object.keys(this.starterData ?? {})) {
+      const speciesId = Number(speciesIdStr) as SpeciesId;
+      total += this.starterData[speciesId]?.candyCount ?? 0;
+    }
+
+    return total;
+  }
+
+  public getExchangeableCandySpecies(minCandy = 10): SpeciesId[] {
+    const result: SpeciesId[] = [];
+
+    for (const speciesIdStr of Object.keys(this.starterData ?? {})) {
+      const speciesId = Number(speciesIdStr) as SpeciesId;
+      const candyCount = this.starterData[speciesId]?.candyCount ?? 0;
+
+      if (candyCount >= minCandy) {
+        result.push(speciesId);
+      }
+    }
+
+    return result;
+  }
+
+  private spendExchangeCurrency(type: ExchangeCurrencyType, amount: number, speciesId?: SpeciesId): boolean {
+    if (amount <= 0) {
+      return false;
+    }
+
+    switch (type) {
+      case ExchangeCurrencyType.MONEY:
+        if ((this.money ?? 0) < amount) {
+          return false;
+        }
+        this.money -= amount;
+        return true;
+
+      case ExchangeCurrencyType.CANDY: {
+        if (speciesId == null) {
+          return false;
+        }
+        const entry = this.starterData?.[speciesId];
+        if (!entry || (entry.candyCount ?? 0) < amount) {
+          return false;
+        }
+        entry.candyCount -= amount;
+        return true;
+      }
+
+      case ExchangeCurrencyType.VOUCHER_REGULAR:
+        if ((this.voucherCounts?.[VoucherType.REGULAR] ?? 0) < amount) {
+          return false;
+        }
+        this.voucherCounts[VoucherType.REGULAR] -= amount;
+        return true;
+
+      case ExchangeCurrencyType.VOUCHER_PLUS:
+        if ((this.voucherCounts?.[VoucherType.PLUS] ?? 0) < amount) {
+          return false;
+        }
+        this.voucherCounts[VoucherType.PLUS] -= amount;
+        return true;
+
+      case ExchangeCurrencyType.VOUCHER_PREMIUM:
+        if ((this.voucherCounts?.[VoucherType.PREMIUM] ?? 0) < amount) {
+          return false;
+        }
+        this.voucherCounts[VoucherType.PREMIUM] -= amount;
+        return true;
+
+      case ExchangeCurrencyType.VOUCHER_GOLD:
+        if ((this.voucherCounts?.[VoucherType.GOLDEN] ?? 0) < amount) {
+          return false;
+        }
+        this.voucherCounts[VoucherType.GOLDEN] -= amount;
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  public exchangeCurrencyToRoguePoints(
+    source: ExchangeCurrencyType,
+    amount: number,
+    speciesId?: SpeciesId,
+  ): ExchangePreviewResult {
+    if (amount <= 0) {
+      return {
+        success: false,
+        source,
+        requestedAmount: amount,
+        consumedAmount: 0,
+        remainderAmount: amount,
+        gainedRp: 0,
+        speciesId,
+        reason: "수량은 1 이상이어야 합니다.",
+      };
+    }
+
+    if (source === ExchangeCurrencyType.CANDY && speciesId == null) {
+      return {
+        success: false,
+        source,
+        requestedAmount: amount,
+        consumedAmount: 0,
+        remainderAmount: amount,
+        gainedRp: 0,
+        speciesId,
+        reason: "포켓몬사탕 환전에는 speciesId가 필요합니다.",
+      };
+    }
+
+    const ownedAmount = this.getExchangeCurrencyAmount(source, speciesId);
+
+    if (ownedAmount <= 0) {
+      return {
+        success: false,
+        source,
+        requestedAmount: amount,
+        consumedAmount: 0,
+        remainderAmount: amount,
+        gainedRp: 0,
+        speciesId,
+        reason: "보유량이 부족합니다.",
+      };
+    }
+
+    const actualAmount = Math.min(amount, ownedAmount);
+    const preview = getExchangePreviewToRp(source, actualAmount, speciesId);
+
+    if (!preview.success) {
+      return preview;
+    }
+
+    const spent = this.spendExchangeCurrency(source, preview.consumedAmount, speciesId);
+
+    if (!spent) {
+      return {
+        success: false,
+        source,
+        requestedAmount: amount,
+        consumedAmount: 0,
+        remainderAmount: amount,
+        gainedRp: 0,
+        speciesId,
+        reason: "재화 차감에 실패했습니다.",
+      };
+    }
+
+    this.addRoguePoints(preview.gainedRp);
+    this.saveSystem();
+
     return preview;
   }
 
-  const spent = this.spendExchangeCurrency(source, preview.consumedAmount, speciesId);
-
-  if (!spent) {
-    return {
-      success: false,
-      source,
-      requestedAmount: amount,
-      consumedAmount: 0,
-      remainderAmount: amount,
-      gainedRp: 0,
-      speciesId,
-      reason: "재화 차감에 실패했습니다.",
-    };
-  }
-
-  this.addRoguePoints(preview.gainedRp);
-  this.saveSystem();
-
-  return preview;
-}
-
   public depositCurrency(type: BankCurrencyType, amount: number): boolean {
-  if (amount <= 0) return false;
-
-  const bonus = Math.floor(amount / 100) * 10;
-  const total = amount + bonus;
-
-  switch (type) {
-    case BankCurrencyType.MONEY:
-      if (globalScene.money < amount) return false;
-
-      globalScene.money -= amount;
-      this.bankMoney = (this.bankMoney ?? 0) + total;
-      globalScene.updateMoneyText();
-      return true;
-
-    case BankCurrencyType.ROGUE_POINTS:
-      if ((this.roguePoints ?? 0) < amount) return false;
-
-      this.roguePoints -= amount;
-      this.bankRoguePoints = (this.bankRoguePoints ?? 0) + total;
-      globalScene.updateroguePointText?.();
-      return true;
-  }
-
-  return false;
-}
-
-public withdrawCurrency(type: BankCurrencyType, amount: number): boolean {
-  if (amount <= 0) return false;
-
-  switch (type) {
-    case BankCurrencyType.MONEY:
-      if ((this.bankMoney ?? 0) < amount) return false;
-
-      this.bankMoney = (this.bankMoney ?? 0) - amount;
-      globalScene.money += amount;
-      globalScene.updateMoneyText();
-      return true;
-
-    case BankCurrencyType.ROGUE_POINTS:
-      if ((this.bankRoguePoints ?? 0) < amount) return false;
-
-      this.bankRoguePoints = (this.bankRoguePoints ?? 0) - amount;
-      this.roguePoints += amount;
-      globalScene.updateroguePointText?.();
-      return true;
-  }
-
-  return false;
-}
-
-public getStorageItems(): StoredItemData[] {
-  return [...(this.storageItems ?? [])];
-}
-
-public getRunStorageItems(): RunItemData[] {
-  return [...(this.runStorageItems ?? [])];
-}
-
-public addToStorage(itemId: string, amount: number): boolean {
-  if (!itemId || amount <= 0) {
-    return false;
-  }
-
-  const qty = Math.floor(amount);
-  const existing = this.storageItems.find(item => item.itemId === itemId);
-
-  if (existing) {
-    existing.quantity += qty;
-  } else {
-    this.storageItems.push({ itemId, quantity: qty });
-  }
-
-  return true;
-}
-
-public removeFromStorage(itemId: string, amount: number): boolean {
-  if (!itemId || amount <= 0) {
-    return false;
-  }
-
-  const qty = Math.floor(amount);
-  const existing = this.storageItems.find(item => item.itemId === itemId);
-
-  if (!existing || existing.quantity < qty) {
-    return false;
-  }
-
-  existing.quantity -= qty;
-
-  if (existing.quantity <= 0) {
-    this.storageItems = this.storageItems.filter(item => item.itemId !== itemId);
-  }
-
-  return true;
-}
-
-public addRunStorageItem(itemId: string, amount: number): boolean {
-  if (!itemId || amount <= 0) {
-    return false;
-  }
-
-  const qty = Math.floor(amount);
-  const existing = this.runStorageItems.find(item => item.itemId === itemId);
-
-  if (existing) {
-    existing.quantity += qty;
-  } else {
-    this.runStorageItems.push({ itemId, quantity: qty });
-  }
-
-  return true;
-}
-
-public removeRunStorageItem(itemId: string, amount: number): boolean {
-  if (!itemId || amount <= 0) {
-    return false;
-  }
-
-  const qty = Math.floor(amount);
-  const existing = this.runStorageItems.find(item => item.itemId === itemId);
-
-  if (!existing || existing.quantity < qty) {
-    return false;
-  }
-
-  existing.quantity -= qty;
-
-  if (existing.quantity <= 0) {
-    this.runStorageItems = this.runStorageItems.filter(item => item.itemId !== itemId);
-  }
-
-  return true;
-}
-
-public moveStorageItemToRun(itemId: string, amount: number): boolean {
-  if (!this.removeFromStorage(itemId, amount)) {
-    return false;
-  }
-
-  this.addRunStorageItem(itemId, amount);
-  return true;
-}
-
-public sendRunItemToStorage(itemId: string, amount: number): boolean {
-  if (!this.removeRunStorageItem(itemId, amount)) {
-    return false;
-  }
-
-  this.addToStorage(itemId, amount);
-  return true;
-}
-
-public depositRemainingRunItemsToStorage(): void {
-  for (const item of this.runStorageItems) {
-    if (item.quantity > 0) {
-      this.addToStorage(item.itemId, item.quantity);
+    if (amount <= 0) {
+      return false;
     }
+
+    const bonus = Math.floor(amount / 100) * 10;
+    const total = amount + bonus;
+
+    switch (type) {
+      case BankCurrencyType.MONEY:
+        if (globalScene.money < amount) {
+          return false;
+        }
+
+        globalScene.money -= amount;
+        this.bankMoney = (this.bankMoney ?? 0) + total;
+        globalScene.updateMoneyText();
+        return true;
+
+      case BankCurrencyType.ROGUE_POINTS:
+        if ((this.roguePoints ?? 0) < amount) {
+          return false;
+        }
+
+        this.roguePoints -= amount;
+        this.bankRoguePoints = (this.bankRoguePoints ?? 0) + total;
+        globalScene.updateroguePointText?.();
+        return true;
+    }
+
+    return false;
   }
 
-  this.runStorageItems = [];
-}
+  public withdrawCurrency(type: BankCurrencyType, amount: number): boolean {
+    if (amount <= 0) {
+      return false;
+    }
 
-public clearRunStorageItems(): void {
-  this.runStorageItems = [];
-}
+    switch (type) {
+      case BankCurrencyType.MONEY:
+        if ((this.bankMoney ?? 0) < amount) {
+          return false;
+        }
 
-public hasRunStorageItems(): boolean {
-  return this.runStorageItems.some(item => item.quantity > 0);
-}
+        this.bankMoney = (this.bankMoney ?? 0) - amount;
+        globalScene.money += amount;
+        globalScene.updateMoneyText();
+        return true;
+
+      case BankCurrencyType.ROGUE_POINTS:
+        if ((this.bankRoguePoints ?? 0) < amount) {
+          return false;
+        }
+
+        this.bankRoguePoints = (this.bankRoguePoints ?? 0) - amount;
+        this.roguePoints += amount;
+        globalScene.updateroguePointText?.();
+        return true;
+    }
+
+    return false;
+  }
+
+  public getStorageItems(): StoredItemData[] {
+    return [...(this.storageItems ?? [])];
+  }
+
+  public getRunStorageItems(): RunItemData[] {
+    return [...(this.runStorageItems ?? [])];
+  }
+
+  public addToStorage(itemId: string, amount: number): boolean {
+    if (!itemId || amount <= 0) {
+      return false;
+    }
+
+    const qty = Math.floor(amount);
+    const existing = this.storageItems.find(item => item.itemId === itemId);
+
+    if (existing) {
+      existing.quantity += qty;
+    } else {
+      this.storageItems.push({ itemId, quantity: qty });
+    }
+
+    return true;
+  }
+
+  public removeFromStorage(itemId: string, amount: number): boolean {
+    if (!itemId || amount <= 0) {
+      return false;
+    }
+
+    const qty = Math.floor(amount);
+    const existing = this.storageItems.find(item => item.itemId === itemId);
+
+    if (!existing || existing.quantity < qty) {
+      return false;
+    }
+
+    existing.quantity -= qty;
+
+    if (existing.quantity <= 0) {
+      this.storageItems = this.storageItems.filter(item => item.itemId !== itemId);
+    }
+
+    return true;
+  }
+
+  public addRunStorageItem(itemId: string, amount: number): boolean {
+    if (!itemId || amount <= 0) {
+      return false;
+    }
+
+    const qty = Math.floor(amount);
+    const existing = this.runStorageItems.find(item => item.itemId === itemId);
+
+    if (existing) {
+      existing.quantity += qty;
+    } else {
+      this.runStorageItems.push({ itemId, quantity: qty });
+    }
+
+    return true;
+  }
+
+  public removeRunStorageItem(itemId: string, amount: number): boolean {
+    if (!itemId || amount <= 0) {
+      return false;
+    }
+
+    const qty = Math.floor(amount);
+    const existing = this.runStorageItems.find(item => item.itemId === itemId);
+
+    if (!existing || existing.quantity < qty) {
+      return false;
+    }
+
+    existing.quantity -= qty;
+
+    if (existing.quantity <= 0) {
+      this.runStorageItems = this.runStorageItems.filter(item => item.itemId !== itemId);
+    }
+
+    return true;
+  }
+
+  public moveStorageItemToRun(itemId: string, amount: number): boolean {
+    if (!this.removeFromStorage(itemId, amount)) {
+      return false;
+    }
+
+    this.addRunStorageItem(itemId, amount);
+    return true;
+  }
+
+  public sendRunItemToStorage(itemId: string, amount: number): boolean {
+    if (!this.removeRunStorageItem(itemId, amount)) {
+      return false;
+    }
+
+    this.addToStorage(itemId, amount);
+    return true;
+  }
+
+  public depositRemainingRunItemsToStorage(): void {
+    const recoveredKeys = new Set<string>();
+
+    const getRecoverItemId = (modifier: any): string | null => {
+      const className = modifier.constructor?.name;
+      const typeId = modifier.type?.id;
+      const iconImage = modifier.type?.iconImage;
+      const localeKey = modifier.type?.localeKey;
+
+      // 경험치부적 계열: EXP_CHARM / SUPER_EXP_CHARM / GOLDEN_EXP_CHARM
+      if (className === "ExpBoosterModifier") {
+        if (iconImage === "golden_exp_charm" || typeId === "GOLDEN_EXP_CHARM") {
+          return "GOLDEN_EXP_CHARM";
+        }
+
+        if (iconImage === "super_exp_charm" || typeId === "SUPER_EXP_CHARM") {
+          return "SUPER_EXP_CHARM";
+        }
+
+        if (iconImage === "exp_charm" || typeId === "EXP_CHARM") {
+          return "EXP_CHARM";
+        }
+
+        console.log("[EXP_CHARM_UNKNOWN]", {
+          className,
+          typeId,
+          iconImage,
+          localeKey,
+        });
+
+        return typeId ?? iconImage ?? null;
+      }
+
+      // 행복의알 / 황금의알
+      if (className === "PokemonExpBoosterModifier") {
+        if (iconImage === "golden_egg" || typeId === "GOLDEN_EGG") {
+          return "GOLDEN_EGG";
+        }
+
+        if (iconImage === "lucky_egg" || typeId === "LUCKY_EGG") {
+          return "LUCKY_EGG";
+        }
+
+        console.log("[EGG_UNKNOWN]", {
+          className,
+          typeId,
+          iconImage,
+          localeKey,
+        });
+
+        return typeId ?? iconImage ?? null;
+      }
+
+      return typeId ?? null;
+    };
+
+    // 남은 몬스터볼류도 창고로 회수
+    const pokeballTypes = [
+      PokeballType.POKEBALL,
+      PokeballType.GREAT_BALL,
+      PokeballType.ULTRA_BALL,
+      PokeballType.ROGUE_BALL,
+      PokeballType.MASTER_BALL,
+    ];
+
+    for (const ballType of pokeballTypes) {
+      const count = Math.max(0, Math.floor(globalScene.pokeballCounts?.[ballType] ?? 0));
+
+      if (count <= 0) {
+        continue;
+      }
+
+      const storageId = `BALL_${ballType}`;
+      this.addToStorage(storageId, count);
+
+      console.log("[DEPOSIT_POKEBALL]", {
+        ballType,
+        storageId,
+        count,
+      });
+    }
+
+    for (const item of this.runStorageItems ?? []) {
+      if (item.quantity > 0) {
+        this.addToStorage(item.itemId, item.quantity);
+        recoveredKeys.add(`run:${item.itemId}`);
+      }
+    }
+
+    for (const modifier of globalScene.findModifiers(() => true)) {
+      const type = modifier.type;
+      const itemId = getRecoverItemId(modifier);
+
+      if (!itemId) {
+        console.warn("[DEPOSIT_SKIP_NO_ID]", {
+          className: modifier.constructor?.name,
+          typeName: type?.name,
+          localeKey: type?.localeKey,
+          iconImage: type?.iconImage,
+        });
+        continue;
+      }
+
+      const isRecoverable =
+        type?.group === "trainer"
+        || modifier instanceof Modifier.PokemonHeldItemModifier
+        || modifier.constructor?.name === "ExpBoosterModifier"
+        || modifier.constructor?.name === "PokemonExpBoosterModifier";
+
+      if (!isRecoverable) {
+        continue;
+      }
+
+      const qty = Math.max(1, Math.floor((modifier as any).stackCount ?? 1));
+      const key = `${itemId}:${(modifier as any).pokemonId ?? "trainer"}`;
+
+      if (recoveredKeys.has(key)) {
+        continue;
+      }
+
+      this.addToStorage(itemId, qty);
+      recoveredKeys.add(key);
+
+      console.log("[DEPOSIT_RECOVERED_MODIFIER]", {
+        itemId,
+        qty,
+        className: modifier.constructor?.name,
+        originalTypeId: type?.id,
+        iconImage: type?.iconImage,
+        localeKey: type?.localeKey,
+        group: type?.group,
+        pokemonId: (modifier as any).pokemonId,
+      });
+    }
+
+    this.runStorageItems = [];
+  }
+
+  public clearRunStorageItems(): void {
+    this.runStorageItems = [];
+  }
+
+  public hasRunStorageItems(): boolean {
+    return this.runStorageItems.some(item => item.quantity > 0);
+  }
 
   public getSystemSaveData(): SystemSaveData {
-  return {
-    trainerId: this.trainerId,
-    secretId: this.secretId,
-    gender: this.gender,
-    dexData: this.dexData,
-    starterData: this.starterData,
-    gameStats: this.gameStats,
-    unlocks: this.unlocks,
-    achvUnlocks: this.achvUnlocks,
-    voucherUnlocks: this.voucherUnlocks,
-    voucherCounts: this.voucherCounts,
-    roguePoints: this.roguePoints,
-    achvPointsGranted: this.achvPointsGranted,
-    bankMoney: this.bankMoney,
-    bankRoguePoints: this.bankRoguePoints,
-    storageItems: this.storageItems,
-    eggs: this.eggs.map(e => new EggData(e)),
-    gameVersion: globalScene.game.config.gameVersion,
-    timestamp: Date.now(),
-    eggPity: this.eggPity.slice(0),
-    unlockPity: this.unlockPity.slice(0),
-    practiceDummyConfig: this.practiceDummyConfig,
-    pendingRunItems: this.pendingRunItems,
-  };
-}
+    return {
+      trainerId: this.trainerId,
+      secretId: this.secretId,
+      gender: this.gender,
+      dexData: this.dexData,
+      starterData: this.starterData,
+      gameStats: this.gameStats,
+      unlocks: this.unlocks,
+      achvUnlocks: this.achvUnlocks,
+      voucherUnlocks: this.voucherUnlocks,
+      voucherCounts: this.voucherCounts,
+      roguePoints: this.roguePoints,
+      lastAttendanceDate: this.lastAttendanceDate,
+      attendanceCount: this.attendanceCount,
+      achvPointsGranted: this.achvPointsGranted,
+      bankMoney: this.bankMoney,
+      bankRoguePoints: this.bankRoguePoints,
+      questList: this.questList,
+      storageItems: this.storageItems,
+      eggs: this.eggs.map(e => new EggData(e)),
+      gameVersion: globalScene.game.config.gameVersion,
+      timestamp: Date.now(),
+      eggPity: this.eggPity.slice(0),
+      unlockPity: this.unlockPity.slice(0),
+      practiceDummyConfig: this.practiceDummyConfig,
+      practicePresets: this.practicePresets,
+      pendingRunItems: this.pendingRunItems,
+      usedCoupons: this.usedCoupons,
+      berryPlanterSlots: this.berryPlanterSlots,
+      resourceInventory: this.resourceInventory,
+    };
+  }
 
   /**
    * Checks if an `Unlockable` has been unlocked.
@@ -764,191 +978,239 @@ public hasRunStorageItems(): boolean {
   }
 
   private grantExistingAchievementPointsOnce(): void {
-  if (this.achvPointsGranted) {
-    return;
-  }
-
-  let total = 0;
-
-  for (const id of Object.keys(this.achvUnlocks)) {
-    const achv = achvs[id];
-    if (achv) {
-      total += achv.score;
+    if (this.achvPointsGranted) {
+      return;
     }
-  }
 
-  if (total > 0) {
-    this.addRoguePoints(total);
-  }
+    let total = 0;
 
-  this.achvPointsGranted = true;
-}
+    for (const id of Object.keys(this.achvUnlocks)) {
+      const achv = achvs[id];
+      if (achv) {
+        total += achv.score;
+      }
+    }
+
+    if (total > 0) {
+      this.addRoguePoints(total);
+    }
+
+    this.achvPointsGranted = true;
+  }
 
   /**
    * Initialize system data _after_ it has been parsed from JSON.
    * @param systemData The parsed `SystemSaveData` to initialize from
    */
   private initParsedSystem(systemData: SystemSaveData): void {
-  applySystemVersionMigration(systemData);
+    applySystemVersionMigration(systemData);
 
-  this.trainerId = systemData.trainerId;
-  this.secretId = systemData.secretId;
+    this.trainerId = systemData.trainerId;
+    this.secretId = systemData.secretId;
 
-  this.gender = systemData.gender;
+    this.gender = systemData.gender;
 
-  this.saveSetting(SettingKeys.Player_Gender, systemData.gender === PlayerGender.FEMALE ? 1 : 0);
+    this.saveSetting(SettingKeys.Player_Gender, systemData.gender === PlayerGender.FEMALE ? 1 : 0);
 
-  this.pendingRunItems = systemData.pendingRunItems ?? [];
-  this.practiceDummyConfig = systemData.practiceDummyConfig ?? {};
+    this.pendingRunItems = systemData.pendingRunItems ?? [];
+    this.practiceDummyConfig = systemData.practiceDummyConfig ?? {
+      dummy1: {},
+      dummy2: {},
+      battleType: "SINGLE",
+    };
 
-  if (systemData.starterData) {
-    this.starterData = systemData.starterData;
-  } else {
-    this.initStarterData();
+    this.berryPlanterSlots = Array.isArray(systemData.berryPlanterSlots)
+      ? systemData.berryPlanterSlots
+      : [
+          { state: "EMPTY", growthStage: 0 },
+          { state: "EMPTY", growthStage: 0 },
+          { state: "EMPTY", growthStage: 0 },
+        ];
+
+    this.resourceInventory =
+      systemData.resourceInventory && typeof systemData.resourceInventory === "object"
+        ? systemData.resourceInventory
+        : {};
+
+    this.usedCoupons = Array.isArray(systemData.usedCoupons) ? systemData.usedCoupons : [];
+
+    this.practicePresets = systemData.practicePresets ?? [];
+
+    this.practiceDummyConfig.dummy1 ??= {};
+    this.practiceDummyConfig.dummy2 ??= {};
 
     if (systemData.starterData) {
-      this.starterData = systemData.starterData;
+      const savedStarterData = systemData.starterData;
 
-      // ✅ 기존 세이브용 테라 타입 보정
-      for (const speciesIdStr of Object.keys(this.starterData)) {
+      this.initStarterData();
+
+      for (const speciesIdStr of Object.keys(savedStarterData)) {
         const speciesId = Number(speciesIdStr) as SpeciesId;
-        const species = getPokemonSpecies(speciesId);
 
-if (speciesId === SpeciesId.FROSLASS) {
-  console.log("[FROSLASS_FORMS]",
-    species.forms?.map((f, i) => ({
-      i,
-      name: f.formName,
-      key: f.formKey,
-      isMega: f.formKey === SpeciesFormKey.MEGA,
-    }))
-  );
-}
-        const entry = this.starterData[speciesId];
-
-        if (!entry) continue;
-
-        entry.teraTypeAttr = Number(entry.teraTypeAttr ?? 0);
-
-        entry.teraTypeAttr |= 1 << (species.type1 + 1);
-
-        if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN) {
-          entry.teraTypeAttr |= 1 << (species.type2 + 1);
-        }
+        this.starterData[speciesId] = {
+          ...this.starterData[speciesId],
+          ...savedStarterData[speciesId],
+        };
       }
     } else {
       this.initStarterData();
 
-      if (systemData["starterMoveData"]) {
-        const starterMoveData = systemData["starterMoveData"];
-        for (const s of Object.keys(starterMoveData)) {
-          this.starterData[s].moveset = starterMoveData[s];
+      if (systemData.starterData) {
+        this.starterData = systemData.starterData;
+
+        // ✅ 기존 세이브용 테라 타입 보정
+        for (const speciesIdStr of Object.keys(this.starterData)) {
+          const speciesId = Number(speciesIdStr) as SpeciesId;
+          const species = getPokemonSpecies(speciesId);
+
+          if (speciesId === SpeciesId.FROSLASS) {
+            console.log(
+              "[FROSLASS_FORMS]",
+              species.forms?.map((f, i) => ({
+                i,
+                name: f.formName,
+                key: f.formKey,
+                isMega: f.formKey === SpeciesFormKey.MEGA,
+              })),
+            );
+          }
+          const entry = this.starterData[speciesId];
+
+          if (!entry) {
+            continue;
+          }
+
+          entry.teraTypeAttr = Number(entry.teraTypeAttr ?? 0);
+
+          entry.teraTypeAttr |= 1 << (species.type1 + 1);
+
+          if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN) {
+            entry.teraTypeAttr |= 1 << (species.type2 + 1);
+          }
+        }
+      } else {
+        this.initStarterData();
+
+        if (systemData["starterMoveData"]) {
+          const starterMoveData = systemData["starterMoveData"];
+          for (const s of Object.keys(starterMoveData)) {
+            this.starterData[s].moveset = starterMoveData[s];
+          }
+        }
+
+        if (systemData["starterEggMoveData"]) {
+          const starterEggMoveData = systemData["starterEggMoveData"];
+          for (const s of Object.keys(starterEggMoveData)) {
+            this.starterData[s].eggMoves = starterEggMoveData[s];
+          }
+        }
+
+        this.migrateStarterAbilities(systemData, this.starterData);
+
+        const starterIds = Object.keys(this.starterData).map(s => Number.parseInt(s) as SpeciesId);
+        for (const s of starterIds) {
+          this.starterData[s].candyCount += systemData.dexData[s].caughtCount;
+          this.starterData[s].candyCount += systemData.dexData[s].hatchedCount * 2;
+          if (systemData.dexData[s].caughtAttr & DexAttr.SHINY) {
+            this.starterData[s].candyCount += 4;
+          }
         }
       }
+    }
 
-      if (systemData["starterEggMoveData"]) {
-        const starterEggMoveData = systemData["starterEggMoveData"];
-        for (const s of Object.keys(starterEggMoveData)) {
-          this.starterData[s].eggMoves = starterEggMoveData[s];
-        }
-      }
+    if (systemData.gameStats) {
+      this.gameStats = systemData.gameStats;
+    }
 
-      this.migrateStarterAbilities(systemData, this.starterData);
-
-      const starterIds = Object.keys(this.starterData).map(s => Number.parseInt(s) as SpeciesId);
-      for (const s of starterIds) {
-        this.starterData[s].candyCount += systemData.dexData[s].caughtCount;
-        this.starterData[s].candyCount += systemData.dexData[s].hatchedCount * 2;
-        if (systemData.dexData[s].caughtAttr & DexAttr.SHINY) {
-          this.starterData[s].candyCount += 4;
+    if (systemData.unlocks) {
+      for (const key of Object.keys(systemData.unlocks)) {
+        if (this.unlocks.hasOwnProperty(key)) {
+          this.unlocks[key] = systemData.unlocks[key];
         }
       }
     }
-  }
 
-  if (systemData.gameStats) {
-    this.gameStats = systemData.gameStats;
-  }
-
-  if (systemData.unlocks) {
-    for (const key of Object.keys(systemData.unlocks)) {
-      if (this.unlocks.hasOwnProperty(key)) {
-        this.unlocks[key] = systemData.unlocks[key];
+    if (systemData.achvUnlocks) {
+      for (const a of Object.keys(systemData.achvUnlocks)) {
+        if (achvs.hasOwnProperty(a)) {
+          this.achvUnlocks[a] = systemData.achvUnlocks[a];
+        }
       }
     }
-  }
 
-  if (systemData.achvUnlocks) {
-    for (const a of Object.keys(systemData.achvUnlocks)) {
-      if (achvs.hasOwnProperty(a)) {
-        this.achvUnlocks[a] = systemData.achvUnlocks[a];
+    if (systemData.voucherUnlocks) {
+      for (const v of Object.keys(systemData.voucherUnlocks)) {
+        if (vouchers.hasOwnProperty(v)) {
+          this.voucherUnlocks[v] = systemData.voucherUnlocks[v];
+        }
       }
     }
-  }
 
-  if (systemData.voucherUnlocks) {
-    for (const v of Object.keys(systemData.voucherUnlocks)) {
-      if (vouchers.hasOwnProperty(v)) {
-        this.voucherUnlocks[v] = systemData.voucherUnlocks[v];
-      }
+    if (systemData.voucherCounts) {
+      getEnumKeys(VoucherType).forEach(key => {
+        const index = VoucherType[key];
+        this.voucherCounts[index] = systemData.voucherCounts[index] || 0;
+      });
     }
+
+    if (typeof systemData.roguePoints === "number") {
+      this.roguePoints = systemData.roguePoints;
+    } else {
+      this.roguePoints = 0;
+    }
+
+    this.lastAttendanceDate = typeof systemData.lastAttendanceDate === "string" ? systemData.lastAttendanceDate : "";
+
+    this.attendanceCount = typeof systemData.attendanceCount === "number" ? systemData.attendanceCount : 0;
+
+    if (typeof systemData.achvPointsGranted === "boolean") {
+      this.achvPointsGranted = systemData.achvPointsGranted;
+    } else {
+      this.achvPointsGranted = false;
+    }
+
+    if (typeof systemData.bankMoney === "number") {
+      this.bankMoney = systemData.bankMoney;
+    } else {
+      this.bankMoney = 0;
+    }
+
+    if (typeof systemData.bankRoguePoints === "number") {
+      this.bankRoguePoints = systemData.bankRoguePoints;
+    } else {
+      this.bankRoguePoints = 0;
+    }
+
+    if (Array.isArray(systemData.questList)) {
+      this.questList = systemData.questList;
+    } else {
+      this.questList = [];
+    }
+
+    if (Array.isArray(systemData.storageItems)) {
+      this.storageItems = systemData.storageItems
+        .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
+        .map(item => ({
+          itemId: item.itemId,
+          quantity: Math.max(0, Math.floor(item.quantity)),
+        }))
+        .filter(item => item.quantity > 0);
+    } else {
+      this.storageItems = [];
+    }
+
+    // ✅ 기존 업적 점수 1회 정산
+    this.grantExistingAchievementPointsOnce();
+
+    this.eggs = systemData.eggs ? systemData.eggs.map(e => e.toEgg()) : [];
+
+    this.eggPity = systemData.eggPity ? systemData.eggPity.slice(0) : [0, 0, 0, 0];
+    this.unlockPity = systemData.unlockPity ? systemData.unlockPity.slice(0) : [0, 0, 0, 0];
+
+    this.dexData = Object.assign(this.dexData, systemData.dexData);
+    this.consolidateDexData(this.dexData);
+    this.defaultDexData = null;
   }
-
-  if (systemData.voucherCounts) {
-    getEnumKeys(VoucherType).forEach(key => {
-      const index = VoucherType[key];
-      this.voucherCounts[index] = systemData.voucherCounts[index] || 0;
-    });
-  }
-
-  if (typeof systemData.roguePoints === "number") {
-    this.roguePoints = systemData.roguePoints;
-  } else {
-    this.roguePoints = 0;
-  }
-
-  if (typeof systemData.achvPointsGranted === "boolean") {
-    this.achvPointsGranted = systemData.achvPointsGranted;
-  } else {
-    this.achvPointsGranted = false;
-  }
-
-  if (typeof systemData.bankMoney === "number") {
-    this.bankMoney = systemData.bankMoney;
-  } else {
-    this.bankMoney = 0;
-  }
-
-  if (typeof systemData.bankRoguePoints === "number") {
-    this.bankRoguePoints = systemData.bankRoguePoints;
-  } else {
-    this.bankRoguePoints = 0;
-  }
-
-  if (Array.isArray(systemData.storageItems)) {
-  this.storageItems = systemData.storageItems
-    .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
-    .map(item => ({
-      itemId: item.itemId,
-      quantity: Math.max(0, Math.floor(item.quantity)),
-    }))
-    .filter(item => item.quantity > 0);
-} else {
-  this.storageItems = [];
-}
-
-  // ✅ 기존 업적 점수 1회 정산
-  this.grantExistingAchievementPointsOnce();
-
-  this.eggs = systemData.eggs ? systemData.eggs.map(e => e.toEgg()) : [];
-
-  this.eggPity = systemData.eggPity ? systemData.eggPity.slice(0) : [0, 0, 0, 0];
-  this.unlockPity = systemData.unlockPity ? systemData.unlockPity.slice(0) : [0, 0, 0, 0];
-
-  this.dexData = Object.assign(this.dexData, systemData.dexData);
-  this.consolidateDexData(this.dexData);
-  this.defaultDexData = null;
-}
 
   public initSystem(systemDataStr: string, cachedSystemDataStr?: string): Promise<boolean> {
     const { promise, resolve } = Promise.withResolvers<boolean>();
@@ -1351,43 +1613,45 @@ if (speciesId === SpeciesId.FROSLASS) {
   }
 
   public getSessionSaveData(): SessionSaveData {
-  console.log(
-    "[SESSION_SAVE_MODIFIERS]",
-    globalScene.findModifiers(() => true).map(m => ({
-      className: m.constructor?.name,
-      typeId: m.type?.id,
-      pokemonId: (m as any).pokemonId,
-      stackCount: (m as any).stackCount,
-    }))
-  );
+    const kecleonShopSaveData = kecleonShopManager.getSaveData();
 
-  return {
-    seed: globalScene.seed,
-    playTime: globalScene.sessionPlayTime,
-    gameMode: globalScene.gameMode.modeId,
-    party: globalScene.getPlayerParty().map(p => new PokemonData(p)),
-    enemyParty: globalScene.getEnemyParty().map(p => new PokemonData(p)),
-    modifiers: globalScene.findModifiers(() => true).map(m => new PersistentModifierData(m, true)),
-    enemyModifiers: globalScene.findModifiers(() => true, false).map(m => new PersistentModifierData(m, false)),
-    arena: new ArenaData(globalScene.arena),
-    pokeballCounts: globalScene.pokeballCounts,
-    money: Math.floor(globalScene.money),
-    score: globalScene.score,
-    waveIndex: globalScene.currentBattle.waveIndex,
-    battleType: globalScene.currentBattle.battleType,
-    trainer:
-      globalScene.currentBattle.battleType === BattleType.TRAINER
-        ? new TrainerData(globalScene.currentBattle.trainer)
-        : null,
-    gameVersion: globalScene.game.config.gameVersion,
-    timestamp: Date.now(),
-    challenges: globalScene.gameMode.challenges.map(c => new ChallengeData(c)),
-    mysteryEncounterType: globalScene.currentBattle.mysteryEncounter?.encounterType ?? -1,
-    mysteryEncounterSaveData: globalScene.mysteryEncounterSaveData,
-    playerFaints: globalScene.arena.playerFaints,
-    runStorageItems: this.runStorageItems,
-  } as SessionSaveData;
-}
+    console.log("[SAVE_SESSION_KECLEON]", {
+      wave: globalScene.currentBattle.waveIndex,
+      kecleonShop: kecleonShopSaveData,
+    });
+
+    return {
+      seed: globalScene.seed,
+      playTime: globalScene.sessionPlayTime,
+      gameMode: globalScene.gameMode.modeId,
+      party: globalScene.getPlayerParty().map(p => new PokemonData(p)),
+      enemyParty: globalScene.getEnemyParty().map(p => new PokemonData(p)),
+      modifiers: globalScene.findModifiers(() => true).map(m => new PersistentModifierData(m, true)),
+      enemyModifiers: globalScene.findModifiers(() => true, false).map(m => new PersistentModifierData(m, false)),
+      arena: new ArenaData(globalScene.arena),
+      pokeballCounts: globalScene.pokeballCounts,
+      money: Math.floor(globalScene.money),
+      score: globalScene.score,
+      waveIndex: globalScene.currentBattle.waveIndex,
+      battleType: globalScene.currentBattle.battleType,
+      trainer:
+        globalScene.currentBattle.battleType === BattleType.TRAINER
+          ? new TrainerData(globalScene.currentBattle.trainer)
+          : null,
+      gameVersion: globalScene.game.config.gameVersion,
+      timestamp: Date.now(),
+      challenges: globalScene.gameMode.challenges.map(c => new ChallengeData(c)),
+      mysteryEncounterType: globalScene.currentBattle.mysteryEncounter?.encounterType ?? -1,
+      mysteryEncounterSaveData: globalScene.mysteryEncounterSaveData,
+      playerFaints: globalScene.arena.playerFaints,
+      runStorageItems: this.runStorageItems,
+
+      kecleonShop: kecleonShopManager.getSaveData(),
+
+      monsterHouse: monsterHouseManager.isActive() ? monsterHouseManager.getSaveData() : undefined,
+      mysteryTime: mysteryTimeManager.getSaveData(),
+    } as SessionSaveData;
+  }
 
   async getSession(slotId: number): Promise<SessionSaveData | null> {
     const { promise, resolve, reject } = Promise.withResolvers<SessionSaveData | null>();
@@ -1490,15 +1754,38 @@ if (speciesId === SpeciesId.FROSLASS) {
         }
 
         this.runStorageItems = Array.isArray(fromSession.runStorageItems)
-  ? fromSession.runStorageItems
-      .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
-      .map(item => ({
-        itemId: item.itemId,
-        quantity: Math.max(0, Math.floor(item.quantity)),
-      }))
-      .filter(item => item.quantity > 0)
-  : [];
-   
+          ? fromSession.runStorageItems
+              .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
+              .map(item => ({
+                itemId: item.itemId,
+                quantity: Math.max(0, Math.floor(item.quantity)),
+              }))
+              .filter(item => item.quantity > 0)
+          : [];
+        console.log("[LOAD_SESSION_KECLEON_RAW]", {
+          wave: fromSession.waveIndex,
+          kecleonShop: fromSession.kecleonShop,
+        });
+        kecleonShopManager.loadSaveData(fromSession.kecleonShop);
+
+        // ========================================
+        // 미스터리타임 세션 복구
+        // ========================================
+        if (fromSession.mysteryTime) {
+          mysteryTimeManager.restore(fromSession.mysteryTime);
+
+          console.log("[LOAD_SESSION_MYSTERY_TIME]", {
+            wave: fromSession.waveIndex,
+            mysteryTime: fromSession.mysteryTime,
+          });
+        } else {
+          // 구버전 세이브에는 mysteryTime 데이터가 없을 수 있음
+          mysteryTimeManager.reset();
+
+          console.log("[LOAD_SESSION_MYSTERY_TIME_EMPTY]", {
+            wave: fromSession.waveIndex,
+          });
+        }
         globalScene.gameMode = getGameMode(fromSession.gameMode || GameModes.CLASSIC);
         if (fromSession.challenges) {
           globalScene.gameMode.challenges = fromSession.challenges.map(c => c.toChallenge());
@@ -1519,6 +1806,21 @@ if (speciesId === SpeciesId.FROSLASS) {
 
         for (const p of fromSession.party) {
           const pokemon = p.toPokemon() as PlayerPokemon;
+
+          const invalidMoves = pokemon.getMoveset().filter(m => MoveId[m.moveId] === undefined);
+
+          if (invalidMoves.length > 0) {
+            console.error("[INVALID_SAVED_PLAYER_MOVE]", {
+              pokemon: pokemon.name,
+              pokemonId: pokemon.id,
+              moves: invalidMoves.map(m => m.moveId),
+              fullMoveset: pokemon.getMoveset().map(m => ({
+                id: m.moveId,
+                name: MoveId[m.moveId],
+              })),
+            });
+          }
+
           pokemon.setVisible(false);
           loadPokemonAssets.push(pokemon.loadAssets(false));
           party.push(pokemon);
@@ -1546,19 +1848,38 @@ if (speciesId === SpeciesId.FROSLASS) {
         globalScene.newArena(fromSession.arena.biome, fromSession.playerFaints);
 
         const battleType = fromSession.battleType || 0;
+
         const trainerConfig = fromSession.trainer ? trainerConfigs[fromSession.trainer.trainerType] : null;
+
         const mysteryEncounterType =
           fromSession.mysteryEncounterType !== -1 ? fromSession.mysteryEncounterType : undefined;
+
+        const isMonsterHouseLoad = !!fromSession.monsterHouse?.active;
+
+        const isDoubleBattle =
+          battleType === BattleType.TRAINER
+            ? !!(trainerConfig?.doubleOnly || fromSession.trainer?.variant === TrainerVariant.DOUBLE)
+            : !isMonsterHouseLoad && fromSession.enemyParty.length > 1;
+
         const battle = globalScene.newBattle(
           fromSession.waveIndex,
           battleType,
           fromSession.trainer,
-          battleType === BattleType.TRAINER
-            ? trainerConfig?.doubleOnly || fromSession.trainer?.variant === TrainerVariant.DOUBLE
-            : fromSession.enemyParty.length > 1,
+          isDoubleBattle,
           mysteryEncounterType,
         );
+
         battle.enemyLevels = fromSession.enemyParty.map(p => p.level);
+
+        console.log("[LOAD_SESSION_BATTLE_MODE]", {
+          wave: fromSession.waveIndex,
+          battleType,
+          enemyPartyLength: fromSession.enemyParty.length,
+          monsterHouse: isMonsterHouseLoad,
+          double: isDoubleBattle,
+        });
+
+        kecleonShopManager.regeneratePendingLegacyShop();
 
         globalScene.arena.init();
 
@@ -1568,13 +1889,57 @@ if (speciesId === SpeciesId.FROSLASS) {
             e,
             fromSession.trainer?.variant === TrainerVariant.DOUBLE,
           ) as EnemyPokemon;
+
+          const invalidMoves = enemyPokemon.getMoveset().filter(m => MoveId[m.moveId] === undefined);
+
+          if (invalidMoves.length > 0) {
+            console.error("[INVALID_SAVED_ENEMY_MOVE]", {
+              index: e,
+              pokemon: enemyPokemon.name,
+              pokemonId: enemyPokemon.id,
+              species: enemyPokemon.species?.speciesId,
+              moves: invalidMoves.map(m => m.moveId),
+              fullMoveset: enemyPokemon.getMoveset().map(m => ({
+                id: m.moveId,
+                name: MoveId[m.moveId],
+              })),
+            });
+          }
+
           battle.enemyParty[e] = enemyPokemon;
+
           if (battleType === BattleType.WILD) {
             battle.seenEnemyPartyMemberIds.add(enemyPokemon.id);
           }
 
           loadPokemonAssets.push(enemyPokemon.loadAssets());
         });
+
+        const shouldRestoreMonsterHouse =
+          !!fromSession.monsterHouse?.active
+          && fromSession.monsterHouse.waveIndex === fromSession.waveIndex
+          && globalScene.arena.biomeType !== BiomeId.END
+          && fromSession.monsterHouse.totalEnemies
+            - fromSession.monsterHouse.defeatedEnemies
+            - fromSession.monsterHouse.capturedEnemies
+            > 0;
+
+        if (shouldRestoreMonsterHouse) {
+          monsterHouseManager.restore(fromSession.monsterHouse, battle.enemyParty);
+        } else {
+          monsterHouseManager.reset();
+
+          console.log("[LOAD_SESSION_MONSTER_HOUSE_SKIP]", {
+            currentWave: fromSession.waveIndex,
+            savedWave: fromSession.monsterHouse?.waveIndex,
+            biome: globalScene.arena.biomeType,
+            remaining: fromSession.monsterHouse
+              ? fromSession.monsterHouse.totalEnemies
+                - fromSession.monsterHouse.defeatedEnemies
+                - fromSession.monsterHouse.capturedEnemies
+              : null,
+          });
+        }
 
         globalScene.arena.weather = fromSession.arena.weather;
         globalScene.arena.eventTarget.dispatchEvent(
@@ -1623,12 +1988,35 @@ if (speciesId === SpeciesId.FROSLASS) {
           globalScene.modifiers = [];
         }
         for (const modifierData of fromSession.modifiers) {
-          const ctor = this.modifiersModule?.[modifierData.className] ?? ModifierClassMap?.[modifierData.className];
-const modifier = modifierData.toModifier(ctor);
+          if (
+            !modifierData.typeId
+            && (modifierData.className === "PokemonExpBoosterModifier"
+              || modifierData.className === "ExpBoosterModifier")
+          ) {
+            const boostPercent =
+              modifierData.className === "PokemonExpBoosterModifier"
+                ? Number(modifierData.args?.[1])
+                : Number(modifierData.args?.[0]);
 
-if (!ctor) {
-  console.warn("[LOAD][DROP_NO_CTOR]", modifierData.className, modifierData.typeId, modifierData);
-}
+            if (modifierData.className === "PokemonExpBoosterModifier") {
+              modifierData.typeId = boostPercent >= 100 ? "GOLDEN_EGG" : "LUCKY_EGG";
+            }
+
+            if (modifierData.className === "ExpBoosterModifier") {
+              modifierData.typeId = "GOLDEN_EXP_CHARM";
+            }
+
+            console.warn("[LOAD][RECOVER_EXP_MOD]", modifierData.className, modifierData.typeId, modifierData.args);
+          }
+
+          const ctor = this.modifiersModule?.[modifierData.className] ?? ModifierClassMap?.[modifierData.className];
+
+          const modifier = modifierData.toModifier(ctor);
+
+          if (!ctor) {
+            console.warn("[LOAD][DROP_NO_CTOR]", modifierData.className, modifierData.typeId, modifierData);
+          }
+
           if (modifier) {
             globalScene.addModifier(modifier, true);
           }
@@ -1644,7 +2032,9 @@ if (!ctor) {
 
         globalScene.updateModifiers(false);
 
-        Promise.all(loadPokemonAssets).then(() => resolve(true));
+        Promise.all(loadPokemonAssets).then(() => {
+          resolve(true);
+        });
       };
       if (sessionData) {
         initSessionFromData(sessionData);
@@ -1663,6 +2053,32 @@ if (!ctor) {
     }
 
     return promise;
+  }
+
+  public savePracticePreset(slot: number, data: PracticePresetData): boolean {
+    this.practicePresets ??= [];
+
+    this.practicePresets[slot] = data;
+
+    this.saveSystem();
+
+    return true;
+  }
+
+  public getPracticePreset(slot: number): PracticePresetData | null {
+    return this.practicePresets?.[slot] ?? null;
+  }
+
+  public deletePracticePreset(slot: number): boolean {
+    if (!this.practicePresets) {
+      return false;
+    }
+
+    delete this.practicePresets[slot];
+
+    this.saveSystem();
+
+    return true;
   }
 
   /**
@@ -2138,24 +2554,25 @@ if (!ctor) {
     for (const speciesId of starterSpeciesIds) {
       const species = getPokemonSpecies(speciesId);
 
-let teraTypeAttr = 0;
-teraTypeAttr |= 1 << (species.type1 + 1);
+      let teraTypeAttr = 0;
+      teraTypeAttr |= 1 << (species.type1 + 1);
 
-if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN) {
-  teraTypeAttr |= 1 << (species.type2 + 1);
-}
+      if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN) {
+        teraTypeAttr |= 1 << (species.type2 + 1);
+      }
 
-starterData[speciesId] = {
-  moveset: null,
-  eggMoves: 0,
-  candyCount: 0,
-  friendship: 0,
-  abilityAttr: defaultStarterSpecies.includes(speciesId) ? AbilityAttr.ABILITY_1 : 0,
-  passiveAttr: 0,
-  valueReduction: 0,
-  classicWinCount: 0,
-  teraTypeAttr,
-};
+      starterData[speciesId] = {
+        moveset: null,
+        eggMoves: 0,
+        candyCount: 0,
+        friendship: 0,
+        abilityAttr: defaultStarterSpecies.includes(speciesId) ? AbilityAttr.ABILITY_1 : 0,
+        passiveAttr: 0,
+        valueReduction: 0,
+        classicWinCount: 0,
+        teraTypeAttr,
+        marks: [],
+      };
     }
 
     this.starterData = starterData;
@@ -2196,12 +2613,19 @@ starterData[speciesId] = {
    * @returns `true` if Pokemon catch unlocked a new starter, `false` if Pokemon catch did not unlock a starter
    */
   setPokemonCaught(pokemon: Pokemon, incrementCount = true, fromEgg = false, showMessage = true): Promise<boolean> {
-    // If incrementCount === false (not a catch scenario), only update the pokemon's dex data if the Pokemon has already been marked as caught in dex
-    // Prevents form changes, nature changes, etc. from unintentionally updating the dex data of a "rental" pokemon
+    console.log("[SET_POKEMON_CAUGHT]", {
+      species: pokemon.species.name,
+      mark: pokemon.mark,
+      incrementCount,
+      fromEgg,
+    });
+
     const speciesRootForm = pokemon.species.getRootSpeciesId();
+
     if (!incrementCount && !globalScene.gameData.dexData[speciesRootForm].caughtAttr) {
       return Promise.resolve(false);
     }
+
     return this.setPokemonSpeciesCaught(pokemon, pokemon.species, incrementCount, fromEgg, showMessage);
   }
 
@@ -2266,6 +2690,7 @@ starterData[speciesId] = {
       }
 
       // Unlock ability
+      // Unlock ability
       if (speciesStarterCosts.hasOwnProperty(species.speciesId)) {
         this.starterData[species.speciesId].abilityAttr |=
           pokemon.abilityIndex !== 1 || pokemon.species.ability2
@@ -2273,6 +2698,31 @@ starterData[speciesId] = {
             : AbilityAttr.ABILITY_HIDDEN;
       }
 
+      // ✅ 여기
+      // Unlock mark
+      console.log("[MARK_REGISTER_CHECK]", {
+        species: species.name,
+        speciesId: species.speciesId,
+        pokemonMark: pokemon.mark,
+        none: MarkId.NONE,
+        currentMarks: this.starterData[species.speciesId]?.marks,
+      });
+
+      if (speciesStarterCosts.hasOwnProperty(species.speciesId) && pokemon.mark !== MarkId.NONE) {
+        const starterEntry = this.starterData[species.speciesId];
+
+        starterEntry.marks ??= [];
+
+        if (!starterEntry.marks.includes(pokemon.mark)) {
+          starterEntry.marks.push(pokemon.mark);
+
+          console.log("[MARK_UNLOCKED]", {
+            species: species.name,
+            mark: pokemon.mark,
+            marks: starterEntry.marks,
+          });
+        }
+      }
       // Unlock nature
       dexEntry.natureAttr |= 1 << (pokemon.nature + 1);
 
@@ -2488,46 +2938,46 @@ starterData[speciesId] = {
   }
 
   unlockSpeciesTeraType(species: PokemonSpecies, teraType: PokemonType): boolean {
-  if (!this.isRootSpeciesUnlocked(species)) {
-    return false;
+    if (!this.isRootSpeciesUnlocked(species)) {
+      return false;
+    }
+
+    const value = 1 << (teraType + 1);
+    let unlocked = false;
+
+    let rootSpeciesId = species.speciesId as SpeciesId;
+
+    while (pokemonPrevolutions.hasOwnProperty(rootSpeciesId)) {
+      rootSpeciesId = pokemonPrevolutions[rootSpeciesId] as SpeciesId;
+    }
+
+    for (const speciesIdStr of Object.keys(this.starterData)) {
+      const speciesId = Number(speciesIdStr) as SpeciesId;
+      let currentRootSpeciesId = speciesId;
+
+      while (pokemonPrevolutions.hasOwnProperty(currentRootSpeciesId)) {
+        currentRootSpeciesId = pokemonPrevolutions[currentRootSpeciesId] as SpeciesId;
+      }
+
+      if (currentRootSpeciesId !== rootSpeciesId) {
+        continue;
+      }
+
+      const starterEntry = this.starterData[speciesId];
+      if (!starterEntry) {
+        continue;
+      }
+
+      starterEntry.teraTypeAttr = Number(starterEntry.teraTypeAttr ?? 0);
+
+      if (!(starterEntry.teraTypeAttr & value)) {
+        starterEntry.teraTypeAttr |= value;
+        unlocked = true;
+      }
+    }
+
+    return unlocked;
   }
-
-  const value = 1 << (teraType + 1);
-  let unlocked = false;
-
-  let rootSpeciesId = species.speciesId as SpeciesId;
-
-  while (pokemonPrevolutions.hasOwnProperty(rootSpeciesId)) {
-    rootSpeciesId = pokemonPrevolutions[rootSpeciesId] as SpeciesId;
-  }
-
-  for (const speciesIdStr of Object.keys(this.starterData)) {
-    const speciesId = Number(speciesIdStr) as SpeciesId;
-    let currentRootSpeciesId = speciesId;
-
-    while (pokemonPrevolutions.hasOwnProperty(currentRootSpeciesId)) {
-      currentRootSpeciesId = pokemonPrevolutions[currentRootSpeciesId] as SpeciesId;
-    }
-
-    if (currentRootSpeciesId !== rootSpeciesId) {
-      continue;
-    }
-
-    const starterEntry = this.starterData[speciesId];
-    if (!starterEntry) {
-      continue;
-    }
-
-    starterEntry.teraTypeAttr = Number(starterEntry.teraTypeAttr ?? 0);
-
-    if (!(starterEntry.teraTypeAttr & value)) {
-      starterEntry.teraTypeAttr |= value;
-      unlocked = true;
-    }
-  }
-
-  return unlocked;
-}
 
   getSpeciesCount(dexEntryPredicate: (entry: DexEntry) => boolean): number {
     const dexKeys = Object.keys(this.dexData);

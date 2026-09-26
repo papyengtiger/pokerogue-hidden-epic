@@ -15,6 +15,12 @@ const DUNDER_REGEX = /_{2}/g;
  * Calculate the sprite ID from a pokemon form.
  */
 export function getSpriteId(pokemon: Pokemon, ignoreOverride?: boolean): string {
+  const customSpriteKey = pokemon.getCustomSpriteKey();
+
+  if (customSpriteKey) {
+    return customSpriteKey;
+  }
+
   return pokemon
     .getSpeciesForm(ignoreOverride)
     .getSpriteId(
@@ -26,9 +32,16 @@ export function getSpriteId(pokemon: Pokemon, ignoreOverride?: boolean): string 
 }
 
 export function getBattleSpriteId(pokemon: Pokemon, back?: boolean, ignoreOverride = false): string {
+  const customSpriteKey = pokemon.getCustomSpriteKey();
+
+  if (customSpriteKey) {
+    return customSpriteKey;
+  }
+
   if (back === undefined) {
     back = pokemon.isPlayer();
   }
+
   return pokemon
     .getSpeciesForm(ignoreOverride)
     .getSpriteId(

@@ -281,7 +281,7 @@ export const speciesEggTiers = {
   [SpeciesId.VENIPEDE]: EggTier.COMMON,
   [SpeciesId.COTTONEE]: EggTier.COMMON,
   [SpeciesId.PETILIL]: EggTier.COMMON,
-  [SpeciesId.BASCULIN]: EggTier.RARE,
+  [SpeciesId.BASCULIN]: EggTier.COMMON,
   [SpeciesId.SANDILE]: EggTier.RARE,
   [SpeciesId.DARUMAKA]: EggTier.RARE,
   [SpeciesId.MARACTUS]: EggTier.COMMON,
@@ -440,6 +440,7 @@ export const speciesEggTiers = {
   [SpeciesId.ALOLA_MEOWTH]: EggTier.RARE,
   [SpeciesId.ALOLA_GEODUDE]: EggTier.RARE,
   [SpeciesId.ALOLA_GRIMER]: EggTier.RARE,
+  [SpeciesId.BATTLE_BOND_GRENINJA]: EggTier.EPIC,
 
   [SpeciesId.GROOKEY]: EggTier.COMMON,
   [SpeciesId.SCORBUNNY]: EggTier.COMMON,
@@ -505,6 +506,7 @@ export const speciesEggTiers = {
   [SpeciesId.HISUI_VOLTORB]: EggTier.RARE,
   [SpeciesId.HISUI_QWILFISH]: EggTier.RARE,
   [SpeciesId.HISUI_SNEASEL]: EggTier.RARE,
+  [SpeciesId.HISUI_BASCULIN]: EggTier.RARE,
   [SpeciesId.HISUI_ZORUA]: EggTier.RARE,
 
   [SpeciesId.SPRIGATITO]: EggTier.COMMON,

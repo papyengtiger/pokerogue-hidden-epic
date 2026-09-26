@@ -4,7 +4,10 @@ import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { isBeta, isDev } from "#constants/app-constants";
 import { SubstituteTag } from "#data/battler-tags";
+import { getEggTierForSpecies } from "#data/egg";
 import { Gender } from "#data/gender";
+import { kecleonShopManager } from "#data/kecleon-shop/kecleon-shop-manager";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import {
   doPokeballBounceAnim,
   getCriticalCaptureChance,
@@ -15,41 +18,116 @@ import {
 import { getStatusEffectCatchRateMultiplier } from "#data/status-effect";
 import { BattlerIndex } from "#enums/battler-index";
 import { ChallengeType } from "#enums/challenge-type";
+import { EggTier } from "#enums/egg-type";
 import type { PokeballType } from "#enums/pokeball";
 import { StatusEffect } from "#enums/status-effect";
+import { SwitchType } from "#enums/switch-type";
 import { UiMode } from "#enums/ui-mode";
+import { VariantTier } from "#enums/variant-tier";
 import { addPokeballCaptureStars, addPokeballOpenParticles } from "#field/anims";
 import type { EnemyPokemon } from "#field/pokemon";
 import { PokemonHeldItemModifier } from "#modifiers/modifier";
 import { PokemonPhase } from "#phases/pokemon-phase";
 import { achvs } from "#system/achv";
+import { questManager } from "#system/quest-manager";
 import type { PartyOption } from "#ui/party-ui-handler";
 import { PartyUiMode } from "#ui/party-ui-handler";
 import { SummaryUiMode } from "#ui/summary-ui-handler";
 import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder } from "#utils/common";
-import { EggTier } from "#enums/egg-type";
-import { VariantTier } from "#enums/variant-tier";
-import { getEggTierForSpecies } from "#data/egg";
 import i18next from "i18next";
 
 // TODO: Refactor and split up to allow for overriding capture chance
+// TODO: Refactor and split up to allow for overriding capture chance
 export class AttemptCapturePhase extends PokemonPhase {
   public readonly phaseName = "AttemptCapturePhase";
+
   private pokeballType: PokeballType;
   private pokeball: Phaser.GameObjects.Sprite;
   private originalY: number;
 
-  constructor(targetIndex: number, pokeballType: PokeballType) {
+  private targetPokemonId?: number;
+
+  constructor(targetIndex: number, pokeballType: PokeballType, targetPokemonId?: number) {
     super(BattlerIndex.ENEMY + targetIndex);
 
     this.pokeballType = pokeballType;
+    this.targetPokemonId = targetPokemonId;
+  }
+
+  private getCaptureTarget(): EnemyPokemon {
+    if (monsterHouseManager.isActive() && this.targetPokemonId !== undefined) {
+      const target = globalScene.getEnemyParty().find(p => p.id === this.targetPokemonId);
+
+      if (target) {
+        return target as EnemyPokemon;
+      }
+    }
+
+    return this.getPokemon() as EnemyPokemon;
   }
 
   start() {
     super.start();
 
-    const pokemon = this.getPokemon() as EnemyPokemon;
+    console.log("[ATTEMPT_CAPTURE_START]", {
+      theftActive: kecleonShopManager.isTheftBattleActive(),
+    });
+
+    const pokemon = this.getCaptureTarget();
+
+    // 미스터리몬스터는 포획 불가
+    if (pokemon.isMysteryMonster()) {
+      globalScene.ui.showText("미스터리몬스터는 포획할 수 없다!", null, () => this.end(), 1500, true);
+
+      return;
+    }
+
+    // 기존 캘리몬 도둑전 포획 금지
+    if (kecleonShopManager.isTheftBattleActive()) {
+      globalScene.ui.showText(i18next.t("battle:kecleonCaptureBlocked"), null, () => this.end(), 1500, true);
+
+      return;
+    }
+
+    const activeCatchQuest = questManager
+      .getQuests()
+      .find(
+        quest =>
+          quest.accepted
+          && !quest.completed
+          && quest.objectiveType === "CATCH_POKEMON"
+          && quest.targetSpeciesId !== undefined
+          && Number(quest.targetSpeciesId) === Number(pokemon.species.speciesId)
+          && quest.targetCatchWave === globalScene.currentBattle.waveIndex,
+      );
+
+    const isHeldItemQuestTarget = questManager.isActiveHeldItemQuestPokemon(
+      pokemon.id,
+      globalScene.currentBattle.waveIndex,
+    );
+
+    const isQuestTarget = activeCatchQuest !== undefined || isHeldItemQuestTarget;
+
+    if (activeCatchQuest) {
+      console.log("[QUEST_CAPTURE_GUARANTEED]", {
+        questId: activeCatchQuest.id,
+        speciesId: pokemon.species.speciesId,
+        speciesName: pokemon.getName?.(),
+        wave: globalScene.currentBattle.waveIndex,
+        pokeballType: this.pokeballType,
+      });
+    }
+
+    if (isHeldItemQuestTarget) {
+      console.log("[QUEST_ITEM_CAPTURE_GUARANTEED]", {
+        pokemonId: pokemon.id,
+        speciesId: pokemon.species.speciesId,
+        speciesName: pokemon.getName?.(),
+        wave: globalScene.currentBattle.waveIndex,
+        pokeballType: this.pokeballType,
+      });
+    }
 
     if (!pokemon?.hp) {
       return this.end();
@@ -67,7 +145,7 @@ export class AttemptCapturePhase extends PokemonPhase {
     const _3m = 3 * pokemon.getMaxHp();
     const _2h = 2 * pokemon.hp;
     const catchRate = pokemon.species.catchRate;
-    const pokeballMultiplier = getPokeballCatchMultiplier(this.pokeballType);
+    const pokeballMultiplier = getPokeballCatchMultiplier(this.pokeballType, pokemon);
     const statusMultiplier = pokemon.status ? getStatusEffectCatchRateMultiplier(pokemon.status.effect) : 1;
     const shinyMultiplier = pokemon.isShiny() ? timedEventManager.getShinyCatchMultiplier() : 1;
     const modifiedCatchRate = Math.round(
@@ -156,9 +234,10 @@ export class AttemptCapturePhase extends PokemonPhase {
                     shakeCounter.stop();
                     this.failCatch(shakeCount);
                   } else if (shakeCount++ < (isCritical ? 1 : 3)) {
-                    // Shake check (skip check for critical or guaranteed captures, but still play the sound)
+                    // 흔들기 판정
                     if (
-                      pokeballMultiplier === -1
+                      isQuestTarget
+                      || pokeballMultiplier === -1
                       || isCritical
                       || modifiedCatchRate >= 255
                       || pokemon.randBattleSeedInt(65536) < shakeProbability
@@ -168,19 +247,24 @@ export class AttemptCapturePhase extends PokemonPhase {
                       shakeCounter.stop();
                       this.failCatch(shakeCount);
                     }
-                  } else if (isCritical && pokemon.randBattleSeedInt(65536) >= shakeProbability) {
-                    // Above, perform the one shake check for critical captures after the ball shakes once
+                  } else if (!isQuestTarget && isCritical && pokemon.randBattleSeedInt(65536) >= shakeProbability) {
+                    // 일반 크리티컬 포획의 최종 실패 판정
                     shakeCounter.stop();
                     this.failCatch(shakeCount);
                   } else {
+                    // 포획 성공
                     globalScene.playSound("se/pb_lock");
                     addPokeballCaptureStars(this.pokeball);
 
                     const pbTint = globalScene.add.sprite(this.pokeball.x, this.pokeball.y, "pb", "pb");
+
                     pbTint.setOrigin(this.pokeball.originX, this.pokeball.originY);
+
                     pbTint.setTintFill(0);
                     pbTint.setAlpha(0);
+
                     globalScene.field.add(pbTint);
+
                     globalScene.tweens.add({
                       targets: pbTint,
                       alpha: 0.375,
@@ -215,7 +299,7 @@ export class AttemptCapturePhase extends PokemonPhase {
   }
 
   failCatch(_shakeCount: number) {
-    const pokemon = this.getPokemon();
+    const pokemon = this.getCaptureTarget();
 
     globalScene.playSound("se/pb_rel");
     pokemon.setY(this.originalY);
@@ -248,7 +332,13 @@ export class AttemptCapturePhase extends PokemonPhase {
   }
 
   catch() {
-    const pokemon = this.getPokemon() as EnemyPokemon;
+    const pokemon = this.getCaptureTarget();
+
+    if (pokemon.isMysteryMonster()) {
+      this.removePb();
+      this.end();
+      return;
+    }
 
     const speciesForm = !pokemon.fusionSpecies ? pokemon.getSpeciesForm() : pokemon.getFusionSpeciesForm();
 
@@ -274,8 +364,15 @@ export class AttemptCapturePhase extends PokemonPhase {
 
     globalScene.pokemonInfoContainer.show(pokemon, true);
 
-    globalScene.gameData.updateSpeciesDexIvs(pokemon.species.getRootSpeciesId(true), pokemon.ivs);
+    void globalScene.gameData.setPokemonCaught(pokemon, true, false, false).then(() => {
+      globalScene.gameData.updateSpeciesDexIvs(pokemon.species.getRootSpeciesId(true), pokemon.ivs);
 
+      // 소굴에서는 중간 포획 시 VictoryPhase를 거치지 않으므로
+      // 도감/스타팅 해금 데이터를 즉시 시스템 데이터에 저장
+      if (monsterHouseManager.isActive()) {
+        void globalScene.gameData.saveSystem();
+      }
+    });
     const addStatus = new BooleanHolder(true);
     applyChallenges(ChallengeType.POKEMON_ADD_TO_PARTY, pokemon, addStatus);
 
@@ -286,7 +383,73 @@ export class AttemptCapturePhase extends PokemonPhase {
       null,
       () => {
         const end = () => {
-          globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
+          if (monsterHouseManager.isActive()) {
+            monsterHouseManager.registerEnemyCaptured();
+
+            if (monsterHouseManager.canReleaseBoss()) {
+              monsterHouseManager.releaseBoss();
+            }
+
+            const bossReleased = monsterHouseManager.isBossReleased();
+
+            /*
+             * SwitchSummonPhase는 enemyParty의 실제 배열 순서를 바꾸므로
+             * bossIndex 같은 배열 인덱스로 우두머리를 판정하면 안 된다.
+             * MonsterHouseManager가 보관하는 고유 Pokemon ID 판정을 사용한다.
+             */
+            const hasReservePartyMember = globalScene
+              .getEnemyParty()
+              .some(
+                p =>
+                  p !== pokemon
+                  && !p.isFainted()
+                  && !p.isOnField()
+                  && (bossReleased || !monsterHouseManager.isBossPokemon(p)),
+              );
+
+            if (hasReservePartyMember) {
+              /*
+               * 중간 포획에서는 VictoryPhase 전체를 호출하지 않는다.
+               * VictoryPhase는 일반 전투 종료 판정까지 포함할 수 있어
+               * 몬스터소굴 연속전투를 끊을 수 있다.
+               *
+               * 대신 포획 EXP만 직접 지급하고 다음 소굴 개체를 즉시 소환한다.
+               */
+              const expValue = pokemon.getExpValue();
+              globalScene.applyPartyExp(expValue, true);
+
+              globalScene.phaseManager.unshiftNew(
+                "SwitchSummonPhase",
+                SwitchType.SWITCH,
+                this.fieldIndex,
+                -1,
+                false,
+                false,
+              );
+
+              console.log("[MONSTER_HOUSE_CAPTURE_CONTINUE]", {
+                pokemon: pokemon.getName(),
+                expValue,
+                remaining: monsterHouseManager.getRemainingEnemies(),
+                bossReleased,
+              });
+            } else {
+              // 우두머리까지 포획했거나 마지막 개체 처리 완료
+              globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
+            }
+
+            console.log("[MONSTER_HOUSE_CAPTURE_FLOW]", {
+              pokemon: pokemon.getName(),
+              defeated: monsterHouseManager.getDefeatedEnemies(),
+              captured: monsterHouseManager.getCapturedEnemies(),
+              remaining: monsterHouseManager.getRemainingEnemies(),
+              bossReleased: monsterHouseManager.isBossReleased(),
+              hasReservePartyMember,
+            });
+          } else {
+            globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
+          }
+
           globalScene.pokemonInfoContainer.hide();
           this.removePb();
           this.end();
@@ -298,134 +461,173 @@ export class AttemptCapturePhase extends PokemonPhase {
           globalScene.clearEnemyHeldItemModifiers();
           pokemon.leaveField(true, true, true);
         };
+
+        // 의뢰 완료 여부를 포획 처리 전체에서 공유
+        let questCompletedThisCapture = false;
+
+        // 포획 의뢰 판정
+        const completedCatchQuests = questManager.onPokemonCaught(pokemon.species.speciesId);
+
+        if (completedCatchQuests.length > 0) {
+          questCompletedThisCapture = true;
+        }
+
         const addToParty = (slotIndex?: number) => {
           const newPokemon = pokemon.addToParty(this.pokeballType, slotIndex);
-          const modifiers = globalScene.findModifiers(m => m instanceof PokemonHeldItemModifier, false);
+
+          const modifiers = globalScene.findModifiers(
+            m => m instanceof PokemonHeldItemModifier && m.pokemonId === pokemon.id,
+            false,
+          ) as PokemonHeldItemModifier[];
+
+          // 포획한 포켓몬의 지닌도구 의뢰 판정
+          for (const modifier of modifiers) {
+            const itemId = modifier.type?.id;
+
+            if (!itemId) {
+              continue;
+            }
+
+            console.log("[QUEST_CAPTURE_HELD_ITEM]", {
+              pokemon: pokemon.name,
+              pokemonId: pokemon.id,
+              itemId,
+              itemName: modifier.type?.name,
+              stackCount: modifier.stackCount,
+            });
+
+            const completedItemQuests = questManager.onItemObtained(itemId, modifier.stackCount ?? 1);
+
+            if (completedItemQuests.length > 0) {
+              questCompletedThisCapture = true;
+            }
+          }
+
+          // 아이템 의뢰까지 판정한 뒤 전체 완료 확인
+          if (questCompletedThisCapture && questManager.isAcceptedQuestClear()) {
+            console.log("[QUEST_ALL_ACCEPTED_CLEAR]");
+
+            globalScene.phaseManager.unshiftNew("QuestClearPromptPhase");
+          }
+
           if (globalScene.getPlayerParty().filter(p => p.isShiny()).length === PLAYER_PARTY_MAX_SIZE) {
             globalScene.validateAchv(achvs.SHINY_PARTY);
           }
+
+          // 실제 지닌도구를 플레이어 쪽으로 이전
           Promise.all(modifiers.map(m => globalScene.addModifier(m, true))).then(() => {
             globalScene.updateModifiers(true);
+
             removePokemon();
+
             if (newPokemon) {
               newPokemon.leaveField(true, true, false);
+
               newPokemon.loadAssets().then(end);
             } else {
               end();
             }
           });
         };
-        Promise.all([pokemon.hideInfo(), globalScene.gameData.setPokemonCaught(pokemon)]).then(() => {
 
-  const eggTier = getEggTierForSpecies(pokemon.species);
-const variantTier = pokemon.variant as VariantTier;
+        const eggTier = getEggTierForSpecies(pokemon.species);
+        const variantTier = pokemon.variant as VariantTier;
 
-let gainedRp = 0;
-gainedRp += this.getEggTierRoguePoints(eggTier);
-gainedRp += this.getVariantRoguePoints(
-  variantTier,
-  pokemon.isShiny()
-);
+        let gainedRp = 0;
+        gainedRp += this.getEggTierRoguePoints(eggTier);
+        gainedRp += this.getVariantRoguePoints(variantTier, pokemon.isShiny());
 
-if (gainedRp > 0) {
-  globalScene.gameData.addRoguePoints(gainedRp);
-  globalScene.updateroguePointText();
-}
+        if (gainedRp > 0) {
+          globalScene.gameData.addRoguePoints(gainedRp);
+          globalScene.updateroguePointText();
+        }
 
-  if (!addStatus.value) {
-            removePokemon();
-            end();
-            return;
-          }
-          if (globalScene.getPlayerParty().length === PLAYER_PARTY_MAX_SIZE) {
-            const promptRelease = () => {
-              globalScene.ui.showText(
-                i18next.t("battle:partyFull", {
-                  pokemonName: pokemon.getNameToRender(),
-                }),
-                null,
-                () => {
-                  globalScene.pokemonInfoContainer.makeRoomForConfirmUi(1, true);
-                  globalScene.ui.setMode(
-                    UiMode.CONFIRM,
-                    () => {
-                      const newPokemon = globalScene.addPlayerPokemon(
-                        pokemon.species,
-                        pokemon.level,
-                        pokemon.abilityIndex,
-                        pokemon.formIndex,
-                        pokemon.gender,
-                        pokemon.shiny,
-                        pokemon.variant,
-                        pokemon.ivs,
-                        pokemon.nature,
-                        pokemon,
-                      );
-                      globalScene.ui.setMode(
-                        UiMode.SUMMARY,
-                        newPokemon,
-                        0,
-                        SummaryUiMode.DEFAULT,
-                        () => {
-                          globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
-                            promptRelease();
-                          });
-                        },
-                        false,
-                      );
-                    },
-                    () => {
-                      const attributes = {
-                        shiny: pokemon.shiny,
-                        variant: pokemon.variant,
-                        form: pokemon.formIndex,
-                        female: pokemon.gender === Gender.FEMALE,
-                      };
-                      globalScene.ui.setOverlayMode(
-                        UiMode.POKEDEX_PAGE,
-                        pokemon.species,
-                        attributes,
-                        null,
-                        null,
-                        () => {
-                          globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
-                            promptRelease();
-                          });
-                        },
-                      );
-                    },
-                    () => {
-                      globalScene.ui.setMode(
-                        UiMode.PARTY,
-                        PartyUiMode.RELEASE,
-                        this.fieldIndex,
-                        (slotIndex: number, _option: PartyOption) => {
-                          globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
-                            if (slotIndex < 6) {
-                              addToParty(slotIndex);
-                            } else {
-                              promptRelease();
-                            }
-                          });
-                        },
-                      );
-                    },
-                    () => {
+        if (!addStatus.value) {
+          removePokemon();
+          end();
+          return;
+        }
+        if (globalScene.getPlayerParty().length === PLAYER_PARTY_MAX_SIZE) {
+          const promptRelease = () => {
+            globalScene.ui.showText(
+              i18next.t("battle:partyFull", {
+                pokemonName: pokemon.getNameToRender(),
+              }),
+              null,
+              () => {
+                globalScene.pokemonInfoContainer.makeRoomForConfirmUi(1, true);
+                globalScene.ui.setMode(
+                  UiMode.CONFIRM,
+                  () => {
+                    const newPokemon = globalScene.addPlayerPokemon(
+                      pokemon.species,
+                      pokemon.level,
+                      pokemon.abilityIndex,
+                      pokemon.formIndex,
+                      pokemon.gender,
+                      pokemon.shiny,
+                      pokemon.variant,
+                      pokemon.ivs,
+                      pokemon.nature,
+                      pokemon,
+                    );
+                    globalScene.ui.setMode(
+                      UiMode.SUMMARY,
+                      newPokemon,
+                      0,
+                      SummaryUiMode.DEFAULT,
+                      () => {
+                        globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+                          promptRelease();
+                        });
+                      },
+                      false,
+                    );
+                  },
+                  () => {
+                    const attributes = {
+                      shiny: pokemon.shiny,
+                      variant: pokemon.variant,
+                      form: pokemon.formIndex,
+                      female: pokemon.gender === Gender.FEMALE,
+                    };
+                    globalScene.ui.setOverlayMode(UiMode.POKEDEX_PAGE, pokemon.species, attributes, null, null, () => {
                       globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
-                        removePokemon();
-                        end();
+                        promptRelease();
                       });
-                    },
-                    "fullParty",
-                  );
-                },
-              );
-            };
-            promptRelease();
-          } else {
-            addToParty();
-          }
-        });
+                    });
+                  },
+                  () => {
+                    globalScene.ui.setMode(
+                      UiMode.PARTY,
+                      PartyUiMode.RELEASE,
+                      this.fieldIndex,
+                      (slotIndex: number, _option: PartyOption) => {
+                        globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+                          if (slotIndex < 6) {
+                            addToParty(slotIndex);
+                          } else {
+                            promptRelease();
+                          }
+                        });
+                      },
+                    );
+                  },
+                  () => {
+                    globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+                      removePokemon();
+                      end();
+                    });
+                  },
+                  "fullParty",
+                );
+              },
+            );
+          };
+          promptRelease();
+        } else {
+          addToParty();
+        }
       },
       0,
       true,
@@ -433,40 +635,64 @@ if (gainedRp > 0) {
   }
 
   private getEggTierRoguePoints(tier?: EggTier): number {
-  switch (tier) {
-    case EggTier.COMMON:
+    switch (tier) {
+      case EggTier.COMMON:
+        return 10;
+      case EggTier.RARE:
+        return 25;
+      case EggTier.EPIC:
+        return 50;
+      case EggTier.LEGENDARY:
+        return 100;
+      default:
+        return 0;
+    }
+  }
+
+  private showQuestClearPrompt(): void {
+    globalScene.ui.showText("모든 의뢰를 해결했다!\n복귀하시겠습니까?", null, () => {
+      globalScene.ui.setMode(
+        UiMode.CONFIRM,
+
+        // YES
+        () => {
+          globalScene.phaseManager.clearPhaseQueue();
+
+          globalScene.phaseManager.pushNew("QuestClearRewardPhase");
+
+          return true;
+        },
+
+        // NO
+        () => {
+          globalScene.ui.setMode(UiMode.MESSAGE);
+          globalScene.ui.showText("계속 여행하기로 했다.", null, () => {
+            // 기존 포획 후 진행 계속
+          });
+
+          return true;
+        },
+      );
+    });
+  }
+
+  private getVariantRoguePoints(tier?: VariantTier, isShiny?: boolean): number {
+    // 일반 이로치
+    if (isShiny && tier === VariantTier.STANDARD) {
       return 10;
-    case EggTier.RARE:
-      return 25;
-    case EggTier.EPIC:
-      return 50;
-    case EggTier.LEGENDARY:
-      return 100;
-    default:
-      return 0;
+    }
+
+    switch (tier) {
+      case VariantTier.RARE:
+        return 50;
+
+      case VariantTier.EPIC:
+        return 100;
+
+      default:
+        return 5;
+    }
   }
-}
-
-private getVariantRoguePoints(
-  tier?: VariantTier,
-  isShiny?: boolean
-): number {
-  // 일반 이로치
-  if (isShiny && tier === VariantTier.STANDARD) {
-    return 10;
-  }
-
-  switch (tier) {
-    case VariantTier.RARE:
-      return 50;
-
-    case VariantTier.EPIC:
-      return 100;
-
-    default:
-      return 5;
-  }
-}
 
   removePb() {
     globalScene.tweens.add({

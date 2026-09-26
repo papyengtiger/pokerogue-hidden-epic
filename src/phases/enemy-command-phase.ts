@@ -29,34 +29,90 @@ export class EnemyCommandPhase extends FieldPhase {
   }
 
   start() {
-  super.start();
+    super.start();
 
-  const battle = globalScene.currentBattle as any;
+    const battle = globalScene.currentBattle as any;
 
-  if (battle.isPracticeBattle && battle.skipEnemyBattleTurns) {
-    console.log("[PRACTICE] enemy turn skipped", {
-      fieldIndex: this.fieldIndex,
+    console.log("[PRACTICE_RETRY_RESET]", {
+      turnCommands: battle.turnCommands,
+      preTurnCommands: battle.preTurnCommands,
+      started: battle.started,
+      waveIndex: battle.waveIndex,
     });
 
-    this.end();
-    return;
-  }
-
-  if (battle.isPracticeBattle) {
-    console.log("[PRACTICE] enemy can act", {
-      fieldIndex: this.fieldIndex,
-      enemy: globalScene.getEnemyField()?.[this.fieldIndex]?.getName?.(),
+    console.log("[PRACTICE_TARGET_CHECK]", {
+      playerField: globalScene.getPlayerField?.().map(p => ({
+        name: p?.getName?.(),
+        hp: p?.hp,
+        active: p?.isActive?.(),
+        fainted: p?.isFainted?.(),
+        battler: p?.getBattlerIndex?.(),
+      })),
+      activeField: globalScene.getPlayerField?.(true).map(p => ({
+        name: p?.getName?.(),
+        battler: p?.getBattlerIndex?.(),
+      })),
     });
-  }
 
-  const enemyPokemon = globalScene.getEnemyField()[this.fieldIndex];
+    if (battle.isPracticeBattle && battle.skipEnemyBattleTurns) {
+      console.log("[PRACTICE] enemy turn skipped", {
+        fieldIndex: this.fieldIndex,
+      });
 
-  const trainer = battle.trainer;
+      this.end();
+      return;
+    }
+
+    if (battle.isPracticeBattle) {
+      console.log("[PRACTICE] enemy can act", {
+        fieldIndex: this.fieldIndex,
+        enemy: globalScene.getEnemyField()?.[this.fieldIndex]?.getName?.(),
+      });
+
+      console.log("[PRACTICE_TARGET_CHECK]", {
+        playerField: globalScene.getPlayerField?.().map((p: any) => ({
+          name: p?.getName?.(),
+          hp: p?.hp,
+          active: p?.isActive?.(),
+          fainted: p?.isFainted?.(),
+          battler: p?.getBattlerIndex?.(),
+        })),
+
+        activeField: globalScene.getPlayerField?.(true).map((p: any) => ({
+          name: p?.getName?.(),
+          battler: p?.getBattlerIndex?.(),
+        })),
+      });
+
+      console.log("[PRACTICE_TARGET_CHECK]", {
+        playerParty: globalScene.getPlayerParty().map((p: any, i) => ({
+          i,
+          name: p.getName?.(),
+          hp: p.hp,
+          maxHp: p.getMaxHp?.(),
+          isFainted: p.isFainted?.(),
+          isActive: p.isActive?.(),
+          isOnField: p.isOnField?.(),
+          isAllowedInBattle: p.isAllowedInBattle?.(),
+          fieldIndex: p.getFieldIndex?.(),
+          battlerIndex: p.getBattlerIndex?.(),
+          visible: p.visible,
+        })),
+
+        playerField: globalScene.getPlayerField?.().map((p: any) => p?.getName?.()),
+
+        playerActiveField: globalScene.getPlayerField?.(true).map((p: any) => p?.getName?.()),
+      });
+    }
+
+    const enemyPokemon = globalScene.getEnemyField()[this.fieldIndex];
+
+    const trainer = battle.trainer;
 
     if (
-      battle.double &&
-      enemyPokemon.hasAbility(AbilityId.COMMANDER) &&
-      enemyPokemon.getAlly()?.getTag(BattlerTagType.COMMANDED)
+      battle.double
+      && enemyPokemon.hasAbility(AbilityId.COMMANDER)
+      && enemyPokemon.getAlly()?.getTag(BattlerTagType.COMMANDED)
     ) {
       this.skipTurn = true;
     }
@@ -70,13 +126,13 @@ export class EnemyCommandPhase extends FieldPhase {
      * member's matchup score is 3x the active enemy's score (or 2x for "boss" trainers),
      * the enemy will switch to that Pokemon.
      */
-    if (trainer && !enemyPokemon.getMoveQueue().length) {
+    if (trainer && enemyPokemon.getMoveQueue().length === 0) {
       const opponents = enemyPokemon.getOpponents();
 
       if (!enemyPokemon.isTrapped()) {
         const partyMemberScores = trainer.getPartyMemberMatchupScores(enemyPokemon.trainerSlot, true);
 
-        if (partyMemberScores.length) {
+        if (partyMemberScores.length > 0) {
           const matchupScores = opponents.map(opp => enemyPokemon.getMatchupScore(opp));
           const matchupScore = matchupScores.reduce((total, score) => (total += score), 0) / matchupScores.length;
 
@@ -104,24 +160,52 @@ export class EnemyCommandPhase extends FieldPhase {
 
     /** Select a move to use (and a target to use it against, if applicable) */
     if (battle.isPracticeBattle) {
-  console.log("[PRACTICE] dummy selecting move", {
-    species: enemyPokemon?.species?.name,
-    moves: enemyPokemon?.moveset?.map(m => m?.getName?.()),
-  });
-}
+      console.log("[PRACTICE] dummy selecting move", {
+        species: enemyPokemon?.species?.name,
+        moves: enemyPokemon?.moveset?.map(m => m?.getName?.()),
+      });
+    }
 
-const nextMove = enemyPokemon.getNextMove();
+    /** Select a move to use (and a target to use it against, if applicable) */
+    if (battle.isPracticeBattle) {
+      console.log("[PRACTICE] dummy selecting move", {
+        species: enemyPokemon?.species?.name,
+        moves: enemyPokemon?.moveset?.map(m => m?.getName?.()),
+      });
 
-if (battle.isPracticeBattle) {
-  console.log("[PRACTICE] dummy selected move", {
-    move: nextMove?.move?.getName?.()
-      ?? nextMove?.getMove?.()?.name
-      ?? nextMove,
-  });
-}
+      const nextMove = enemyPokemon.getNextMove();
+
+      console.log("[PRACTICE_AI_MOVE]", {
+        enemy: enemyPokemon.getName?.(),
+        nextMove,
+      });
+
+      globalScene.currentBattle.turnCommands[enemyPokemon.getBattlerIndex()] = {
+        command: Command.FIGHT,
+        move: nextMove,
+        skip: this.skipTurn,
+      };
+
+      console.log("[PRACTICE_AFTER_ENEMY_INSERT]", {
+        turnCommands: Object.entries(globalScene.currentBattle.turnCommands ?? {}).map(([k, v]: any) => ({
+          slot: k,
+          move: v?.move,
+          command: v?.command,
+        })),
+      });
+
+      globalScene.currentBattle.enemySwitchCounter = Math.max(globalScene.currentBattle.enemySwitchCounter - 1, 0);
+
+      this.end();
+      return;
+    }
+
+    const nextMove = enemyPokemon.getNextMove();
 
     if (trainer?.shouldTera(enemyPokemon)) {
-      globalScene.currentBattle.preTurnCommands[this.fieldIndex + BattlerIndex.ENEMY] = { command: Command.TERA };
+      globalScene.currentBattle.preTurnCommands[this.fieldIndex + BattlerIndex.ENEMY] = {
+        command: Command.TERA,
+      };
     }
 
     globalScene.currentBattle.turnCommands[this.fieldIndex + BattlerIndex.ENEMY] = {

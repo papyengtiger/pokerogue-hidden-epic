@@ -4,6 +4,7 @@ import { handleTutorial, Tutorial } from "#app/tutorial";
 import type { IEggOptions } from "#data/egg";
 import { Egg, getLegendaryGachaSpeciesForTimestamp } from "#data/egg";
 import { Button } from "#enums/buttons";
+import { EggSourceType } from "#enums/egg-source-types";
 import { EggTier } from "#enums/egg-type";
 import { GachaType } from "#enums/gacha-types";
 import { TextStyle } from "#enums/text-style";
@@ -131,6 +132,13 @@ export class EggGachaUiHandler extends MessageUiHandler {
         }
 
         gachaUpLabel.setText(i18next.t("egg:shinyUpGacha")).setX(0).setOrigin(0.5, 0);
+        break;
+      case GachaType.MARK:
+        if (["de", "fr", "ko", "ru", "tr"].includes(currentLanguage)) {
+          gachaUpLabel.setAlign("center").setY(0);
+        }
+
+        gachaUpLabel.setText(i18next.t("egg:markUpGacha")).setX(0).setOrigin(0.5, 0);
         break;
     }
 
@@ -468,7 +476,7 @@ export class EggGachaUiHandler extends MessageUiHandler {
     for (let i = 1; i <= pullCount; i++) {
       const eggOptions: IEggOptions = {
         pulled: true,
-        sourceType: this.gachaCursor,
+        sourceType: this.getEggSourceType(this.gachaCursor as GachaType),
       };
 
       // Before creating the last egg, check if the guaranteed egg tier was already generated
@@ -487,6 +495,24 @@ export class EggGachaUiHandler extends MessageUiHandler {
     return randSeedShuffle(eggs);
   }
 
+  private getEggSourceType(gachaType: GachaType): EggSourceType {
+    switch (gachaType) {
+      case GachaType.MOVE:
+        return EggSourceType.GACHA_MOVE;
+
+      case GachaType.LEGENDARY:
+        return EggSourceType.GACHA_LEGENDARY;
+
+      case GachaType.SHINY:
+        return EggSourceType.GACHA_SHINY;
+
+      case GachaType.MARK:
+        return EggSourceType.GACHA_MARK;
+
+      default:
+        return EggSourceType.GACHA_MOVE;
+    }
+  }
   /**
    * Handle pulling eggs from the gacha machine; plays the animations, adds the eggs, and saves game data
    * @param pullCount - The number of eggs to pull

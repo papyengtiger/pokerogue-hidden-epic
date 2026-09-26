@@ -462,25 +462,37 @@ export function initMoveAnim(move: MoveId): Promise<void> {
           .cachedFetch(`./battle-anims/${toKebabCase(MoveId[move])}.json`)
           .then(response => {
             const contentType = response.headers.get("content-type");
+
             if (!response.ok || contentType?.indexOf("application/json") === -1) {
               useDefaultAnim(move, defaultMoveAnim);
+
               logMissingMoveAnim(move, response.status, response.statusText);
-              return resolve();
+
+              return null;
             }
+
             return response.json();
           })
           .then(ba => {
+            // 애니메이션 파일이 없어서 fallback한 경우
+            if (ba == null) {
+              resolve();
+              return;
+            }
+
             if (Array.isArray(ba)) {
               populateMoveAnim(move, ba[0]);
               populateMoveAnim(move, ba[1]);
             } else {
               populateMoveAnim(move, ba);
             }
+
             const chargeAnimSource = allMoves[move].isChargingMove()
               ? allMoves[move]
               : (allMoves[move].getAttrs("DelayedAttackAttr")[0] ?? allMoves[move].getAttrs("BeakBlastHeaderAttr")[0]);
-            if (chargeAnimSource) {
-              initMoveChargeAnim(chargeAnimSource.chargeAnim).then(() => resolve());
+
+            if (chargeAnimSource && chargeAnimSource.chargeAnim != null) {
+              initMoveChargeAnim(chargeAnimSource.chargeAnim).then(resolve);
             } else {
               resolve();
             }
@@ -488,7 +500,7 @@ export function initMoveAnim(move: MoveId): Promise<void> {
           .catch(error => {
             useDefaultAnim(move, defaultMoveAnim);
             logMissingMoveAnim(move, error);
-            return resolve();
+            resolve();
           });
       };
       fetchAnimAndResolve(move);
@@ -542,6 +554,15 @@ export async function initEncounterAnims(encounterAnim: EncounterAnim | Encounte
 }
 
 export function initMoveChargeAnim(chargeAnim: ChargeAnim): Promise<void> {
+  if (chargeAnim == null || ChargeAnim[chargeAnim] == null) {
+    console.warn("[INVALID_CHARGE_ANIM]", {
+      chargeAnim,
+      chargeAnimName: chargeAnim != null ? ChargeAnim[chargeAnim] : undefined,
+    });
+
+    return Promise.resolve();
+  }
+
   return new Promise(resolve => {
     if (chargeAnims.has(chargeAnim)) {
       if (chargeAnims.get(chargeAnim) !== null) {
@@ -556,6 +577,7 @@ export function initMoveChargeAnim(chargeAnim: ChargeAnim): Promise<void> {
       }
     } else {
       chargeAnims.set(chargeAnim, null);
+
       globalScene
         .cachedFetch(`./battle-anims/${toKebabCase(ChargeAnim[chargeAnim])}.json`)
         .then(response => response.json())
@@ -566,6 +588,18 @@ export function initMoveChargeAnim(chargeAnim: ChargeAnim): Promise<void> {
           } else {
             populateMoveChargeAnim(chargeAnim, ca);
           }
+
+          resolve();
+        })
+        .catch(error => {
+          console.warn("[CHARGE_ANIM_LOAD_FAILED]", {
+            chargeAnim,
+            name: ChargeAnim[chargeAnim],
+            error,
+          });
+
+          // null 상태로 계속 남겨두면 기다리는 쪽이 영원히 대기할 수 있음
+          chargeAnims.delete(chargeAnim);
           resolve();
         });
     }

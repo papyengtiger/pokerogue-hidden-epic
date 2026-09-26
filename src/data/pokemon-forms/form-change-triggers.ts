@@ -6,6 +6,7 @@ import { Challenges } from "#enums/challenges";
 import { FormChangeItem } from "#enums/form-change-item";
 import { MoveId } from "#enums/move-id";
 import { SpeciesFormKey } from "#enums/species-form-key";
+import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import type { TimeOfDay } from "#enums/time-of-day";
 import { WeatherType } from "#enums/weather-type";
@@ -15,7 +16,6 @@ import type { Constructor } from "#types/common";
 import { coerceArray } from "#utils/array";
 import { toCamelCase } from "#utils/strings";
 import i18next from "i18next";
-import { SpeciesId } from "#enums/species-id";
 
 export abstract class SpeciesFormChangeTrigger {
   public description = "";
@@ -25,8 +25,7 @@ export abstract class SpeciesFormChangeTrigger {
   }
 
   hasTriggerType(triggerType: Constructor<SpeciesFormChangeTrigger>): boolean {
-    // ✅ 번들/중복 import/핫리로드에서 instanceof가 깨지는 경우 대비
-    return this.constructor === triggerType || this.constructor.name === triggerType.name;
+    return this instanceof triggerType;
   }
 }
 
@@ -173,15 +172,12 @@ export class SpeciesFormChangeZMoveKnownTrigger extends SpeciesFormChangeTrigger
   }
 
   canChange(pokemon: Pokemon): boolean {
-  if (
-    pokemon.species.speciesId === SpeciesId.NECROZMA &&
-    this.move === MoveId.LIGHT_THAT_BURNS_THE_SKY
-  ) {
-    const hasInMoveset = pokemon.getMoveset().some(m => m?.moveId === this.move);
-    return hasInMoveset === this.known;
-  }
+    if (pokemon.species.speciesId === SpeciesId.NECROZMA && this.move === MoveId.LIGHT_THAT_BURNS_THE_SKY) {
+      const hasInMoveset = pokemon.getMoveset().some(m => m?.moveId === this.move);
+      return hasInMoveset === this.known;
+    }
 
-  return false; // 다른 Z는 아예 안 씀
+    return false; // 다른 Z는 아예 안 씀
   }
 }
 
@@ -264,8 +260,9 @@ export class SpeciesFormChangeLapseTeraTrigger extends SpeciesFormChangeTrigger 
  * Used by Castform and Cherrim.
  */
 export class SpeciesFormChangeWeatherTrigger extends SpeciesFormChangeTrigger {
-  /** The ability that  triggers the form change */
+  /** The ability that triggers the form change */
   public ability: AbilityId;
+
   /** The list of weathers that trigger the form change */
   public readonly weathers: readonly WeatherType[];
 
@@ -276,15 +273,16 @@ export class SpeciesFormChangeWeatherTrigger extends SpeciesFormChangeTrigger {
     this.description = i18next.t("pokemonEvolutions:forms.weather");
   }
 
-  /**
-   * Checks if the Pokemon has the required ability and is in the correct weather while
-   * the weather or ability is also not suppressed.
-   * @param pokemon - The pokemon that is trying to do the form change
-   * @returns `true` if the Pokemon can change forms, `false` otherwise
-   */
   canChange(pokemon: Pokemon): boolean {
-    const currentWeather = globalScene.arena.weather?.weatherType ?? WeatherType.NONE;
-    const isWeatherSuppressed = globalScene.arena.weather?.isEffectSuppressed();
+    const hasMegaSol =
+      pokemon.getAbility().hasAttr("MegaSolAbAttr") || !!pokemon.getPassiveAbility()?.hasAttr("MegaSolAbAttr");
+
+    const currentWeather = hasMegaSol
+      ? WeatherType.SUNNY
+      : (globalScene.arena.weather?.weatherType ?? WeatherType.NONE);
+
+    const isWeatherSuppressed = hasMegaSol ? false : globalScene.arena.weather?.isEffectSuppressed();
+
     const isAbilitySuppressed = pokemon.summonData.abilitySuppressed;
 
     return (
@@ -304,6 +302,7 @@ export class SpeciesFormChangeWeatherTrigger extends SpeciesFormChangeTrigger {
 export class SpeciesFormChangeRevertWeatherFormTrigger extends SpeciesFormChangeTrigger {
   /** The ability that triggers the form change*/
   public ability: AbilityId;
+
   /** The list of weathers that will also trigger a form change to original form */
   public readonly weathers: readonly WeatherType[];
 
@@ -314,24 +313,27 @@ export class SpeciesFormChangeRevertWeatherFormTrigger extends SpeciesFormChange
     this.description = i18next.t("pokemonEvolutions:forms.weatherRevert");
   }
 
-  /**
-   * Checks if the Pokemon has the required ability and the weather is one that will revert
-   * the Pokemon to its original form or the weather or ability is suppressed
-   * @param pokemon the pokemon that is trying to do the form change
-   * @returns `true` if the Pokemon will revert to its original form, `false` otherwise
-   */
   canChange(pokemon: Pokemon): boolean {
     if (pokemon.hasAbility(this.ability, false, true)) {
-      const currentWeather = globalScene.arena.weather?.weatherType ?? WeatherType.NONE;
-      const isWeatherSuppressed = globalScene.arena.weather?.isEffectSuppressed();
+      const hasMegaSol =
+        pokemon.getAbility().hasAttr("MegaSolAbAttr") || !!pokemon.getPassiveAbility()?.hasAttr("MegaSolAbAttr");
+
+      const currentWeather = hasMegaSol
+        ? WeatherType.SUNNY
+        : (globalScene.arena.weather?.weatherType ?? WeatherType.NONE);
+
+      const isWeatherSuppressed = hasMegaSol ? false : globalScene.arena.weather?.isEffectSuppressed();
+
       const isAbilitySuppressed = pokemon.summonData.abilitySuppressed;
       const summonDataAbility = pokemon.summonData.ability;
+
       const isAbilityChanged = summonDataAbility !== this.ability && summonDataAbility !== AbilityId.NONE;
 
       if (this.weathers.includes(currentWeather) || isWeatherSuppressed || isAbilitySuppressed || isAbilityChanged) {
         return true;
       }
     }
+
     return false;
   }
 }

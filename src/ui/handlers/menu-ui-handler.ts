@@ -27,6 +27,8 @@ enum MenuOptions {
   EGG_LIST,
   EGG_GACHA,
   POKEDEX,
+  COUPON,
+  BERRY_PLANTER,
   MANAGE_DATA,
   COMMUNITY,
   SAVE_AND_QUIT,
@@ -596,6 +598,18 @@ export class MenuUiHandler extends MessageUiHandler {
           ui.setOverlayMode(UiMode.POKEDEX);
           success = true;
           break;
+        case MenuOptions.COUPON:
+          ui.setOverlayMode(UiMode.COUPON);
+          success = true;
+          break;
+
+        case MenuOptions.BERRY_PLANTER:
+          success = true;
+
+          void ui.setMode(UiMode.BERRY_PLANTER, { returnMode: UiMode.MENU });
+
+          break;
+
         case MenuOptions.MANAGE_DATA:
           if (
             !bypassLogin

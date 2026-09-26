@@ -48,15 +48,34 @@ function getPokemon(p: Pokemon | hasPokemon): Pokemon {
 /** Sorts an array of {@linkcode Pokemon} by speed (without shuffling) */
 function sortBySpeed<T extends Pokemon | hasPokemon>(groupedPokemonList: T[][]): void {
   groupedPokemonList.sort((a, b) => {
-    const aSpeed = getPokemon(a[0]).getEffectiveStat(Stat.SPD);
-    const bSpeed = getPokemon(b[0]).getEffectiveStat(Stat.SPD);
+    const aPokemon = getPokemon(a[0]);
+    const bPokemon = getPokemon(b[0]);
+
+    // 둘 다 대상 없음
+    if (!aPokemon && !bPokemon) {
+      return 0;
+    }
+
+    // 대상 없는 Phase는 뒤로
+    if (!aPokemon) {
+      return 1;
+    }
+
+    if (!bPokemon) {
+      return -1;
+    }
+
+    const aSpeed = aPokemon.getEffectiveStat(Stat.SPD);
+
+    const bSpeed = bPokemon.getEffectiveStat(Stat.SPD);
 
     return bSpeed - aSpeed;
   });
 
-  /** 'true' if Trick Room is on the field. */
   const speedReversed = new BooleanHolder(false);
+
   globalScene.arena.applyTags(ArenaTagType.TRICK_ROOM, speedReversed);
+
   if (speedReversed.value) {
     groupedPokemonList.reverse();
   }

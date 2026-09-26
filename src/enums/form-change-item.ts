@@ -82,7 +82,7 @@ export enum FormChangeItem {
   LUCARIONITE_Z,
   MAGEARNITE,
   MEGANIUMITE,
-  PYORARITE,
+  PYROARITE,
   RAICHUNITE_X,
   RAICHUNITE_Y,
   STARAPTITE,
@@ -141,7 +141,7 @@ export enum FormChangeItem {
   DRACO_PLATE,
   DREAD_PLATE,
   PIXIE_PLATE,
-  LEGEND_PLATE,// TODO: Find a potential use for this
+  LEGEND_PLATE, // TODO: Find a potential use for this
   FIGHTING_MEMORY,
   FLYING_MEMORY,
   POISON_MEMORY,
@@ -158,5 +158,5 @@ export enum FormChangeItem {
   ICE_MEMORY,
   DRAGON_MEMORY,
   DARK_MEMORY,
-  FAIRY_MEMORY
+  FAIRY_MEMORY,
 }

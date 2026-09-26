@@ -8,6 +8,8 @@ export interface DexEntry {
   seenAttr: bigint;
   caughtAttr: bigint;
   natureAttr: number;
+  abilityAttr: number;
+  passiveAttr: number;
   seenCount: number;
   caughtCount: number;
   hatchedCount: number;

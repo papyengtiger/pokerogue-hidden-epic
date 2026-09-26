@@ -1,7 +1,10 @@
 import type { PokeballCounts } from "#app/battle-scene";
 import type { Tutorial } from "#app/tutorial";
+import type { MonsterHouseSaveData } from "#data/monster-house/monster-house-manager";
+import type { MysteryTimeSaveData } from "#data/mystery-time/mystery-time-manager";
 import type { BattleType } from "#enums/battle-type";
 import type { GameModes } from "#enums/game-modes";
+import type { MarkId } from "#enums/mark-id";
 import type { MoveId } from "#enums/move-id";
 import type { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import type { Nature } from "#enums/nature";
@@ -16,6 +19,7 @@ import type { EggData } from "#system/egg-data";
 import type { GameStats } from "#system/game-stats";
 import type { ModifierData } from "#system/modifier-data";
 import type { PokemonData } from "#system/pokemon-data";
+import type { QuestEntry } from "#system/quest-manager";
 import type { TrainerData } from "#system/trainer-data";
 import type { DexData } from "./dex-data";
 
@@ -24,7 +28,7 @@ export interface StoredItemData {
   quantity: number;
 }
 
-export interface PracticeDummyConfig {
+export interface PracticeDummyData {
   level?: number;
 
   baseStats?: {
@@ -49,12 +53,6 @@ export interface PracticeDummyConfig {
 
   statusEffect?: number;
 
-  rewardFlags?: {
-    exp?: boolean;
-    money?: boolean;
-    roguePoints?: boolean;
-  };
-
   statStages?: {
     atk?: number;
     def?: number;
@@ -66,10 +64,100 @@ export interface PracticeDummyConfig {
   };
 }
 
+export interface PracticeDummyConfig {
+  dummy1?: PracticeDummyData;
+
+  dummy2?: PracticeDummyData;
+
+  battleType?: "SINGLE" | "DOUBLE";
+
+  rewardBase?: {
+    exp?: number;
+    money?: number;
+    roguePoints?: number;
+  };
+
+  rewardFlags?: {
+    exp?: boolean;
+    money?: boolean;
+    roguePoints?: boolean;
+
+    allowDummyFaint?: boolean;
+  };
+}
+
 export interface RunItemData {
   itemId: string;
   quantity: number;
 }
+
+export interface KecleonShopItemSaveData {
+  typeId: string;
+  tier: number;
+  cost: number;
+  taken: boolean;
+
+  /** Generator 기반 아이템의 세부 타입 복원용 */
+  pregenArgs?: any[];
+}
+
+export interface KecleonShopSaveData {
+  active: boolean;
+  generatedWave: number;
+  paymentDue: number;
+  items: KecleonShopItemSaveData[];
+
+  // 캘리몬 도둑질 추격전
+  theftBattleActive?: boolean;
+  theftStartWave?: number;
+  theftEndWave?: number;
+}
+
+export interface PracticePresetData {
+  name: string;
+  config: PracticeDummyConfig;
+  rentalModifiers?: RunItemData[];
+  starters?: Starter[];
+  timestamp: number;
+}
+
+export type BerryPlanterState = "EMPTY" | "PLANTED" | "GROWING" | "READY";
+
+export type BerryPlanterCropCategory = "BERRY" | "APRICORN";
+
+export interface BerryPlanterSlotSaveData {
+  state: BerryPlanterState;
+
+  /**
+   * BERRY = 나무열매
+   * APRICORN = 규토리
+   */
+  category?: BerryPlanterCropCategory;
+
+  /**
+   * 예:
+   * berry:SITRUS
+   * berry:LUM
+   * apricorn:RED
+   */
+  cropId?: string;
+
+  /** 현재 성장 단계 */
+  growthStage: number;
+
+  /**
+   * 나중에 실제 시간/웨이브 성장 시스템을 붙일 때 사용.
+   * 아직 없어도 되므로 optional.
+   */
+  /** 완전히 성장할 때까지 남은 웨이브 */
+  growthWaves?: number;
+
+  /** 구버전 세이브 호환용 */
+  plantedAt?: number;
+  lastGrowthWave?: number;
+}
+
+export type ResourceInventoryData = Record<string, number>;
 
 export interface SystemSaveData {
   trainerId: number;
@@ -88,13 +176,26 @@ export interface SystemSaveData {
   eggPity: number[];
   unlockPity: number[];
   roguePoints?: number;
+  lastAttendanceDate?: string;
+  attendanceCount?: number;
   bankMoney?: number;
   bankRoguePoints?: number;
+
+  questList?: QuestEntry[];
+
   achvPointsGranted?: boolean;
+
+  usedCoupons?: string[];
 
   storageItems?: StoredItemData[];
   practiceDummyConfig?: PracticeDummyConfig;
   practiceRentalModifiers?: RunItemData[];
+  pendingRunItems?: string[];
+
+  practicePresets?: PracticePresetData[];
+
+  berryPlanterSlots?: BerryPlanterSlotSaveData[];
+  resourceInventory?: ResourceInventoryData;
 }
 
 export interface SessionSaveData {
@@ -121,6 +222,12 @@ export interface SessionSaveData {
   playerFaints: number;
 
   runStorageItems?: RunItemData[];
+
+  kecleonShop?: KecleonShopSaveData;
+
+  monsterHouse?: MonsterHouseSaveData;
+
+  mysteryTime?: MysteryTimeSaveData;
 }
 
 export interface Unlocks {
@@ -157,6 +264,7 @@ export interface StarterAttributes {
   female?: boolean;
   shiny?: boolean;
   favorite?: boolean;
+  mark?: MarkId;
   nickname?: string;
   tera?: PokemonType;
 }
@@ -182,6 +290,7 @@ export interface Starter {
   nickname?: string;
   teraType?: PokemonType;
   ivs: number[];
+  mark?: MarkId;
 
   preRunItems?: string[];
 
@@ -208,6 +317,7 @@ export interface StarterDataEntry {
   valueReduction: number;
   classicWinCount: number;
   teraTypeAttr?: number;
+  marks?: MarkId[];
 }
 
 export interface StarterData {

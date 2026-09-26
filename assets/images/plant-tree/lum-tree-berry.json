@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "lum-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 19,
+				"h": 59
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 4,
+						"w": 17,
+						"h": 28
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 17,
+						"h": 28
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 5,
+						"w": 17,
+						"h": 27
+					},
+					"frame": {
+						"x": 1,
+						"y": 31,
+						"w": 17,
+						"h": 27
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:3cf2996953fbf541a48fe9037fa72092:5ab4c873ce05e9d027c1b37a6bf200b6:325f9c3e5775d7158f7ca2dfe4fc3b8a$"
+	}
+}

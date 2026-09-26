@@ -1,15 +1,37 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
+import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
+import {
+  BoostEnergyTagAttr,
+  FieldPreventExplosiveMovesAbAttr,
+  FieldPriorityMoveImmunityAbAttr,
+  HeldItemBypassAbAttr,
+  IgnoreOpponentStatStagesAbAttr,
+  MoveEffectChanceMultiplierAbAttr,
+  MoveImmunityAbAttr,
+  PreApplyBattlerTagAbAttr,
+  PreDefendAbAttr,
+  PreventBerryUseAbAttr,
+  ReceivedMoveDamageMultiplierAbAttr,
+  StatStageChangeMultiplierAbAttr,
+  UserFieldBattlerTagImmunityAbAttr
+} from "#app/data/abilities/ability";
+import { maxmovesSpecies } from "#app/data/balance/trs";
+import { zmovesSpecies } from "#app/data/balance/zmoves";
+import {
+  InstantChargeAttr,
+  MissEffectAttr,
+  MultiHitAttr,
+  NeutralDamageAgainstFlyingTypeMultiplierAttr,
+  RecoilAttr,
+} from "#app/data/moves/move";
+import { WeatherType } from "#app/enums/weather-type";
+import { Pokemon } from "#app/field/pokemon";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
 import Overrides from "#app/overrides";
-import {
-  allMoves,
-  RecoilAttr,
-  MultiHitAttr,
-  NeutralDamageAgainstFlyingTypeMultiplierAttr,
-  InstantChargeAttr,
-  MissEffectAttr,
-} from "#app/data/moves/move";
+import { ChangeAbilityPhase, type ChangeAbilityType } from "#app/phases/change-ability-phase";
+import { RegisterAbilityPhase, type RegisterAbilityType } from "#app/phases/register-ability-phase";
+import { StatStageChangePhase } from "#app/phases/stat-stage-change-phase";
 import { FusionSpeciesFormEvolution, pokemonEvolutions } from "#balance/pokemon-evolutions";
 import { FRIENDSHIP_GAIN_FROM_RARE_CANDY } from "#balance/starters";
 import { getBerryEffectFunc, getBerryPredicate } from "#data/berry";
@@ -18,21 +40,32 @@ import { getLevelTotalExp } from "#data/exp";
 import { SpeciesFormChangeItemTrigger } from "#data/form-change-triggers";
 import { MAX_PER_TYPE_POKEBALLS } from "#data/pokeball";
 import { getStatusEffectHealText } from "#data/status-effect";
+import { TerrainType } from "#data/terrain";
+import { getTypeDamageMultiplier, } from "#data/type";
+import { AbilityId } from "#enums/ability-id";
+import { ArenaTagType } from "#enums/arena-tag-type";
 import { BattlerTagType } from "#enums/battler-tag-type";
 import { BerryType } from "#enums/berry-type";
 import { Color, ShadowColor } from "#enums/color";
 import { Command } from "#enums/command";
-import type { FormChangeItem } from "#enums/form-change-item";
+import { FormChangeItem } from "#enums/form-change-item";
+import { HitResult } from "#enums/hit-result";
 import { LearnMoveType } from "#enums/learn-move-type";
+import { ModifierTier } from "#enums/modifier-tier";
+import { MoveCategory } from "#enums/move-category";
+import { MoveFlags } from "#enums/move-flags";
+import { MoveFlags2 } from "#enums/move-flags-2";
 import type { MoveId } from "#enums/move-id";
 import { MoveId } from "#enums/move-id";
+import { MoveUseMode } from "#enums/move-use-mode";
 import type { Nature } from "#enums/nature";
 import type { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
 import { PokemonType } from "#enums/pokemon-type";
+import { SpeciesFormKey } from "#enums/species-form-key";
 import { SpeciesId } from "#enums/species-id";
-import { BATTLE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, EFFECTIVE_STATS, type BattleStat, Stat } from "#enums/stat";
-import type { BattleStat, EffectiveStat } from "#enums/stat";
+import type { EffectiveStat } from "#enums/stat";
+import { BATTLE_STATS, type BattleStat, EFFECTIVE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, Stat } from "#enums/stat";
 import { StatusEffect } from "#enums/status-effect";
 import { TextStyle } from "#enums/text-style";
 import type { PlayerPokemon, Pokemon } from "#field/pokemon";
@@ -49,62 +82,16 @@ import type {
   PokemonMultiHitModifierType,
   TerastallizeModifierType,
   TmModifierType,
-  ModifierTypeGenerator,
 } from "#modifiers/modifier-type";
+import type { Move } from "#moves/move";
+import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import type { VoucherType } from "#system/voucher";
 import type { ModifierInstanceMap, ModifierString, SpeciesStatBoosterItem } from "#types/modifier-types";
 import { addTextObject } from "#ui/text";
 import { BooleanHolder, hslToHex, NumberHolder, randSeedFloat, toDmgValue } from "#utils/common";
 import { getModifierType } from "#utils/modifier-utils";
 import i18next from "i18next";
-import { ChangeAbilityPhase, type ChangeAbilityType } from "#app/phases/change-ability-phase";
-import { RegisterAbilityPhase, type RegisterAbilityType } from "#app/phases/register-ability-phase";
-import { zmovesSpecies } from "#app/data/balance/zmoves";
-import { maxmovesSpecies } from "#app/data/balance/trs";
-import { SpeciesFormKey } from "#enums/species-form-key";
-import {
-  CommanderAbAttr,
-  MoveAbilityBypassAbAttr,
-  IgnoreOpponentStatStagesAbAttr,
-  PreventBerryUseAbAttr,
-  FieldPreventExplosiveMovesAbAttr,
-  FieldPriorityMoveImmunityAbAttr,
-  MoveEffectChanceMultiplierAbAttr,
-  IgnoreTypeImmunityAbAttr,
-  MovePowerBoostAbAttr,
-  StatStageChangeMultiplierAbAttr,
-  PreApplyBattlerTagImmunityAbAttr,
-  StabBoostAbAttr,
-  MoveImmunityAbAttr,
-  PreApplyBattlerTagAbAttr,
-  PreDefendAbAttr,
-  ReceivedMoveDamageMultiplierAbAttr,
-  BoostEnergyTagAttr,
-  UserFieldBattlerTagImmunityAbAttr,
-  BlockCritAbAttr,
-  HeldItemBypassAbAttr,
-  AllyHeldItemShareAbAttr,
-  BlockNonDirectDamageAbAttr
-} from "#app/data/abilities/ability";
-import { AbilityId } from "#enums/ability-id";
-import { StatStageChangePhase } from "#app/phases/stat-stage-change-phase";
-import {getStatKey, PERMANENT_STATS} from "/src/enums/stat";
-import { MoveFlags } from "#enums/move-flags";
-import { MoveFlags2 } from "#enums/move-flags-2";
-import { HitResult } from "#enums/hit-result";
-import { MoveCategory } from "#enums/move-category";
-import { Pokemon } from "#app/field/pokemon";
-import { isVirtual, MoveUseMode } from "#enums/move-use-mode";
-import { applyMoveAttrs } from "#moves/apply-attrs";
-import type { Move } from "#moves/move";
-import { WeatherType } from "#app/enums/weather-type";
-import { TerrainType } from "#data/terrain";
-import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
-import type { RecycleSnapshot } from "#moves/recycle-snapshot";
-import { ArenaTagType } from "#enums/arena-tag-type";
-import { FormChangeItem } from "#enums/form-change-item";
-import { getTypeDamageMultiplier, getTypeRgb } from "#data/type";
-import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
+import {PERMANENT_STATS} from "/src/enums/stat";
 
 export type ModifierPredicate = (modifier: Modifier) => boolean;
 
@@ -147,29 +134,155 @@ export class ModifierBar extends Phaser.GameObjects.Container {
       .filter(m => (m as PokemonHeldItemModifier).pokemonId)
       .sort(modifierSortFunc);
 
-    const sortedVisibleIconModifiers = hideHeldItems
-      ? nonPokemonSpecificModifiers
-      : nonPokemonSpecificModifiers.concat(pokemonSpecificModifiers);
+    const normalizeTypeIdForTier = (id?: string): string | undefined => {
+  if (!id) {
+    return ;
+  }
 
-    sortedVisibleIconModifiers.forEach((modifier: PersistentModifier, i: number) => {
+  // TYPE_SPECIFIC_MOVE_BOOSTER_15 → TYPE_SPECIFIC_MOVE_BOOSTER
+  if (id.startsWith("TYPE_SPECIFIC_MOVE_BOOSTER_")) {
+    return "TYPE_SPECIFIC_MOVE_BOOSTER";
+  }
+
+  // ATTACK_TYPE_BOOSTER_15 같은 타입별 도구도 대비
+  if (id.startsWith("ATTACK_TYPE_BOOSTER_")) {
+    return "ATTACK_TYPE_BOOSTER";
+  }
+
+  return id;
+};
+
+const getTierRank = (item: any): number => {
+  let tier =
+    item.type?.tier
+    ?? item.type?.getOrInferTier?.();
+
+  if (tier == null) {
+    const normalizedId = normalizeTypeIdForTier(item.type?.id);
+
+    if (normalizedId === "TYPE_SPECIFIC_MOVE_BOOSTER") {
+      tier = ModifierTier.GREAT;
+    } else if (normalizedId === "ATTACK_TYPE_BOOSTER") {
+      tier = ModifierTier.ULTRA;
+    }
+  }
+
+  switch (tier) {
+    case ModifierTier.MASTER:
+      return 5;
+    case ModifierTier.ROGUE:
+      return 4;
+    case ModifierTier.ULTRA:
+      return 3;
+    case ModifierTier.GREAT:
+      return 2;
+    case ModifierTier.COMMON:
+      return 1;
+    default:
+      return 0;
+  }
+};
+
+const getItemKey = (item: any): string => {
+  return [
+    item.type?.id ?? "",
+    item.type?.iconImage ?? "",
+    item.type?.localeKey ?? "",
+    item.type?.getPregenArgs?.()?.join("_") ?? "",
+  ].join("|");
+};
+
+const playerOwnedItemKeys = new Set(
+  globalScene.findModifiers(m => m instanceof PokemonHeldItemModifier, true)
+    .map(m => getItemKey(m))
+);
+
+const sortedPokemonSpecificModifiers = !this.player
+  ? pokemonSpecificModifiers.slice().sort((a, b) => {
+      const tierDiff = getTierRank(b) - getTierRank(a);
+
+      // 1순위: 등급 높은 순
+      if (tierDiff !== 0) {
+        return tierDiff;
+      }
+
+      const aOwned = playerOwnedItemKeys.has(getItemKey(a));
+      const bOwned = playerOwnedItemKeys.has(getItemKey(b));
+
+      // 2순위: 같은 등급이면 아군에게 없는 아이템 먼저
+      if (aOwned !== bOwned) {
+        return aOwned ? 1 : -1;
+      }
+
+      // 3순위: 이름순
+      return (a.type?.name ?? "").localeCompare(b.type?.name ?? "");
+    })
+  : pokemonSpecificModifiers;
+
+const sortedVisibleIconModifiers = hideHeldItems
+  ? nonPokemonSpecificModifiers
+  : nonPokemonSpecificModifiers.concat(sortedPokemonSpecificModifiers);
+
+const getTierLabel = (item: any): string => {
+  switch (getTierRank(item)) {
+    case 5:
+      return "MASTER";
+    case 4:
+      return "ROGUE";
+    case 3:
+      return "ULTRA";
+    case 2:
+      return "GREAT";
+    case 1:
+      return "COMMON";
+    default:
+      return "UNKNOWN";
+  }
+};
+
+if (!this.player) {
+  console.log("[ENEMY_HELD_ITEM_BAR_ORDER]", sortedPokemonSpecificModifiers.map((m, index) => ({
+    index,
+    name: m.type?.name,
+    id: m.type?.id,
+    tier: getTierLabel(m),
+    tierRank: getTierRank(m),
+    ownedByPlayer: globalScene.findModifiers(
+      pm => pm.type?.id === m.type?.id,
+      true,
+    ).length > 0,
+    pokemonId: (m as PokemonHeldItemModifier).pokemonId,
+  })));
+}
+
+console.log("[ITEM_SORT_CHECK]",
+  sortedPokemonSpecificModifiers.map(i => ({
+    name: i.type.name,
+    tier: getTierLabel(i),
+    owned: playerOwnedItemKeys.has(getItemKey(i))
+  }))
+);
+
+const displayModifiers = hideHeldItems
+  ? nonPokemonSpecificModifiers
+  : this.player
+    ? nonPokemonSpecificModifiers.concat(sortedPokemonSpecificModifiers)
+    : nonPokemonSpecificModifiers.concat(sortedPokemonSpecificModifiers.slice().reverse());
+
+    displayModifiers.forEach((modifier: PersistentModifier, i: number) => {
       const icon = modifier.getIcon();
       if (i >= iconOverflowIndex) {
         icon.setVisible(false);
       }
       this.add(icon);
-      this.setModifierIconPosition(icon, sortedVisibleIconModifiers.length);
+      this.setModifierIconPosition(icon, displayModifiers.length);
       icon.setInteractive(new Phaser.Geom.Rectangle(0, 0, 32, 24), Phaser.Geom.Rectangle.Contains);
       icon.on("pointerover", () => {
         globalScene.ui.showTooltip(modifier.type.name, modifier.type.getDescription());
-        if (this.modifierCache && this.modifierCache.length > iconOverflowIndex) {
-          this.updateModifierOverflowVisibility(true);
-        }
+        
       });
       icon.on("pointerout", () => {
         globalScene.ui.hideTooltip();
-        if (this.modifierCache && this.modifierCache.length > iconOverflowIndex) {
-          this.updateModifierOverflowVisibility(false);
-        }
       });
     });
 
@@ -326,10 +439,10 @@ export abstract class PersistentModifier extends Modifier {
   container.add(item);
 
   const stackText = this.getIconStackText();
-  if (stackText) container.add(stackText);
+  if (stackText) { container.add(stackText); }
 
   const virtualStackText = this.getIconStackText(true);
-  if (virtualStackText) container.add(virtualStackText);
+  if (virtualStackText) { container.add(virtualStackText); }
 
   return container;
 }
@@ -554,7 +667,7 @@ export class DoubleBattleChanceBoosterModifier extends LapsingPersistentModifier
   override apply(doubleBattleChance: NumberHolder): boolean {
     // This is divided because the chance is generated as a number from 0 to doubleBattleChance.value using randSeedInt
     // A double battle will initiate if the generated number is 0
-    doubleBattleChance.value = doubleBattleChance.value / 4;
+    doubleBattleChance.value /= 4;
 
     return true;
   }
@@ -568,10 +681,10 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
   constructor(
     type: ModifierType,
     weatherType: WeatherType,
-    duration: number = 10,
+    duration = 10,
     battleCount?: number,
     stackCount?: number,
-    remainingTurns: number = 10 // 🟢 기본 10턴
+    remainingTurns = 10 // 🟢 기본 10턴
   ) {
     super(type, duration, battleCount, stackCount);
     this.weatherType = weatherType;
@@ -609,7 +722,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
   /** ✅ 전투 시작 시 날씨 설정 */
   override onBattleStart(): void {
     const arena = globalScene.arena;
-    if (!arena) return;
+    if (!arena) { return; }
 
     const trainerPokemon = globalScene.getPlayerParty()?.[0];
     const currentWeather = arena.weather?.weatherType ?? WeatherType.NONE;
@@ -621,7 +734,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
       return;
     }
 
-    if (arena.weather?.isImmutable?.()) return;
+    if (arena.weather?.isImmutable?.()) { return; }
 
     const success = arena.trySetWeather(this.weatherType, trainerPokemon);
     if (success && arena.weather) {
@@ -648,7 +761,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
   /** ✅ 턴 종료 시 자동으로 턴 수 감소 및 종료 처리 */
   override onTurnEnd(): void {
     const arena = globalScene.arena;
-    if (!arena?.weather || arena.weather.weatherType !== this.weatherType) return;
+    if (!arena?.weather || arena.weather.weatherType !== this.weatherType) { return; }
 
     // 🔹 턴 감소
     if (arena.weather.turnsLeft > 0) {
@@ -672,7 +785,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
       };
 
       const msg = endMessages[this.weatherType] ?? "";
-      if (msg) globalScene.phaseManager.queueMessage(msg);
+      if (msg) { globalScene.phaseManager.queueMessage(msg); }
 
       // 🔹 날씨 해제 및 완전 제거
       arena.trySetWeather(WeatherType.NONE);
@@ -693,10 +806,10 @@ export class TerrainSeedTrainerModifier extends LapsingPersistentModifier {
   constructor(
     type: ModifierType,
     terrainType: TerrainType,
-    duration: number = 10,
+    duration = 10,
     battleCount?: number,
     stackCount?: number,
-    remainingTurns: number = 10 // 🟢 기본 10턴
+    remainingTurns = 10 // 🟢 기본 10턴
   ) {
     super(type, duration, battleCount, stackCount);
     this.terrainType = terrainType;
@@ -734,7 +847,7 @@ export class TerrainSeedTrainerModifier extends LapsingPersistentModifier {
   /** ✅ 전투 시작 시 필드 설정 */
   override onBattleStart(): void {
     const arena = globalScene.arena;
-    if (!arena) return;
+    if (!arena) { return; }
 
     const trainerPokemon = globalScene.getPlayerParty()?.[0];
     const currentTerrain = arena.terrain?.terrainType ?? TerrainType.NONE;
@@ -771,7 +884,7 @@ export class TerrainSeedTrainerModifier extends LapsingPersistentModifier {
   /** ✅ 턴 종료 시 자동 감소 및 해제 처리 */
   override onTurnEnd(): void {
     const arena = globalScene.arena;
-    if (!arena?.terrain || arena.terrain.terrainType !== this.terrainType) return;
+    if (!arena?.terrain || arena.terrain.terrainType !== this.terrainType) { return; }
 
     if (arena.terrain.turnsLeft > 0) {
       arena.terrain.turnsLeft--;
@@ -793,7 +906,7 @@ export class TerrainSeedTrainerModifier extends LapsingPersistentModifier {
   };
 
   const msg = endMessages[this.terrainType] ?? "";
-  if (msg) globalScene.phaseManager.queueMessage(msg);
+  if (msg) { globalScene.phaseManager.queueMessage(msg); }
 
   // 🔹 시도 1: 정상 해제
   const cleared = arena.trySetTerrain(TerrainType.NONE);
@@ -1085,7 +1198,7 @@ private isPokemonLike(x: any): x is Pokemon {
 }
 
 private extractTarget(first: any, args: any[]): Pokemon | undefined {
-  if (this.isPokemonLike(first)) return first;
+  if (this.isPokemonLike(first)) { return first; }
   const found = args.find(a => this.isPokemonLike(a));
   return found as Pokemon | undefined;
 }
@@ -1160,7 +1273,7 @@ if (!target) {
 }
 
 const owner = this.getPokemon();
-if (!owner) return false;
+if (!owner) { return false; }
 
   const isOwnerTarget = (this.pokemonId === -1 || target.id === this.pokemonId);
 
@@ -1171,7 +1284,7 @@ if (!owner) return false;
     target.isOnField() &&
     this.isGlobalCommensalActive();
 
-  if (!isOwnerTarget && !isSharedToAlly) return false;
+  if (!isOwnerTarget && !isSharedToAlly) { return false; }
 
     // 서투름
 if (this.isGlobalKlutzActive() && this.type.id !== ModifierType.MOLD_BREAKER_BELT) {
@@ -1208,18 +1321,18 @@ if (!cancelled.value) {
     .filter(p => p?.isOnField?.() && p.isPlayer() !== target.isPlayer()) as Pokemon[];
 
   for (const foe of foes) {
-    if (cancelled.value) break;
+    if (cancelled.value) { break; }
 
     const mods = foe.getHeldItems?.() ?? [];
     for (const mod of mods) {
-      if (cancelled.value) break;
+      if (cancelled.value) { break; }
 
       const getter = (mod as any).getAbilityAttrs;
-      if (typeof getter !== "function") continue;
+      if (typeof getter !== "function") { continue; }
 
       const attrs = getter.call(mod, "HeldItemBypassAbAttr") as AbAttr[];
       for (const attr of attrs) {
-        if (cancelled.value) break;
+        if (cancelled.value) { break; }
 
         if (attr.canApply({ pokemon: target, modifier: this, cancelled } as any)) {
           attr.apply({ pokemon: target, modifier: this, cancelled, simulated: false } as any);
@@ -1956,7 +2069,7 @@ override getArgs(): any[] {
 
   // ✅ 타겟이 잠듦인지
 private isTargetSleeping(target: Pokemon | null | undefined): boolean {
-  if (!target) return false;
+  if (!target) { return false; }
   const eff = (target as any).status?.effect ?? (target as any).statusEffect;
   return eff === StatusEffect.SLEEP;
 }
@@ -1964,7 +2077,7 @@ private isTargetSleeping(target: Pokemon | null | undefined): boolean {
   public readonly __SBOO = true;
 
   public getKey(): SpeciesStatBoosterItem | undefined {
-  if (this.key) return this.key;
+  if (this.key) { return this.key; }
 
   const typeObj: any = (this as any).type;
   let k =
@@ -1972,21 +2085,21 @@ private isTargetSleeping(target: Pokemon | null | undefined): boolean {
     typeObj?.getPregenArgs?.()?.[0] ??
     typeObj?.id;
 
-  if (typeof k !== "string") return undefined;
+  if (typeof k !== "string") { return ; }
 
   // ✅ id가 "modifierType:SpeciesBoosterItem.X" 형태면 X만 추출
   const marker = "modifierType:SpeciesBoosterItem.";
-  if (k.startsWith(marker)) k = k.slice(marker.length);
+  if (k.startsWith(marker)) { k = k.slice(marker.length); }
 
   // 혹시 ".MYTHICAL_PECHA_BERRY"처럼 점으로 끝에 붙는 경우도 커버
-  if (k.includes(".")) k = k.split(".").pop()!;
+  if (k.includes(".")) { k = k.split(".").pop()!; }
 
   return k as SpeciesStatBoosterItem;
 }
 
   public getStabBoostAdd(): number | undefined {
   const v = this.stabBoostAdd;
-  if (typeof v === "number") return v;
+  if (typeof v === "number") { return v; }
 
   const typeObj: any = (this as any).type;
   const typeKey =
@@ -1997,25 +2110,25 @@ private isTargetSleeping(target: Pokemon | null | undefined): boolean {
     ?? typeObj?.id;
 
   // 감청빛크리스탈: STAB +0.5 (StabBoostAbAttr와 동일)
-  if (typeKey === "CRYSTAL_CLUSTER") return 0.5;
+  if (typeKey === "CRYSTAL_CLUSTER") { return 0.5; }
 
-  return undefined;
+  return ;
 }
 
   public getIgnoreTypeImmunity(): boolean | undefined {
   // 1) 생성자로 들어온 값 우선
-  if (typeof this.ignoreTypeImmunity === "boolean") return this.ignoreTypeImmunity;
+  if (typeof this.ignoreTypeImmunity === "boolean") { return this.ignoreTypeImmunity; }
 
   // 2) 구세이브/키 기반 복구
   const key = this.getKey?.();
-  if (key === "CRYSTAL_CLUSTER") return true;
+  if (key === "CRYSTAL_CLUSTER") { return true; }
 
-  return undefined;
+  return ;
 }
 
   public getPoisonedTargetGuaranteedCrit(): boolean | undefined {
   const v = this.poisonedTargetGuaranteedCrit;
-  if (typeof v === "boolean") return v;
+  if (typeof v === "boolean") { return v; }
 
   // ✅ 구세이브 호환: key/typeKey로 복구
   const typeObj: any = (this as any).type;
@@ -2026,15 +2139,15 @@ private isTargetSleeping(target: Pokemon | null | undefined): boolean {
     ?? typeObj?.id;
 
   // 환상복슝(=MYTHICAL_PECHA_BERRY)일 때만 true
-  if (typeKey === "MYTHICAL_PECHA_BERRY") return true;
+  if (typeKey === "MYTHICAL_PECHA_BERRY") { return true; }
 
-  return undefined;
+  return ;
 }
 
   // ✅ 배율 getter (구세이브 호환용 키 복구까지 포함)
 public getSleepingTargetMoveMult(): number | undefined {
   const v = this.sleepingTargetMoveMult;
-  if (typeof v === "number") return v;
+  if (typeof v === "number") { return v; }
 
   const typeObj: any = (this as any).type;
   const typeKey =
@@ -2045,9 +2158,9 @@ public getSleepingTargetMoveMult(): number | undefined {
     ?? typeObj?.id;
 
   // ✅ 나이트메어 전용(다크라이): 수면 상대에게 x1.3
-  if (typeKey === "NIGHTMARE_SYMBOLE") return 1.3;
+  if (typeKey === "NIGHTMARE_SYMBOLE") { return 1.3; }
 
-  return undefined;
+  return ;
 }
 
 // ✅ 파워(위력/데미지 전 단계) 배율 적용 훅
@@ -2057,16 +2170,16 @@ public applySleepingTargetMovePowerBoost(
   power: NumberHolder,
   simulated: boolean,
 ): boolean {
-  if (!user || !target) return false;
+  if (!user || !target) { return false; }
 
   // 전용템 컨셉: 종족 조건 유지(다크라이만)
-  if (!this.hasMatchingSpecies(user)) return false;
+  if (!this.hasMatchingSpecies(user)) { return false; }
 
   // 타겟이 잠들어 있지 않으면 스킵
-  if (!this.isTargetSleeping(target)) return false;
+  if (!this.isTargetSleeping(target)) { return false; }
 
   const mult = this.getSleepingTargetMoveMult();
-  if (typeof mult !== "number") return false;
+  if (typeof mult !== "number") { return false; }
 
   power.value *= mult;
 
@@ -2085,7 +2198,7 @@ public applySleepingTargetMovePowerBoost(
   
   public getConfusionSelfDamageMult(): number | undefined {
   const v = this.confusionSelfDamageMult;
-  if (typeof v === "number") return v;
+  if (typeof v === "number") { return v; }
 
   // ✅ 구세이브 호환: key/typeKey로 복구
   const typeObj: any = (this as any).type;
@@ -2097,15 +2210,15 @@ public applySleepingTargetMovePowerBoost(
     ?? typeObj?.id;
 
   // 예: 환상복슝만 혼란 자해 2배라면
-  if (typeKey === "MYTHICAL_PECHA_BERRY") return 2;
+  if (typeKey === "MYTHICAL_PECHA_BERRY") { return 2; }
 
-  return undefined;
+  return ;
 }
 
 
   public getAllMovePowerMult(): number | undefined {
   const v = this.allMovePowerMult;
-  if (typeof v === "number") return v;
+  if (typeof v === "number") { return v; }
 
   // ✅ 구세이브 호환: 키로 복구
   const typeObj: any = (this as any).type;
@@ -2117,15 +2230,15 @@ public applySleepingTargetMovePowerBoost(
     ?? typeObj?.id;
 
   // CRYSTAL_CLUSTER면 x2로 복구
-  if (typeKey === "CRYSTAL_CLUSTER") return 2;
+  if (typeKey === "CRYSTAL_CLUSTER") { return 2; }
 
-  return undefined;
+  return ;
 }
 
   // ✅ 외부(명중 계산부)에서 읽을 getter
   public getEvasiveAccDebuffPercent(): number | undefined {
     const v = this.evasiveAccDebuffPercent;
-    if (typeof v === "number") return v;
+    if (typeof v === "number") { return v; }
 
     // ✅ 구세이브 호환: key/typeKey로 기본값 복구(원하면 여기서 특정 아이템 키 대응)
     const typeObj: any = (this as any).type;
@@ -2138,14 +2251,15 @@ public applySleepingTargetMovePowerBoost(
 
     // 예: 반짝가루가 SpeciesStatBoosterItem 안에 들어가 있다면 키로 복구 가능
     const isBrightPowder = typeKey === "BRIGHT_POWDER" || typeKey === 999; // 네 키에 맞게 수정
-    if (isBrightPowder) return 10; // 기본 10%
+    if (isBrightPowder) { return 10; // 기본 10%
+}
 
-    return undefined;
+    return ;
   }
 
   public getPoisonedTargetCritDamageMult(): number | undefined {
   const v = this.poisonedTargetCritDamageMult;
-  if (typeof v === "number") return v;
+  if (typeof v === "number") { return v; }
 
   // ✅ 구세이브 호환: key/typeKey로 복구
   const typeObj: any = (this as any).type;
@@ -2157,9 +2271,9 @@ public applySleepingTargetMovePowerBoost(
     ?? typeObj?.id;
 
   // 예: 환상복슝(MYTHICAL_PECHA_BERRY)만 2배로 쓰고 싶다면
-  if (typeKey === "MYTHICAL_PECHA_BERRY") return 2;
+  if (typeKey === "MYTHICAL_PECHA_BERRY") { return 2; }
 
-  return undefined;
+  return ;
 }
 
   public applyPoisonedTargetCritDamageBoost(
@@ -2168,20 +2282,20 @@ public applySleepingTargetMovePowerBoost(
   critMult: NumberHolder,
   simulated: boolean,
 ): boolean {
-  if (simulated) return false;
-  if (!user || !target) return false;
+  if (simulated) { return false; }
+  if (!user || !target) { return false; }
 
   // 급소가 아닐 때는 스킵 (CritDamageBoostModifier / MultCritAbAttr와 동일한 관점)
-  if (critMult.value <= 1) return false;
+  if (critMult.value <= 1) { return false; }
 
   // 종족 조건 (전용템/전용부스터 컨셉 유지)
-  if (!this.hasMatchingSpecies(user)) return false;
+  if (!this.hasMatchingSpecies(user)) { return false; }
 
   // 타겟 독/맹독 조건
-  if (!this.isTargetPoisoned(target)) return false;
+  if (!this.isTargetPoisoned(target)) { return false; }
 
   const mult = this.getPoisonedTargetCritDamageMult();
-  if (typeof mult !== "number") return false;
+  if (typeof mult !== "number") { return false; }
 
   critMult.value *= mult;
 
@@ -2198,7 +2312,7 @@ public applySleepingTargetMovePowerBoost(
 
   public getPoisonedTargetMoveMult(): number | undefined {
   const v = this.poisonedTargetMoveMult;
-  if (typeof v === "number") return v;
+  if (typeof v === "number") { return v; }
 
   // ✅ 구세이브 호환: key/typeKey로 기본값 복구
   const typeObj: any = (this as any).type;
@@ -2210,14 +2324,14 @@ public applySleepingTargetMovePowerBoost(
     ?? typeObj?.id;
 
   const isMalignantChains = typeKey === "MALIGNANT_CHAINS" || typeKey === 1;
-  if (isMalignantChains) return 1.3;
+  if (isMalignantChains) { return 1.3; }
 
-  return undefined;
+  return ;
 }
 
   // ✅ 타겟이 독/맹독인지 체크 헬퍼 (엔진 상태명에 맞춰 수정)
   public isTargetPoisoned(target: Pokemon | null | undefined): boolean {
-  if (!target) return false;
+  if (!target) { return false; }
   const eff = (target as any).status?.effect ?? (target as any).statusEffect;
   return eff === StatusEffect.POISON || eff === StatusEffect.TOXIC;
 }
@@ -2241,7 +2355,7 @@ public applySleepingTargetMovePowerBoost(
     ?? typeObj?.key
     ?? typeObj?.id;
 
-  if (typeKey === "MYTHICAL_PECHA_BERRY") return 2;
+  if (typeKey === "MYTHICAL_PECHA_BERRY") { return 2; }
 
   return this.poisonDotMult;
 }
@@ -2255,14 +2369,14 @@ public applyIgnoreTypeImmunity(
   simulated: boolean,
 ): boolean {
   // 0배가 아니면 관통할 게 없음
-  if (!typeMultiplier || typeMultiplier.value !== 0) return false;
+  if (!typeMultiplier || typeMultiplier.value !== 0) { return false; }
 
   // 전용템/전용부스터 컨셉: 종족 조건
-  if (!this.hasMatchingSpecies(user)) return false;
+  if (!this.hasMatchingSpecies(user)) { return false; }
 
   // 아이템 자체가 관통 옵션을 켜고 있는지
   const pass = this.getIgnoreTypeImmunity?.();
-  if (pass !== true) return false;
+  if (pass !== true) { return false; }
 
   // ✅ 관통: 0배 → 1배
   typeMultiplier.value = 1;
@@ -2371,30 +2485,30 @@ const desired =
 }
 
 onPostSummon(pokemon: Pokemon, simulated: boolean): void {
-  if (simulated) return;
-  if (!pokemon) return;
+  if (simulated) { return; }
+  if (!pokemon) { return; }
 
   const ps = this.postSummon;
-  if (!ps || typeof (ps as any).stages !== "number") return;
+  if (!ps || typeof (ps as any).stages !== "number") { return; }
 
   // 종족 조건
   const okSpecies =
     this.species.includes(pokemon.getSpeciesForm(true).speciesId) ||
     (pokemon.isFusion() && this.species.includes(pokemon.getFusionSpeciesForm(true).speciesId));
-  if (!okSpecies) return;
+  if (!okSpecies) { return; }
 
   // 이번 소환 1회
-  if (this.hasActivatedThisSummon(pokemon)) return;
+  if (this.hasActivatedThisSummon(pokemon)) { return; }
   this.setActivatedThisSummon(pokemon);
 
   // ✅ stats 결정
   let statsToBoost: Stat[] = [];
   if ("mode" in ps && ps.mode === "HIGHEST") {
     const s = this.getHighestStatForSummon(pokemon);
-    if (s == null) return;
+    if (s == null) { return; }
     statsToBoost = [s];
   } else {
-    if (!ps.stats?.length) return;
+    if (ps.stats?.length === 0) { return; }
     statsToBoost = ps.stats;
   }
 
@@ -2681,7 +2795,7 @@ export class RunSuccessModifier extends PokemonHeldItemModifier {
   escapeChance?: NumberHolder, // optional
   cancelled?: Utils.BooleanHolder
 ): boolean {
-  if (!pokemon.battleData) return false;
+  if (!pokemon.battleData) { return false; }
 
   if (!pokemon.arena?.hasTag(ArenaTagType.NEUTRALIZING_GAS)) {
     pokemon.battleData.escapeChance = 256;
@@ -2690,7 +2804,7 @@ export class RunSuccessModifier extends PokemonHeldItemModifier {
       escapeChance.value = 256;
     }
 
-    console.log(`[DEBUG] 연막탄 효과 적용됨 - Neutralizing Gas 없음`);
+    console.log("[DEBUG] 연막탄 효과 적용됨 - Neutralizing Gas 없음");
   }
 
   if (!simulated) {
@@ -2741,7 +2855,7 @@ export class EvasiveItemModifier extends PokemonHeldItemModifier {
    * 명중률 디버프 적용 (자신이 아니라 상대에게 영향)
    */
   override apply(pokemon: Pokemon): boolean {
-    if (pokemon.id !== this.pokemonId) return false;
+    if (pokemon.id !== this.pokemonId) { return false; }
 
     const debuffPercent = this.getStackCount() * this.accDebuffPercent;
 
@@ -2800,13 +2914,14 @@ export class LegendPlateModifier extends PokemonHeldItemModifier {
 }) {
   const { user, target, move, moveTypeHolder, simulated } = params;
 
-  if (user.id !== this.pokemonId) return;
-  if (user.getSpeciesForm(true).speciesId !== SpeciesId.ARCEUS) return;
-  if (user.isTerastallized) return;
-  if (move.id !== MoveId.JUDGMENT) return;
+  if (user.id !== this.pokemonId) { return; }
+  if (user.getSpeciesForm(true).speciesId !== SpeciesId.ARCEUS) { return; }
+  if (user.isTerastallized) { return; }
+  if (move.id !== MoveId.JUDGMENT) { return; }
 
   const td = user.turnData;           // ✅ 엔진이 주는 turnData 사용
-  if (!td) return;                    // (안전)
+  if (!td) { return;                    // (안전)
+}
 
   const targetKey = target.id;        // ✅ 교체되면 바뀌는 값
 
@@ -2865,8 +2980,10 @@ export class LegendPlateModifier extends PokemonHeldItemModifier {
   ];
 
   private resistScore(mult: number): number {
-    if (mult === 0) return 2;  // 면역
-    if (mult < 1) return 1;    // 반감
+    if (mult === 0) { return 2;  // 면역
+}
+    if (mult < 1) { return 1;    // 반감
+}
     return 0;
   }
 
@@ -2915,7 +3032,7 @@ export class LegendPlateModifier extends PokemonHeldItemModifier {
     }
 
     // 2) 4배 우선
-    if (pool.some(c => c.mult === 4)) pool = pool.filter(c => c.mult === 4);
+    if (pool.some(c => c.mult === 4)) { pool = pool.filter(c => c.mult === 4); }
 
     // 3) 주타입 저항 우선(면역>반감>그 외)
     const bestPrim = Math.max(...pool.map(c => c.resistPrimary));
@@ -2992,7 +3109,7 @@ export class IgnoreContactItemModifier extends PokemonHeldItemModifier {
    */
   checkIfMoveMakesContact(user: Pokemon): boolean {
   const move = user.currentMove;
-  if (!move) return false;
+  if (!move) { return false; }
 
   return move.hasFlag(MoveFlags.MAKES_CONTACT);
 }
@@ -3107,7 +3224,7 @@ export class ContactDamageModifier extends PokemonHeldItemModifier {
     simulated: boolean,
     cancelled: Utils.BooleanHolder,
   ): boolean {
-    if (!move || !targetPokemon) return false;
+    if (!move || !targetPokemon) { return false; }
 
     // 접촉 기술 여부 확인
     const isContact = move.checkFlag(MoveFlags.MAKES_CONTACT, pokemon, targetPokemon);
@@ -3455,7 +3572,7 @@ export class SpeedStatModifier extends PokemonHeldItemModifier {
    * 스피드 적용 (스택당 30%씩 증가)
    */
   override apply(pokemon: Pokemon, stat: Stat, statHolder: NumberHolder): boolean {
-    if (stat !== Stat.SPD) return false;
+    if (stat !== Stat.SPD) { return false; }
 
     const speedMultiplier = 1 + this.stackCount * 0.3; // 스택당 30% 증가
     statHolder.value = Math.floor(statHolder.value * speedMultiplier);
@@ -3505,7 +3622,8 @@ export class SpAtkStatModifier extends PokemonHeldItemModifier {
    * 특수공격력 적용 (스택당 30%씩 증가)
    */
   override apply(pokemon: Pokemon, stat: Stat, statHolder: NumberHolder): boolean {
-    if (stat !== Stat.SPATK) return false; // SPD 대신 SPATK로 변경
+    if (stat !== Stat.SPATK) { return false; // SPD 대신 SPATK로 변경
+}
 
     const specialAttackMultiplier = 1 + this.stackCount * 0.3; // 스택당 30% 증가
     statHolder.value = Math.floor(statHolder.value * specialAttackMultiplier);
@@ -3555,7 +3673,8 @@ export class AtkStatModifier extends PokemonHeldItemModifier {
    * 공격력 적용 (스택당 30%씩 증가)
    */
   override apply(pokemon: Pokemon, stat: Stat, statHolder: NumberHolder): boolean {
-    if (stat !== Stat.ATK) return false; // SPD 대신 ATK로 변경
+    if (stat !== Stat.ATK) { return false; // SPD 대신 ATK로 변경
+}
 
     const attackMultiplier = 1 + this.stackCount * 0.3; // 스택당 30% 증가
     statHolder.value = Math.floor(statHolder.value * attackMultiplier);
@@ -3622,22 +3741,18 @@ export class OvercoatModifier extends PokemonHeldItemModifier {
     }
 
     // 날씨 피해 무효화 조건
-    if (this.negatesWeatherDamage && this.weatherTypes.includes(currentWeatherType)) {
-      if (_pokemon.id === this.pokemonId) {
+    if (this.negatesWeatherDamage && this.weatherTypes.includes(currentWeatherType) && _pokemon.id === this.pokemonId) {
         console.log("이 포켓몬은 날씨 피해를 무효화합니다");
         return false; // 날씨 피해를 무효화
       }
-    }
 
     // 가루계열 기술 무효화 조건
-    if (this.negatesPowderMoves && move.hasFlag(MoveFlags.POWDER_MOVE)) {
-      if (_pokemon.id === this.pokemonId) {
+    if (this.negatesPowderMoves && move.hasFlag(MoveFlags.POWDER_MOVE) && _pokemon.id === this.pokemonId) {
         console.log("이 포켓몬은 가루계열 기술의 영향을 받지 않습니다.");
         // 가루 계열 기술을 사용하는 경우, move가 실행되지 않도록 막음
         move.setFlag(MoveFlags.POWDER_MOVE, false); // 해당 기술이 가루 계열 기술 플래그를 제거
         return false; // 기술을 더 이상 진행하지 않도록 함
       }
-    }
 
     // 가루 계열 기술 보호 메시지 출력
     if (this.negatesPowderMoves && this.checkIfMoveIsPowderMove(_pokemon)) {
@@ -3692,7 +3807,7 @@ export class PunchingGloveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 펀치 기술일 때만 적용
-    if (!move || !this.isPunchingMove(move)) return false;
+    if (!move || !this.isPunchingMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -3749,7 +3864,7 @@ export class SlicingMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isSlicingMove(move)) return false;
+    if (!move || !this.isSlicingMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -3806,7 +3921,7 @@ export class BitingMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isBitingMove(move)) return false;
+    if (!move || !this.isBitingMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -3858,7 +3973,7 @@ export class HeadMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isHeadMove(move)) return false;
+    if (!move || !this.isHeadMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -3910,7 +4025,7 @@ export class HornMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isHornMove(move)) return false;
+    if (!move || !this.isHornMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -3962,7 +4077,7 @@ export class KickMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isKickMove(move)) return false;
+    if (!move || !this.isKickMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4014,7 +4129,7 @@ export class SpearMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isSpearMove(move)) return false;
+    if (!move || !this.isSpearMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4066,7 +4181,7 @@ export class WingMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isWingMove(move)) return false;
+    if (!move || !this.isWingMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4118,7 +4233,7 @@ export class HammerMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isHammerMove(move)) return false;
+    if (!move || !this.isHammerMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4170,7 +4285,7 @@ export class ClawMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!move || !this.isClawMove(move)) return false;
+    if (!move || !this.isClawMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4222,8 +4337,8 @@ export class PinchMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof PinchMoveModifier)) return false;
-    if (!move || !this.isPinchMove(move)) return false;
+    if (!(this instanceof PinchMoveModifier)) { return false; }
+    if (!move || !this.isPinchMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4275,8 +4390,8 @@ export class BeakMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof BeakMoveModifier)) return false;
-    if (!move || !this.isBeakMove(move)) return false;
+    if (!(this instanceof BeakMoveModifier)) { return false; }
+    if (!move || !this.isBeakMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4328,8 +4443,8 @@ export class DashMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof DashMoveModifier)) return false;
-    if (!move || !this.isDashMove(move)) return false;
+    if (!(this instanceof DashMoveModifier)) { return false; }
+    if (!move || !this.isDashMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4381,8 +4496,8 @@ export class SpinMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof SpinMoveModifier)) return false;
-    if (!move || !this.isSpinMove(move)) return false;
+    if (!(this instanceof SpinMoveModifier)) { return false; }
+    if (!move || !this.isSpinMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4434,8 +4549,8 @@ export class DrillMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof DrillMoveModifier)) return false;
-    if (!move || !this.isDrillMove(move)) return false;
+    if (!(this instanceof DrillMoveModifier)) { return false; }
+    if (!move || !this.isDrillMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4487,8 +4602,8 @@ export class WhipMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof WhipMoveModifier)) return false;
-    if (!move || !this.isWhipMove(move)) return false;
+    if (!(this instanceof WhipMoveModifier)) { return false; }
+    if (!move || !this.isWhipMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4540,8 +4655,8 @@ export class WheelMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof WheelMoveModifier)) return false;
-    if (!move || !this.isWheelMove(move)) return false;
+    if (!(this instanceof WheelMoveModifier)) { return false; }
+    if (!move || !this.isWheelMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4593,8 +4708,8 @@ export class TailMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 베기 기술일 때만 적용
-    if (!(this instanceof TailMoveModifier)) return false;
-    if (!move || !this.isTailMove(move)) return false;
+    if (!(this instanceof TailMoveModifier)) { return false; }
+    if (!move || !this.isTailMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4646,8 +4761,8 @@ export class ArrowMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof ArrowMoveModifier)) return false;
-    if (!move || !this.isArrowMove(move)) return false;
+    if (!(this instanceof ArrowMoveModifier)) { return false; }
+    if (!move || !this.isArrowMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4696,8 +4811,8 @@ export class BallBombMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof BallBombMoveModifier)) return false;
-    if (!move || !this.isBallBombMove(move)) return false;
+    if (!(this instanceof BallBombMoveModifier)) { return false; }
+    if (!move || !this.isBallBombMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4746,8 +4861,8 @@ export class BoomerangMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof BoomerangMoveModifier)) return false;
-    if (!move || !this.isBoomerangMove(move)) return false;
+    if (!(this instanceof BoomerangMoveModifier)) { return false; }
+    if (!move || !this.isBoomerangMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4796,8 +4911,8 @@ export class ThrowMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof ThrowMoveModifier)) return false;
-    if (!move || !this.isThrowMove(move)) return false;
+    if (!(this instanceof ThrowMoveModifier)) { return false; }
+    if (!move || !this.isThrowMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4846,8 +4961,8 @@ export class PulseMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof PulseMoveModifier)) return false;
-    if (!move || !this.isPulseMove(move)) return false;
+    if (!(this instanceof PulseMoveModifier)) { return false; }
+    if (!move || !this.isPulseMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4896,8 +5011,8 @@ export class BeamMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof BeamMoveModifier)) return false;
-    if (!move || !this.isBeamMove(move)) return false;
+    if (!(this instanceof BeamMoveModifier)) { return false; }
+    if (!move || !this.isBeamMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4946,8 +5061,8 @@ export class LightMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
     // 조건: 기술 존재 + 꼬리 기술일 때만 적용
-    if (!(this instanceof LightMoveModifier)) return false;
-    if (!move || !this.isLightMove(move)) return false;
+    if (!(this instanceof LightMoveModifier)) { return false; }
+    if (!move || !this.isLightMove(move)) { return false; }
 
     // 위력 증가
     damage.value = Math.floor(damage.value * 1.3);
@@ -4999,8 +5114,8 @@ export class SoundMoveModifier extends PokemonHeldItemModifier {
    * ✅ 공격 시: 꼬리 계열 기술의 위력 1.3배 증가
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
-    if (!(this instanceof SoundMoveModifier)) return false;
-    if (!move || !this.isSoundMove(move)) return false;
+    if (!(this instanceof SoundMoveModifier)) { return false; }
+    if (!move || !this.isSoundMove(move)) { return false; }
 
     damage.value = Math.floor(damage.value * 1.3);
     console.log(`[SoundMoveModifier] ${move.name} → 꼬리 기술 1.3배 적용`);
@@ -5012,7 +5127,7 @@ export class SoundMoveModifier extends PokemonHeldItemModifier {
    */
   override preDefendModifyDamage(params: PreDefendModifyDamageItemModifierParams): boolean {
     const { move, damage } = params;
-    if (!move) return false;
+    if (!move) { return false; }
 
     for (const flag of SoundMoveModifier.reducedFlags) {
       if (move.hasFlag(flag)) {
@@ -5062,8 +5177,8 @@ export class WindMoveModifier extends PokemonHeldItemModifier {
    * ✅ 공격 시: 꼬리 계열 기술의 위력 1.3배 증가
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
-    if (!(this instanceof WindMoveModifier)) return false;
-    if (!move || !this.isWindMove(move)) return false;
+    if (!(this instanceof WindMoveModifier)) { return false; }
+    if (!move || !this.isWindMove(move)) { return false; }
 
     damage.value = Math.floor(damage.value * 1.3);
     console.log(`[WindMoveModifier] ${move.name} → 바람 기술 1.3배 적용`);
@@ -5075,7 +5190,7 @@ export class WindMoveModifier extends PokemonHeldItemModifier {
    */
   override preDefendModifyDamage(params: PreDefendModifyDamageItemModifierParams): boolean {
     const { move, damage } = params;
-    if (!move) return false;
+    if (!move) { return false; }
 
     for (const flag of WindMoveModifier.reducedFlags) {
       if (move.hasFlag(flag)) {
@@ -5129,7 +5244,7 @@ export class DanceMoveModifier extends PokemonHeldItemModifier {
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move | any): boolean {
     const baseMove = this.toBaseMove(move);
-    if (!baseMove || !this.isDanceMove(baseMove)) return false;
+    if (!baseMove || !this.isDanceMove(baseMove)) { return false; }
 
     damage.value = Math.floor(damage.value * 1.3);
     console.log(`[DanceMoveModifier] ${baseMove.name} → 춤 기술 1.3배 적용`);
@@ -5145,16 +5260,16 @@ export class DanceMoveModifier extends PokemonHeldItemModifier {
     targets,
     simulated,
   }: PostMoveUsedModifierParams): void {
-    if (simulated) return;
+    if (simulated) { return; }
 
     const baseMove = this.toBaseMove(move);
-    if (!baseMove || !this.isDanceMove(baseMove)) return;
+    if (!baseMove || !this.isDanceMove(baseMove)) { return; }
 
     const dancer = globalScene.getPokemonById(this.pokemonId);
-    if (!dancer || dancer.isFainted()) return;
+    if (!dancer || dancer.isFainted()) { return; }
 
     // 자신이 시전자면 복제 방지
-    if (source.id === this.pokemonId) return;
+    if (source.id === this.pokemonId) { return; }
 
     // 비활성/무효 상태 예외
     const forbiddenTags = [
@@ -5163,7 +5278,7 @@ export class DanceMoveModifier extends PokemonHeldItemModifier {
       BattlerTagType.UNDERGROUND,
       BattlerTagType.HIDDEN,
     ];
-    if (dancer.summonData.tags.some(tag => forbiddenTags.includes(tag.tagType))) return;
+    if (dancer.summonData.tags.some(tag => forbiddenTags.includes(tag.tagType))) { return; }
 
     console.log(`[DanceMoveModifier] ${dancer.getName()}이(가) ${source.getName()}의 ${baseMove.name}을(를) 따라 춤춥니다!`);
 
@@ -5190,8 +5305,9 @@ export class DanceMoveModifier extends PokemonHeldItemModifier {
    * ✅ Move / PokemonMove 타입 구분 없이 안전하게 Move 반환
    */
   private toBaseMove(move: any): Move | null {
-    if (!move) return null;
-    if (typeof move.getMove === "function") return move.getMove(); // PokemonMove
+    if (!move) { return null; }
+    if (typeof move.getMove === "function") { return move.getMove(); // PokemonMove
+}
     return move; // Move
   }
 
@@ -5239,7 +5355,7 @@ export class DrainMoveModifier extends PokemonHeldItemModifier {
    * ✅ 흡수 기술의 위력 1.5배 증가
    */
   override apply(pokemon: Pokemon, simulated: boolean, damage: NumberHolder, move?: Move): boolean {
-    if (!move || !this.isDrainMove(move)) return false;
+    if (!move || !this.isDrainMove(move)) { return false; }
 
     // 대미지 증가
     damage.value = Math.floor(damage.value * DrainMoveModifier.damageBoost);
@@ -5261,7 +5377,7 @@ export class DrainMoveModifier extends PokemonHeldItemModifier {
    * PostMoveUsed 이벤트에서 발동
    */
   override onPostMoveUsed({ source, move, simulated }: PostMoveUsedModifierParams): void {
-    if (simulated || !move || !this.isDrainMove(move)) return;
+    if (simulated || !move || !this.isDrainMove(move)) { return; }
 
     const lastDamage = source.turnData.singleHitDamageDealt ?? 0;
     const healAmount = Math.floor(lastDamage * (DrainMoveModifier.healBoost - 1) * 0.5);
@@ -5350,9 +5466,9 @@ export class SpeciesHealingBellModifier extends PokemonHeldItemModifier {
   // 1) 회복기 우선도 상승 (MovePhase에서 priority 계산할 때 호출되도록 연결)
   // ============================================================
   onChangeMovePriority({ pokemon, move, priority, simulated }: ChangeMovePriorityItemParams): void {
-    if (simulated) return;
-    if (!this.isAllowedSpecies(pokemon)) return;
-    if (!this.isHealingMove(move)) return;
+    if (simulated) { return; }
+    if (!this.isAllowedSpecies(pokemon)) { return; }
+    if (!this.isHealingMove(move)) { return; }
 
     priority.value += SpeciesHealingBellModifier.priorityBonus;
 
@@ -5365,11 +5481,11 @@ export class SpeciesHealingBellModifier extends PokemonHeldItemModifier {
   // 2) HealAttr 계열 “즉시회복” 회복량 증가 (HealAttr에서 healAmount 계산할 때 호출되도록 연결)
   // ============================================================
   onModifyHealAmount({ pokemon, move, heal, simulated }: ModifyHealAmountItemParams): void {
-    if (simulated) return;
-    if (!this.isAllowedSpecies(pokemon)) return;
+    if (simulated) { return; }
+    if (!this.isAllowedSpecies(pokemon)) { return; }
 
     // HealAttr에서 move를 넘겨주면 "회복기일 때만" 강화 가능
-    if (move && !this.isHealingMove(move)) return;
+    if (move && !this.isHealingMove(move)) { return; }
 
     heal.value = Math.floor(heal.value * SpeciesHealingBellModifier.healMultiplier);
 
@@ -5384,12 +5500,12 @@ export class SpeciesHealingBellModifier extends PokemonHeldItemModifier {
   //    - ⚠️ 기본 흡수비율 1/2(=50%) 가정으로 "회복량 x1.5" 맞추는 방식
   // ============================================================
   override onPostMoveUsed({ source, move, simulated }: PostMoveUsedModifierParams): void {
-    if (simulated || !move) return;
-    if (!this.isAllowedSpecies(source)) return;
-    if (!this.isDrainMove(move)) return;
+    if (simulated || !move) { return; }
+    if (!this.isAllowedSpecies(source)) { return; }
+    if (!this.isDrainMove(move)) { return; }
 
     const lastDamage = source.turnData.singleHitDamageDealt ?? 0;
-    if (lastDamage <= 0) return;
+    if (lastDamage <= 0) { return; }
 
     // 기본 드레인 회복량 = lastDamage * 0.5 라고 가정할 때,
     // 회복량 x1.5를 만들려면 "추가로 0.25 * lastDamage" 더 회복하면 됨
@@ -5685,7 +5801,7 @@ export class IgnoreWeatherEffectsItemModifier extends PokemonHeldItemModifier {
    * @returns True if the modifier should apply.
    */
   override shouldApply(pokemon?: Pokemon, weather?: Weather): boolean {
-    if (!pokemon || !weather) return false;
+    if (!pokemon || !weather) { return false; }
     return this.pokemonId === pokemon.id;
   }
 
@@ -5747,7 +5863,7 @@ export class BoostEnergyModifier extends PokemonHeldItemModifier {
   }
 
   private areStatListsEqual(a: BattleStat[], b: BattleStat[]): boolean {
-    if (a.length !== b.length) return false;
+    if (a.length !== b.length) { return false; }
     const sortedA = [...a].sort();
     const sortedB = [...b].sort();
     return sortedA.every((val, idx) => val === sortedB[idx]);
@@ -5777,10 +5893,10 @@ export class BoostEnergyModifier extends PokemonHeldItemModifier {
 
     const statList = args[0] as BattleStat[];
     const multiplier = args[1] as number;
-    if (!statList?.length || multiplier == null || multiplier <= 0) return false;
+    if (statList?.length === 0|| multiplier == null || multiplier <= 0) { return false; }
 
     for (const { statList: existingStatList } of this.boostedStats) {
-      if (this.areStatListsEqual(existingStatList, statList)) return false;
+      if (this.areStatListsEqual(existingStatList, statList)) { return false; }
     }
 
     this.boostedStats.push({ statList, multiplier });
@@ -5835,7 +5951,7 @@ return true;
 
   override onTurnEnd(): void {
     const pokemon = this.getPokemon();
-    if (!pokemon || this.boostedStats.length === 0) return;
+    if (!pokemon || this.boostedStats.length === 0) { return; }
 
     // 저장된 능력치 부스트 적용
     for (const { statList, multiplier } of this.boostedStats) {
@@ -5885,7 +6001,7 @@ export class PowerUpDiskModifier extends PokemonHeldItemModifier {
   const stat = args[0] as BattleStat;
   const statVal = args[1] as NumberHolder;
 
-  if (!this.shouldApply(pokemon, stat, statVal)) return false;
+  if (!this.shouldApply(pokemon, stat, statVal)) { return false; }
 
   const ability = pokemon.abilityId;
 
@@ -5912,7 +6028,7 @@ if (pokemon.hasAbility(AbilityId.AQUA_HEART, false, true) || pokemon.hasAbility(
   return false;
 }
 
-if (stat !== extraStat) return false;
+if (stat !== extraStat) { return false; }
 statVal.value *= mult;
 return true;
 }
@@ -5938,7 +6054,7 @@ export class VictoryBadgeModifier extends PokemonHeldItemModifier {
   override apply(pokemon: Pokemon, ...args: any[]): boolean {
   const statVal = args[0] as NumberHolder | undefined;
 
-  if (!statVal) return false;
+  if (!statVal) { return false; }
 
   const before = statVal.value;
   statVal.value *= (1.6 / 1.3);
@@ -5989,11 +6105,11 @@ export class BeastBoostStartStatBoostModifier extends PokemonHeldItemModifier {
   hasBeastBoost: pokemon.hasAbility(AbilityId.BEAST_BOOST, false, true),
   usedThisBattle: this.usedThisBattle,
 });
-  if (!pokemon) return false;
-  if (this.usedThisBattle) return false;
+  if (!pokemon) { return false; }
+  if (this.usedThisBattle) { return false; }
 
   // ✅ 패시브 포함 체크
-  if (!pokemon.hasAbility(AbilityId.BEAST_BOOST, false, true)) return false;
+  if (!pokemon.hasAbility(AbilityId.BEAST_BOOST, false, true)) { return false; }
 
   return super.shouldApply(pokemon, stages);
 }
@@ -6002,12 +6118,12 @@ override apply(pokemon: Pokemon, ...args: any[]): boolean {
   // ✅ stages 파싱 안전화
   const raw = args?.[0] ?? this.stages;
   const stages = Array.isArray(raw) ? raw[0] : raw;
-  if (typeof stages !== "number" || stages <= 0) return false;
+  if (typeof stages !== "number" || stages <= 0) { return false; }
 
-  if (!this.shouldApply(pokemon, stages)) return false;
+  if (!this.shouldApply(pokemon, stages)) { return false; }
 
     const statToBoost = getHighestBeastBoostStat(pokemon);
-    if (statToBoost == null) return false;
+    if (statToBoost == null) { return false; }
 
     const currentStage = pokemon.getStatStage(statToBoost);
     if (currentStage >= 6) {
@@ -6043,8 +6159,8 @@ override apply(pokemon: Pokemon, ...args: any[]): boolean {
         }),
       );
 
-      if (this.stackCount > 1) this.stackCount--;
-      else globalScene.removeModifier(this);
+      if (this.stackCount > 1) { this.stackCount--; }
+      else { globalScene.removeModifier(this); }
     }
 
     return true;
@@ -6103,12 +6219,12 @@ export class CalyrexReinsUnifiedModifier extends PokemonHeldItemModifier {
       (pokemon as any).form?.variant ??
       null;
 
-    if (formKey === "ice") return Stat.ATK;
-    if (formKey === "shadow") return Stat.SPATK;
+    if (formKey === "ice") { return Stat.ATK; }
+    if (formKey === "shadow") { return Stat.SPATK; }
 
     // 2) 폴백: As One 능력 기반
-    if (pokemon.hasAbility?.(AbilityId.AS_ONE_GLASTRIER, false, true)) return Stat.ATK;
-    if (pokemon.hasAbility?.(AbilityId.AS_ONE_SPECTRIER, false, true)) return Stat.SPATK;
+    if (pokemon.hasAbility?.(AbilityId.AS_ONE_GLASTRIER, false, true)) { return Stat.ATK; }
+    if (pokemon.hasAbility?.(AbilityId.AS_ONE_SPECTRIER, false, true)) { return Stat.SPATK; }
 
     return null;
   }
@@ -6135,21 +6251,21 @@ private setActivatedThisSummon(pokemon: Pokemon): void {
 }
 
 applyPostSummon(pokemon: Pokemon, simulated: boolean): void {
-  if (simulated) return;
-  if (!pokemon) return;
-  if (!this.isValidForm(pokemon)) return;
+  if (simulated) { return; }
+  if (!pokemon) { return; }
+  if (!this.isValidForm(pokemon)) { return; }
 
   // ✅ 이번 소환 1회 (교체 후 재등장하면 summonData가 리셋되어 다시 발동)
-  if (this.hasActivatedThisSummon(pokemon)) return;
+  if (this.hasActivatedThisSummon(pokemon)) { return; }
   this.setActivatedThisSummon(pokemon);
 
   const stages = this.stages;
-  if (typeof stages !== "number" || stages <= 0) return;
+  if (typeof stages !== "number" || stages <= 0) { return; }
 
   const statToBoost = this.getReinsTargetStat(pokemon);
-  if (statToBoost == null) return;
+  if (statToBoost == null) { return; }
 
-  if (pokemon.getStatStage(statToBoost) >= 6) return;
+  if (pokemon.getStatStage(statToBoost) >= 6) { return; }
 
   globalScene.phaseManager.unshiftNew(
     "StatStageChangePhase",
@@ -6165,15 +6281,15 @@ applyPostSummon(pokemon: Pokemon, simulated: boolean): void {
 //   2) 추가로 SPD +stages  (백마/흑마 공통)
 
 applyPostVictory(attacker: Pokemon, _defender: Pokemon, _move: Move | undefined, simulated: boolean): void {
-  if (simulated) return;
-  if (!attacker) return;
-  if (!this.isValidForm(attacker)) return;
+  if (simulated) { return; }
+  if (!attacker) { return; }
+  if (!this.isValidForm(attacker)) { return; }
 
   const stages = this.stages;
-  if (typeof stages !== "number" || stages <= 0) return;
+  if (typeof stages !== "number" || stages <= 0) { return; }
 
   const mainStat = this.getReinsTargetStat(attacker);
-  if (mainStat == null) return;
+  if (mainStat == null) { return; }
 
   // ✅ 추가 스탯: 스피드(백마/흑마 공통)
   if (attacker.getStatStage(Stat.SPD) < 6) {
@@ -6193,7 +6309,7 @@ applyPostVictory(attacker: Pokemon, _defender: Pokemon, _move: Move | undefined,
   //    cancelled=true가 되어 도구 발동이 전부 막힘
   // ------------------------------------------------------------
   getAbilityAttrs(attrId: string): AbAttr[] {
-    if (attrId !== "HeldItemBypassAbAttr") return [];
+    if (attrId !== "HeldItemBypassAbAttr") { return []; }
 
     return [
       new HeldItemBypassAbAttr((_pokemonTryingToUseItem: Pokemon, _modifier?: Modifier) => {
@@ -6240,7 +6356,7 @@ export class AngeOrbeModifier extends PokemonHeldItemModifier {
     (m as any)?.modifierType === ModifierType.ANGE_ORBE ||
     m?.constructor?.name === "AngeOrbeModifier"
   );
-  if (byMethod) return true;
+  if (byMethod) { return true; }
 
   // 2) globalScene fallback
   const sceneMods = (globalScene.getModifiers?.(AngeOrbeModifier) ?? []) as any[];
@@ -6255,13 +6371,13 @@ export class AngeOrbeModifier extends PokemonHeldItemModifier {
 }
 
 static getAngelAuraMultiplier(owner: Pokemon): number {
-  const hasOrbe = this.hasAngeOrbe(owner);
+  const hasOrbe = AngeOrbeModifier.hasAngeOrbe(owner);
   return hasOrbe ? 5 / 3 : 4 / 3;
 }
   /** ✅ 앙쥬오브 들고 있는 개체가 필드에 있으면 오라브레이크 무시 */
   static shouldIgnoreAuraBreak(fieldMons: Pokemon[]): boolean {
     return fieldMons.some(p => {
-      if (!AngeOrbeModifier.isEternalFlowerFloette(p)) return false;
+      if (!AngeOrbeModifier.isEternalFlowerFloette(p)) { return false; }
       const mods = p.getHeldItemModifiers?.() ?? [];
       return mods.some(m => m instanceof AngeOrbeModifier);
     });
@@ -6325,7 +6441,7 @@ export class CursedRuinModifier extends PokemonHeldItemModifier {
       (m as any)?.modifierType === ModifierType.CURSED_RUIN ||
       m?.constructor?.name === "CursedRuinModifier"
     );
-    if (byMethod) return true;
+    if (byMethod) { return true; }
 
     const sceneMods = (globalScene.getModifiers?.(CursedRuinModifier) ?? []) as any[];
     return sceneMods.some(m =>
@@ -6343,17 +6459,17 @@ export class CursedRuinModifier extends PokemonHeldItemModifier {
   }
 
   static getEffectiveRuinMultiplier(ruinOwner: Pokemon, baseMult: number): number {
-    if (!ruinOwner) return baseMult;
-    if (!this.isRuinAbilityOwner(ruinOwner)) return baseMult;
+    if (!ruinOwner) { return baseMult; }
+    if (!CursedRuinModifier.isRuinAbilityOwner(ruinOwner)) { return baseMult; }
 
-    return this.hasCursedRuin(ruinOwner)
-      ? this.amplifyRuinMultiplier(baseMult)
+    return CursedRuinModifier.hasCursedRuin(ruinOwner)
+      ? CursedRuinModifier.amplifyRuinMultiplier(baseMult)
       : baseMult;
   }
 
   static hasBoostedRuinOnField(): boolean {
     return globalScene.getField(true).some(p => {
-      if (!this.isRuinAbilityOwner(p)) return false;
+      if (!CursedRuinModifier.isRuinAbilityOwner(p)) { return false; }
       const mods = p.getHeldItemModifiers?.() ?? [];
       return mods.some(m => m instanceof CursedRuinModifier);
     });
@@ -6404,7 +6520,7 @@ export class PreserveItemModifier extends PersistentModifier {
 
   override apply(pokemon: Pokemon, doPreserve: BooleanHolder, itemType?: string): boolean {
     // 열매면 무조건 소모되게 처리
-    if (itemType === "berry") return true;
+    if (itemType === "berry") { return true; }
 
     // Preserve logic: 30%/60%/90% based on stack count
     if (!doPreserve.value) {
@@ -6429,7 +6545,7 @@ export class StatStageChangeCopyModifier extends PokemonHeldItemModifier {
     const stage = args[1] as number;
 
     // 능력치 리스트가 비어있거나 스테이지가 0 이하인 경우 처리 안함
-    if (!statList?.length || stage == null || stage <= 0) {
+    if (statList?.length === 0|| stage == null || stage <= 0) {
       return false;
     }
 
@@ -6474,7 +6590,7 @@ if (!preserve.value) {
 
   override onTurnEnd(): void {
     const pokemon = this.getPokemon();
-    if (!pokemon || this.copiedStats.length === 0) return;
+    if (!pokemon || this.copiedStats.length === 0) { return; }
 
     const preserve = new BooleanHolder(false);
 globalScene.applyModifiers(PreserveItemModifier, pokemon.isPlayer(), pokemon, preserve, "item");
@@ -6541,7 +6657,7 @@ export class PostBattleLootItemModifier extends PokemonHeldItemModifier {
 
   // 배열에서 랜덤 아이템 가져오기 
   private getRandomItemFromArray<T>(arr: T[]): T | null {
-    if (!arr || arr.length === 0) return null; 
+    if (!arr || arr.length === 0) { return null;  }
     const index = Math.floor(Math.random() * arr.length); 
     return arr[index]; 
   }
@@ -6550,7 +6666,7 @@ export class PostBattleLootItemModifier extends PokemonHeldItemModifier {
     const postBattleLoot = globalScene.currentBattle.postBattleLoot;
     const randItem = this.getRandomItemFromArray(postBattleLoot);
 
-    if (!randItem) return;
+    if (!randItem) { return; }
 
     const success = globalScene.tryTransferHeldItemModifier(randItem, pokemon, true, 1, true, undefined, false);
 
@@ -6583,7 +6699,7 @@ export class PostBattleLootItemModifier extends PokemonHeldItemModifier {
 
     let canTransfer = false;
     for (const item of postBattleLoot) {
-      if (globalScene.canTransferHeldItemModifier(item, pokemon, 1)) canTransfer = true;
+      if (globalScene.canTransferHeldItemModifier(item, pokemon, 1)) { canTransfer = true; }
     }
 
     if (canTransfer) {
@@ -6687,7 +6803,7 @@ if (!preserve.value) {
    * apply 시에도 FLOATING 태그를 부여하여 안정성 확보
    */
   apply(pokemon: Pokemon): boolean {
-    if (pokemon.id !== this.pokemonId) return false;
+    if (pokemon.id !== this.pokemonId) { return false; }
 
     pokemon.addTag(BattlerTagType.FLOATING);
     return true;
@@ -6715,7 +6831,7 @@ export class MentalHerbModifier extends PokemonHeldItemModifier {
    * 턴 시작 시, 이미 걸려 있는 특정 상태를 1회 해제합니다. (보존 가능성 반영)
    */
   apply(pokemon: Pokemon): boolean {
-    if (pokemon.id !== this.pokemonId) return false;
+    if (pokemon.id !== this.pokemonId) { return false; }
 
     const removableTags: BattlerTagType[] = [
       BattlerTagType.TAUNT,
@@ -6774,10 +6890,10 @@ export class InstantChargeItemModifier extends PokemonHeldItemModifier {
   override apply(pokemon: Pokemon): boolean {
     const move = pokemon.currentMove;
 
-    if (!move || !(move instanceof ChargingMove)) return false;
+    if (!move || !(move instanceof ChargingMove)) { return false; }
 
     // 이미 충전 효과가 적용되었으면 다시 적용하지 않음
-    if (move.hasChargeAttr(InstantChargeAttr)) return false;
+    if (move.hasChargeAttr(InstantChargeAttr)) { return false; }
 
     // 아이템 효과 적용 (즉시 충전)
     move.chargeAttr = new InstantChargeAttr(() => true);
@@ -7123,10 +7239,10 @@ export class VictoryStatBoostModifier extends PokemonHeldItemModifier {
    */
   apply(pokemon: Pokemon, stages: number): boolean {
   const statToBoost = this.getHighestEffectiveStat(pokemon);
-  if (statToBoost === null) return false;
+  if (statToBoost === null) { return false; }
 
   const currentStage = pokemon.getStatStage(statToBoost);
-  if (currentStage >= 6) return false;
+  if (currentStage >= 6) { return false; }
 
   globalScene.phaseManager.unshiftNew(
     "StatStageChangePhase",
@@ -7163,15 +7279,16 @@ export class VictoryStatBoostModifier extends PokemonHeldItemModifier {
    * 승리 후 능력치 변화 처리
    */
   applyPostVictory(attacker: Pokemon, _defender: Pokemon, _move: Move | undefined, simulated: boolean): void {
-  if (simulated) return;
+  if (simulated) { return; }
 
   const allies = attacker.isPlayer()
     ? (globalScene.getPlayerField().filter(p => p?.isActive()) as Pokemon[])
     : (globalScene.getEnemyField().filter(p => p?.isActive()) as Pokemon[]);
 
   for (const ally of allies) {
-  if (!ally) continue;
-  if (ally.id === attacker.id) continue; // ✅ attacker 제외 (중복 방지)
+  if (!ally) { continue; }
+  if (ally.id === attacker.id) { continue; // ✅ attacker 제외 (중복 방지)
+}
 
   globalScene.applyModifiers(VictoryStatBoostModifier, attacker.isPlayer(), ally, this.stages);
   }
@@ -7190,7 +7307,7 @@ export class CategoryPowerBoostModifier extends PokemonHeldItemModifier {
     type: ModifierType,
     pokemonId: number,
     category: MoveCategory,
-    multiplier: number = 2.0,
+    multiplier = 2.0,
     stackCount?: number
   ) {
     super(type, pokemonId, stackCount);
@@ -7251,10 +7368,10 @@ export class StatusBoostItemModifier extends PokemonHeldItemModifier {
   private static _calculatingMap: WeakMap<typeof StatusBoostItemModifier, WeakSet<Pokemon>> = new WeakMap();
 
   private static get calculating(): WeakSet<Pokemon> {
-    if (!this._calculatingMap.has(this)) {
-      this._calculatingMap.set(this, new WeakSet<Pokemon>());
+    if (!StatusBoostItemModifier._calculatingMap.has(StatusBoostItemModifier)) {
+      StatusBoostItemModifier._calculatingMap.set(StatusBoostItemModifier, new WeakSet<Pokemon>());
     }
-    return this._calculatingMap.get(this)!;
+    return StatusBoostItemModifier._calculatingMap.get(StatusBoostItemModifier)!;
   }
 
   private getHighestEffectiveStat(pokemon: Pokemon): Stat {
@@ -7300,7 +7417,7 @@ if (pokemon.modifiers && Array.isArray(pokemon.modifiers)) {
   console.debug(`[StatusBoostItemModifier] 현재 상태: ${StatusEffect[pokemon.status]} (${pokemon.status})`);
   
   if (pokemon.status === StatusEffect.NONE) {
-  console.debug(`[StatusBoostItemModifier] 상태이상 아님, 적용 안됨`);
+  console.debug("[StatusBoostItemModifier] 상태이상 아님, 적용 안됨");
   return false;
 }
 
@@ -7347,7 +7464,7 @@ export class UnawareItemModifier extends PokemonHeldItemModifier {
     stackCount?: number,
   ) {
     super(type, pokemonId, stackCount);
-    this.ignoredStats = ignoredStats;
+    this.ignoredStats = Array.isArray(ignoredStats) ? ignoredStats : [];
 
     const attr = new IgnoreOpponentStatStagesAbAttr(this.ignoredStats);
     this.attributes ??= [];
@@ -7364,8 +7481,12 @@ export class UnawareItemModifier extends PokemonHeldItemModifier {
   }
 
   getArgs(): any[] {
-    return super.getArgs().concat([[...this.ignoredStats], this.stackCount]);
-  }
+  const ignoredStats = Array.isArray(this.ignoredStats)
+    ? [...this.ignoredStats]
+    : [];
+
+  return super.getArgs().concat([ignoredStats, this.stackCount]);
+}
 
   matchType(modifier: Modifier): boolean {
     return modifier instanceof UnawareItemModifier;
@@ -7617,11 +7738,9 @@ export class PreventPriorityMoveItemModifier extends PokemonHeldItemModifier {
     const isStatusMove = move && move.category === MoveCategory.STATUS;
     const isAlly = target?.team === 1;
 
-    if (type === FieldPriorityMoveImmunityAbAttr || type === PreventPriorityMoveItemModifier) {
-      if (!isAlly && !isStatusMove && this.isPriorityMove(move)) {
+    if ((type === FieldPriorityMoveImmunityAbAttr || type === PreventPriorityMoveItemModifier) && !isAlly && !isStatusMove && this.isPriorityMove(move)) {
         cancelled.value = true;
       }
-    }
   }
 
   getMaxHeldItemCount(_pokemon: Pokemon): number {
@@ -7666,10 +7785,10 @@ export class MoveEffectChanceMultiplierItemModifier extends PokemonHeldItemModif
     params: ModifyMoveEffectChanceAbAttrParams & { pokemon?: Pokemon },
   ): void {
     const { chance, move, pokemon } = params ?? ({} as any);
-    if (!chance || !move || !pokemon) return;
+    if (!chance || !move || !pokemon) { return; }
 
     // ✅ 착용자가 사용한 기술일 때만
-    if (pokemon.id !== this.pokemonId) return;
+    if (pokemon.id !== this.pokemonId) { return; }
 
     // ✅ AbAttr 로직 그대로 재사용
     const attr = new MoveEffectChanceMultiplierAbAttr(this.chanceMultiplier);
@@ -7715,14 +7834,14 @@ export class BlockCritItemModifier extends PokemonHeldItemModifier {
     const blockCrit = args[0] as BooleanHolder;
     console.debug(`[BlockCritItemModifier] 호출됨 simulated=${simulated}, blockCrit=`, blockCrit);
 
-    if (simulated) return false;
+    if (simulated) { return false; }
     if (blockCrit instanceof BooleanHolder) {
       blockCrit.value = true;
       console.debug(`[BlockCritItemModifier] ${pokemon.name} → 급소 무효화 적용됨`);
       return true;
     }
 
-    console.warn(`[BlockCritItemModifier] blockCrit이 BooleanHolder가 아님:`, blockCrit);
+    console.warn("[BlockCritItemModifier] blockCrit이 BooleanHolder가 아님:", blockCrit);
     return false;
   }
 
@@ -7841,7 +7960,7 @@ export class SheerForceItemModifier extends PokemonHeldItemModifier {
     // 1) { move, chance, ... } 객체 1개로 오는 경우 (너 getMoveChance가 이 방식)
     if (args.length === 1 && args[0] && typeof args[0] === "object") {
       const p = args[0] as any;
-      if (p.move && p.chance) return { move: p.move as Move, chance: p.chance as Utils.NumberHolder };
+      if (p.move && p.chance) { return { move: p.move as Move, chance: p.chance as Utils.NumberHolder }; }
     }
 
     // 2) (chance, move) 또는 (move, chance)
@@ -7851,8 +7970,8 @@ export class SheerForceItemModifier extends PokemonHeldItemModifier {
     const isChance = (x: any) => x && typeof x === "object" && typeof x.value === "number";
     const isMove = (x: any) => x && typeof x === "object" && typeof x.id === "number";
 
-    if (isChance(a0) && isMove(a1)) return { chance: a0, move: a1 };
-    if (isMove(a0) && isChance(a1)) return { move: a0, chance: a1 };
+    if (isChance(a0) && isMove(a1)) { return { chance: a0, move: a1 }; }
+    if (isMove(a0) && isChance(a1)) { return { move: a0, chance: a1 }; }
 
     // 3) fallback 탐색
     const chance = args.find(isChance) as Utils.NumberHolder | undefined;
@@ -7862,19 +7981,19 @@ export class SheerForceItemModifier extends PokemonHeldItemModifier {
 
   // ✅ SheerForce가 "부가효과 제거/위력 증가"를 적용해도 되는지 최종 판정
   private shouldSheerForceAffect(move: Move, chance: Utils.NumberHolder): boolean {
-    if (!move || !chance) return false;
-    if (chance.value <= 0) return false;
-    if (SheerForceItemModifier.isExceptMove(move)) return false;
+    if (!move || !chance) { return false; }
+    if (chance.value <= 0) { return false; }
+    if (SheerForceItemModifier.isExceptMove(move)) { return false; }
 
     // 너 규칙: 공격기면 적용(STATUS 제외), power>0 체크는 일부러 안 함
-    if (move.category === MoveCategory.STATUS) return false;
+    if (move.category === MoveCategory.STATUS) { return false; }
 
     return true;
   }
 
   override canApply(_pokemon: Pokemon, _passive: boolean, _simulated: boolean, args: any[]): boolean {
     const { move, chance } = this.extractMoveChance(args);
-    if (!move || !chance) return false;
+    if (!move || !chance) { return false; }
     return this.shouldSheerForceAffect(move, chance);
   }
 
@@ -7900,10 +8019,10 @@ export class SheerForceItemModifier extends PokemonHeldItemModifier {
     const move = p?.move ?? findMove(args);
     const chance = p?.chance ?? findNumberHolders(args)[0];
 
-    if (!move || !chance) return;
+    if (!move || !chance) { return; }
 
     // 예외기술은 건드리지 않음
-    if (SheerForceItemModifier.isExceptMove(move)) return;
+    if (SheerForceItemModifier.isExceptMove(move)) { return; }
 
     // 공격기 + 부가효과 있는 경우만 제거
     if (move.category !== MoveCategory.STATUS && move.chance > 0 && chance.value > 0) {
@@ -7917,10 +8036,10 @@ export class SheerForceItemModifier extends PokemonHeldItemModifier {
     const p = args.length === 1 && args[0] && typeof args[0] === "object" ? (args[0] as any) : null;
     const move = p?.move ?? findMove(args);
 
-    if (!move) return;
+    if (!move) { return; }
 
     // 예외기술은 위력 증가도 안 함
-    if (SheerForceItemModifier.isExceptMove(move)) return;
+    if (SheerForceItemModifier.isExceptMove(move)) { return; }
 
     // 공격기 + 부가효과 있는 경우만 1.3배
     if (move.category !== MoveCategory.STATUS && move.chance > 0) {
@@ -7928,7 +8047,7 @@ export class SheerForceItemModifier extends PokemonHeldItemModifier {
       // 여러 홀더가 있을 수 있으니, move.chance 건드릴 때처럼 "첫 NumberHolder"가 아니라
       // 'power'처럼 쓰이는 걸 찾아야 함. 보통 params.power가 있으면 그걸 우선.
       const power: Utils.NumberHolder | undefined = p?.power ?? p?.damage ?? findNumberHolders(args)[0];
-      if (!power) return;
+      if (!power) { return; }
 
       power.value = Math.floor(power.value * 1.3);
     }
@@ -8031,7 +8150,7 @@ export class AromaIncenseItemModifier extends PokemonHeldItemModifier {
           AromaIncenseItemModifier.IMMUNE_TAGS
         )
     );
-    if (alreadyHas) return;
+    if (alreadyHas) { return; }
 
     this.immunityAttr = new UserFieldBattlerTagImmunityAbAttr(AromaIncenseItemModifier.IMMUNE_TAGS);
     pokemon.addBattleAttribute(this.immunityAttr);
@@ -8098,7 +8217,7 @@ export class AromaIncenseItemModifier extends PokemonHeldItemModifier {
   }
 
   private sameImmuneSet(a: BattlerTagType[] | undefined, b: BattlerTagType[]): boolean {
-    if (!a || a.length !== b.length) return false;
+    if (!a || a.length !== b.length) { return false; }
     const set = new Set(a);
     return b.every(x => set.has(x));
   }
@@ -8188,10 +8307,10 @@ export class SturdyMealModifier extends PokemonHeldItemModifier {
   // ✅ 멧집향로 파트: 풀피 + 약점기 데미지 경감
   // ─────────────────────────────────────────────
   applyAbAttrs(type: any, pokemon: Pokemon, cancelled: Utils.BooleanHolder, ...args: any[]): void {
-    if (type !== PreDefendAbAttr) return;
+    if (type !== PreDefendAbAttr) { return; }
 
     this.syncBattleKey();
-    if (this.appliedDamageAttrThisBattle) return;
+    if (this.appliedDamageAttrThisBattle) { return; }
 
     const condition: PokemonDefendCondition = (target, attacker, move) => {
       return target.hp === target.maxHp && !!move && move.getEffectiveness(target) > 1;
@@ -8264,17 +8383,17 @@ export class DuskManeBeadModifier extends PokemonHeldItemModifier {
   }
 
   private isActive(user: Pokemon): boolean {
-    if (user.id !== this.pokemonId) return false;
-    if (user.getSpeciesForm(true).speciesId !== SpeciesId.NECROZMA) return false;
+    if (user.id !== this.pokemonId) { return false; }
+    if (user.getSpeciesForm(true).speciesId !== SpeciesId.NECROZMA) { return false; }
     return user.getFormKey() === "dusk-mane";
   }
 
   // ✅ 능력치 감소 가드 (현재는 '감소면 전부 차단' 버전)
   public applyStatChange(pokemon: Pokemon, stat: BattleStat, newStage: number, source?: Pokemon): number {
-    if (!this.isActive(pokemon)) return newStage;
+    if (!this.isActive(pokemon)) { return newStage; }
 
     const cur = pokemon.getStatStage(stat);
-    if (newStage >= cur) return newStage;
+    if (newStage >= cur) { return newStage; }
 
     // (업그레이드 포인트) source를 넘길 수 있으면 "상대발만" 허용/차단 가능
     // if (source && source.isPlayer() === pokemon.isPlayer()) return newStage;
@@ -8290,15 +8409,15 @@ export class DuskManeBeadModifier extends PokemonHeldItemModifier {
 
   // ✅ KO 시 최고 스탯 +1
   public applyPostVictory(attacker: Pokemon, _defender: Pokemon, _move: Move | undefined, simulated: boolean): void {
-    if (simulated) return;
-    if (!this.isActive(attacker)) return;
-    if (this.stages <= 0) return;
+    if (simulated) { return; }
+    if (!this.isActive(attacker)) { return; }
+    if (this.stages <= 0) { return; }
 
     const statToBoost = this.getHighestEffectiveStat(attacker);
-    if (statToBoost == null) return;
+    if (statToBoost == null) { return; }
 
     const currentStage = attacker.getStatStage(statToBoost as any);
-    if (currentStage >= 6) return;
+    if (currentStage >= 6) { return; }
 
     globalScene.phaseManager.unshiftNew(
       "StatStageChangePhase",
@@ -8365,8 +8484,8 @@ export class DawnWingsBeadModifier extends PokemonHeldItemModifier {
   }
 
   private isActive(user: Pokemon): boolean {
-    if (user.id !== this.pokemonId) return false;
-    if (user.getSpeciesForm(true).speciesId !== SpeciesId.NECROZMA) return false;
+    if (user.id !== this.pokemonId) { return false; }
+    if (user.getSpeciesForm(true).speciesId !== SpeciesId.NECROZMA) { return false; }
     return user.getFormKey() === "dawn-wings";
   }
 
@@ -8384,10 +8503,10 @@ export class DawnWingsBeadModifier extends PokemonHeldItemModifier {
   }
 
   public applyMagicGuardIfNeeded(pokemon: Pokemon): void {
-    if (!this.isActive(pokemon)) return;
+    if (!this.isActive(pokemon)) { return; }
 
     this.syncBattleKey();
-    if (this.appliedMagicGuardThisBattle) return;
+    if (this.appliedMagicGuardThisBattle) { return; }
 
     // ✅ 여기 1줄을 네 프로젝트 "매직가드 attribute"로 교체
     // pokemon.addBattleAttribute(new NonDirectDamageBlockAbAttr());
@@ -8402,15 +8521,15 @@ export class DawnWingsBeadModifier extends PokemonHeldItemModifier {
   }
 
   public applyPostVictory(attacker: Pokemon, _defender: Pokemon, _move: Move | undefined, simulated: boolean): void {
-    if (simulated) return;
-    if (!this.isActive(attacker)) return;
-    if (this.stages <= 0) return;
+    if (simulated) { return; }
+    if (!this.isActive(attacker)) { return; }
+    if (this.stages <= 0) { return; }
 
     const statToBoost = this.getHighestEffectiveStat(attacker);
-    if (statToBoost == null) return;
+    if (statToBoost == null) { return; }
 
     const currentStage = attacker.getStatStage(statToBoost as any);
-    if (currentStage >= 6) return;
+    if (currentStage >= 6) { return; }
 
     globalScene.phaseManager.unshiftNew(
       "StatStageChangePhase",
@@ -8473,14 +8592,14 @@ export class UltraBeadModifier extends PokemonHeldItemModifier {
   }
 
   private isActive(user: Pokemon): boolean {
-    if (user.id !== this.pokemonId) return false;
-    if (user.getSpeciesForm(true).speciesId !== SpeciesId.NECROZMA) return false;
+    if (user.id !== this.pokemonId) { return false; }
+    if (user.getSpeciesForm(true).speciesId !== SpeciesId.NECROZMA) { return false; }
     return user.getFormKey() === "ultra";
   }
 
   // ✅ 적응력(STAB 2.0)
   public applyStabMultiplier(user: Pokemon, stabMult: NumberHolder): boolean {
-    if (!this.isActive(user)) return false;
+    if (!this.isActive(user)) { return false; }
 
     if (stabMult.value > 1) {
       stabMult.value += this.stabBonus; // 1.5 -> 2.0
@@ -8491,7 +8610,7 @@ export class UltraBeadModifier extends PokemonHeldItemModifier {
 
   // ✅ 색안경(비효과 x2)
   public applyNotEffectiveBoost(user: Pokemon, attrList: PreAttackAbAttr[]): boolean {
-    if (!this.isActive(user)) return false;
+    if (!this.isActive(user)) { return false; }
 
     attrList.push(
       new DamageBoostAbAttr(this.notEffectiveMult, (attacker, target, move) => {
@@ -8503,15 +8622,15 @@ export class UltraBeadModifier extends PokemonHeldItemModifier {
 
   // ✅ KO 시 최고 스탯 +1
   public applyPostVictory(attacker: Pokemon, _defender: Pokemon, _move: Move | undefined, simulated: boolean): void {
-    if (simulated) return;
-    if (!this.isActive(attacker)) return;
-    if (this.stages <= 0) return;
+    if (simulated) { return; }
+    if (!this.isActive(attacker)) { return; }
+    if (this.stages <= 0) { return; }
 
     const statToBoost = this.getHighestEffectiveStat(attacker);
-    if (statToBoost == null) return;
+    if (statToBoost == null) { return; }
 
     const currentStage = attacker.getStatStage(statToBoost as any);
-    if (currentStage >= 6) return;
+    if (currentStage >= 6) { return; }
 
     globalScene.phaseManager.unshiftNew(
       "StatStageChangePhase",
@@ -8540,7 +8659,7 @@ export class UltraBeadModifier extends PokemonHeldItemModifier {
   // 엔진에서 아이템 applyAbAttrs 훅을 호출하는 지점이 있다면 여기로 들어옴
   override applyAbAttrs(_type: any, pokemon: Pokemon, cancelled: BooleanHolder, ...args: any[]): void {
     // Ultra form + Necrozma만
-    if (!this.isActive(pokemon)) return;
+    if (!this.isActive(pokemon)) { return; }
 
     // args 예상: [moveType, defType, multiplierHolder]
     const multiplier = args[2] as NumberHolder | undefined;
@@ -8619,13 +8738,13 @@ export class TelepathyItemModifier extends PokemonHeldItemModifier {
       typeMultiplier: Utils.NumberHolder;
     }
   ): void {
-    if (type !== "PreDefendAbAttr") return;
+    if (type !== "PreDefendAbAttr") { return; }
 
     const { pokemon, opponent, move, cancelled } = params;
 
     // 안전 가드
-    if (!opponent || typeof opponent.isPlayer !== "function") return;
-    if (!move || typeof (move as any).is !== "function") return;
+    if (!opponent || typeof opponent.isPlayer !== "function") { return; }
+    if (!move || typeof (move as any).is !== "function") { return; }
 
     // 본가 텔레파시: "아군이 쏜 공격기"면 피해 면역
     const isAlly = pokemon !== opponent && pokemon.isPlayer() === opponent.isPlayer();
@@ -8696,7 +8815,7 @@ export class MoodyItemModifier extends PokemonHeldItemModifier {
       return;
     }
 
-    if (simulated) return;
+    if (simulated) { return; }
 
     console.log("[MoodyItemModifier] TURN_END apply start");
 
@@ -8761,7 +8880,7 @@ export class RoomServiceModifier extends PokemonHeldItemModifier {
    * This must be called by the system that applies arena tags like TrickRoomTag.
    */
   onTrickRoomActivated(pokemon: Pokemon): boolean {
-    if (!this.canApply(pokemon)) return false;
+    if (!this.canApply(pokemon)) { return false; }
 
     // 스피드 능력치를 1단계 낮춤
     globalScene.phaseManager.unshiftNew(
@@ -8850,7 +8969,7 @@ export class AbilityGuardItemModifier extends PokemonHeldItemModifier {
 
   applyPostTurn(pokemon: Pokemon, _passive: boolean, simulated: boolean, _args: any[]): void {
 
-    if (simulated) return;
+    if (simulated) { return; }
 
     // (1) Neutralizing Gas 처리 (태그 기반)
     const hasSuppressAbilities = globalScene.arena.hasTag(ArenaTagType.NEUTRALIZING_GAS);
@@ -8934,7 +9053,7 @@ export class MissEffectModifier extends PokemonHeldItemModifier {
    * This should be called by the system that tracks move accuracy.
    */
   onMoveMissed(pokemon: Pokemon, move: Move): boolean {
-    if (!this.canApply(pokemon)) return false;
+    if (!this.canApply(pokemon)) { return false; }
 
     // Create the MissEffectAttr and apply it (this triggers the speed boost)
     const missEffectAttr = new MissEffectAttr((user, move) => {
@@ -9095,13 +9214,13 @@ export class SpeciesCritBoosterModifier extends CritBoosterModifier {
 }
 
 function isUrshifuSingleForm(p: Pokemon): boolean {
-  if (p.getSpeciesForm(true).speciesId !== SpeciesId.URSHIFU) return false;
+  if (p.getSpeciesForm(true).speciesId !== SpeciesId.URSHIFU) { return false; }
   const k = p.getFormKey();
   return k === "single-strike" || k === SpeciesFormKey.GIGANTAMAX_SINGLE;
 }
 
 function isUrshifuRapidForm(p: Pokemon): boolean {
-  if (p.getSpeciesForm(true).speciesId !== SpeciesId.URSHIFU) return false;
+  if (p.getSpeciesForm(true).speciesId !== SpeciesId.URSHIFU) { return false; }
   const k = p.getFormKey();
   return k === "rapid-strike" || k === SpeciesFormKey.GIGANTAMAX_RAPID;
 }
@@ -9171,7 +9290,7 @@ export class UrshifuGloveAbilityBypassModifier extends PokemonHeldItemModifier {
 
   /** 글러브가 "우라오스 + 폼(일격/연격) + 글러브 종류"와 일치할 때만 활성 */
   private isActive(user: Pokemon): boolean {
-  if (user.getSpeciesForm(true).speciesId !== SpeciesId.URSHIFU) return false;
+  if (user.getSpeciesForm(true).speciesId !== SpeciesId.URSHIFU) { return false; }
 
   const k = user.getFormKey(); // "gigantamax-single" 등
 
@@ -9197,7 +9316,7 @@ export class UrshifuGloveAbilityBypassModifier extends PokemonHeldItemModifier {
 /** ✅ 급소 대미지 1.5배 추가(크리티컬일 때만) */
 applyCritDamageBoost(user: Pokemon, critDamageMult: NumberHolder): boolean {
   // ✅ 우라오스 + 폼 + 글러브 활성 아닐 때는 발동안
-  if (!this.isActive(user)) return false;
+  if (!this.isActive(user)) { return false; }
 
   // ✅ 크리티컬일 때만(critDamageMult.value > 1) 1.5배 추가
   if (critDamageMult.value > 1) {
@@ -10126,7 +10245,7 @@ export class WishingStarModifier extends PokemonHeldItemModifier {
   }
 
   override shouldApply(pokemon?: Pokemon): boolean {
-  if (!pokemon) return false;
+  if (!pokemon) { return false; }
   if (this.isForbiddenSpecies(pokemon)) {
     console.log(`[WishingStarModifier] ${pokemon.name}은 금지된 종입니다.`);
     return false;
@@ -10137,7 +10256,7 @@ export class WishingStarModifier extends PokemonHeldItemModifier {
 
   /** 스탯 보정 (예: 기가맥스면 1.3배 보너스) */
   applyToStat(pokemon: Pokemon, stat: Stat, multiplier: NumberHolder): void {
-    if (this.isForbiddenSpecies(pokemon)) return;
+    if (this.isForbiddenSpecies(pokemon)) { return; }
 
     if (this.isGigantamaxForm(pokemon)) {
       multiplier.value *= 1.3;
@@ -10147,7 +10266,7 @@ export class WishingStarModifier extends PokemonHeldItemModifier {
 
   /** 기가맥스 여부 판정 */
   private isGigantamaxForm(pokemon: any): boolean {
-    if (!(pokemon instanceof Pokemon)) return false;
+    if (!(pokemon instanceof Pokemon)) { return false; }
 
     const formKey = pokemon.getFormKey();
     return (
@@ -10196,7 +10315,7 @@ export class WishingStarModifier extends PokemonHeldItemModifier {
 
   /** 적용 금지 포켓몬 */
   private isForbiddenSpecies(pokemonOrId?: Pokemon | number | null): boolean {
-    if (!pokemonOrId) return false;
+    if (!pokemonOrId) { return false; }
 
     let id: number;
     if (typeof pokemonOrId === "number") {
@@ -10475,12 +10594,10 @@ export class PokemonZMovePpRestoreModifier extends ConsumablePokemonModifier {
     let recovered = 0;
 
     for (const move of playerPokemon.getMoveset()) {
-      if (move && allZMoveIds.has(move.moveId)) {
-        if (move.ppUsed > 0) {
+      if (move && allZMoveIds.has(move.moveId) && move.ppUsed > 0) {
           move.ppUsed = 0;
           recovered++;
         }
-      }
     }
 
     if (recovered > 0) {
@@ -10502,12 +10619,10 @@ export class PokemonMaxMovePpRestoreModifier extends ConsumablePokemonModifier {
     let recovered = 0;
 
     for (const move of playerPokemon.getMoveset()) {
-      if (move && allMaxMoveIds.has(move.moveId)) {
-        if (move.ppUsed > 0) {
+      if (move && allMaxMoveIds.has(move.moveId) && move.ppUsed > 0) {
           move.ppUsed = 0;
           recovered++;
         }
-      }
     }
 
     if (recovered > 0) {
@@ -11176,7 +11291,7 @@ export class PokemonMoveAccuracyBoosterModifier extends PokemonHeldItemModifier 
    * @returns always `true`
    */
   override apply(_pokemon: Pokemon, moveAccuracy: NumberHolder): boolean {
-    moveAccuracy.value = moveAccuracy.value + this.accuracyAmount * this.getStackCount();
+    moveAccuracy.value += this.accuracyAmount * this.getStackCount();
 
     return true;
   }
@@ -11384,15 +11499,15 @@ export class PokemonFormChangeItemModifier extends PokemonHeldItemModifier {
 
   // ✅ 게노세크트 드라이브: 등장 시 +1랭 (이번 소환 1회)
   applyGenesectDrivePostSummon(pokemon: Pokemon, simulated: boolean): void {
-    if (simulated) return;
-    if (!pokemon) return;
-    if (pokemon.species?.speciesId !== SpeciesId.GENESECT) return;
+    if (simulated) { return; }
+    if (!pokemon) { return; }
+    if (pokemon.species?.speciesId !== SpeciesId.GENESECT) { return; }
 
     const driveKind = this.getDriveKindIfAny();
-    if (!driveKind) return;
+    if (!driveKind) { return; }
 
     // ✅ "이번 소환"에서 1회만 (교체 후 재등장하면 다시 발동)
-    if (this.hasActivatedThisSummon(pokemon)) return;
+    if (this.hasActivatedThisSummon(pokemon)) { return; }
     this.setActivatedThisSummon(pokemon);
 
     const stat = GENESECT_DRIVE_DATA[driveKind]?.stat;
@@ -11417,11 +11532,11 @@ globalScene.phaseManager.unshiftNew(
     power: NumberHolder,
     simulated: boolean,
   ): void {
-    if (!pokemon) return;
-    if (pokemon.species?.speciesId !== SpeciesId.GENESECT) return;
+    if (!pokemon) { return; }
+    if (pokemon.species?.speciesId !== SpeciesId.GENESECT) { return; }
 
     const driveKind = this.getDriveKindIfAny();
-    if (!driveKind) return;
+    if (!driveKind) { return; }
 
     const driveType = GENESECT_DRIVE_DATA[driveKind].type;
 
@@ -11526,6 +11641,32 @@ export class DamageMoneyRewardModifier extends PokemonHeldItemModifier {
   override apply(_pokemon: Pokemon, multiplier: NumberHolder): boolean {
     const moneyAmount = new NumberHolder(Math.floor(multiplier.value * (0.5 * this.getStackCount())));
     globalScene.applyModifiers(MoneyMultiplierModifier, true, moneyAmount);
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+  const result =
+    (globalScene as any).practiceTurnResult;
+
+  if (result) {
+    result.moneyFactors ??= [];
+
+    const gained =
+      Math.floor(moneyAmount.value);
+
+    if (gained > 0) {
+      result.moneyFactors.push(
+        `골든펀치 +${gained}`,
+      );
+
+      result.moneyGained =
+        Number.isFinite(
+          Number(result.moneyGained),
+        )
+          ? Number(result.moneyGained)
+          : 0;
+
+      result.moneyGained += gained;
+    }
+  }
+}
     globalScene.addMoney(moneyAmount.value);
 
     return true;
@@ -11610,6 +11751,40 @@ export class ShinyRateBoosterModifier extends PersistentModifier {
    */
   override apply(boost: NumberHolder): boolean {
     boost.value *= Math.pow(2, 1 + this.getStackCount());
+
+    return true;
+  }
+
+  getMaxStackCount(): number {
+    return 4;
+  }
+}
+
+export class MarkRateBoosterModifier extends PersistentModifier {
+  match(modifier: Modifier): boolean {
+    return modifier instanceof MarkRateBoosterModifier;
+  }
+
+  clone(): MarkRateBoosterModifier {
+    return new MarkRateBoosterModifier(
+      this.type,
+      this.stackCount,
+    );
+  }
+
+  /**
+   * 증표가 붙은 야생 포켓몬의 출현 확률을 증가시킨다.
+   *
+   * 1개 = 2배
+   * 2개 = 4배
+   * 3개 = 8배
+   * 4개 = 16배
+   */
+  override apply(boost: NumberHolder): boolean {
+    boost.value *= Math.pow(
+      2,
+      this.getStackCount(),
+    );
 
     return true;
   }
@@ -11779,7 +11954,7 @@ export abstract class HeldItemTransferModifier extends PokemonHeldItemModifier {
   override apply(pokemon: Pokemon, target?: Pokemon, ..._args: unknown[]): boolean {
     const opponents = this.getTargets(pokemon, target);
 
-    if (!opponents.length) {
+    if (opponents.length === 0) {
       return false;
     }
 
@@ -11797,7 +11972,7 @@ export abstract class HeldItemTransferModifier extends PokemonHeldItemModifier {
     ) as PokemonHeldItemModifier[];
 
     for (let i = 0; i < transferredItemCount; i++) {
-      if (!itemModifiers.length) {
+      if (itemModifiers.length === 0) {
         break;
       }
       const randItemIndex = pokemon.randBattleSeedInt(itemModifiers.length);
@@ -11812,7 +11987,7 @@ export abstract class HeldItemTransferModifier extends PokemonHeldItemModifier {
       globalScene.phaseManager.queueMessage(this.getTransferMessage(pokemon, targetPokemon, mt));
     }
 
-    return !!transferredModifierTypes.length;
+    return  transferredModifierTypes.length > 0;
   }
 
   abstract getTransferredItemCount(): number;
@@ -12474,6 +12649,7 @@ export const ModifierClassMap = Object.freeze({
   MoneyInterestModifier,
   HiddenAbilityRateBoosterModifier,
   ShinyRateBoosterModifier,
+  MarkRateBoosterModifier,
   CriticalCatchChanceBoosterModifier,
   LockModifierTiersModifier,
   HealShopCostModifier,
@@ -12606,7 +12782,8 @@ export const ModifierClassMap = Object.freeze({
   TerrainSeedTrainerModifier,
   BlockCritItemModifier,
   StatusBoostItemModifier,
-  CategoryPowerBoostModifier
+  CategoryPowerBoostModifier,
+  AttackTypeBoosterModifier
 });
 
 export type ModifierConstructorMap = typeof ModifierClassMap;

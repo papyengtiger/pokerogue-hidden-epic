@@ -1,9 +1,12 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
+import {
+  CalyrexReinsUnifiedModifier,
+  PokemonFormChangeItemModifier,
+  SpeciesStatBoosterModifier,
+} from "#app/modifier/modifier";
 import type { BattlerIndex } from "#enums/battler-index";
+import { Stat } from "#enums/stat";
 import { PostSummonPhase } from "#phases/post-summon-phase";
-import { SpeciesStatBoosterModifier, PokemonFormChangeItemModifier, CalyrexReinsUnifiedModifier } from "#app/modifier/modifier";
-import { BATTLE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, EFFECTIVE_STATS, type BattleStat, Stat } from "#enums/stat";
-import { AbilityId } from "#enums/ability-id";
 
 /**
  * Helper to {@linkcode PostSummonPhase} which applies abilities
@@ -19,45 +22,66 @@ export class PostSummonActivateAbilityPhase extends PostSummonPhase {
   }
 
   start() {
-  const pokemon = this.getPokemon();
+    const pokemon = this.getPokemon();
 
-  applyAbAttrs("PostSummonAbAttr", { pokemon, passive: this.passive });
+    if (!pokemon) {
+      console.warn("[POST_SUMMON_ABILITY_NO_POKEMON]", {
+        battlerIndex: this.battlerIndex,
+        passive: this.passive,
+      });
 
-  if ((pokemon as any).isPracticeDummy) {
-    globalScene.time.delayedCall(1, () => {
-      (pokemon as any).keepDummySpriteVisible?.();
+      this.end();
+      return;
+    }
+
+    applyAbAttrs("PostSummonAbAttr", {
+      pokemon,
+      passive: this.passive,
     });
 
-    globalScene.time.delayedCall(100, () => {
-      (pokemon as any).keepDummySpriteVisible?.();
-    });
-  }
+    if ((pokemon as any).isPracticeDummy) {
+      globalScene.time.delayedCall(1, () => {
+        (pokemon as any).keepDummySpriteVisible?.();
+      });
 
-  // ✅ passive 패스에서는 아이템 발동 금지
-  if (this.passive) {
+      globalScene.time.delayedCall(100, () => {
+        (pokemon as any).keepDummySpriteVisible?.();
+      });
+    }
+
+    if (this.passive) {
+      this.end();
+      return;
+    }
+
+    this.applyBoostEnergyTag(pokemon);
+
+    const boosters = pokemon
+      .getHeldItems()
+      .filter(i => i instanceof SpeciesStatBoosterModifier) as SpeciesStatBoosterModifier[];
+
+    for (const m of boosters) {
+      m.onPostSummon(pokemon, false);
+    }
+
+    const formItems = pokemon
+      .getHeldItems()
+      .filter(i => i instanceof PokemonFormChangeItemModifier) as PokemonFormChangeItemModifier[];
+
+    for (const m of formItems) {
+      m.applyGenesectDrivePostSummon(pokemon, false);
+    }
+
+    const reins = pokemon
+      .getHeldItems()
+      .filter(i => i instanceof CalyrexReinsUnifiedModifier) as CalyrexReinsUnifiedModifier[];
+
+    for (const m of reins) {
+      m.applyPostSummon(pokemon, false);
+    }
+
     this.end();
-    return;
   }
-
-  this.applyBoostEnergyTag(pokemon);
-
-  // SpeciesStatBooster
-const boosters = pokemon.getHeldItems().filter(i => i instanceof SpeciesStatBoosterModifier) as SpeciesStatBoosterModifier[];
-for (const m of boosters) m.onPostSummon(pokemon, false);
-
-// FormChangeItem
-const formItems = pokemon.getHeldItems().filter(i => i instanceof PokemonFormChangeItemModifier) as PokemonFormChangeItemModifier[];
-for (const m of formItems) m.applyGenesectDrivePostSummon(pokemon, false);
-
-// 🔥 검은갈기/하얀갈기
-const reins = pokemon.getHeldItems().filter(
-  i => i instanceof CalyrexReinsUnifiedModifier
-) as CalyrexReinsUnifiedModifier[];
-
-for (const m of reins) m.applyPostSummon(pokemon, false);
-
-  this.end();
-}
 
   public override getPriority() {
     return this.priority;

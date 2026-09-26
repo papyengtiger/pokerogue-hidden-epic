@@ -6,15 +6,17 @@ import { BattleType } from "#enums/battle-type";
 import { BattlerIndex } from "#enums/battler-index";
 import { BiomeId } from "#enums/biome-id";
 import type { Command } from "#enums/command";
+import { GameModes } from "#enums/game-modes";
 import type { MoveId } from "#enums/move-id";
 import { MysteryEncounterMode } from "#enums/mystery-encounter-mode";
 import type { MysteryEncounterType } from "#enums/mystery-encounter-type";
+import { MysteryMonsterId } from "#enums/mystery-monster-id";
 import type { PokeballType } from "#enums/pokeball";
 import { SpeciesFormKey } from "#enums/species-form-key";
 import { SpeciesId } from "#enums/species-id";
 import { TrainerType } from "#enums/trainer-type";
 import { TrainerVariant } from "#enums/trainer-variant";
-import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
+import type { EnemyPokemon, MysteryMonster, PlayerPokemon, Pokemon } from "#field/pokemon";
 import { Trainer } from "#field/trainer";
 import { MoneyMultiplierModifier, type PokemonHeldItemModifier } from "#modifiers/modifier";
 import type { CustomModifierSettings } from "#modifiers/modifier-type";
@@ -108,7 +110,7 @@ export class Battle {
   public practiceDummyNoHpLoss = false;
 
   private rngCounter = 0;
-  
+
   constructor(gameMode: GameMode, waveIndex: number, battleType: BattleType, trainer?: Trainer, double = false) {
     this.gameMode = gameMode;
     this.waveIndex = waveIndex;
@@ -132,24 +134,37 @@ export class Battle {
 
   public getLevelForWave(): number {
     const levelWaveIndex = this.gameMode.getWaveForDifficulty(this.waveIndex);
-    const baseLevel = 1 + levelWaveIndex / 2 + Math.pow(levelWaveIndex / 25, 2);
+
+    const modeStartingLevel =
+      this.gameMode.modeId === GameModes.WEEKLY
+        ? this.gameMode.getStartingLevel() - 1
+        : this.gameMode.modeId === GameModes.MONTHLY
+          ? this.gameMode.getStartingLevel() - 1
+          : 0;
+
+    const baseLevel = modeStartingLevel + 1 + levelWaveIndex / 2 + Math.pow(levelWaveIndex / 25, 2);
+
     const bossMultiplier = 1.2;
 
     if (this.gameMode.isBoss(this.waveIndex)) {
       const ret = Math.floor(baseLevel * bossMultiplier);
+
       if (this.battleSpec === BattleSpec.FINAL_BOSS || !(this.waveIndex % 250)) {
         return Math.ceil(ret / 25) * 25;
       }
+
       let levelOffset = 0;
+
       if (!this.gameMode.isWaveFinal(this.waveIndex)) {
         levelOffset = Math.round(Phaser.Math.RND.realInRange(-1, 1) * Math.floor(levelWaveIndex / 10));
       }
+
       return ret + levelOffset;
     }
 
     let levelOffset = 0;
+    const deviation = 10 / Math.max(levelWaveIndex, 1);
 
-    const deviation = 10 / levelWaveIndex;
     levelOffset = Math.abs(this.randSeedGaussForLevel(deviation));
 
     return Math.max(Math.round(baseLevel + levelOffset), 1);
@@ -219,25 +234,25 @@ export class Battle {
   }
 
   addBattleScore(): void {
-  let partyMemberTurnMultiplier = globalScene.getEnemyParty().length / 2 + 0.5;
-  if (this.double) {
-    partyMemberTurnMultiplier /= 1.5;
-  }
-  for (const p of globalScene.getEnemyParty()) {
-    if (p.isBoss()) {
-      partyMemberTurnMultiplier *= p.bossSegments / 1.5 / globalScene.getEnemyParty().length;
+    let partyMemberTurnMultiplier = globalScene.getEnemyParty().length / 2 + 0.5;
+    if (this.double) {
+      partyMemberTurnMultiplier /= 1.5;
     }
-  }
-  const turnMultiplier = Phaser.Tweens.Builders.GetEaseFunction("Sine.easeIn")(
-    1 - Math.min(this.turn - 2, 10 * partyMemberTurnMultiplier) / (10 * partyMemberTurnMultiplier),
-  );
-  const finalBattleScore = Math.ceil(this.battleScore * turnMultiplier);
+    for (const p of globalScene.getEnemyParty()) {
+      if (p.isBoss()) {
+        partyMemberTurnMultiplier *= p.bossSegments / 1.5 / globalScene.getEnemyParty().length;
+      }
+    }
+    const turnMultiplier = Phaser.Tweens.Builders.GetEaseFunction("Sine.easeIn")(
+      1 - Math.min(this.turn - 2, 10 * partyMemberTurnMultiplier) / (10 * partyMemberTurnMultiplier),
+    );
+    const finalBattleScore = Math.ceil(this.battleScore * turnMultiplier);
 
-  globalScene.score += finalBattleScore;
-  
-  globalScene.updateScoreText();
-  globalScene.updateroguePointText();
-}
+    globalScene.score += finalBattleScore;
+
+    globalScene.updateScoreText();
+    globalScene.updateroguePointText();
+  }
 
   getBgmOverride(): string | null {
     if (this.isBattleMysteryEncounter() && this.mysteryEncounter?.encounterMode === MysteryEncounterMode.DEFAULT) {
@@ -267,6 +282,17 @@ export class Battle {
     }
     const wildOpponents = globalScene.getEnemyParty();
     for (const pokemon of wildOpponents) {
+      // ========================================
+      // 미스터리몬스터 전용 BGM
+      // ========================================
+      if (pokemon.isMysteryMonster()) {
+        const mysteryMonster = pokemon as MysteryMonster;
+
+        switch (mysteryMonster.mysterySpecies.id) {
+          case MysteryMonsterId.DEMONSTERY:
+            return "battle_weird_monster";
+        }
+      }
       if (this.battleSpec === BattleSpec.FINAL_BOSS) {
         if (pokemon.species.getFormSpriteKey(pokemon.formIndex) === SpeciesFormKey.ETERNAMAX) {
           return "battle_final";

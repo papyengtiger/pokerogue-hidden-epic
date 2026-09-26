@@ -13,6 +13,7 @@ import {
   GACHA_DEFAULT_SHINY_RATE,
   GACHA_EGG_HA_RATE,
   GACHA_LEGENDARY_UP_THRESHOLD_OFFSET,
+  GACHA_MARK_RATE_MULTIPLIER,
   GACHA_SHINY_UP_SHINY_RATE,
   HATCH_WAVES_COMMON_EGG,
   HATCH_WAVES_EPIC_EGG,
@@ -28,9 +29,11 @@ import {
 } from "#balance/rates";
 import { speciesEggTiers } from "#balance/species-egg-tiers";
 import { speciesStarterCosts } from "#balance/starters";
+import { rollRandomMark } from "#data/mark";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { EggSourceType } from "#enums/egg-source-types";
 import { EggTier } from "#enums/egg-type";
+import { MarkId } from "#enums/mark-id";
 import { SpeciesId } from "#enums/species-id";
 import { VariantTier } from "#enums/variant-tier";
 import type { PlayerPokemon } from "#field/pokemon";
@@ -80,6 +83,8 @@ export interface IEggOptions {
   overrideHiddenAbility?: boolean;
   /** Can customize the message displayed for where the egg was obtained */
   eggDescriptor?: string;
+
+  mark?: MarkId;
 }
 
 export class Egg {
@@ -102,6 +107,7 @@ export class Egg {
 
   private _eggDescriptor?: string;
 
+  private _mark: MarkId;
   ////
   // #endregion
   ////
@@ -153,6 +159,9 @@ export class Egg {
     return this._overrideHiddenAbility;
   }
 
+  get mark(): MarkId {
+    return this._mark;
+  }
   ////
   // #endregion
   ////
@@ -183,6 +192,8 @@ export class Egg {
 
       this._overrideHiddenAbility = eggOptions?.overrideHiddenAbility ?? false;
 
+      this._mark =
+        eggOptions?.mark ?? (this._sourceType === EggSourceType.GACHA_MARK ? this.rollGachaMark() : MarkId.NONE);
       // Override egg tier and hatchwaves if species was given
       if (eggOptions?.species) {
         this._tier = this.getEggTier();
@@ -266,6 +277,7 @@ export class Egg {
       ret = globalScene.addPlayerPokemon(pokemonSpecies, 1, abilityIndex, undefined, undefined, false);
       ret.shiny = this._isShiny;
       ret.variant = this._variantTier;
+      ret.mark = this._mark;
 
       const secondaryIvs = getIvsFromId(randSeedInt(4294967295));
 
@@ -338,6 +350,8 @@ export class Egg {
         return this._eggDescriptor ?? i18next.t("egg:gachaTypeShiny");
       case EggSourceType.GACHA_MOVE:
         return this._eggDescriptor ?? i18next.t("egg:gachaTypeMove");
+      case EggSourceType.GACHA_MARK:
+        return this._eggDescriptor ?? i18next.t("egg:gachaTypeMark");
       case EggSourceType.EVENT:
         return this._eggDescriptor ?? i18next.t("egg:eventType");
       default:
@@ -353,6 +367,12 @@ export class Egg {
   ////
   // #region Private methods
   ////
+
+  private rollGachaMark(): MarkId {
+    const mark = rollRandomMark(GACHA_MARK_RATE_MULTIPLIER);
+
+    return mark === MarkId.NONE ? MarkId.SLEEPY : mark;
+  }
 
   /**
    * Rolls which egg move slot the egg will have.

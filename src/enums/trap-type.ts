@@ -1,0 +1,13 @@
+export enum TrapType {
+  STEALTH_ROCK,
+  SPIKES,
+  TOXIC_SPIKES,
+  STATUS,
+  PP_DRAIN,
+  ITEM_SEAL,
+  STAT_DOWN,
+  EXPLOSION,
+  TELEPORT,
+  DESCEND,
+  ASCEND,
+}

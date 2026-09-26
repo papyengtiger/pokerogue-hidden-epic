@@ -3,6 +3,8 @@ export enum GameModes {
   ENDLESS,
   SPLICED_ENDLESS,
   DAILY,
+  WEEKLY,
+  MONTHLY,
   CHALLENGE,
   PRACTICE,
 }

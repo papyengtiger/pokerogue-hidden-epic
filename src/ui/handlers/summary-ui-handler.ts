@@ -1,7 +1,7 @@
 import type { Ability } from "#abilities/ability";
 import { loggedInUser } from "#app/account";
 import { globalScene } from "#app/global-scene";
-import { starterColors } from "#app/global-vars/starter-colors";
+import { getStarterColors } from "#app/global-vars/starter-colors";
 import { getStarterValueFriendshipCap, speciesStarterCosts } from "#balance/starters";
 import { getLevelRelExp, getLevelTotalExp } from "#data/exp";
 import { getGenderColor, getGenderSymbol } from "#data/gender";
@@ -9,6 +9,7 @@ import { getNatureName, getNatureStatMultiplier } from "#data/nature";
 import { getPokeballAtlasKey } from "#data/pokeball";
 import { getTypeRgb } from "#data/type";
 import { Button } from "#enums/buttons";
+import { ModifierTier } from "#enums/modifier-tier";
 import { MoveCategory } from "#enums/move-category";
 import { Nature } from "#enums/nature";
 import { PlayerGender } from "#enums/player-gender";
@@ -18,7 +19,7 @@ import { StatusEffect } from "#enums/status-effect";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
 import type { PlayerPokemon } from "#field/pokemon";
-import { modifierSortFunc, PokemonHeldItemModifier } from "#modifiers/modifier";
+import { PokemonHeldItemModifier } from "#modifiers/modifier";
 import type { Move } from "#moves/move";
 import type { PokemonMove } from "#moves/pokemon-move";
 import type { Variant } from "#sprites/variant";
@@ -139,7 +140,7 @@ export class SummaryUiHandler extends UiHandler {
   private expOverlay?: Phaser.GameObjects.Image;
   private expMask?: Phaser.Display.Masks.GeometryMask;
   private expMaskRect?: Phaser.GameObjects.Graphics;
-   
+
   constructor() {
     super(UiMode.SUMMARY);
   }
@@ -385,7 +386,7 @@ export class SummaryUiHandler extends UiHandler {
 
     this.shinyOverlay.setVisible(this.pokemon.isShiny());
 
-    const colorScheme = starterColors[this.pokemon.species.getRootSpeciesId()];
+    const colorScheme = getStarterColors(this.pokemon.species.getRootSpeciesId());
     this.candyIcon.setTint(argbFromRgba(rgbHexToRgba(colorScheme[0])));
     this.candyOverlay.setTint(argbFromRgba(rgbHexToRgba(colorScheme[1])));
 
@@ -1115,27 +1116,111 @@ export class SummaryUiHandler extends UiHandler {
         });
         this.ivContainer.setVisible(false);
 
-        const itemModifiers = (
-          globalScene.findModifiers(
-            m => m instanceof PokemonHeldItemModifier && m.pokemonId === this.pokemon?.id,
-            this.playerParty,
-          ) as PokemonHeldItemModifier[]
-        ).sort(modifierSortFunc);
+        const itemModifiers = globalScene.findModifiers(
+          m => m instanceof PokemonHeldItemModifier && m.pokemonId === this.pokemon?.id,
+          this.playerParty,
+        ) as PokemonHeldItemModifier[];
 
-// ✅ 아이템 아이콘만 초기화
-this.statsContainerItemIcons.removeAll(true);
+        this.statsContainerItemIcons.removeAll(true);
 
-itemModifiers.forEach((item, i) => {
-  const icon = item.getIcon(true);
+        const getTierRank = (item: PokemonHeldItemModifier): number => {
+          const tier = (item.type as any).tier;
 
-  icon.setPosition((i % 17) * 12 + 3, 14 * Math.floor(i / 17) + 15);
-  this.statsContainerItemIcons.add(icon);   // 여기로 add
+          switch (tier) {
+            case ModifierTier.MASTER:
+              return 5;
+            case ModifierTier.ROGUE:
+              return 4;
+            case ModifierTier.ULTRA:
+              return 3;
+            case ModifierTier.GREAT:
+              return 2;
+            case ModifierTier.COMMON:
+              return 1;
+            default:
+              return 0;
+          }
+        };
 
-  icon.setInteractive(new Phaser.Geom.Rectangle(0, 0, 32, 32), Phaser.Geom.Rectangle.Contains);
-  icon.on("pointerover", () => globalScene.ui.showTooltip(item.type.name, item.type.getDescription(), true));
-  icon.on("pointerout", () => globalScene.ui.hideTooltip());
-});
+        const sortedItemModifiers = this.playerParty
+          ? itemModifiers.slice().reverse()
+          : itemModifiers.slice().sort((a, b) => {
+              const aOwned = globalScene.findModifiers(m => m.type?.id === a.type?.id, true).length > 0;
+              const bOwned = globalScene.findModifiers(m => m.type?.id === b.type?.id, true).length > 0;
 
+              // 1순위: 아군에게 없는 아이템 먼저
+              if (aOwned !== bOwned) {
+                return aOwned ? 1 : -1;
+              }
+
+              // 2순위: 등급 높은 순 MASTER > ROGUE > ULTRA > GREAT > COMMON
+              return getTierRank(b) - getTierRank(a);
+            });
+
+        console.log(
+          "[SUMMARY_ITEM_ORDER]",
+          sortedItemModifiers.map((item, index) => ({
+            index,
+            name: item.type.name,
+            id: item.type.id,
+            tier: (item.type as any).tier,
+            ownedByPlayer: globalScene.findModifiers(m => m.type?.id === item.type?.id, true).length > 0,
+          })),
+        );
+
+        if (!this.playerParty) {
+          console.log(
+            "[ENEMY_ITEM_SORT]",
+            sortedItemModifiers.map((item, index) => ({
+              index,
+              item: item.type.name,
+              tier: ModifierTier[(item.type as any).tier] ?? (item.type as any).tier,
+              ownedByPlayer: globalScene.findModifiers(m => m.type?.id === item.type?.id, true).length > 0,
+            })),
+          );
+        }
+
+        if (this.playerParty) {
+          console.log(
+            "[PLAYER_ITEM_ORDER]",
+            sortedItemModifiers.map((item, index) => ({
+              index,
+              item: item.type.name,
+              id: item.type.id,
+            })),
+          );
+        }
+
+        const visibleItems = sortedItemModifiers.slice(0, 34);
+
+        visibleItems.forEach((item, i) => {
+          const icon = item.getIcon(true);
+
+          icon.setPosition((i % 17) * 12 + 3, 14 * Math.floor(i / 17) + 15);
+
+          this.statsContainerItemIcons.add(icon);
+
+          icon.setInteractive(new Phaser.Geom.Rectangle(0, 0, 32, 32), Phaser.Geom.Rectangle.Contains);
+
+          icon.on("pointerover", () => globalScene.ui.showTooltip(item.type.name, item.type.getDescription(), true));
+
+          icon.on("pointerout", () => globalScene.ui.hideTooltip());
+        });
+
+        // 숨겨진 아이템 개수 표시
+        const hiddenCount = itemModifiers.length - visibleItems.length;
+
+        if (hiddenCount > 0) {
+          const moreText = addTextObject(
+            185, // 우측 끝
+            29, // 2번째 줄 높이
+            `+${hiddenCount}`,
+            TextStyle.WINDOW_ALT,
+          );
+
+          moreText.setOrigin(1, 0);
+          this.statsContainerItemIcons.add(moreText);
+        }
         const pkmLvl = this.pokemon?.level!; // TODO: is this bang correct?
         const pkmLvlExp = this.pokemon?.levelExp!; // TODO: is this bang correct?
         const pkmExp = this.pokemon?.exp!; // TODO: is this bang correct?
@@ -1162,22 +1247,17 @@ itemModifiers.forEach((item, i) => {
         this.statsContainer.add(nextLvExpText);
 
         this.expOverlay = globalScene.add.image(140, 145, "summary_stats_overlay_exp");
-this.expOverlay.setOrigin(0, 0);
-this.statsContainer.add(this.expOverlay);
+        this.expOverlay.setOrigin(0, 0);
+        this.statsContainer.add(this.expOverlay);
 
-this.expMaskRect = globalScene.make.graphics({});
-this.expMaskRect.setScale(6);
-this.expMaskRect.fillStyle(0xffffff);
-this.expMaskRect.beginPath();
-this.expMaskRect.fillRect(
-  140 + pageContainer.x,
-  145 + pageContainer.y + 21,
-  Math.floor(expRatio * 64),
-  3,
-);
+        this.expMaskRect = globalScene.make.graphics({});
+        this.expMaskRect.setScale(6);
+        this.expMaskRect.fillStyle(0xffffff);
+        this.expMaskRect.beginPath();
+        this.expMaskRect.fillRect(140 + pageContainer.x, 145 + pageContainer.y + 21, Math.floor(expRatio * 64), 3);
 
-this.expMask = this.expMaskRect.createGeometryMask();
-this.expOverlay.setMask(this.expMask);
+        this.expMask = this.expMaskRect.createGeometryMask();
+        this.expOverlay.setMask(this.expMask);
         this.abilityPrompt = globalScene.add.image(
           0,
           0,
@@ -1406,67 +1486,67 @@ this.expOverlay.setMask(this.expMask);
   }
 
   clear() {
-  super.clear();
+    super.clear();
 
-  this.pokemon = null;
-  this.cursor = -1;
-  this.newMove = null;
+    this.pokemon = null;
+    this.cursor = -1;
+    this.newMove = null;
 
-  if (this.moveSelect) {
-    this.moveSelect = false;
-    this.moveSelectFunction = null;
-    this.extraMoveRowContainer.setVisible(false);
-    if (this.moveCursorBlinkTimer) {
-      this.moveCursorBlinkTimer.destroy();
-      this.moveCursorBlinkTimer = null;
+    if (this.moveSelect) {
+      this.moveSelect = false;
+      this.moveSelectFunction = null;
+      this.extraMoveRowContainer.setVisible(false);
+      if (this.moveCursorBlinkTimer) {
+        this.moveCursorBlinkTimer.destroy();
+        this.moveCursorBlinkTimer = null;
+      }
+      if (this.moveCursorObj) {
+        this.moveCursorObj.destroy();
+        this.moveCursorObj = null;
+      }
+      if (this.selectedMoveCursorObj) {
+        this.selectedMoveCursorObj.destroy();
+        this.selectedMoveCursorObj = null;
+      }
+      this.hideMoveEffect(true);
     }
-    if (this.moveCursorObj) {
-      this.moveCursorObj.destroy();
-      this.moveCursorObj = null;
+
+    // 기존 코드
+    this.summaryContainer.setVisible(false);
+    this.summaryPageContainer.setVisible(false);
+
+    // 🔥 여기부터가 핵심 패치 (추가)
+
+    // 1) STATS 페이지 아이템 아이콘 전부 제거
+    this.statsContainerItemIcons?.removeAll(true);
+
+    // 2) STATS 페이지 컨테이너 자체도 날려버리는 게 가장 안전
+    this.statsContainer?.destroy(true);
+    this.statsContainer = undefined;
+
+    // 3) EXP 바 마스크 graphics 제거 (잔상 주범 가능성 매우 높음)
+    this.expMaskRect?.destroy(true);
+    this.expMaskRect = undefined;
+
+    // 4) 보조 컨테이너들도 같이 정리
+    this.permStatsContainer = undefined;
+    this.ivContainer = undefined;
+    this.statsContainerItemIcons = undefined;
+    if (this.expOverlay) {
+      // mask 먼저 해제
+      this.expOverlay.clearMask(true);
+      this.expOverlay = undefined;
     }
-    if (this.selectedMoveCursorObj) {
-      this.selectedMoveCursorObj.destroy();
-      this.selectedMoveCursorObj = null;
+
+    if (this.expMask) {
+      // GeometryMask 객체 destroy
+      (this.expMask as any).destroy?.();
+      this.expMask = undefined;
     }
-    this.hideMoveEffect(true);
-  }
 
-  // 기존 코드
-  this.summaryContainer.setVisible(false);
-  this.summaryPageContainer.setVisible(false);
-
-  // 🔥 여기부터가 핵심 패치 (추가)
-
-  // 1) STATS 페이지 아이템 아이콘 전부 제거
-  this.statsContainerItemIcons?.removeAll(true);
-
-  // 2) STATS 페이지 컨테이너 자체도 날려버리는 게 가장 안전
-  this.statsContainer?.destroy(true);
-  this.statsContainer = undefined;
-
-  // 3) EXP 바 마스크 graphics 제거 (잔상 주범 가능성 매우 높음)
-  this.expMaskRect?.destroy(true);
-  this.expMaskRect = undefined;
-
-  // 4) 보조 컨테이너들도 같이 정리
-  this.permStatsContainer = undefined;
-  this.ivContainer = undefined;
-  this.statsContainerItemIcons = undefined;
-  if (this.expOverlay) {
-  // mask 먼저 해제
-  this.expOverlay.clearMask(true);
-  this.expOverlay = undefined;
-}
-
-if (this.expMask) {
-  // GeometryMask 객체 destroy
-  (this.expMask as any).destroy?.();
-  this.expMask = undefined;
-}
-
-if (this.expMaskRect) {
-  this.expMaskRect.destroy(true);
-  this.expMaskRect = undefined;
-}
+    if (this.expMaskRect) {
+      this.expMaskRect.destroy(true);
+      this.expMaskRect = undefined;
+    }
   }
 }

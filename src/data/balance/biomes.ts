@@ -7,7 +7,7 @@ import type { BiomeLinks, BiomePokemonPools, BiomeTrainerPools } from "#types/bi
 
 export const biomeLinks: BiomeLinks = {
   [BiomeId.TOWN]: BiomeId.PLAINS,
-  [BiomeId.PLAINS]: [ BiomeId.GRASS, BiomeId.METROPOLIS, BiomeId.RIVER ],
+  [BiomeId.PLAINS]: [ BiomeId.GRASS, BiomeId.METROPOLIS, BiomeId.RIVER, BiomeId.CAVE ],
   [BiomeId.GRASS]: [ BiomeId.TALL_GRASS, BiomeId.GREEN_MOUNTAIN, BiomeId.BAMBOO_FOREST ],
   [BiomeId.TALL_GRASS]: [ BiomeId.FOREST, BiomeId.CAVE, [ BiomeId.LOG_CAVE, 2 ] ],
   [BiomeId.SLUM]: [ BiomeId.CONSTRUCTION_SITE, BiomeId.SEWER, [ BiomeId.SWAMP, 2 ]],
@@ -31,7 +31,7 @@ export const biomeLinks: BiomeLinks = {
   [BiomeId.RUINS]: [ BiomeId.MOUNTAIN, BiomeId.FOREST, [ BiomeId.CASTLE, 3 ]],
   [BiomeId.WASTELAND]: [ BiomeId.BADLANDS, BiomeId.WYVERN_MOUNTAIN, [ BiomeId.DRAGON_TEMPLE, 3 ]],
   [BiomeId.ABYSS]: [ BiomeId.CAVE, [ BiomeId.SPACE, 2 ], [ BiomeId.WASTELAND, 2 ]],
-  [BiomeId.SPACE]: BiomeId.RUINS,
+  [BiomeId.SPACE]: [ BiomeId.RUINS, [ BiomeId.LABORATORY, 3 ]],
   [BiomeId.CONSTRUCTION_SITE]: [ BiomeId.POWER_PLANT, BiomeId.SEWER, BiomeId.DOJO ],
   [BiomeId.JUNGLE]: [ BiomeId.TEMPLE, BiomeId.LOG_CAVE, BiomeId.MUSHROOM_FOREST ],
   [BiomeId.FAIRY_CAVE]: [ BiomeId.ICE_CAVE, BiomeId.TEMPLE, [ BiomeId.SPACE, 2 ]],
@@ -39,25 +39,25 @@ export const biomeLinks: BiomeLinks = {
   [BiomeId.METROPOLIS]: [ BiomeId.SLUM, BiomeId.SEWER, [ BiomeId.AMUSEMENT_PARK, 2 ] ],
   [BiomeId.SNOWY_FOREST]: [ BiomeId.FOREST, [ BiomeId.MOUNTAIN, 2 ], [ BiomeId.LAKE, 2 ]],
   [BiomeId.ISLAND]: [ BiomeId.SEA, [ BiomeId.AMUSEMENT_PARK, 2 ]],
-  [BiomeId.LABORATORY]: BiomeId.CONSTRUCTION_SITE,
-  [BiomeId.MAGMA_CAVERN]: [ BiomeId.BLAZE_FIELD, BiomeId.LAVA_LAKE ],
+  [BiomeId.LABORATORY]: [ BiomeId.CONSTRUCTION_SITE, BiomeId.SHARP_FIELD, BiomeId.SNOWY_FIELD ],
+  [BiomeId.MAGMA_CAVERN]: [ BiomeId.BLAZE_FIELD, BiomeId.BLACK_FIELD, BiomeId.SHARP_FIELD ],
   [BiomeId.BLAZE_FIELD]: [ BiomeId.INFERNO_FOREST, BiomeId.LIGHTNING_FIELD, BiomeId.LAVA_LAKE ],
   [BiomeId.INFERNO_FOREST]: [ BiomeId.VOLCANO, BiomeId.LAVA_LAKE, [ BiomeId.WASTELAND ]],
   [BiomeId.RIVER]: [ BiomeId.BEACH, BiomeId.LAKE, BiomeId.METROPOLIS ],
-  [BiomeId.LIGHTNING_FIELD]: [ BiomeId.SPARK_CAVE, BiomeId.THUNDER_MOUNTAIN, [ BiomeId.CONSTRUCTION_SITE, 2 ]],
+  [BiomeId.LIGHTNING_FIELD]: [ BiomeId.SPARK_CAVE, BiomeId.SNOWY_FIELD, [ BiomeId.THUNDER_MOUNTAIN, 2 ]],
   [BiomeId.SPARK_CAVE]: [ BiomeId.VORTEX_CAVE, BiomeId.MAGMA_CAVERN, [ BiomeId.WASTELAND, 2 ]],
   [BiomeId.THUNDER_MOUNTAIN]: [ BiomeId.SHARP_FIELD, BiomeId.VOLCANO, [ BiomeId.ABANDONED_CASTLE, 2 ]],
   [BiomeId.SHARP_FIELD]: [ BiomeId.SNOWY_FIELD, BiomeId.BLAZE_FIELD, [ BiomeId.BLACK_MOUNTAIN, 2 ]],
   [BiomeId.VORTEX_CAVE]: [ BiomeId.FAIRY_FOREST, BiomeId.WYVERN_MOUNTAIN, [ BiomeId.DRAGON_TEMPLE, 3 ]],
   [BiomeId.SNOWY_FIELD]: [ BiomeId.GLACIER_LAKE, BiomeId.SNOW_MOUNTAIN, [ BiomeId.STAR_MOUNTAIN, 3 ]],
-  [BiomeId.GLACIER_LAKE]: [ BiomeId.GLACIER, BiomeId.ICE_CAVE, [ BiomeId.ABANDONED_CASTLE, 3 ]],
+  [BiomeId.GLACIER_LAKE]: [ BiomeId.SHARP_FIELD, BiomeId.ICE_CAVE, [ BiomeId.ABANDONED_CASTLE, 3 ]],
   [BiomeId.ABANDONED_CASTLE]: [ BiomeId.BLACK_FIELD, BiomeId.CANYON, [ BiomeId.STAR_MOUNTAIN, 3 ]],
   [BiomeId.BLACK_MOUNTAIN]: [ BiomeId.DRAGON_FOREST, BiomeId.VORTEX_CAVE, [ BiomeId.ABANDONED_CASTLE, 3 ]],
   [BiomeId.FAIRY_FOREST]: [ BiomeId.INFERNO_FOREST, BiomeId.FOREST, [ BiomeId.FAIRY_CAVE, 2 ]],
   [BiomeId.LAVA_LAKE]: [ BiomeId.SPA, BiomeId.POLLUTED_CAVE, [ BiomeId.LABORATORY, 3 ]],
   [BiomeId.SPA]: [ BiomeId.BEACH, BiomeId.ICE_CAVE ],
   [BiomeId.BLACK_FIELD]: [ BiomeId.GRAVEYARD, BiomeId.POLLUTED_CAVE, [ BiomeId.BLACK_MOUNTAIN, 2 ]],
-  [BiomeId.CANYON]: [ BiomeId.DESERT, BiomeId.VORTEX_CAVE, [ BiomeId.STAR_MOUNTAIN, 3 ]],
+  [BiomeId.CANYON]: [ BiomeId.BLAZE_FIELD, BiomeId.VORTEX_CAVE, [ BiomeId.STAR_MOUNTAIN, 3 ]],
   [BiomeId.STAR_MOUNTAIN]: [ BiomeId.SKY, [ BiomeId.SPACE, 2 ]],
   [BiomeId.WYVERN_MOUNTAIN]: [ BiomeId.DRAGON_FOREST, BiomeId.DRAKE_LAKE, [ BiomeId.DRAGON_TEMPLE, 2 ]],
   [BiomeId.POLLUTED_CAVE]: [ BiomeId.POWER_PLANT, BiomeId.BLACK_MOUNTAIN, BiomeId.POLLUTED_RIVER ],
@@ -72,7 +72,7 @@ export const biomeLinks: BiomeLinks = {
   [BiomeId.DRAKE_LAKE]: [ BiomeId.BAMBOO_FOREST, BiomeId.WYVERN_MOUNTAIN, [ BiomeId.ABANDONED_CASTLE, 3 ]],
   [BiomeId.AMUSEMENT_PARK]: [ BiomeId.PLAINS, BiomeId.MEADOW, [ BiomeId.CASTLE, 2 ]],
   [BiomeId.CASTLE]: [ BiomeId.FOREST, BiomeId.RIVER, [ BiomeId.FAIRY_FOREST, 2 ]],
-  [BiomeId.DARK_FOREST]: [ BiomeId.ABYSS, BiomeId.GRAVEYARD, [ BiomeId.ABANDONED_CASTLE, 3 ]],
+  [BiomeId.DARK_FOREST]: [ BiomeId.SHARP_FIELD, BiomeId.GRAVEYARD, [ BiomeId.ABANDONED_CASTLE, 3 ]],
   [BiomeId.MUSHROOM_FOREST]: [ BiomeId.BLAZE_FIELD, BiomeId.SWAMP, BiomeId.DARK_FOREST ],
   [BiomeId.SNOW_MOUNTAIN]: [ BiomeId.VOLCANO, BiomeId.SPA, [ BiomeId.ABANDONED_CASTLE, 3 ]],
   [BiomeId.SEWER]: [ BiomeId.POLLUTED_RIVER, BiomeId.POLLUTED_CAVE, [ BiomeId.LABORATORY, 3 ]],
@@ -1015,7 +1015,7 @@ export const biomePokemonPools: BiomePokemonPools = {
       [TimeOfDay.ALL]: [ SpeciesId.GOLDUCK, SpeciesId.SLOWBRO, SpeciesId.SEAKING, SpeciesId.GYARADOS, SpeciesId.MASQUERAIN, SpeciesId.WISHIWASHI, SpeciesId.SWANNA, SpeciesId.DREDNAW ]
     },
     [BiomePoolTier.BOSS_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.BLASTOISE, SpeciesId.VAPOREON, SpeciesId.SLOWKING, SpeciesId.SAMUROTT, SpeciesId.GRENINJA, SpeciesId.INTELEON ]},
-    [BiomePoolTier.BOSS_SUPER_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.MESPRIT ]},
+    [BiomePoolTier.BOSS_SUPER_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.MESPRIT, SpeciesId.BATTLE_BOND_GRENINJA ]},
     [BiomePoolTier.BOSS_ULTRA_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: []}
   },
   [BiomeId.GLACIER_LAKE]: {
@@ -1095,7 +1095,7 @@ export const biomePokemonPools: BiomePokemonPools = {
       [TimeOfDay.DAY]: [{ 1: [ SpeciesId.YANMA ], 33: [ SpeciesId.YANMEGA ]}],
       [TimeOfDay.DUSK]: [],
       [TimeOfDay.NIGHT]: [],
-      [TimeOfDay.ALL]: [{ 1: [ SpeciesId.SLOWPOKE ], 37: [ SpeciesId.SLOWBRO ]}, { 1: [ SpeciesId.BARBOACH ], 30: [ SpeciesId.WHISCASH ]}, { 1: [ SpeciesId.CORPHSH ], 30: [ SpeciesId.CRAWDAUNT ]}, { 1: [ SpeciesId.BUIZEL ], 30: [ SpeciesId.FLOATZEL ]}, { 1: [ SpeciesId.KRABBY ], 28: [ SpeciesId.KINGLER ]}, { 1: [ SpeciesId.SHELLDER ], 30: [ SpeciesId.CLOYSTER ]}, { 1: [ SpeciesId.BASCULIN ], 40: [ SpeciesId.BASCULEGION ]}, { 1: [ SpeciesId.TYNAMO ], 39: [ SpeciesId.EELECTRIK ], 45: [ SpeciesId.EELEKTROSS ]}, SpeciesId.FLAMIGO ]
+      [TimeOfDay.ALL]: [{ 1: [ SpeciesId.SLOWPOKE ], 37: [ SpeciesId.SLOWBRO ]}, { 1: [ SpeciesId.BARBOACH ], 30: [ SpeciesId.WHISCASH ]}, { 1: [ SpeciesId.CORPHSH ], 30: [ SpeciesId.CRAWDAUNT ]}, { 1: [ SpeciesId.BUIZEL ], 30: [ SpeciesId.FLOATZEL ]}, { 1: [ SpeciesId.KRABBY ], 28: [ SpeciesId.KINGLER ]}, { 1: [ SpeciesId.SHELLDER ], 30: [ SpeciesId.CLOYSTER ]}, SpeciesId.BASCULIN, { 1: [ SpeciesId.HISUI_BASCULIN ], 40: [ SpeciesId.BASCULEGION ]}, { 1: [ SpeciesId.TYNAMO ], 39: [ SpeciesId.EELECTRIK ], 45: [ SpeciesId.EELEKTROSS ]}, SpeciesId.FLAMIGO ]
     },
     [BiomePoolTier.RARE]: {
       [TimeOfDay.DAWN]: [],
@@ -1128,6 +1128,7 @@ export const biomePokemonPools: BiomePokemonPools = {
         SpeciesId.REMORAID,
         SpeciesId.CLAMPERL,
         SpeciesId.BASCULIN,
+        { 1: [ SpeciesId.HISUI_BASCULIN ], 40: [ SpeciesId.BASCULEGION ]},
         { 1: [ SpeciesId.FRILLISH ], 40: [ SpeciesId.JELLICENT ]},
         { 1: [ SpeciesId.ARROKUDA ], 26: [ SpeciesId.BARRASKEWDA ]},
         SpeciesId.VELUZA
@@ -1184,9 +1185,9 @@ export const biomePokemonPools: BiomePokemonPools = {
       [TimeOfDay.DAY]: [],
       [TimeOfDay.DUSK]: [],
       [TimeOfDay.NIGHT]: [],
-      [TimeOfDay.ALL]: [ SpeciesId.OMASTAR, SpeciesId.KABUTOPS, SpeciesId.RELICANTH, SpeciesId.EELEKTROSS, SpeciesId.PYUKUMUKU, SpeciesId.DHELMISE, SpeciesId.CURSOLA, SpeciesId.ARCTOVISH, SpeciesId.BASCULEGION, SpeciesId.OVERQWIL ]
+      [TimeOfDay.ALL]: [ SpeciesId.OMASTAR, SpeciesId.KABUTOPS, SpeciesId.MILOTIC, SpeciesId.RELICANTH, SpeciesId.EELEKTROSS, SpeciesId.PYUKUMUKU, SpeciesId.DHELMISE, SpeciesId.CURSOLA, SpeciesId.ARCTOVISH, SpeciesId.BASCULEGION, SpeciesId.OVERQWIL ]
     },
-    [BiomePoolTier.BOSS_SUPER_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.MILOTIC, SpeciesId.MANAPHY ]},
+    [BiomePoolTier.BOSS_SUPER_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.MANAPHY ]},
     [BiomePoolTier.BOSS_ULTRA_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.KYOGRE ]}
   },
   [BiomeId.MOUNTAIN]: {
@@ -2382,7 +2383,7 @@ export const biomePokemonPools: BiomePokemonPools = {
       [TimeOfDay.NIGHT]: [],
       [TimeOfDay.ALL]: [{ 1: [ SpeciesId.CUBONE ], 28: [ SpeciesId.MAROWAK ]}, { 1: [ SpeciesId.YAMASK ], 34: [ SpeciesId.COFAGRIGUS ]}, { 1: [ SpeciesId.SINISTEA ], 30: [ SpeciesId.POLTEAGEIST ]}, { 1: [ SpeciesId.SLOWPOKE ], 37: [ SpeciesId.SLOWKING ]}, { 1: [ SpeciesId.SHELLDER ], 37: [ SpeciesId.CLOYSTER ]}, { 1: [ SpeciesId.HORSEA ], 32: [ SpeciesId.SEADRA ], 40: [ SpeciesId.KINGDRA ]}, { 1: [ SpeciesId.CHINCHOU ], 27: [ SpeciesId.LANTURN ]}, { 1: [ SpeciesId.CARVANHA ], 30: [ SpeciesId.SHARPEDO ]}, { 1: [ SpeciesId.CLAMPERL ], 37: [ SpeciesId.HUNTAIL ]}, { 1: [ SpeciesId.CLAMPERL ], 37: [ SpeciesId.GOREBYSS ]}, { 1: [ SpeciesId.FINNEON ], 31: [ SpeciesId.LUMINEON ]}, { 1: [ SpeciesId.BINACLE ], 39: [ SpeciesId.BARBARACLE ]}, { 1: [ SpeciesId.SKRELP ], 37: [ SpeciesId.DRAGALGE ]}, SpeciesId.WISHIWASHI, { 1: [ SpeciesId.MAREANIE ], 38: [ SpeciesId.TOXAPEX ]}, SpeciesId.DHELMISE ]
     },
-    [BiomePoolTier.RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.MISDREAVUS, SpeciesId.MIMIKYU, { 1: [ SpeciesId.BASCULIN ], 38: [ SpeciesId.BASCULEGION ]}, SpeciesId.DONDOZO ]},
+    [BiomePoolTier.RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.MISDREAVUS, SpeciesId.MIMIKYU, SpeciesId.BASCULIN, { 1: [ SpeciesId.HISUI_BASCULIN ], 38: [ SpeciesId.BASCULEGION ]}, SpeciesId.DONDOZO ]},
     [BiomePoolTier.SUPER_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.SPIRITOMB ]},
     [BiomePoolTier.ULTRA_RARE]: { [TimeOfDay.DAWN]: [], [TimeOfDay.DAY]: [], [TimeOfDay.DUSK]: [], [TimeOfDay.NIGHT]: [], [TimeOfDay.ALL]: [ SpeciesId.TAPU_FINI ]},
     [BiomePoolTier.BOSS]: {
@@ -3735,6 +3736,14 @@ export const biomeTrainerPools: BiomeTrainerPools = {
     [BiomePoolTier.BOSS]: [ TrainerType.NESSA ]
   },
   [BiomeId.LABORATORY]: {
+    [BiomePoolTier.COMMON]: [ TrainerType.SCIENTIST ],
+    [BiomePoolTier.UNCOMMON]: [],
+    [BiomePoolTier.RARE]: [],
+    [BiomePoolTier.SUPER_RARE]: [],
+    [BiomePoolTier.ULTRA_RARE]: [],
+    [BiomePoolTier.BOSS]: [ TrainerType.GIOVANNI ]
+  },
+  [BiomeId.MAGMA_CAVERN]: {
     [BiomePoolTier.COMMON]: [ TrainerType.SCIENTIST ],
     [BiomePoolTier.UNCOMMON]: [],
     [BiomePoolTier.RARE]: [],

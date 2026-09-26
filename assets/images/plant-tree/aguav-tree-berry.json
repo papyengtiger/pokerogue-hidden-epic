@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "aguav-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 17,
+				"h": 51
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 9,
+						"w": 15,
+						"h": 23
+					},
+					"frame": {
+						"x": 1,
+						"y": 27,
+						"w": 15,
+						"h": 23
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 8,
+						"w": 15,
+						"h": 24
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 24
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:05b36abd37028ff7ef1b9ce06f3385d0:ecc77fa8b094e48da58aa9d39209a21b:d9e9430864345aa4b7992fd80fa5cd6d$"
+	}
+}

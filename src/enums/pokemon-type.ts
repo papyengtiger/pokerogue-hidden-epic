@@ -19,6 +19,7 @@ export enum PokemonType {
   DARK,
   FAIRY,
   STELLAR,
+  MYSTERY,
 }
 
 /** The largest legal value for a {@linkcode PokemonType} (includes Stellar) */

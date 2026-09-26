@@ -15,53 +15,56 @@ export class TurnInitPhase extends FieldPhase {
   start() {
     super.start();
 
-if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  (globalScene as any).practiceTurnResult = {
-    damageDealt: 0,
-    damageTaken: 0,
+    if (!globalScene.currentBattle) {
+      console.warn("[TURN_INIT_SKIP_NO_BATTLE]");
+      globalScene.phaseManager.clearPhaseQueue();
+      return;
+    }
 
-    playerHitCount: 0,
-    enemyHitCount: 0,
-    playerMissCount: 0,
-    enemyMissCount: 0,
-    playerCriticalCount: 0,
-    enemyCriticalCount: 0,
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      (globalScene as any).practiceTurnResult = {
+        damageDealt: 0,
+        damageTaken: 0,
 
-    effectivenessText: "",
+        playerHitCount: 0,
+        enemyHitCount: 0,
+        playerMissCount: 0,
+        enemyMissCount: 0,
+        playerCriticalCount: 0,
+        enemyCriticalCount: 0,
 
-    playerDamageFactors: [] as string[],
-    enemyDamageFactors: [] as string[],
+        effectivenessText: "",
 
-    playerDamageDetails: [] as string[],
-    enemyDamageDetails: [] as string[],
+        playerDamageFactors: [] as string[],
+        enemyDamageFactors: [] as string[],
 
-    playerAccuracyFactors: [] as string[],
-    enemyAccuracyFactors: [] as string[],
+        playerDamageDetails: [] as string[],
+        enemyDamageDetails: [] as string[],
 
-    playerCritFactors: [] as string[],
-    enemyCritFactors: [] as string[],
+        playerAccuracyFactors: [] as string[],
+        enemyAccuracyFactors: [] as string[],
 
-    playerRewardFactors: [] as string[],
-enemyRewardFactors: [] as string[],
+        playerCritFactors: [] as string[],
+        enemyCritFactors: [] as string[],
 
-expGained: 0,
-moneyGained: 0,
-roguePointsGained: 0,
+        playerRewardFactors: [] as string[],
+        enemyRewardFactors: [] as string[],
 
-expFactors: [] as string[],
-moneyFactors: [] as string[],
-roguePointFactors: [] as string[],
+        expGained: 0,
+        moneyGained: 0,
+        roguePointsGained: 0,
 
-expRewardEnabled:
-  globalScene.gameData.practiceDummyConfig?.rewardFlags?.exp ?? false,
+        expFactors: [] as string[],
+        moneyFactors: [] as string[],
+        roguePointFactors: [] as string[],
 
-moneyRewardEnabled:
-  globalScene.gameData.practiceDummyConfig?.rewardFlags?.money ?? false,
+        expRewardEnabled: globalScene.gameData.practiceDummyConfig?.rewardFlags?.exp ?? false,
 
-rpRewardEnabled:
-  globalScene.gameData.practiceDummyConfig?.rewardFlags?.roguePoints ?? false,
-  };
-}
+        moneyRewardEnabled: globalScene.gameData.practiceDummyConfig?.rewardFlags?.money ?? false,
+
+        rpRewardEnabled: globalScene.gameData.practiceDummyConfig?.rewardFlags?.roguePoints ?? false,
+      };
+    }
 
     // 1) 불법 진화 체크(기존 로직 유지)
     globalScene.getPlayerField().forEach(p => {
@@ -74,12 +77,12 @@ rpRewardEnabled:
 
         const allowedPokemon = globalScene.getPokemonAllowedInBattle();
 
-        if (!allowedPokemon.length) {
+        if (allowedPokemon.length === 0) {
           globalScene.phaseManager.clearPhaseQueue();
           globalScene.phaseManager.unshiftNew("GameOverPhase");
         } else if (
-          allowedPokemon.length >= globalScene.currentBattle.getBattlerCount() ||
-          (globalScene.currentBattle.double && !allowedPokemon[0].isActive(true))
+          allowedPokemon.length >= globalScene.currentBattle.getBattlerCount()
+          || (globalScene.currentBattle.double && !allowedPokemon[0].isActive(true))
         ) {
           p.switchOut();
         } else {
@@ -94,65 +97,67 @@ rpRewardEnabled:
 
     globalScene.eventTarget.dispatchEvent(new TurnInitEvent());
 
-    handleMysteryEncounterBattleStartEffects();
+    if (!(globalScene.currentBattle as any)?.isPracticeBattle) {
+      handleMysteryEncounterBattleStartEffects();
 
-    // Mystery encounter가 턴시작을 가로채면 그대로 종료
-    if (handleMysteryEncounterTurnStartEffects()) {
-      this.end();
-      return;
+      if (handleMysteryEncounterTurnStartEffects()) {
+        this.end();
+        return;
+      }
     }
 
     // ✅ 2) 먼저 turnData 초기화 + 참가자 등록만 해둠 (커맨드는 아직 생성 X)
     globalScene.getField().forEach((pokemon, i) => {
-  if (!pokemon?.isActive()) return;
+      if (!pokemon?.isActive()) {
+        return;
+      }
 
-  if (pokemon.isPlayer()) {
-    globalScene.currentBattle.addParticipant(pokemon as PlayerPokemon);
-  }
+      if (pokemon.isPlayer()) {
+        globalScene.currentBattle.addParticipant(pokemon as PlayerPokemon);
+      }
 
-  pokemon.resetTurnData();
+      pokemon.resetTurnData();
 
-  (pokemon as any).turnData.movePowerMultiplier = 1;
-  (pokemon as any).turnData.lastPowerBoostName = undefined;
-});
+      (pokemon as any).turnData.movePowerMultiplier = 1;
+      (pokemon as any).turnData.lastPowerBoostName = undefined;
+    });
 
-// ✅ 배틀 시작 턴이면: 즉발 베리 페이즈만 먼저 실행하고 여기서 종료
+    // ✅ 배틀 시작 턴이면: 즉발 베리 페이즈만 먼저 실행하고 여기서 종료
 
-console.log("[PRACTICE] turn start", {
-  wave: globalScene.currentBattle?.waveIndex,
-  turn: globalScene.currentBattle?.turn ?? "unknown",
-});
+    console.log("[PRACTICE] turn start", {
+      wave: globalScene.currentBattle?.waveIndex,
+      turn: globalScene.currentBattle?.turn ?? "unknown",
+    });
 
-const isBattleStartTurn = (globalScene.currentBattle?.turn ?? 0) <= 1;
-if (isBattleStartTurn) {
-  globalScene.phaseManager.pushNew("BattleStartImmediateBerryPhase");
-  this.end();
-  return;
-}
+    const isBattleStartTurn = (globalScene.currentBattle?.turn ?? 0) <= 1;
+    if (isBattleStartTurn) {
+      globalScene.phaseManager.pushNew("BattleStartImmediateBerryPhase");
+      this.end();
+      return;
+    }
 
-// --- 여기부터는 기존 로직 그대로 (커맨드/턴스타트 큐잉) ---
-globalScene.getField().forEach((pokemon, i) => {
-  console.log("[PRACTICE][TURN_QUEUE_CHECK]", {
-    i,
-    name: pokemon?.getName?.(),
-    isActive: pokemon?.isActive?.(),
-    isPlayer: pokemon?.isPlayer?.(),
-    isEnemy: pokemon?.isEnemy?.(),
-    battlerIndex: pokemon?.getBattlerIndex?.(),
-  });
+    // --- 여기부터는 기존 로직 그대로 (커맨드/턴스타트 큐잉) ---
+    globalScene.getField().forEach((pokemon, i) => {
+      console.log("[PRACTICE][TURN_QUEUE_CHECK]", {
+        i,
+        name: pokemon?.getName?.(),
+        isActive: pokemon?.isActive?.(),
+        isPlayer: pokemon?.isPlayer?.(),
+        isEnemy: pokemon?.isEnemy?.(),
+        battlerIndex: pokemon?.getBattlerIndex?.(),
+      });
 
-  if (!pokemon?.isActive()) return;
+      if (!pokemon?.isActive()) {
+        return;
+      }
 
-  if (pokemon.isPlayer()) {
-    globalScene.phaseManager.pushNew("CommandPhase", i);
-  } else {
-    globalScene.phaseManager.pushNew(
-      "EnemyCommandPhase",
-      i - BattlerIndex.ENEMY,
-    );
-  }
-});
-globalScene.phaseManager.pushNew("TurnStartPhase");
-this.end();
+      if (pokemon.isPlayer()) {
+        globalScene.phaseManager.pushNew("CommandPhase", i);
+      } else {
+        globalScene.phaseManager.pushNew("EnemyCommandPhase", i - BattlerIndex.ENEMY);
+      }
+    });
+    globalScene.phaseManager.pushNew("TurnStartPhase");
+    this.end();
   }
 }

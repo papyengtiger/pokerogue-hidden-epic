@@ -11,15 +11,13 @@ import type { Nature } from "#enums/nature";
 import type { PokemonType } from "#enums/pokemon-type";
 import type { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
+import type { RecycleSnapshot } from "#moves/recycle-snapshot";
 import type { AttackMoveResult } from "#types/attack-move-result";
 import type { IllusionData } from "#types/illusion-data";
 import type { SerializedSpeciesForm } from "#types/pokemon-common";
 import type { TurnMove } from "#types/turn-move";
 import type { CoerceNullPropertiesToUndefined } from "#types/type-helpers";
 import { getPokemonSpecies, getPokemonSpeciesForm } from "#utils/pokemon-utils";
-import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
-import type { RecycleSnapshot } from "#moves/recycle-snapshot";
-import { SpeciesId } from "#enums/species-id";
 
 /**
  * Permanent data that can customize a Pokemon in non-standard ways from its Species.
@@ -263,13 +261,14 @@ export class PokemonTempSummonData {
    * {@linkcode MoveId.FAKE_OUT | Fake Out} and {@linkcode MoveId.FIRST_IMPRESSION | First Impression}).
    */
   waveTurnCount = 1;
-// ✅ FLING 임시 컨텍스트 (세이브에 안 남음)
+  monsterHouseFirstTurn = false;
+  // ✅ FLING 임시 컨텍스트 (세이브에 안 남음)
   flingItem?: PersistentModifier;
   flingPowerOverride?: number;
   flingTypes?: PokemonType[];
   flingStabOverride?: number;
   // ✅ TRICK 임시 컨텍스트 (세이브에 안 남음)
-  trickGiveItem?: PokemonHeldItemModifier;     // 또는 PersistentModifier / 너가 쓰는 타입에 맞게
+  trickGiveItem?: PokemonHeldItemModifier; // 또는 PersistentModifier / 너가 쓰는 타입에 맞게
   trickTakeItem?: PokemonHeldItemModifier;
   trickTargetBattlerIndex?: number;
   // ✅ BESTOW(기프트패스) 임시 컨텍스트
@@ -286,7 +285,12 @@ export class PokemonBattleData {
   public hitCount = 0;
   public hasEatenBerry = false;
   public berriesEaten: BerryType[] = [];
-  
+
+  // ✅ 라즈열매: 발동 후 급소 위력 증가
+  public razzCritBoost = false;
+
+  // ✅ 블리열매: 발동 후 급소 무효
+  public blukNoCrit = false;
   // ✅ Bide(참기)용 누적 피해
   public bideDamage = 0;
   public bideTurnsLeft = 0;
@@ -300,6 +304,9 @@ export class PokemonBattleData {
       this.hitCount = source.hitCount ?? 0;
       this.hasEatenBerry = source.hasEatenBerry ?? false;
       this.berriesEaten = source.berriesEaten ?? [];
+
+      this.razzCritBoost = source.razzCritBoost ?? false;
+      this.blukNoCrit = source.blukNoCrit ?? false;
 
       this.bideDamage = source.bideDamage ?? 0;
       this.bideTurnsLeft = source.bideTurnsLeft ?? 0;
@@ -373,9 +380,9 @@ export class PokemonTurnData {
    */
   public berriesEaten: BerryType[] = [];
   public meFirstNoAccuracyCheck?: boolean;
-  public meFirstCopiedMove?: MoveId;        // 혹은 PokemonMove / MoveId 중 네가 실제로 저장하는 타입
-  public meFirstPowerBoost?: number;        // 1.5 같은 배율 or +50% 등 네 설계대로
-// ============================
+  public meFirstCopiedMove?: MoveId; // 혹은 PokemonMove / MoveId 중 네가 실제로 저장하는 타입
+  public meFirstPowerBoost?: number; // 1.5 같은 배율 or +50% 등 네 설계대로
+  // ============================
   // ✅ 반응형 베리(자보/애터/악키/타라프)용
   // ============================
   /** 이번 턴에 반응형 베리를 이미 발동했는지(중복 방지) */
@@ -397,10 +404,10 @@ export class PokemonTurnData {
   // ✅ 타입 선공 베리(너가 예약값 쓰는 로직)용
   // ============================
   public priorityBerryReservedMoveId?: MoveId;
-    // ============================
-// ✅ 선공(우선도) 베리 예약용 (타입 선공열매 / 커스타프 등)
-// ============================
-/** 이번 턴에 "선공 베리"를 먹기로 예약된 베리 타입 */
+  // ============================
+  // ✅ 선공(우선도) 베리 예약용 (타입 선공열매 / 커스타프 등)
+  // ============================
+  /** 이번 턴에 "선공 베리"를 먹기로 예약된 베리 타입 */
   public priorityBerryReserved?: BerryType;
   public custapPrimed = false;
   public naturalGiftReservedBerry?: BerryType;

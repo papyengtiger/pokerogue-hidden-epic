@@ -1250,7 +1250,7 @@ export const trainerTypeDialogue: TrainerTypeDialogue = {
     victory: ["dialogue:malva.victory.1"],
     defeat: ["dialogue:malva.defeat.1"],
   },
-  [TrainerType.HALA]: {
+  [TrainerType.HALA_ELITE]: {
     encounter: ["dialogue:hala.encounter.1"],
     victory: ["dialogue:hala.victory.1"],
     defeat: ["dialogue:hala.defeat.1"],
@@ -1300,7 +1300,7 @@ export const trainerTypeDialogue: TrainerTypeDialogue = {
     victory: ["dialogue:roxie.victory.1"],
     defeat: ["dialogue:roxie.defeat.1"],
   },
-  [TrainerType.OLIVIA]: {
+  [TrainerType.OLIVIA_ELITE]: {
     encounter: ["dialogue:olivia.encounter.1"],
     victory: ["dialogue:olivia.victory.1"],
     defeat: ["dialogue:olivia.defeat.1"],

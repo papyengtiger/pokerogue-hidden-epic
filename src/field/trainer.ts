@@ -4,6 +4,7 @@ import { signatureSpecies } from "#balance/signature-species";
 import { EntryHazardTag } from "#data/arena-tag";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { ArenaTagSide } from "#enums/arena-tag-side";
+import { GameModes } from "#enums/game-modes";
 import { PartyMemberStrength } from "#enums/party-member-strength";
 import { SpeciesId } from "#enums/species-id";
 import { TeraAIMode } from "#enums/tera-ai-mode";
@@ -265,7 +266,17 @@ export class Trainer extends Phaser.GameObjects.Container {
     const partyTemplate = this.getPartyTemplate();
 
     const difficultyWaveIndex = globalScene.gameMode.getWaveForDifficulty(waveIndex);
-    const baseLevel = 1 + difficultyWaveIndex / 2 + Math.pow(difficultyWaveIndex / 25, 2);
+
+    let modeLevelOffset = 0;
+
+    switch (globalScene.gameMode.modeId) {
+      case GameModes.WEEKLY:
+      case GameModes.MONTHLY:
+        modeLevelOffset = globalScene.gameMode.getStartingLevel() - 1;
+        break;
+    }
+
+    const baseLevel = modeLevelOffset + 1 + difficultyWaveIndex / 2 + Math.pow(difficultyWaveIndex / 25, 2);
 
     if (this.isDouble() && partyTemplate.size < 2) {
       partyTemplate.size = 2;
@@ -298,10 +309,12 @@ export class Trainer extends Phaser.GameObjects.Container {
 
       if (strength < PartyMemberStrength.STRONG) {
         multiplier = Math.min(multiplier + 0.025 * Math.floor(difficultyWaveIndex / 25), 1.2);
+
         levelOffset = -Math.floor((difficultyWaveIndex / 50) * (PartyMemberStrength.STRONG - strength));
       }
 
       const level = Math.ceil(baseLevel * multiplier) + levelOffset;
+
       ret.push(level);
     }
 

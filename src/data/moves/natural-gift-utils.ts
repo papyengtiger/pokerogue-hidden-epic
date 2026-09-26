@@ -1,6 +1,6 @@
-import { BerryType } from "#enums/berry-type";        // 네 경로에 맞게
-import { MoveId } from "#enums/move-id";
 import { allMoves } from "#data/data-lists";
+import { BerryType } from "#enums/berry-type"; // 네 경로에 맞게
+import { MoveId } from "#enums/move-id";
 import type { Pokemon } from "#field/pokemon";
 import { BerryModifier } from "#modifiers/modifier"; // 네 경로에 맞게
 
@@ -22,7 +22,7 @@ export const NATURAL_GIFT_BERRY_TO_MOVE: Partial<Record<BerryType, MoveId>> = {
   [BerryType.WIKI]: MoveId.MINERAL_BURST,
   [BerryType.MAGO]: MoveId.ASTRAL_BURST,
   [BerryType.AGUAV]: MoveId.SPECTER_LANCE,
-  [BerryType.LAPAPA]: MoveId.AEROBURST,
+  [BerryType.IAPAPA]: MoveId.AEROBURST,
   [BerryType.POMEG]: MoveId.SKY_LANCE,
   [BerryType.KELPSY]: MoveId.OCEAN_SPEAR,
   [BerryType.QUALOT]: MoveId.WATER_SPOUT,
@@ -48,7 +48,7 @@ export const NATURAL_GIFT_BERRY_TO_MOVE: Partial<Record<BerryType, MoveId>> = {
   [BerryType.CHILAN]: MoveId.MULTI_ATTCK,
   [BerryType.ROSELI]: MoveId.SPARKLY_SWIRL,
   [BerryType.MICLE]: MoveId.THOUSAND_ARROWS,
-  [BerryType.NICLE]: MoveId.DIAMOND_STORM,
+  [BerryType.NANAB]: MoveId.DIAMOND_STORM,
   [BerryType.CHERI]: MoveId.MALIGNANT_CHAIN,
   [BerryType.CHESTO]: MoveId.SEED_FLARE,
   [BerryType.PECHA]: MoveId.DOUBLE_IRON_BASH,
@@ -82,12 +82,13 @@ export function getNaturalGiftCandidateBerries(
   pokemon: Pokemon,
   allHeldMods: any[], // 너 엔진에선 globalScene.findModifiers 결과
 ): BerryModifier[] {
-  return allHeldMods.filter(m =>
-    m instanceof BerryModifier &&
-    m.pokemonId === pokemon.id &&
-    !m.consumed &&
-    (m.stackCount ?? 1) > 0 &&
-    hasNaturalGiftMapping(m.berryType)
+  return allHeldMods.filter(
+    m =>
+      m instanceof BerryModifier
+      && m.pokemonId === pokemon.id
+      && !m.consumed
+      && (m.stackCount ?? 1) > 0
+      && hasNaturalGiftMapping(m.berryType),
   ) as BerryModifier[];
 }
 

@@ -44,31 +44,40 @@ export class ObtainStatusEffectPhase extends PokemonPhase {
   start() {
     const pokemon = this.getPokemon();
 
+    // ✅ Phase가 실행되기 전에 대상이 필드에서 사라졌을 수 있음
+    if (!pokemon) {
+      console.warn("[STATUS_PHASE_TARGET_MISSING]", {
+        statusEffect: this.statusEffect,
+        sourcePokemon: this.sourcePokemon?.name,
+      });
+
+      this.end();
+      return;
+    }
+
     pokemon.doSetStatus(this.statusEffect, this.sleepTurnsRemaining);
-  
-    if (
-  pokemon.status &&
-  (this.statusEffect === StatusEffect.POISON ||
-   this.statusEffect === StatusEffect.TOXIC)
-) {
-  pokemon.status.sourcePokemonId = this.sourcePokemon?.id;
-}
+
+    if (pokemon.status && (this.statusEffect === StatusEffect.POISON || this.statusEffect === StatusEffect.TOXIC)) {
+      pokemon.status.sourcePokemonId = this.sourcePokemon?.id;
+    }
 
     pokemon.updateInfo(true);
 
     new CommonBattleAnim(CommonAnim.POISON + (this.statusEffect - 1), pokemon).play(false, () => {
       globalScene.phaseManager.queueMessage(this.statusMessage);
+
       if (this.statusEffect && this.statusEffect !== StatusEffect.FAINT) {
         globalScene.triggerPokemonFormChange(pokemon, SpeciesFormChangeStatusEffectTrigger, true);
-        // If the status was applied from a move, ensure abilities are not ignored for follow-up triggers.
-        // TODO: Ensure this isn't breaking any other phases unshifted afterwards
+
         globalScene.arena.setIgnoreAbilities(false);
+
         applyAbAttrs("PostSetStatusAbAttr", {
           pokemon,
           effect: this.statusEffect,
           sourcePokemon: this.sourcePokemon ?? undefined,
         });
       }
+
       this.end();
     });
   }

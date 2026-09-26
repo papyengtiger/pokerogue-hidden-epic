@@ -1,47 +1,36 @@
 import { globalScene } from "#app/global-scene";
-import { BattlePhase } from "#phases/battle-phase";
-import { SpeciesId } from "#enums/species-id";
-import { TrainerSlot } from "#enums/trainer-slot";
 import { FieldPosition } from "#enums/field-position";
-import { getPokemonSpecies } from "#utils/pokemon-utils";
 import type { Pokemon } from "#field/pokemon";
+import { BattlePhase } from "#phases/battle-phase";
 
 export class PracticeDummyBattlePhase extends BattlePhase {
   public readonly phaseName = "PracticeDummyBattlePhase";
 
   start() {
-  console.log("[PRACTICE_PHASE] start entered", {
-  currentBattle: globalScene.currentBattle,
-  phaseName: this.phaseName,
-  fieldVisible: globalScene.field?.visible,
-  arenaBgVisible: globalScene.arenaBg?.visible,
-  arenaEnemyVisible: globalScene.arenaEnemy?.visible,
-  arenaPlayerVisible: globalScene.arenaPlayer?.visible,
-});
     const pm: any = globalScene.phaseManager;
 
-console.log("[PRACTICE_PHASE] phase manager keys", Object.keys(pm));
-
-console.log("[PRACTICE_PHASE] raw phaseQueue", pm.phaseQueue);
-console.log("[PRACTICE_PHASE] raw phaseStack", pm.phaseStack);
-console.log("[PRACTICE_PHASE] raw phases", pm.phases);
     super.start();
 
     const battle = globalScene.currentBattle as any;
 
-battle.practiceDebugId = Math.random().toString(36).slice(2);
+    // 기존 연습전 플래그
+    battle.practiceDebugId = Math.random().toString(36).slice(2);
 
-battle.isPracticeBattle = true;
-battle.skipEnemyBattleTurns = true;
-battle.practiceNoPpCost = true;
-battle.practicePlayerAutoRevive = true;
-battle.practiceDummyNoHpLoss = true;
+    battle.isPracticeBattle = true;
+    battle.skipEnemyBattleTurns = true;
 
-console.log("[PRACTICE_FLAGS_SET]",
-  "debugId=", battle.practiceDebugId,
-  "isPracticeBattle=", battle.isPracticeBattle,
-  "practiceNoPpCost=", battle.practiceNoPpCost,
-);
+    // 추가한 배틀 유형 처리
+    const battleType = (globalScene.gameData.practiceDummyConfig as any)?.battleType ?? "SINGLE";
+
+    battle.double = battleType === "DOUBLE";
+
+    console.log("[PRACTICE_BATTLE_TYPE]", battleType, battle.double);
+
+    battle.practiceNoPpCost = true;
+
+    battle.practicePlayerAutoRevive = !(globalScene.gameData.practiceDummyConfig?.rewardFlags?.allowAllyFaint ?? false);
+
+    battle.practiceDummyNoHpLoss = true;
 
     battle.enemyParty = [];
     battle.seenEnemyPartyMemberIds.clear();
@@ -60,77 +49,81 @@ console.log("[PRACTICE_FLAGS_SET]",
       playerPokemon.showInfo();
     }
 
-    const dummy = globalScene.addPracticeDummyEnemy();
-battle.practiceDummy = dummy;
+    const dummy1 = globalScene.addPracticeDummyEnemy();
 
-dummy.setFieldPosition(FieldPosition.CENTER, 0);
-dummy.setVisible(true);
-dummy.setAlpha(1);
-dummy.getSprite?.()?.setVisible(true);
-dummy.playAnim?.();
-dummy.showInfo?.();
+    dummy1.setFieldPosition(battle.double ? FieldPosition.LEFT : FieldPosition.CENTER, 0);
 
-console.log("[PRACTICE_PHASE] dummy created", {
-  dummy,
-  dummyParent: dummy.parentContainer?.name,
-  dummyX: dummy.x,
-  dummyY: dummy.y,
-  dummyVisible: dummy.visible,
-  dummyAlpha: dummy.alpha,
-  dummyActive: dummy.active,
-  enemyField: globalScene.getEnemyField(),
-  enemyPokemon: globalScene.getEnemyPokemon(),
-});
+    battle.practiceDummy = dummy1;
 
-globalScene.arenaEnemy.setVisible(true);
-globalScene.arenaNextEnemy.setVisible(false);
-globalScene.field.setVisible(true);
+    if (battle.double) {
+      const dummy2 = globalScene.addPracticeDummyEnemy();
+
+      dummy2.setFieldPosition(FieldPosition.RIGHT, 1);
+
+      dummy2.setVisible(true);
+      dummy2.setAlpha(1);
+      dummy2.getSprite?.()?.setVisible(true);
+      dummy2.playAnim?.();
+      dummy2.showInfo?.();
+
+      battle.practiceDummy2 = dummy2;
+    }
+
+    dummy1.setVisible(true);
+    dummy1.setAlpha(1);
+    dummy1.getSprite?.()?.setVisible(true);
+    dummy1.playAnim?.();
+    dummy1.showInfo?.();
+
+    globalScene.arenaEnemy.setVisible(true);
+    globalScene.arenaNextEnemy.setVisible(false);
+    globalScene.field.setVisible(true);
 
     // 내부 스프라이트는 중복 확대하지 않음
-    (dummy as any).sprite?.setScale(1);
-    (dummy as any).sprite?.setOrigin(0.5, 1);
-    (dummy as any).sprite?.setVisible(true);
-    (dummy as any).sprite?.setAlpha(1);
+    (dummy1 as any).sprite?.setScale(1);
+    (dummy1 as any).sprite?.setOrigin(0.5, 1);
+    (dummy1 as any).sprite?.setVisible(true);
+    (dummy1 as any).sprite?.setAlpha(1);
 
     console.log("[PRACTICE_DUMMY]", {
       container: {
-        x: dummy.x,
-        y: dummy.y,
-        scaleX: dummy.scaleX,
-        scaleY: dummy.scaleY,
-        visible: dummy.visible,
-        alpha: dummy.alpha,
-        depth: dummy.depth,
-        children: dummy.list?.length,
+        x: dummy1.x,
+        y: dummy1.y,
+        scaleX: dummy1.scaleX,
+        scaleY: dummy1.scaleY,
+        visible: dummy1.visible,
+        alpha: dummy1.alpha,
+        depth: dummy1.depth,
+        children: dummy1.list?.length,
       },
       sprite: {
-        x: (dummy as any).sprite?.x,
-        y: (dummy as any).sprite?.y,
-        scaleX: (dummy as any).sprite?.scaleX,
-        scaleY: (dummy as any).sprite?.scaleY,
-        visible: (dummy as any).sprite?.visible,
-        alpha: (dummy as any).sprite?.alpha,
-        texture: (dummy as any).sprite?.texture?.key,
-        frame: (dummy as any).sprite?.frame?.name,
+        x: (dummy1 as any).sprite?.x,
+        y: (dummy1 as any).sprite?.y,
+        scaleX: (dummy1 as any).sprite?.scaleX,
+        scaleY: (dummy1 as any).sprite?.scaleY,
+        visible: (dummy1 as any).sprite?.visible,
+        alpha: (dummy1 as any).sprite?.alpha,
+        texture: (dummy1 as any).sprite?.texture?.key,
+        frame: (dummy1 as any).sprite?.frame?.name,
       },
     });
 
     globalScene.updateFieldScale();
     console.log("[PRACTICE_PHASE] before updateFieldScale", {
-  fieldScaleX: globalScene.field.scaleX,
-  fieldScaleY: globalScene.field.scaleY,
-  fieldX: globalScene.field.x,
-  fieldY: globalScene.field.y,
-});
+      fieldScaleX: globalScene.field.scaleX,
+      fieldScaleY: globalScene.field.scaleY,
+      fieldX: globalScene.field.x,
+      fieldY: globalScene.field.y,
+    });
 
-globalScene.updateFieldScale().then(() => {
-  console.log("[PRACTICE_PHASE] after updateFieldScale", {
-    fieldScaleX: globalScene.field.scaleX,
-    fieldScaleY: globalScene.field.scaleY,
-    fieldX: globalScene.field.x,
-    fieldY: globalScene.field.y,
-  });
-});
+    globalScene.updateFieldScale().then(() => {
+      console.log("[PRACTICE_PHASE] after updateFieldScale", {
+        fieldScaleX: globalScene.field.scaleX,
+        fieldScaleY: globalScene.field.scaleY,
+        fieldX: globalScene.field.x,
+        fieldY: globalScene.field.y,
+      });
+    });
     battle.started = true;
 
     console.log("player field", globalScene.getPlayerField());

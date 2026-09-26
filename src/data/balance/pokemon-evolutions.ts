@@ -1193,9 +1193,9 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.COSMOEM, 1, null, {key: EvoCondKey.FRIENDSHIP, value: 33}, [43, 53, 59])
   ],
   [SpeciesId.COSMOEM]: [
-    new SpeciesEvolution(SpeciesId.SOLGALEO, "", "", {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]}, [43, 53, 59]),
-    new SpeciesEvolution(SpeciesId.LUNALA, "", "", {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}, [43, 53, 59])
-  ],
+  new SpeciesEvolution(SpeciesId.SOLGALEO, 1, null, { key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]}),
+  new SpeciesEvolution(SpeciesId.LUNALA, 1, null, { key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]})
+],
   [SpeciesId.MELTAN]: [
     new SpeciesEvolution(SpeciesId.MELMETAL, 30, null, null, [30, 50, 70])
   ],
@@ -1534,20 +1534,20 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.FARIGIRAF, 32, null, {key: EvoCondKey.MOVE, move: MoveId.TWIN_BEAM}, [33, 38, 48])
   ],
   [SpeciesId.DUNSPARCE]: [
-    new SpeciesFormEvolution(SpeciesId.DUDUNSPARCE, "", "three-segment", 32, null, [{key: EvoCondKey.RANDOM_FORM, value: 4}, {key: EvoCondKey.MOVE, move: MoveId.HYPER_DRILL}], [33, 38, 48]),
-    new SpeciesFormEvolution(SpeciesId.DUDUNSPARCE, "", "two-segment", 32, null, {key: EvoCondKey.MOVE, move: MoveId.HYPER_DRILL}, [33, 38, 48])
+    new SpeciesFormEvolution(SpeciesId.DUDUNSPARCE, "", "three-segment", 32, null, [{key: EvoCondKey.RANDOM_FORM, value: 4}, {key: EvoCondKey.MOVE, move: MoveId.HYPER_DRILL}]),
+    new SpeciesFormEvolution(SpeciesId.DUDUNSPARCE, "", "two-segment", 32, null, {key: EvoCondKey.MOVE, move: MoveId.HYPER_DRILL})
   ],
   [SpeciesId.GLIGAR]: [
-    new SpeciesEvolution(SpeciesId.GLISCOR, 1, EvolutionItem.RAZOR_FANG, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}, [48, 56, 64])
+    new SpeciesEvolution(SpeciesId.GLISCOR, 1, EvolutionItem.RAZOR_FANG, null)
   ],
   [SpeciesId.SNEASEL]: [
-    new SpeciesEvolution(SpeciesId.WEAVILE, 1, EvolutionItem.RAZOR_CLAW, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}, [48, 56, 64])
+    new SpeciesEvolution(SpeciesId.WEAVILE, 1, EvolutionItem.RAZOR_CLAW, null)
   ],
   [SpeciesId.HAPPINY]: [
-    new SpeciesEvolution(SpeciesId.CHANSEY, 1, EvolutionItem.OVAL_STONE, {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]}, [20, 25, 25])
+    new SpeciesEvolution(SpeciesId.CHANSEY, 1, EvolutionItem.OVAL_STONE, null)
   ],
   [SpeciesId.URSARING]: [
-    new SpeciesEvolution(SpeciesId.URSALUNA, 1, EvolutionItem.PEAT_BLOCK, null, [70, 85, 100]) //Ursaring does not evolve into Bloodmoon Ursaluna
+    new SpeciesEvolution(SpeciesId.URSALUNA, 1, EvolutionItem.PEAT_BLOCK, null) //Ursaring does not evolve into Bloodmoon Ursaluna
   ],
   [SpeciesId.PILOSWINE]: [
     new SpeciesEvolution(SpeciesId.MAMOSWINE, 1, null, {key: EvoCondKey.MOVE, move: MoveId.ANCIENT_POWER}, [48, 56, 64])
@@ -1574,7 +1574,7 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.SUDOWOODO, 1, null, {key: EvoCondKey.MOVE, move: MoveId.MIMIC}, [19, 24, 24])
   ],
   [SpeciesId.MIME_JR]: [
-    new SpeciesEvolution(SpeciesId.GALAR_MR_MIME, 1, null, [{key: EvoCondKey.MOVE, move: MoveId.MIMIC}, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}], [19, 24, 24]),
+    new SpeciesEvolution(SpeciesId.GALAR_MR_MIME, 1, EvolutionItem.ICE_STONE, null),
     new SpeciesEvolution(SpeciesId.MR_MIME, 1, null, [{key: EvoCondKey.MOVE, move: MoveId.MIMIC}, {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]}], [19, 24, 24])
   ],
   [SpeciesId.PANSAGE]: [
@@ -1596,10 +1596,10 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.HISUI_LILLIGANT, 1, EvolutionItem.DAWN_STONE, null, [28, 32, 32]),
     new SpeciesEvolution(SpeciesId.LILLIGANT, 1, EvolutionItem.SUN_STONE, null, [28, 32, 32])
   ],
-  [SpeciesId.BASCULIN]: [
+  [SpeciesId.HISUI_BASCULIN]: [
     // TODO: Uncomment evo delay when different evo condition is implemented
-    new SpeciesFormEvolution(SpeciesId.BASCULEGION, "white-striped", "female", 40, null, [{key: EvoCondKey.GENDER, gender: Gender.FEMALE}], /* [45, 65, 85] */),
-    new SpeciesFormEvolution(SpeciesId.BASCULEGION, "white-striped", "male", 40, null, [{key: EvoCondKey.GENDER, gender: Gender.MALE}], /* [45, 65, 85 ] */)
+    new SpeciesFormEvolution(SpeciesId.BASCULEGION, "", "female", 30, null, [{key: EvoCondKey.GENDER, gender: Gender.FEMALE}]),
+    new SpeciesFormEvolution(SpeciesId.BASCULEGION, "", "male", 30, null, [{key: EvoCondKey.GENDER, gender: Gender.MALE}])
   ],
   [SpeciesId.MINCCINO]: [
     new SpeciesEvolution(SpeciesId.CINCCINO, 1, EvolutionItem.SHINY_STONE, null, [24, 32, 32])
@@ -1703,7 +1703,7 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.OVERQWIL, 28, null, {key: EvoCondKey.MOVE, move: MoveId.BARB_BARRAGE}, [38, 48, 58])
   ],
   [SpeciesId.HISUI_SNEASEL]: [
-    new SpeciesEvolution(SpeciesId.SNEASLER, 1, EvolutionItem.RAZOR_CLAW, {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]}, [48, 54, 60])
+    new SpeciesEvolution(SpeciesId.SNEASLER, 1, EvolutionItem.RAZOR_CLAW, null)
   ],
   [SpeciesId.CHARCADET]: [
     new SpeciesEvolution(SpeciesId.ARMAROUGE, 1, EvolutionItem.AUSPICIOUS_ARMOR, null, [30, 35, 35]),
@@ -1868,12 +1868,25 @@ export const pokemonPrevolutions: PokemonPrevolutions = {};
 
 export function initPokemonPrevolutions(): void {
   // TODO: Why do we have empty strings in our array?
-  const megaFormKeys = [SpeciesFormKey.MEGA, "", SpeciesFormKey.MEGA_X, "", SpeciesFormKey.MEGA_Y];
+  const megaFormKeys = [
+    SpeciesFormKey.MEGA,
+    "",
+    SpeciesFormKey.MEGA_X,
+    "",
+    SpeciesFormKey.MEGA_Y,
+    SpeciesFormKey.MEGA_Z,
+    SpeciesFormKey.MEGA_ORIGINAL,
+    SpeciesFormKey.MEGA_CURLY,
+    SpeciesFormKey.MEGA_DROOPY,
+    SpeciesFormKey.MEGA_STRETCHY,
+  ];
+
   for (const [pk, evolutions] of Object.entries(pokemonEvolutions)) {
     for (const ev of evolutions) {
       if (ev.evoFormKey && megaFormKeys.indexOf(ev.evoFormKey) > -1) {
         continue;
       }
+
       pokemonPrevolutions[ev.speciesId] = Number.parseInt(pk) as SpeciesId;
     }
   }

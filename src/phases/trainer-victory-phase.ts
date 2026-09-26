@@ -15,30 +15,46 @@ export class TrainerVictoryPhase extends BattlePhase {
   public readonly phaseName = "TrainerVictoryPhase";
 
   start() {
-  console.log("[TrainerVictoryPhase] START");
+    console.log("[TrainerVictoryPhase] START");
 
-  const trainer = globalScene.currentBattle.trainer;
-  if (!trainer) {
-    console.warn("[TrainerVictoryPhase] trainer is null -> end()");
-    this.end();
-    return;
-  }
+    const trainer = globalScene.currentBattle.trainer;
+    if (!trainer) {
+      console.warn("[TrainerVictoryPhase] trainer is null -> end()");
+      this.end();
+      return;
+    }
 
-  globalScene.disableMenu = true;
+    globalScene.disableMenu = true;
 
-  globalScene.playBgm(trainer.config.victoryBgm);
+    globalScene.playBgm(trainer.config.victoryBgm);
 
-  globalScene.phaseManager.unshiftNew("MoneyRewardPhase", trainer.config.moneyMultiplier);
+    globalScene.phaseManager.unshiftNew("MoneyRewardPhase", trainer.config.moneyMultiplier);
 
-  const modifierRewardFuncs = trainer.config.modifierRewardFuncs ?? [];
-  console.log("[TrainerVictoryPhase] modifierRewardFuncs count =", modifierRewardFuncs.length);
+    const baseRp = trainer.config.isBoss ? 500 : 150;
+    const multiplier = trainer.config.moneyMultiplier ?? 1;
+    const waveBonus = Math.floor(globalScene.currentBattle.waveIndex / 10) * 500;
 
-  for (const [i, modifierRewardFunc] of modifierRewardFuncs.entries()) {
-    console.log(`[TrainerVictoryPhase] enqueue ModifierRewardPhase #${i}`);
-    globalScene.phaseManager.unshiftNew("ModifierRewardPhase", modifierRewardFunc);
-  }
+    const gainedRp = Math.floor(baseRp * multiplier + waveBonus);
 
-  const trainerType = trainer.config.trainerType;
+    globalScene.gameData.addRoguePoints(gainedRp);
+
+    console.log("[TRAINER_VICTORY_RP]", {
+      trainerType: TrainerType[trainer.config.trainerType],
+      isBoss: trainer.config.isBoss,
+      moneyMultiplier: trainer.config.moneyMultiplier,
+      waveIndex: globalScene.currentBattle.waveIndex,
+      gainedRp,
+    });
+
+    const modifierRewardFuncs = trainer.config.modifierRewardFuncs ?? [];
+    console.log("[TrainerVictoryPhase] modifierRewardFuncs count =", modifierRewardFuncs.length);
+
+    for (const [i, modifierRewardFunc] of modifierRewardFuncs.entries()) {
+      console.log(`[TrainerVictoryPhase] enqueue ModifierRewardPhase #${i}`);
+      globalScene.phaseManager.unshiftNew("ModifierRewardPhase", modifierRewardFunc);
+    }
+
+    const trainerType = trainer.config.trainerType;
 
     console.log("[TrainerVictoryPhase] trainerType =", TrainerType[trainerType]);
     console.log("[TrainerVictoryPhase] isBoss =", trainer?.config.isBoss);
@@ -52,10 +68,7 @@ export class TrainerVictoryPhase extends BattlePhase {
 
       if (!valid && trainer?.config.isBoss) {
         const upgraded = timedEventManager.getUpgradeUnlockedVouchers();
-        console.log(
-          "[TrainerVictoryPhase] grant voucher | upgraded =",
-          upgraded,
-        );
+        console.log("[TrainerVictoryPhase] grant voucher | upgraded =", upgraded);
 
         const voucherType = voucher.voucherType;
         const reward = upgraded
@@ -65,30 +78,20 @@ export class TrainerVictoryPhase extends BattlePhase {
               modifierTypes.VOUCHER_PLUS,
               modifierTypes.VOUCHER_PREMIUM,
             ][voucherType]
-          : [
-              modifierTypes.VOUCHER,
-              modifierTypes.VOUCHER,
-              modifierTypes.VOUCHER_PLUS,
-              modifierTypes.VOUCHER_PREMIUM,
-            ][voucherType];
+          : [modifierTypes.VOUCHER, modifierTypes.VOUCHER, modifierTypes.VOUCHER_PLUS, modifierTypes.VOUCHER_PREMIUM][
+              voucherType
+            ];
 
-        console.log(
-          "[TrainerVictoryPhase] enqueue voucher reward =",
-          reward,
-        );
+        console.log("[TrainerVictoryPhase] enqueue voucher reward =", reward);
 
-        globalScene.phaseManager.unshiftNew(
-          "ModifierRewardPhase",
-          reward,
-        );
+        globalScene.phaseManager.unshiftNew("ModifierRewardPhase", reward);
       }
     }
 
     // 🛰️ Achievement check
     if (
-      globalScene.arena.biomeType === BiomeId.SPACE &&
-      (trainerType === TrainerType.BREEDER ||
-        trainerType === TrainerType.EXPERT_POKEMON_BREEDER)
+      globalScene.arena.biomeType === BiomeId.SPACE
+      && (trainerType === TrainerType.BREEDER || trainerType === TrainerType.EXPERT_POKEMON_BREEDER)
     ) {
       console.log("[TrainerVictoryPhase] Achv: BREEDERS_IN_SPACE");
       globalScene.validateAchv(achvs.BREEDERS_IN_SPACE);
@@ -103,33 +106,19 @@ export class TrainerVictoryPhase extends BattlePhase {
       null,
       () => {
         const victoryMessages = trainer?.getVictoryMessages()!;
-        console.log(
-          "[TrainerVictoryPhase] victoryMessages =",
-          victoryMessages,
-        );
+        console.log("[TrainerVictoryPhase] victoryMessages =", victoryMessages);
 
         let message: string;
-        globalScene.executeWithSeedOffset(
-          () => {
-            message = randSeedItem(victoryMessages);
-            console.log(
-              "[TrainerVictoryPhase] selected victory message =",
-              message,
-            );
-          },
-          globalScene.currentBattle.waveIndex,
-        );
+        globalScene.executeWithSeedOffset(() => {
+          message = randSeedItem(victoryMessages);
+          console.log("[TrainerVictoryPhase] selected victory message =", message);
+        }, globalScene.currentBattle.waveIndex);
 
         const showMessage = () => {
           console.log("[TrainerVictoryPhase] showDialogue");
           const originalFunc = showMessageOrEnd;
           showMessageOrEnd = () =>
-            globalScene.ui.showDialogue(
-              message,
-              trainer?.getName(TrainerSlot.TRAINER, true),
-              null,
-              originalFunc,
-            );
+            globalScene.ui.showDialogue(message, trainer?.getName(TrainerSlot.TRAINER, true), null, originalFunc);
           showMessageOrEnd();
         };
 
@@ -138,34 +127,22 @@ export class TrainerVictoryPhase extends BattlePhase {
           this.end();
         };
 
-        if (victoryMessages?.length) {
+        if (victoryMessages?.length > 0) {
           const hasSprite = trainer?.config.hasCharSprite;
           const skip = globalScene.ui.shouldSkipDialogue(message);
 
-          console.log(
-            "[TrainerVictoryPhase] hasCharSprite =",
-            hasSprite,
-            "skipDialogue =",
-            skip,
-          );
+          console.log("[TrainerVictoryPhase] hasCharSprite =", hasSprite, "skipDialogue =", skip);
 
           if (hasSprite && !skip) {
             const originalFunc = showMessageOrEnd;
             showMessageOrEnd = () =>
-              globalScene.charSprite
-                .hide()
-                .then(() =>
-                  globalScene.hideFieldOverlay(250).then(() => originalFunc()),
-                );
+              globalScene.charSprite.hide().then(() => globalScene.hideFieldOverlay(250).then(() => originalFunc()));
 
             globalScene
               .showFieldOverlay(500)
               .then(() =>
                 globalScene.charSprite
-                  .showCharacter(
-                    trainer?.getKey()!,
-                    getCharVariantFromDialogue(victoryMessages[0]),
-                  )
+                  .showCharacter(trainer?.getKey()!, getCharVariantFromDialogue(victoryMessages[0]))
                   .then(() => showMessage()),
               );
           } else {

@@ -1,5 +1,5 @@
 import { globalScene } from "#app/global-scene";
-import { starterColors } from "#app/global-vars/starter-colors";
+import { getStarterColors } from "#app/global-vars/starter-colors";
 import { speciesEggMoves } from "#balance/egg-moves";
 import { pokemonStarters } from "#balance/pokemon-evolutions";
 import { pokemonFormLevelMoves, pokemonSpeciesLevelMoves } from "#balance/pokemon-level-moves";
@@ -46,7 +46,7 @@ import { addTextObject, getTextColor } from "#ui/text";
 import { addWindow } from "#ui/ui-theme";
 import { BooleanHolder, fixedInt, getLocalizedSpriteKey, padInt, randIntRange, rgbHexToRgba } from "#utils/common";
 import type { StarterPreferences } from "#utils/data";
-import { loadStarterPreferences } from "#utils/data";
+import { loadStarterPreferences, saveStarterPreferences } from "#utils/data";
 import { getPokemonSpeciesForm, getPokerusStarters } from "#utils/pokemon-utils";
 import { toCamelCase } from "#utils/strings";
 import { argbFromRgba } from "@material/material-color-utilities";
@@ -639,22 +639,32 @@ export class PokedexUiHandler extends MessageUiHandler {
   }
 
   show(args: any[]): boolean {
-    if (!this.starterPreferences) {
-      this.starterPreferences = loadStarterPreferences();
-    }
-
     this.pokerusSpecies = getPokerusStarters();
 
-    // When calling with "refresh", we do not reset the cursor and filters
     if (args.length > 0) {
       if (args[0] === "refresh") {
         return false;
       }
+
       [this.gameData, this.exitCallback] = args;
       this.blockOpenPage = true;
     } else {
       this.gameData = globalScene.gameData;
       this.blockOpenPage = false;
+    }
+
+    if (!this.starterPreferences) {
+      this.starterPreferences = loadStarterPreferences();
+
+      for (const species of allSpecies) {
+        if (!this.starterPreferences[species.speciesId]) {
+          continue;
+        }
+
+        this.starterPreferences[species.speciesId] = this.initStarterPrefs(species);
+      }
+
+      saveStarterPreferences(this.starterPreferences);
     }
 
     super.show(args);
@@ -767,6 +777,7 @@ export class PokedexUiHandler extends MessageUiHandler {
       && (!species.forms[selectedForm]?.isStarterSelectable || !(caughtAttr & this.gameData.getFormAttr(selectedForm)))
     ) {
       // requested form wasn't unlocked/isn't a starter form, purging setting
+
       starterAttributes.form = undefined;
     }
 
@@ -1413,14 +1424,17 @@ export class PokedexUiHandler extends MessageUiHandler {
       // Name filter
       const selectedName = this.filterText.getValue(FilterTextRow.NAME);
       const fitsName = species.name === selectedName || selectedName === this.filterText.defaultText;
+      const getMoveName = (moveId: number) => allMoves[moveId]?.name ?? "";
 
       // Move filter
       // TODO: There can be fringe cases where the two moves belong to mutually exclusive forms, these must be handled separately (Pikachu);
       // On the other hand, in some cases it is possible to switch between different forms and combine (Deoxys)
-      const levelMoves = pokemonSpeciesLevelMoves[species.speciesId].map(m => allMoves[m[1]].name);
-      // This always gets egg moves from the starter
-      const eggMoves = speciesEggMoves[starterId]?.map(m => allMoves[m].name) ?? [];
-      const tmMoves = speciesTmMoves[species.speciesId]?.map(m => allMoves[Array.isArray(m) ? m[1] : m].name) ?? [];
+      const levelMoves = pokemonSpeciesLevelMoves[species.speciesId]?.map(m => getMoveName(m[1])).filter(Boolean) ?? [];
+
+      const eggMoves = speciesEggMoves[starterId]?.map(m => getMoveName(m)).filter(Boolean) ?? [];
+
+      const tmMoves =
+        speciesTmMoves[species.speciesId]?.map(m => getMoveName(Array.isArray(m) ? m[1] : m)).filter(Boolean) ?? [];
       const selectedMove1 = this.filterText.getValue(FilterTextRow.MOVE_1);
       const selectedMove2 = this.filterText.getValue(FilterTextRow.MOVE_2);
 
@@ -1458,7 +1472,11 @@ export class PokedexUiHandler extends MessageUiHandler {
       }
 
       // Ability filter
-      const abilities = [species.ability1, species.ability2, species.abilityHidden].map(a => allAbilities[a].name);
+      const getAbilityName = (abilityId: AbilityId) => allAbilities[abilityId]?.name ?? "";
+
+      const abilities = [species.ability1, species.ability2, species.abilityHidden]
+        .map(a => getAbilityName(a))
+        .filter(Boolean);
       // get the passive ability for the species
       const passives = [species.getPassiveAbility()];
       for (const form of species.forms) {
@@ -1467,19 +1485,25 @@ export class PokedexUiHandler extends MessageUiHandler {
 
       const selectedAbility1 = this.filterText.getValue(FilterTextRow.ABILITY_1);
       const fitsFormAbility1 = species.forms.some(form =>
-        [form.ability1, form.ability2, form.abilityHidden].map(a => allAbilities[a].name).includes(selectedAbility1),
+        [form.ability1, form.ability2, form.abilityHidden]
+          .map(a => getAbilityName(a))
+          .filter(Boolean)
+          .includes(selectedAbility1),
       );
       const fitsAbility1 =
         abilities.includes(selectedAbility1) || fitsFormAbility1 || selectedAbility1 === this.filterText.defaultText;
-      const fitsPassive1 = Object.values(passives).some(p => allAbilities[p].name === selectedAbility1);
+      const fitsPassive1 = Object.values(passives).some(p => getAbilityName(p) === selectedAbility1);
 
       const selectedAbility2 = this.filterText.getValue(FilterTextRow.ABILITY_2);
       const fitsFormAbility2 = species.forms.some(form =>
-        [form.ability1, form.ability2, form.abilityHidden].map(a => allAbilities[a].name).includes(selectedAbility2),
+        [form.ability1, form.ability2, form.abilityHidden]
+          .map(a => getAbilityName(a))
+          .filter(Boolean)
+          .includes(selectedAbility2),
       );
       const fitsAbility2 =
         abilities.includes(selectedAbility2) || fitsFormAbility2 || selectedAbility2 === this.filterText.defaultText;
-      const fitsPassive2 = Object.values(passives).some(p => allAbilities[p].name === selectedAbility2);
+      const fitsPassive2 = Object.values(passives).some(p => getAbilityName(p) === selectedAbility2);
 
       // If both fields have been set to the same ability, show both ability and passive
       const fitsAbilities =
@@ -1888,17 +1912,17 @@ export class PokedexUiHandler extends MessageUiHandler {
 
           // 'Candy Icon' mode
           if (globalScene.candyUpgradeDisplay === 0) {
-            if (!starterColors[this.getStarterSpeciesId(speciesId)]) {
+            if (!getStarterColors[this.getStarterSpeciesId(speciesId)]) {
               // Default to white if no colors are found
-              starterColors[this.getStarterSpeciesId(speciesId)] = ["ffffff", "ffffff"];
+              getStarterColors[this.getStarterSpeciesId(speciesId)] = ["ffffff", "ffffff"];
             }
 
             // Set the candy colors
             container.candyUpgradeIcon.setTint(
-              argbFromRgba(rgbHexToRgba(starterColors[this.getStarterSpeciesId(speciesId)][0])),
+              argbFromRgba(rgbHexToRgba(getStarterColors[this.getStarterSpeciesId(speciesId)][0])),
             );
             container.candyUpgradeOverlayIcon.setTint(
-              argbFromRgba(rgbHexToRgba(starterColors[this.getStarterSpeciesId(speciesId)][1])),
+              argbFromRgba(rgbHexToRgba(getStarterColors[this.getStarterSpeciesId(speciesId)][1])),
             );
           } else if (globalScene.candyUpgradeDisplay === 1) {
             container.candyUpgradeIcon.setVisible(false);
@@ -2415,13 +2439,7 @@ export class PokedexUiHandler extends MessageUiHandler {
       props += DexAttr.NON_SHINY;
       props += DexAttr.DEFAULT_VARIANT; // we add the default variant here because non shiny versions are listed as default variant
     }
-    if (this.starterPreferences[speciesId]?.form) {
-      // this checks for the form of the pokemon
-      props += BigInt(Math.pow(2, this.starterPreferences[speciesId]?.form)) * DexAttr.DEFAULT_FORM;
-    } else {
-      // Get the first unlocked form
-      props += this.gameData.getFormAttr(this.gameData.getFormIndex(caughtAttr));
-    }
+    props += this.gameData.getFormAttr(this.gameData.getFormIndex(caughtAttr));
 
     return props;
   }

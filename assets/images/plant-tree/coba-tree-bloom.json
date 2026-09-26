@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "coba-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 20,
+				"h": 33
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 18,
+						"w": 18,
+						"h": 14
+					},
+					"frame": {
+						"x": 1,
+						"y": 18,
+						"w": 18,
+						"h": 14
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 17,
+						"w": 18,
+						"h": 15
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 15
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1f2a0061cb8c1679a1665c785376165a:fa3567eed49abb0d8c3fdfcbbe08efec:02a6df660acd7f0defe1e5ea4eecc1aa$"
+	}
+}

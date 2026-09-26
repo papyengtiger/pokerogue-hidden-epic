@@ -809,7 +809,7 @@ export class SingleTypeChallenge extends Challenge {
     if (
       pokemon.isPlayer()
       && !pokemon.isOfType(this.value - 1, false, false, true)
-      && !SingleTypeChallenge.TYPE_OVERRIDES.some(
+      && !SingleTypeChallenge.TYPE_activeOverrides.some(
         o =>
           o.type === this.value - 1
           && (pokemon.isFusion() && o.fusion ? pokemon.fusionSpecies! : pokemon.species).speciesId === o.species,

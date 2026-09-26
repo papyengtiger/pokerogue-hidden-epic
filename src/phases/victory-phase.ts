@@ -1,9 +1,12 @@
 import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
 import { modifierTypes } from "#data/data-lists";
+import { MonsterHouseRank, monsterHouseManager } from "#data/monster-house/monster-house-manager";
+import { mysteryTimeManager } from "#data/mystery-time/mystery-time-manager";
 import { BattleType } from "#enums/battle-type";
 import type { BattlerIndex } from "#enums/battler-index";
 import { ClassicFixedBossWaves } from "#enums/fixed-boss-waves";
+import { ModifierTier } from "#enums/modifier-tier";
 import { handleMysteryEncounterVictory } from "#mystery-encounters/encounter-phase-utils";
 import { PokemonPhase } from "#phases/pokemon-phase";
 
@@ -23,13 +26,27 @@ export class VictoryPhase extends PokemonPhase {
 
     const isMysteryEncounter = globalScene.currentBattle.isBattleMysteryEncounter();
 
-    // update Pokemon defeated count except for MEs that disable it
     if (!isMysteryEncounter || !globalScene.currentBattle.mysteryEncounter?.preventGameStatsUpdates) {
       globalScene.gameData.gameStats.pokemonDefeated++;
     }
 
-    const expValue = this.getPokemon().getExpValue();
+    const pokemon = this.getPokemon();
+
+    if (!pokemon) {
+      console.warn("[VICTORY_PHASE_POKEMON_NOT_FOUND]", {
+        battlerIndex: (this as any).battlerIndex,
+        isExpOnly: this.isExpOnly,
+      });
+
+      return this.end();
+    }
+
+    const expValue = pokemon.getExpValue();
     globalScene.applyPartyExp(expValue, true);
+
+    if (this.isExpOnly) {
+      return this.end();
+    }
 
     if (isMysteryEncounter) {
       handleMysteryEncounterVictory(false, this.isExpOnly);
@@ -41,7 +58,82 @@ export class VictoryPhase extends PokemonPhase {
         .getEnemyParty()
         .find(p => (globalScene.currentBattle.battleType === BattleType.WILD ? p.isOnField() : !p?.isFainted(true)))
     ) {
+      /*
+       * BattleEndPhase가 소굴 상태를 초기화할 수 있으므로
+       * 큐에 넣기 전에 등급과 보상 지급 여부를 확정한다.
+       */
+      const monsterHouseRank = monsterHouseManager.getRank();
+
+      const grantMonsterHouseReward = monsterHouseManager.claimClearReward();
+
+      console.log("[MYSTERY_TIME_REWARD_CHECK]", {
+        wave: globalScene.currentBattle.waveIndex,
+        active: mysteryTimeManager.isActive(),
+        bossDefeated: mysteryTimeManager.isBossDefeated(),
+        rewardGranted: mysteryTimeManager.isRewardGranted(),
+        rank: mysteryTimeManager.getRank(),
+      });
+      /*
+       * 미스터리타임 보스 격파 보상 여부.
+       *
+       * BattleEndPhase에서 미스터리타임 상태가 변경되기 전에
+       * 여기서 먼저 확정한다.
+       */
+      const grantMysteryTimeReward =
+        mysteryTimeManager.isActive() && mysteryTimeManager.isBossDefeated() && !mysteryTimeManager.isRewardGranted();
+
       globalScene.phaseManager.pushNew("BattleEndPhase", true);
+
+      if (grantMysteryTimeReward) {
+        console.log("[MYSTERY_TIME_REWARD_QUEUED]", {
+          wave: globalScene.currentBattle.waveIndex,
+          rank: mysteryTimeManager.getRank(),
+          bossDefeated: mysteryTimeManager.isBossDefeated(),
+        });
+
+        globalScene.phaseManager.pushNew("MysteryTimeRewardPhase");
+      }
+
+      if (grantMonsterHouseReward) {
+        /*
+         * 경험치·골드·로그포인트 지급.
+         *
+         * 이 Phase의 생성자가 현재 소굴 정보를 즉시
+         * 복사하므로 BattleEndPhase 이후 실행되어도 안전하다.
+         */
+        globalScene.phaseManager.pushNew("MonsterHouseClearRewardPhase");
+
+        const rewardTiers: ModifierTier[] = (() => {
+          switch (monsterHouseRank) {
+            case MonsterHouseRank.RANK_1:
+              return [ModifierTier.GREAT, ModifierTier.GREAT, ModifierTier.GREAT];
+
+            case MonsterHouseRank.RANK_2:
+              return [ModifierTier.GREAT, ModifierTier.GREAT, ModifierTier.ULTRA];
+
+            case MonsterHouseRank.RANK_3:
+              return [ModifierTier.ULTRA, ModifierTier.ULTRA, ModifierTier.ULTRA];
+
+            case MonsterHouseRank.RANK_4:
+              return [ModifierTier.ULTRA, ModifierTier.ULTRA, ModifierTier.ROGUE];
+
+            case MonsterHouseRank.RANK_5:
+              return [ModifierTier.ROGUE, ModifierTier.ROGUE, ModifierTier.MASTER];
+
+            default:
+              return [ModifierTier.GREAT, ModifierTier.GREAT, ModifierTier.GREAT];
+          }
+        })();
+
+        /*
+         * 소굴 아이템 후보 3개 중 하나를 선택한다.
+         */
+        console.log("[MONSTER_HOUSE_CLEAR_REWARD_QUEUED]", {
+          rank: monsterHouseRank,
+          rewardTiers: rewardTiers.map(tier => ModifierTier[tier]),
+        });
+      }
+
       if (globalScene.currentBattle.battleType === BattleType.TRAINER) {
         globalScene.phaseManager.pushNew("TrainerVictoryPhase");
       }
@@ -51,6 +143,7 @@ export class VictoryPhase extends PokemonPhase {
 
       if (gameMode.isEndless || !gameMode.isWaveFinal(currentWaveIndex)) {
         globalScene.phaseManager.pushNew("EggLapsePhase");
+        globalScene.phaseManager.pushNew("BerryPlanterLapsePhase");
         if (gameMode.isClassic) {
           switch (currentWaveIndex) {
             case ClassicFixedBossWaves.RIVAL_1:

@@ -11,7 +11,7 @@ import pad_procon from "#inputs/pad-procon";
 import pad_unlicensedSNES from "#inputs/pad-unlicensed-snes";
 import pad_xbox360 from "#inputs/pad-xbox360";
 import type { SettingGamepad } from "#system/settings-gamepad";
-import type { SettingKeyboard } from "#system/settings-keyboard";
+import { SettingKeyboard } from "#system/settings-keyboard";
 import { MoveTouchControlsHandler } from "#ui/move-touch-controls-handler";
 import type { SettingsGamepadUiHandler } from "#ui/settings-gamepad-ui-handler";
 import type { SettingsKeyboardUiHandler } from "#ui/settings-keyboard-ui-handler";
@@ -292,7 +292,10 @@ export class InputsController {
         this.setChosenGamepad(gamepadID);
       }
       const config = deepCopy(this.getConfig(gamepadID)) as InterfaceConfig;
-      config.custom = this.configs[gamepadID]?.custom || { ...config.default };
+      config.custom = {
+        ...config.default,
+        ...(this.configs[layout]?.custom ?? {}),
+      };
       this.configs[gamepadID] = config;
       globalScene.gameData?.saveMappingConfigs(gamepadID, this.configs[gamepadID]);
     }
@@ -367,6 +370,7 @@ export class InputsController {
       }, repeatInputDelayMillis);
       this.buttonLock.push(buttonDown);
     }
+    console.log("[KEYDOWN]", event.keyCode, getButtonWithKeycode(this.getActiveConfig(Device.KEYBOARD), event.keyCode));
   }
 
   /**
@@ -571,24 +575,25 @@ export class InputsController {
     if (!this.configs[selectedDevice]) {
       this.configs[selectedDevice] = {};
     }
-    // A proper way of handling migrating keybinds would be much better
+
     const mappingOverrides = {
       BUTTON_CYCLE_VARIANT: "BUTTON_CYCLE_TERA",
     };
+
     for (const key in mappingConfigs.custom) {
       if (mappingConfigs.custom[key] in mappingOverrides) {
         mappingConfigs.custom[key] = mappingOverrides[mappingConfigs.custom[key]];
       }
     }
-    this.configs[selectedDevice].custom = mappingConfigs.custom;
-  }
 
-  resetConfigs(): void {
-    this.configs = new Map();
-    if (this.getGamepadsName()?.length > 0) {
-      this.setupGamepad(this.selectedDevice[Device.GAMEPAD]);
+    // 기존 세이브에 증표 키가 없으면 P에 새로 등록
+    const hasMarkBinding = Object.values(mappingConfigs.custom).includes(SettingKeyboard.Button_Cycle_Mark);
+
+    if (!hasMarkBinding) {
+      mappingConfigs.custom.KEY_P = SettingKeyboard.Button_Cycle_Mark;
     }
-    this.setupKeyboard();
+
+    this.configs[selectedDevice].custom = mappingConfigs.custom;
   }
 
   /**

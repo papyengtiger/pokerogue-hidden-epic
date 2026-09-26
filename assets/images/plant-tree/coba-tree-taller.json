@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "coba-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 16,
+				"h": 29
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 20,
+						"w": 14,
+						"h": 12
+					},
+					"frame": {
+						"x": 1,
+						"y": 16,
+						"w": 14,
+						"h": 12
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 19,
+						"w": 14,
+						"h": 13
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 14,
+						"h": 13
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:3f670fd26e9e0d2a2c8dfe39354b6897:506208e4c5aba95966243e001ab9e308:8da2d37e70c0fe159393fc47afb163b8$"
+	}
+}

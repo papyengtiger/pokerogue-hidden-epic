@@ -48,10 +48,11 @@ export class PracticeTypeFormUiHandler extends UiHandler {
   private type2LeftArrow: Phaser.GameObjects.Image;
   private type2RightArrow: Phaser.GameObjects.Image;
 
-  private slotCursor = 0; // 0 = 타입1, 1 = 타입2
-  private type1Index = 1; // 기본 노말
-  private type2Index = 0; // 기본 없음
+  private slotCursor = 0;
+  private type1Index = 1;
+  private type2Index = 0;
 
+  private dummyKey: "dummy1" | "dummy2" = "dummy1";
   private buttonActions?: Array<(...args: any[]) => void>;
 
   constructor() {
@@ -65,14 +66,9 @@ export class PracticeTypeFormUiHandler extends UiHandler {
     this.container.setName("practice-type-form");
     this.container.setVisible(false);
 
-    const bg = globalScene.add.rectangle(
-      0,
-      0,
-      globalScene.scaledCanvas.width,
-      globalScene.scaledCanvas.height,
-      0x000000,
-      0.65,
-    ).setOrigin(0);
+    const bg = globalScene.add
+      .rectangle(0, 0, globalScene.scaledCanvas.width, globalScene.scaledCanvas.height, 0x000000, 0.65)
+      .setOrigin(0);
 
     const window = addWindow(58, 38, 204, 92);
 
@@ -95,12 +91,7 @@ export class PracticeTypeFormUiHandler extends UiHandler {
 
     this.cursorObj = globalScene.add.image(70, 70, "select_cursor").setOrigin(0);
 
-    this.helpText = addTextObject(
-      160,
-      114,
-      "↑↓ 선택  ←→ 변경  Z 저장  X 취소",
-      TextStyle.WINDOW,
-    );
+    this.helpText = addTextObject(160, 114, "↑↓ 선택  ←→ 변경  Z 저장  X 취소", TextStyle.WINDOW);
     this.helpText.setOrigin(0.5, 0);
 
     this.container.add([
@@ -125,12 +116,23 @@ export class PracticeTypeFormUiHandler extends UiHandler {
   show(args: any[]): boolean {
     super.show(args);
 
-    const config = args?.[0] as { buttonActions?: Array<(...args: any[]) => void> } | undefined;
+    const config = args?.[0] as
+      | {
+          dummyKey?: "dummy1" | "dummy2";
+          buttonActions?: Array<(...args: any[]) => void>;
+        }
+      | undefined;
+
+    this.dummyKey = config?.dummyKey ?? "dummy1";
     this.buttonActions = config?.buttonActions;
 
-    const savedTypes =
-      globalScene.gameData.practiceDummyConfig?.types ??
-      [PokemonType.NORMAL];
+    this.titleText.setText(this.dummyKey === "dummy1" ? "대타1 타입을 선택하시오" : "대타2 타입을 선택하시오");
+
+    const rootCfg = (globalScene.gameData.practiceDummyConfig ??= {});
+    rootCfg.dummy1 ??= {};
+    rootCfg.dummy2 ??= {};
+
+    const savedTypes = rootCfg[this.dummyKey]?.types ?? rootCfg.types ?? [PokemonType.NORMAL];
 
     this.type1Index = this.findOptionIndex(savedTypes[0], false);
     this.type2Index = this.findOptionIndex(savedTypes[1], true);
@@ -211,13 +213,14 @@ export class PracticeTypeFormUiHandler extends UiHandler {
       return;
     }
 
-    const finalTypes =
-      type2 !== undefined && type2 !== type1
-        ? [type1, type2]
-        : [type1];
+    const finalTypes = type2 !== undefined && type2 !== type1 ? [type1, type2] : [type1];
 
-    globalScene.gameData.practiceDummyConfig ??= {};
-    globalScene.gameData.practiceDummyConfig.types = finalTypes;
+    const rootCfg = (globalScene.gameData.practiceDummyConfig ??= {});
+    rootCfg.dummy1 ??= {};
+    rootCfg.dummy2 ??= {};
+
+    rootCfg[this.dummyKey]!.types = finalTypes;
+
     globalScene.gameData.saveSystem();
 
     this.buttonActions?.[0]?.(finalTypes);

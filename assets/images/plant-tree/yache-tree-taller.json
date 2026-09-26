@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "yache-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 21,
+				"h": 16
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 18,
+						"w": 8,
+						"h": 14
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 8,
+						"h": 14
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 19,
+						"w": 9,
+						"h": 13
+					},
+					"frame": {
+						"x": 11,
+						"y": 1,
+						"w": 9,
+						"h": 13
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7abdca4ecd9c6e6f80a7f34225a3bf7d:3d6a240affbebe3b791d2969a0f9a56b:b996c87255fe55a3b88410cc0f2b7978$"
+	}
+}

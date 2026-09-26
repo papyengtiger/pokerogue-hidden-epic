@@ -1,7 +1,8 @@
+import { PHASE_START_COLOR } from "#app/constants/colors";
+import { DynamicQueueManager } from "#app/dynamic-queue-manager";
 import { globalScene } from "#app/global-scene";
 import type { Phase } from "#app/phase";
-import { type PhasePriorityQueue, PostSummonPhasePriorityQueue } from "#data/phase-priority-queue";
-import type { DynamicPhaseType } from "#enums/dynamic-phase-type";
+import { PhaseTree } from "#app/phase-tree";
 import type { Pokemon } from "#field/pokemon";
 import { ActivatePriorityQueuePhase } from "#phases/activate-priority-queue-phase";
 import { AddEnemyBuffModifierPhase } from "#phases/add-enemy-buff-modifier-phase";
@@ -9,12 +10,15 @@ import { AttemptCapturePhase } from "#phases/attempt-capture-phase";
 import { AttemptRunPhase } from "#phases/attempt-run-phase";
 import { BattleEndPhase } from "#phases/battle-end-phase";
 import { BerryPhase } from "#phases/berry-phase";
+import { BerryPlanterLapsePhase } from "#phases/berry-planter-lapse-phase";
+import { BestowItemSelectPhase } from "#phases/bestow-item-select-phase";
 import { CheckInterludePhase } from "#phases/check-interlude-phase";
 import { CheckStatusEffectPhase } from "#phases/check-status-effect-phase";
 import { CheckSwitchPhase } from "#phases/check-switch-phase";
 import { CommandPhase } from "#phases/command-phase";
 import { CommonAnimPhase } from "#phases/common-anim-phase";
 import { DamageAnimPhase } from "#phases/damage-anim-phase";
+import { DynamicPhaseMarker } from "#phases/dynamic-phase-marker";
 import { EggHatchPhase } from "#phases/egg-hatch-phase";
 import { EggLapsePhase } from "#phases/egg-lapse-phase";
 import { EggSummaryPhase } from "#phases/egg-summary-phase";
@@ -25,11 +29,17 @@ import { EnemyCommandPhase } from "#phases/enemy-command-phase";
 import { EvolutionPhase } from "#phases/evolution-phase";
 import { ExpPhase } from "#phases/exp-phase";
 import { FaintPhase } from "#phases/faint-phase";
+import { FlingItemSelectPhase } from "#phases/fling-item-select-phase";
 import { FormChangePhase } from "#phases/form-change-phase";
 import { GameOverModifierRewardPhase } from "#phases/game-over-modifier-reward-phase";
 import { GameOverPhase } from "#phases/game-over-phase";
 import { HideAbilityPhase } from "#phases/hide-ability-phase";
 import { HidePartyExpBarPhase } from "#phases/hide-party-exp-bar-phase";
+import { BattleStartImmediateBerryPhase } from "#phases/immediate-stat-berries";
+import { InitEncounterPhase } from "#phases/init-encounter-phase";
+import { KecleonLuxuryRewardPhase } from "#phases/kecleon-luxury-reward-phase";
+import { KecleonShopPhase } from "#phases/kecleon-shop-phase";
+import { KecleonTheftBattlePhase } from "#phases/kecleon-theft-battle-phase";
 import { LearnMovePhase } from "#phases/learn-move-phase";
 import { LevelCapPhase } from "#phases/level-cap-phase";
 import { LevelUpPhase } from "#phases/level-up-phase";
@@ -38,6 +48,12 @@ import { LoginPhase } from "#phases/login-phase";
 import { MessagePhase } from "#phases/message-phase";
 import { ModifierRewardPhase } from "#phases/modifier-reward-phase";
 import { MoneyRewardPhase } from "#phases/money-reward-phase";
+import { MonsterHouseCaptureSelectPhase } from "#phases/monster-house-capture-select-phase";
+import { MonsterHouseCaptureTargetPhase } from "#phases/monster-house-capture-target-phase";
+import { MonsterHouseClearRewardPhase } from "#phases/monster-house-clear-reward-phase";
+import { MonsterHouseSpreadEndPhase } from "#phases/monster-house-spread-end-phase";
+import { MonsterHouseVirtualActionPhase } from "#phases/monster-house-virtual-action-phase";
+import { MonsterHouseVirtualFaintPhase } from "#phases/monster-house-virtual-faint-phase";
 import { MoveAnimPhase } from "#phases/move-anim-phase";
 import { MoveChargePhase } from "#phases/move-charge-phase";
 import { MoveEffectPhase } from "#phases/move-effect-phase";
@@ -52,6 +68,10 @@ import {
   MysteryEncounterRewardsPhase,
   PostMysteryEncounterPhase,
 } from "#phases/mystery-encounter-phases";
+import { MysteryTimeCountdownPhase } from "#phases/mystery-time-countdown-phase";
+import { MysteryTimeRewardPhase } from "#phases/mystery-time-reward-phase";
+import { NaturalDisasterPhase } from "#phases/natural-disaster-phase";
+import { NaturalGiftBerrySelectPhase } from "#phases/natural-gift-berry-select-phase";
 import { NewBattlePhase } from "#phases/new-battle-phase";
 import { NewBiomeEncounterPhase } from "#phases/new-biome-encounter-phase";
 import { NextEncounterPhase } from "#phases/next-encounter-phase";
@@ -63,14 +83,23 @@ import { PokemonHealPhase } from "#phases/pokemon-heal-phase";
 import { PokemonTransformPhase } from "#phases/pokemon-transform-phase";
 import { PositionalTagPhase } from "#phases/positional-tag-phase";
 import { PostGameOverPhase } from "#phases/post-game-over-phase";
+import { PostSummonActivateAbilityPhase } from "#phases/post-summon-activate-ability-phase";
 import { PostSummonPhase } from "#phases/post-summon-phase";
 import { PostTurnStatusEffectPhase } from "#phases/post-turn-status-effect-phase";
+import { PracticeDummyBattlePhase } from "#phases/practice-dummy-battle-phase";
+import { PracticeDummyResetPhase } from "#phases/practice-dummy-reset-phase";
+import { PracticeDummySummonPhase } from "#phases/practice-dummy-summon-phase";
+import { PracticeEncounterPhase } from "#phases/practice-encounter-phase";
+import { PracticeResultPhase } from "#phases/practice-result-phase";
+import { QuestClearPromptPhase } from "#phases/quest-clear-prompt-phase";
+import { QuestClearRewardPhase } from "#phases/quest-clear-reward-phase";
 import { QuietFormChangePhase } from "#phases/quiet-form-change-phase";
 import { ReloadSessionPhase } from "#phases/reload-session-phase";
 import { ResetStatusPhase } from "#phases/reset-status-phase";
 import { ReturnPhase } from "#phases/return-phase";
 import { RevivalBlessingPhase } from "#phases/revival-blessing-phase";
 import { RibbonModifierRewardPhase } from "#phases/ribbon-modifier-reward-phase";
+import { RogueShopPhase } from "#phases/rogue-shop-phase";
 import { ScanIvsPhase } from "#phases/scan-ivs-phase";
 import { SelectBiomePhase } from "#phases/select-biome-phase";
 import { SelectChallengePhase } from "#phases/select-challenge-phase";
@@ -93,33 +122,17 @@ import { TeraPhase } from "#phases/tera-phase";
 import { TitlePhase } from "#phases/title-phase";
 import { ToggleDoublePositionPhase } from "#phases/toggle-double-position-phase";
 import { TrainerVictoryPhase } from "#phases/trainer-victory-phase";
+import { TrapPhase } from "#phases/trap-phase";
+import { TrickItemSelectPhase } from "#phases/trick-item-select-phase";
+import { TurnCommandExecutionPhase } from "#phases/turn-command-execution-phase";
 import { TurnEndPhase } from "#phases/turn-end-phase";
 import { TurnInitPhase } from "#phases/turn-init-phase";
 import { TurnStartPhase } from "#phases/turn-start-phase";
 import { UnavailablePhase } from "#phases/unavailable-phase";
 import { UnlockPhase } from "#phases/unlock-phase";
 import { VictoryPhase } from "#phases/victory-phase";
-import { TurnCommandExecutionPhase } from "#phases/turn-command-execution-phase";
-import { BattleStartImmediateBerryPhase } from "#phases/immediate-stat-berries";
-import { FlingItemSelectPhase } from "#phases/fling-item-select-phase";
-import { TrickItemSelectPhase } from "#phases/trick-item-select-phase";
-import { BestowItemSelectPhase } from "#phases/bestow-item-select-phase";
-import { NaturalGiftBerrySelectPhase } from "#phases/natural-gift-berry-select-phase";
 import { WeatherEffectPhase } from "#phases/weather-effect-phase";
-import { RogueShopPhase } from "#phases/rogue-shop-phase";
-import { PracticeEncounterPhase } from "#phases/practice-encounter-phase";
-import { PracticeDummyResetPhase } from "#phases/practice-dummy-reset-phase";
 import type { PhaseMap, PhaseString } from "#types/phase-types";
-import { type Constructor, coerceArray } from "#utils/common";
-import { InitEncounterPhase } from "#phases/init-encounter-phase";
-import { PracticeDummyBattlePhase } from "#phases/practice-dummy-battle-phase";
-import { PhaseTree } from "#app/phase-tree";
-import { DynamicQueueManager } from "#app/dynamic-queue-manager";
-import { PHASE_START_COLOR } from "#app/constants/colors";
-import { DynamicPhaseMarker } from "#phases/dynamic-phase-marker";
-import { PostSummonActivateAbilityPhase } from "#phases/post-summon-activate-ability-phase";
-import { PracticeDummySummonPhase } from "#phases/practice-dummy-summon-phase";
-import { PracticeResultPhase } from "#phases/practice-result-phase";
 
 /*
  * Manager for phases used by battle scene.
@@ -142,6 +155,7 @@ const PHASES = Object.freeze({
   AttemptRunPhase,
   BattleEndPhase,
   BerryPhase,
+  BerryPlanterLapsePhase,
   CheckInterludePhase,
   CheckStatusEffectPhase,
   CheckSwitchPhase,
@@ -163,6 +177,9 @@ const PHASES = Object.freeze({
   GameOverModifierRewardPhase,
   HideAbilityPhase,
   HidePartyExpBarPhase,
+  KecleonLuxuryRewardPhase,
+  KecleonTheftBattlePhase,
+  KecleonShopPhase,
   LearnMovePhase,
   LevelCapPhase,
   LevelUpPhase,
@@ -171,6 +188,12 @@ const PHASES = Object.freeze({
   MessagePhase,
   ModifierRewardPhase,
   MoneyRewardPhase,
+  MonsterHouseCaptureSelectPhase,
+  MonsterHouseCaptureTargetPhase,
+  MonsterHouseClearRewardPhase,
+  MonsterHouseSpreadEndPhase,
+  MonsterHouseVirtualActionPhase,
+  MonsterHouseVirtualFaintPhase,
   MoveAnimPhase,
   MoveChargePhase,
   MoveEffectPhase,
@@ -182,7 +205,10 @@ const PHASES = Object.freeze({
   MysteryEncounterBattlePhase,
   MysteryEncounterBattleStartCleanupPhase,
   MysteryEncounterRewardsPhase,
+  MysteryTimeCountdownPhase,
+  MysteryTimeRewardPhase,
   PostMysteryEncounterPhase,
+  NaturalDisasterPhase,
   NewBattlePhase,
   NewBiomeEncounterPhase,
   NextEncounterPhase,
@@ -197,6 +223,8 @@ const PHASES = Object.freeze({
   PostSummonPhase,
   PostSummonActivateAbilityPhase,
   PostTurnStatusEffectPhase,
+  QuestClearPromptPhase,
+  QuestClearRewardPhase,
   QuietFormChangePhase,
   ReloadSessionPhase,
   ResetStatusPhase,
@@ -225,6 +253,7 @@ const PHASES = Object.freeze({
   TitlePhase,
   ToggleDoublePositionPhase,
   TrainerVictoryPhase,
+  TrapPhase,
   TurnEndPhase,
   TurnInitPhase,
   TurnStartPhase,
@@ -393,29 +422,29 @@ export class PhaseManager {
    * As such, **do not remove or split this method** as it will break integration tests.
    */
   private startCurrentPhase(): void {
-  const phase = this.currentPhase;
+    const phase = this.currentPhase;
 
-  if (!phase) {
-    console.error("[PhaseManager] currentPhase is null/undefined!", {
-      queueLen: (this as any).phaseQueue?.length,
-      queue0: (this as any).phaseQueue?.[0]?.constructor?.name,
-    });
-    return;
+    if (!phase) {
+      console.error("[PhaseManager] currentPhase is null/undefined!", {
+        queueLen: (this as any).phaseQueue?.length,
+        queue0: (this as any).phaseQueue?.[0]?.constructor?.name,
+      });
+      return;
+    }
+
+    const name = (phase as any).phaseName ?? "(no phaseName)";
+    const ctor = phase.constructor?.name ?? "(no ctor)";
+
+    console.log(`%cStart Phase ${name} [${ctor}]`, `color:${PHASE_START_COLOR};`);
+
+    // phase.start()가 뻗을 때도 어디서 뻗는지 확인
+    try {
+      phase.start();
+    } catch (e) {
+      console.error("[PhaseManager] phase.start() crashed:", { name, ctor, phase }, e);
+      throw e;
+    }
   }
-
-  const name = (phase as any).phaseName ?? "(no phaseName)";
-  const ctor = phase.constructor?.name ?? "(no ctor)";
-
-  console.log(`%cStart Phase ${name} [${ctor}]`, `color:${PHASE_START_COLOR};`);
-
-  // phase.start()가 뻗을 때도 어디서 뻗는지 확인
-  try {
-    phase.start();
-  } catch (e) {
-    console.error("[PhaseManager] phase.start() crashed:", { name, ctor, phase }, e);
-    throw e;
-  }
-}
 
   /**
    * Overrides the currently running phase with another

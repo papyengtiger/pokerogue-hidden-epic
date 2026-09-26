@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "razz-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 24
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 10,
+						"w": 18,
+						"h": 22
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 22
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 10,
+						"w": 17,
+						"h": 22
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 17,
+						"h": 22
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:87cd9ee0110048bceb9ba42c784f086c:c84975e54b86adce7b04ed0f945e5558:eac9023e23f10311394f7417338e1bb0$"
+	}
+}

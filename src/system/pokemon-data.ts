@@ -1,17 +1,19 @@
 import { globalScene } from "#app/global-scene";
+import { getMysteryMonster } from "#data/balance/mystery-monster-species-list";
 import type { Gender } from "#data/gender";
 import { CustomPokemonData, PokemonBattleData, PokemonSummonData } from "#data/pokemon-data";
 import { Status } from "#data/status-effect";
 import { BattleType } from "#enums/battle-type";
 import type { BiomeId } from "#enums/biome-id";
+import { MarkId } from "#enums/mark-id";
 import type { MoveId } from "#enums/move-id";
+import type { MysteryMonsterId } from "#enums/mystery-monster-id";
 import { Nature } from "#enums/nature";
 import { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
-import type { SpeciesId } from "#enums/species-id";
 import { SpeciesId } from "#enums/species-id";
 import { TrainerSlot } from "#enums/trainer-slot";
-import { EnemyPokemon, Pokemon } from "#field/pokemon";
+import { EnemyPokemon, type MysteryMonster, Pokemon } from "#field/pokemon";
 import { PokemonMove } from "#moves/pokemon-move";
 import type { Variant } from "#sprites/variant";
 import { getPokemonSpecies, getPokemonSpeciesForm } from "#utils/pokemon-utils";
@@ -26,6 +28,7 @@ export class PokemonData {
   public passive: boolean;
   public shiny: boolean;
   public variant: Variant;
+  public mark: MarkId;
   public pokeball: PokeballType;
   public level: number;
   public exp: number;
@@ -33,6 +36,7 @@ export class PokemonData {
   public gender: Gender;
   public hp: number;
   public stats: number[];
+  public customBaseStats?: number[];
   public ivs: number[];
   public nature: Nature;
   public moveset: PokemonMove[];
@@ -51,6 +55,8 @@ export class PokemonData {
   public teraType: PokemonType;
   public isTerastallized: boolean;
   public stellarTypesBoosted: PokemonType[];
+
+  public mysteryMonsterId?: MysteryMonsterId;
 
   public fusionSpecies: SpeciesId;
   public fusionFormIndex: number;
@@ -96,6 +102,7 @@ export class PokemonData {
     this.passive = source.passive;
     this.shiny = source.shiny;
     this.variant = source.variant;
+    this.mark = source.mark ?? MarkId.NONE;
     this.pokeball = source.pokeball ?? PokeballType.POKEBALL;
     this.level = source.level;
     this.exp = source.exp;
@@ -103,6 +110,10 @@ export class PokemonData {
     this.gender = source.gender;
     this.hp = source.hp;
     this.stats = source.stats;
+    const customBaseStats = sourcePokemon?.customBaseStats ?? source.customBaseStats;
+
+    this.customBaseStats =
+      Array.isArray(customBaseStats) && customBaseStats.length === 6 ? [...customBaseStats] : undefined;
     this.ivs = source.ivs;
 
     // TODO: Can't we move some of this verification stuff to an upgrade script?
@@ -125,6 +136,10 @@ export class PokemonData {
     this.teraType = source.teraType as PokemonType;
     this.isTerastallized = !!source.isTerastallized;
     this.stellarTypesBoosted = source.stellarTypesBoosted ?? [];
+
+    this.mysteryMonsterId = sourcePokemon?.isMysteryMonster()
+      ? (sourcePokemon as MysteryMonster).mysterySpecies.id
+      : source.mysteryMonsterId;
 
     // Deprecated, but needed for session data migration
     this.natureOverride = source.natureOverride;
@@ -157,27 +172,29 @@ export class PokemonData {
   }
 
   toPokemon(battleType?: BattleType, partyMemberIndex = 0, double = false): Pokemon {
-  const species = getPokemonSpecies(this.species);
+    const species = getPokemonSpecies(this.species);
 
-  const isEnemy = !this.player;
-  const isTrainer = battleType === BattleType.TRAINER;
+    const isEnemy = !this.player;
+    const isTrainer = battleType === BattleType.TRAINER;
 
-  // 🔥 임시: 메가싸리용 야생 로드시 강제 기본폼
-  if (
-    isEnemy &&
-    !isTrainer &&
-    !this.boss &&
-    this.species === SpeciesId.TATSUGIRI &&
-    this.formIndex === 1 // ← 메가 폼 인덱스가 1일 경우
-  ) {
-    this.formIndex = 0;
-    if (this.summonData) {
-      this.summonData.speciesForm = null;
+    // 🔥 임시: 메가싸리용 야생 로드시 강제 기본폼
+    if (
+      isEnemy
+      && !isTrainer
+      && !this.boss
+      && this.species === SpeciesId.TATSUGIRI
+      && this.formIndex === 1 // ← 메가 폼 인덱스가 1일 경우
+    ) {
+      this.formIndex = 0;
+      if (this.summonData) {
+        this.summonData.speciesForm = null;
+      }
     }
-  }
 
-  const ret: Pokemon = this.player
-    ? globalScene.addPlayerPokemon(
+    let ret: Pokemon;
+
+    if (this.player) {
+      ret = globalScene.addPlayerPokemon(
         species,
         this.level,
         this.abilityIndex,
@@ -189,10 +206,25 @@ export class PokemonData {
         this.nature,
         this,
         playerPokemon => {
-          if (this.nickname) playerPokemon.nickname = this.nickname;
+          if (this.nickname) {
+            playerPokemon.nickname = this.nickname;
+          }
         },
-      )
-    : globalScene.addEnemyPokemon(
+      );
+    } else if (this.mysteryMonsterId !== undefined) {
+      ret = globalScene.addMysteryMonster(
+        getMysteryMonster(this.mysteryMonsterId),
+        this.level,
+        isTrainer
+          ? !double || !(partyMemberIndex % 2)
+            ? TrainerSlot.TRAINER
+            : TrainerSlot.TRAINER_PARTNER
+          : TrainerSlot.NONE,
+        this.boss,
+        this,
+      );
+    } else {
+      ret = globalScene.addEnemyPokemon(
         species,
         this.level,
         isTrainer
@@ -204,24 +236,47 @@ export class PokemonData {
         false,
         this,
       );
-
-  // ✅ "전투 시작 전" 로드라면 적은 무조건 풀피로 (네가 추가한 부분)
-  if (!this.player) {
-    const battleStarted = globalScene.currentBattle?.started;
-    if (!battleStarted) {
-      ret.hp = ret.getMaxHp();
-      ret.updateInfo?.(true);
     }
-  }
 
-  // ✅ transformed 유지 로직 (단, 야생 적은 위에서 speciesForm을 null 처리했으니 안 탐)
-  if (this.summonData.speciesForm) {
-    ret.summonData.speciesForm = getPokemonSpeciesForm(
-      this.summonData.speciesForm.speciesId,
-      this.summonDataSpeciesFormIndex,
-    );
-  }
+    if (Array.isArray(this.customBaseStats) && this.customBaseStats.length === 6) {
+      const wasFainted = this.hp <= 0;
 
-  return ret;
+      const previousMaxHp = Math.max(1, this.stats?.[0] ?? ret.getMaxHp());
+
+      const hpRatio = Math.max(0, this.hp) / previousMaxHp;
+
+      ret.customBaseStats = [...this.customBaseStats];
+
+      ret.calculateStats();
+
+      ret.hp = wasFainted ? 0 : Math.max(1, Math.min(ret.getMaxHp(), Math.round(ret.getMaxHp() * hpRatio)));
+
+      console.log("[CUSTOM_BASE_STATS_RESTORED]", {
+        id: ret.id,
+        species: ret.species.speciesId,
+        customBaseStats: [...ret.customBaseStats],
+        stats: [...ret.stats],
+        hp: ret.hp,
+      });
+    }
+
+    // ✅ "전투 시작 전" 로드라면 적은 무조건 풀피로 (네가 추가한 부분)
+    if (!this.player) {
+      const battleStarted = globalScene.currentBattle?.started;
+      if (!battleStarted) {
+        ret.hp = ret.getMaxHp();
+        ret.updateInfo?.(true);
+      }
+    }
+
+    // ✅ transformed 유지 로직 (단, 야생 적은 위에서 speciesForm을 null 처리했으니 안 탐)
+    if (this.summonData.speciesForm) {
+      ret.summonData.speciesForm = getPokemonSpeciesForm(
+        this.summonData.speciesForm.speciesId,
+        this.summonDataSpeciesFormIndex,
+      );
+    }
+
+    return ret;
   }
 }

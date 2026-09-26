@@ -6,16 +6,20 @@ import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
 import { AchvBar } from "#ui/achv-bar";
 import { AchvsUiHandler } from "#ui/achvs-ui-handler";
+import { AttendanceUiHandler } from "#ui/attendance-ui-handler";
 import { AutoCompleteUiHandler } from "#ui/autocomplete-ui-handler";
 import { AwaitableUiHandler } from "#ui/awaitable-ui-handler";
-import { BankAmountFormUiHandler } from "#ui/bank-amount-form-ui-handler";
 import { BallUiHandler } from "#ui/ball-ui-handler";
+import { BankAmountFormUiHandler } from "#ui/bank-amount-form-ui-handler";
 import { BattleMessageUiHandler } from "#ui/battle-message-ui-handler";
+import { BerryPlanterUiHandler } from "#ui/berry-planter-ui-handler";
 import type { BgmBar } from "#ui/bgm-bar";
 import { GameChallengesUiHandler } from "#ui/challenges-select-ui-handler";
 import { ChangePasswordFormUiHandler } from "#ui/change-password-form-ui-handler";
 import { CommandUiHandler } from "#ui/command-ui-handler";
 import { ConfirmUiHandler } from "#ui/confirm-ui-handler";
+import { CouponUiHandler } from "#ui/coupon-ui-handler";
+import { CraftingUiHandler } from "#ui/crafting-ui-handler";
 import { EggGachaUiHandler } from "#ui/egg-gacha-ui-handler";
 import { EggHatchSceneUiHandler } from "#ui/egg-hatch-scene-ui-handler";
 import { EggListUiHandler } from "#ui/egg-list-ui-handler";
@@ -24,6 +28,7 @@ import { EvolutionSceneUiHandler } from "#ui/evolution-scene-ui-handler";
 import { FightUiHandler } from "#ui/fight-ui-handler";
 import { GameStatsUiHandler } from "#ui/game-stats-ui-handler";
 import { GamepadBindingUiHandler } from "#ui/gamepad-binding-ui-handler";
+import { KecleonShopUiHandler } from "#ui/kecleon-shop-ui-handler";
 import { KeyboardBindingUiHandler } from "#ui/keyboard-binding-ui-handler";
 import { LoadingModalUiHandler } from "#ui/loading-modal-ui-handler";
 import { LoginFormUiHandler } from "#ui/login-form-ui-handler";
@@ -38,8 +43,18 @@ import { PartyUiHandler } from "#ui/party-ui-handler";
 import { PokedexPageUiHandler } from "#ui/pokedex-page-ui-handler";
 import { PokedexScanUiHandler } from "#ui/pokedex-scan-ui-handler";
 import { PokedexUiHandler } from "#ui/pokedex-ui-handler";
+import { PracticeAbilityFormUiHandler } from "#ui/practice-ability-form-ui-handler";
+import { PracticeLevelFormUiHandler } from "#ui/practice-level-form-ui-handler";
+import { PracticeMoveFormUiHandler } from "#ui/practice-move-form-ui-handler";
+import { PracticePresetSlotSelectUiHandler } from "#ui/practice-preset-slot-select-ui-handler";
+import { PracticeRentalModifierSelectUiHandler } from "#ui/practice-rental-modifier-select-ui-handler";
+import { PracticeStatFormUiHandler } from "#ui/practice-stat-form-ui-handler";
+import { PracticeTypeFormUiHandler } from "#ui/practice-type-form-ui-handler";
 import { RegistrationFormUiHandler } from "#ui/registration-form-ui-handler";
 import { RenameFormUiHandler } from "#ui/rename-form-ui-handler";
+import { RogueMineUiHandler } from "#ui/rogue-mine-ui-handler";
+import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
+import { RotomDexUiHandler } from "#ui/rotom-dex-ui-handler";
 import { RunHistoryUiHandler } from "#ui/run-history-ui-handler";
 import { RunInfoUiHandler } from "#ui/run-info-ui-handler";
 import { SaveSlotSelectUiHandler } from "#ui/save-slot-select-ui-handler";
@@ -50,6 +65,7 @@ import { SettingsDisplayUiHandler } from "#ui/settings-display-ui-handler";
 import { SettingsGamepadUiHandler } from "#ui/settings-gamepad-ui-handler";
 import { SettingsKeyboardUiHandler } from "#ui/settings-keyboard-ui-handler";
 import { SettingsUiHandler } from "#ui/settings-ui-handler";
+import { StarterPracticeMoveFormUiHandler } from "#ui/starter-practice-move-form-ui-handler";
 import { StarterSelectUiHandler } from "#ui/starter-select-ui-handler";
 import { SummaryUiHandler } from "#ui/summary-ui-handler";
 import { TargetSelectUiHandler } from "#ui/target-select-ui-handler";
@@ -63,14 +79,6 @@ import { executeIf } from "#utils/common";
 import i18next from "i18next";
 import { AdminUiHandler } from "./handlers/admin-ui-handler";
 import { RenameRunFormUiHandler } from "./handlers/rename-run-ui-handler";
-import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
-import { PracticeLevelFormUiHandler } from "#ui/practice-level-form-ui-handler";
-import { PracticeStatFormUiHandler } from "#ui/practice-stat-form-ui-handler";
-import { PracticeTypeFormUiHandler } from "#ui/practice-type-form-ui-handler";
-import { PracticeAbilityFormUiHandler } from "#ui/practice-ability-form-ui-handler";
-import { PracticeMoveFormUiHandler } from "#ui/practice-move-form-ui-handler";
-import { PracticeRentalModifierSelectUiHandler } from "#ui/practice-rental-modifier-select-ui-handler";
-import { StarterPracticeMoveFormUiHandler } from "#ui/starter-practice-move-form-ui-handler";
 
 const transitionModes = [
   UiMode.SAVE_SLOT,
@@ -95,6 +103,7 @@ const noTransitionModes = [
   UiMode.MENU,
   UiMode.MENU_OPTION_SELECT,
   UiMode.GAMEPAD_BINDING,
+  UiMode.KECLEON_SHOP,
   UiMode.KEYBOARD_BINDING,
   UiMode.SETTINGS,
   UiMode.SETTINGS_AUDIO,
@@ -126,6 +135,11 @@ const noTransitionModes = [
   UiMode.PRACTICE_MOVE_FORM,
   UiMode.PRACTICE_RENTAL_MODIFIER_SELECT,
   UiMode.STARTER_PRACTICE_MOVE_FORM,
+  UiMode.PRACTICE_PRESET_SLOT,
+  UiMode.ROTOM_DEX,
+  UiMode.COUPON,
+  UiMode.BERRY_PLANTER,
+  UiMode.CRAFTING,
 ];
 
 export class UI extends Phaser.GameObjects.Container {
@@ -209,6 +223,22 @@ export class UI extends Phaser.GameObjects.Container {
       new PracticeRentalModifierSelectUiHandler(),
       new StarterPracticeMoveFormUiHandler(),
     ];
+
+    this.handlers[UiMode.PRACTICE_PRESET_SLOT] = new PracticePresetSlotSelectUiHandler();
+
+    this.handlers[UiMode.ROTOM_DEX] = new RotomDexUiHandler();
+
+    this.handlers[UiMode.ATTENDANCE] = new AttendanceUiHandler();
+
+    this.handlers[UiMode.KECLEON_SHOP] = new KecleonShopUiHandler();
+
+    this.handlers[UiMode.COUPON] = new CouponUiHandler();
+
+    this.handlers[UiMode.BERRY_PLANTER] = new BerryPlanterUiHandler();
+
+    this.handlers[UiMode.CRAFTING] = new CraftingUiHandler();
+
+    this.handlers[UiMode.ROGUE_MINE] = new RogueMineUiHandler();
   }
 
   setup(): void {
@@ -656,16 +686,14 @@ export class UI extends Phaser.GameObjects.Container {
   }
 
   revertModes(): Promise<void> {
-  return new Promise<void>(resolve => {
-    if (this?.modeChain?.length === 0) {
-      return resolve();
-    }
+    return new Promise<void>(resolve => {
+      if (this?.modeChain?.length === 0) {
+        return resolve();
+      }
 
-    this.revertMode().then(success =>
-      executeIf(success, () => this.revertModes()).then(() => resolve()),
-    );
-  });
-}
+      this.revertMode().then(success => executeIf(success, () => this.revertModes()).then(() => resolve()));
+    });
+  }
 
   public getModeChain(): UiMode[] {
     return this.modeChain;

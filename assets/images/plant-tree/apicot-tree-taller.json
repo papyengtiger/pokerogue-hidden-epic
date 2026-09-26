@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "apicot-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 16,
+				"h": 43
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 12,
+						"w": 14,
+						"h": 20
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 14,
+						"h": 20
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 13,
+						"w": 14,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 23,
+						"w": 14,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:70d3356ffedae465c7e4625cdb5d25a1:135ba12f3360a558edb8b71d5fcacb26:37b25e12c1a390fdb92346490363078e$"
+	}
+}

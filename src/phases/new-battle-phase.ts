@@ -6,9 +6,16 @@ export class NewBattlePhase extends BattlePhase {
   start() {
     super.start();
 
+    const beforeWave = globalScene.currentBattle.waveIndex;
+
     globalScene.phaseManager.removeAllPhasesOfType("NewBattlePhase");
 
     globalScene.newBattle();
+
+    console.log("[NEW_BATTLE_AFTER_KECLEON]", {
+      beforeWave,
+      afterWave: globalScene.currentBattle.waveIndex,
+    });
 
     this.end();
   }

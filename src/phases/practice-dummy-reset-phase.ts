@@ -1,6 +1,6 @@
 import { globalScene } from "#app/global-scene";
-import { BattlePhase } from "#phases/battle-phase";
 import { StatusEffect } from "#enums/status-effect";
+import { BattlePhase } from "#phases/battle-phase";
 
 export class PracticeDummyResetPhase extends BattlePhase {
   public readonly phaseName = "PracticeDummyResetPhase";
@@ -15,8 +15,8 @@ export class PracticeDummyResetPhase extends BattlePhase {
 
     if (dummy) {
       if (dummy.hp <= 0) {
-  dummy.hp = dummy.getMaxHp?.() ?? dummy.maxHp ?? 100;
-}
+        dummy.hp = dummy.getMaxHp?.() ?? dummy.maxHp ?? 100;
+      }
 
       dummy.doSetStatus?.(StatusEffect.NONE);
       dummy.status = null;
@@ -34,6 +34,13 @@ export class PracticeDummyResetPhase extends BattlePhase {
 
     battle.enemyFaints = 0;
     battle.enemyFaintsHistory = [];
+
+    battle.turnCommands = [];
+    battle.preTurnCommands = [];
+    battle.commandPhase = null;
+
+    battle.cancelledMove = false;
+    battle.fainted = false;
 
     this.end();
   }

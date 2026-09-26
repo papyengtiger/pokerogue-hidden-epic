@@ -7,11 +7,14 @@ import Overrides from "#app/overrides";
 import { Phase } from "#app/phase";
 import { bypassLogin } from "#constants/app-constants";
 import { getDailyRunStarters } from "#data/daily-seed/daily-run";
+import { getMonthlyRunSeed, getMonthlyRunStarters } from "#data/daily-seed/monthly-run";
+import { getWeeklyRunSeed, getWeeklyRunStarters } from "#data/daily-seed/weekly-run";
 import { modifierTypes } from "#data/data-lists";
 import { Gender } from "#data/gender";
 import { BattleType } from "#enums/battle-type";
 import { GameModes } from "#enums/game-modes";
 import { ModifierPoolType } from "#enums/modifier-pool-type";
+import { PokeballType } from "#enums/pokeball";
 import { UiMode } from "#enums/ui-mode";
 import { Unlockables } from "#enums/unlockables";
 import { getBiomeKey } from "#field/arena";
@@ -21,6 +24,7 @@ import { vouchers } from "#system/voucher";
 import type { OptionSelectConfig, OptionSelectItem } from "#ui/abstract-option-select-ui-handler";
 import { SaveSlotUiMode } from "#ui/save-slot-select-ui-handler";
 import { isLocalServerConnected } from "#utils/common";
+import { getDailyResetDate } from "#utils/date-utils";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
@@ -47,6 +51,13 @@ export class TitlePhase extends Phase {
     }
 
     const lastSlot = await this.checkLastSaveSlot();
+
+    console.log("[TITLE_PHASE] 출석체크 호출 직전");
+
+    await this.checkAttendance();
+
+    console.log("[TITLE_PHASE] 출석체크 호출 완료");
+
     await this.showOptions(lastSlot);
   }
 
@@ -116,6 +127,21 @@ export class TitlePhase extends Phase {
               return true;
             },
           });
+          options.push({
+            label: GameMode.getModeName(GameModes.WEEKLY),
+            handler: () => {
+              this.initWeeklyRun();
+              return true;
+            },
+          });
+
+          options.push({
+            label: GameMode.getModeName(GameModes.MONTHLY),
+            handler: () => {
+              this.initMonthlyRun();
+              return true;
+            },
+          });
           if (gameData.isUnlocked(Unlockables.ENDLESS_MODE)) {
             options.push({
               label: GameMode.getModeName(GameModes.CHALLENGE),
@@ -153,6 +179,7 @@ export class TitlePhase extends Phase {
           globalScene.ui.showText(i18next.t("menu:selectGameMode"), null, () =>
             globalScene.ui.setMode(UiMode.OPTION_SELECT, {
               options,
+              maxOptions: 6,
             }),
           );
           return true;
@@ -180,16 +207,24 @@ export class TitlePhase extends Phase {
         keepOpen: true,
       },
       {
-  label: i18next.t("menu:logShop"),
-  handler: () => {
-  this.enteringRogueShop = true;
-  globalScene.ui.setMode(UiMode.MESSAGE);
-  globalScene.ui.clearText();
-  globalScene.phaseManager.pushNew("RogueShopPhase");
-  super.end();
-  return true;
-},
-},
+        label: globalScene.gameData.lastAttendanceDate !== getDailyResetDate() ? "출석체크 !" : "출석체크",
+        handler: () => {
+          globalScene.ui.setOverlayMode(UiMode.ATTENDANCE);
+          return true;
+        },
+        keepOpen: true,
+      },
+      {
+        label: i18next.t("menu:logShop"),
+        handler: () => {
+          this.enteringRogueShop = true;
+          globalScene.ui.setMode(UiMode.MESSAGE);
+          globalScene.ui.clearText();
+          globalScene.phaseManager.pushNew("RogueShopPhase");
+          super.end();
+          return true;
+        },
+      },
       {
         label: i18next.t("menu:settings"),
         handler: () => {
@@ -224,6 +259,20 @@ export class TitlePhase extends Phase {
       console.error(err);
       globalScene.ui.showText(i18next.t("menu:failedToLoadSession"), null);
     }
+  }
+
+  private checkAttendance(): void {
+    const today = getDailyResetDate();
+    const gameData = globalScene.gameData;
+
+    const canClaim = gameData.lastAttendanceDate !== today;
+
+    console.log("[ATTENDANCE_CHECK]", {
+      today,
+      lastAttendanceDate: gameData.lastAttendanceDate,
+      attendanceCount: gameData.attendanceCount,
+      canClaim,
+    });
   }
 
   initDailyRun(): void {
@@ -281,7 +330,7 @@ export class TitlePhase extends Phase {
 
         regenerateModifierPoolThresholds(party, ModifierPoolType.DAILY_STARTER);
 
-        const modifiers: Modifier[] = new Array(3)
+        const modifiers: Modifier[] = new Array(5)
           .fill(null)
           .map(() => modifierTypes.EXP_SHARE().withIdFromFunc(modifierTypes.EXP_SHARE).newModifier())
           .concat(
@@ -290,8 +339,40 @@ export class TitlePhase extends Phase {
               .map(() => modifierTypes.GOLDEN_EXP_CHARM().withIdFromFunc(modifierTypes.GOLDEN_EXP_CHARM).newModifier()),
           )
           .concat([modifierTypes.MAP().withIdFromFunc(modifierTypes.MAP).newModifier()])
-          .concat([modifierTypes.ABILITY_CHARM().withIdFromFunc(modifierTypes.ABILITY_CHARM).newModifier()])
-          .concat([modifierTypes.SHINY_CHARM().withIdFromFunc(modifierTypes.SHINY_CHARM).newModifier()])
+          .concat(
+            new Array(2)
+              .fill(null)
+              .map(() => modifierTypes.ABILITY_CHARM().withIdFromFunc(modifierTypes.ABILITY_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(2)
+              .fill(null)
+              .map(() => modifierTypes.SHINY_CHARM().withIdFromFunc(modifierTypes.SHINY_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(2)
+              .fill(null)
+              .map(() => modifierTypes.MARK_CHARM().withIdFromFunc(modifierTypes.MARK_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.OVAL_CHARM().withIdFromFunc(modifierTypes.OVAL_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.HEALING_CHARM().withIdFromFunc(modifierTypes.HEALING_CHARM).newModifier()),
+          )
+
+          // 추가
+          .concat([modifierTypes.MEGA_BRACELET().withIdFromFunc(modifierTypes.MEGA_BRACELET).newModifier()])
+          .concat([modifierTypes.DYNAMAX_BAND().withIdFromFunc(modifierTypes.DYNAMAX_BAND).newModifier()])
+          .concat([modifierTypes.ARMORITE_ORE().withIdFromFunc(modifierTypes.ARMORITE_ORE).newModifier()])
+          .concat([modifierTypes.TERA_ORB().withIdFromFunc(modifierTypes.TERA_ORB).newModifier()])
+          .concat([modifierTypes.Z_RING().withIdFromFunc(modifierTypes.Z_RING).newModifier()])
+          .concat([modifierTypes.Z_POWER_RING().withIdFromFunc(modifierTypes.Z_POWER_RING).newModifier()])
+
           .concat(getDailyRunStarterModifiers(party))
           .filter(m => m !== null);
 
@@ -337,7 +418,7 @@ export class TitlePhase extends Phase {
           });
       } else {
         // Grab first 10 chars of ISO date format (YYYY-MM-DD) and convert to base64
-        let seed: string = btoa(new Date().toISOString().substring(0, 10));
+        let seed: string = btoa(getDailyResetDate());
         if (Overrides.DAILY_RUN_SEED_OVERRIDE != null) {
           seed = Overrides.DAILY_RUN_SEED_OVERRIDE;
         }
@@ -346,20 +427,381 @@ export class TitlePhase extends Phase {
     });
   }
 
+  initWeeklyRun(): void {
+    globalScene.ui.clearText();
+
+    globalScene.ui.setMode(UiMode.SAVE_SLOT, SaveSlotUiMode.SAVE, (slotId: number) => {
+      if (slotId === -1) {
+        globalScene.phaseManager.toTitleScreen();
+        super.end();
+        return;
+      }
+
+      globalScene.phaseManager.clearPhaseQueue();
+      globalScene.sessionSlotId = slotId;
+
+      const generateWeekly = (seed: string) => {
+        globalScene.gameMode = getGameMode(GameModes.WEEKLY);
+
+        globalScene.setSeed(seed);
+        globalScene.resetSeed();
+
+        globalScene.money = globalScene.gameMode.getStartingMoney();
+
+        globalScene.pokeballCounts[PokeballType.POKEBALL] = 10;
+        globalScene.pokeballCounts[PokeballType.GREAT_BALL] = 10;
+        globalScene.pokeballCounts[PokeballType.ULTRA_BALL] = 10;
+        globalScene.pokeballCounts[PokeballType.ROGUE_BALL] = 10;
+        globalScene.pokeballCounts[PokeballType.MASTER_BALL] = 5;
+
+        const starters = getWeeklyRunStarters();
+        const startingLevel = globalScene.gameMode.getStartingLevel();
+
+        const party = globalScene.getPlayerParty();
+        const loadPokemonAssets: Promise<void>[] = [];
+
+        for (const starter of starters) {
+          const species = getPokemonSpecies(starter.speciesId);
+
+          const starterGender =
+            species.malePercent !== null ? (starter.female ? Gender.FEMALE : Gender.MALE) : Gender.GENDERLESS;
+
+          const starterPokemon = globalScene.addPlayerPokemon(
+            species,
+            startingLevel,
+            starter.abilityIndex,
+            starter.formIndex,
+            starterGender,
+            starter.shiny,
+            starter.variant,
+            starter.ivs,
+            starter.nature,
+          );
+
+          starterPokemon.setVisible(false);
+
+          if (starter.moveset) {
+            starterPokemon.tryPopulateMoveset(starter.moveset, true);
+          }
+
+          party.push(starterPokemon);
+
+          loadPokemonAssets.push(starterPokemon.loadAssets());
+        }
+
+        /*
+         * 주간 전용 ModifierPoolType을 아직 만들지 않았다면
+         * 임시로 DAILY_STARTER를 사용합니다.
+         */
+        regenerateModifierPoolThresholds(party, ModifierPoolType.DAILY_STARTER);
+
+        /*
+         * 첫 구현에서는 데일리 기반 아이템을 사용합니다.
+         * 이후 주간 전용 보상표로 분리하면 됩니다.
+         */
+        const modifiers: Modifier[] = new Array(5)
+          .fill(null)
+          .map(() => modifierTypes.EXP_SHARE().withIdFromFunc(modifierTypes.EXP_SHARE).newModifier())
+          .concat(
+            new Array(5)
+              .fill(null)
+              .map(() => modifierTypes.EXP_CHARM().withIdFromFunc(modifierTypes.EXP_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(5)
+              .fill(null)
+              .map(() => modifierTypes.SUPER_EXP_CHARM().withIdFromFunc(modifierTypes.SUPER_EXP_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(5)
+              .fill(null)
+              .map(() => modifierTypes.GOLDEN_EXP_CHARM().withIdFromFunc(modifierTypes.GOLDEN_EXP_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(10)
+              .fill(null)
+              .map(() => modifierTypes.CANDY_JAR().withIdFromFunc(modifierTypes.CANDY_JAR).newModifier()),
+          )
+          .concat(
+            new Array(1)
+              .fill(null)
+              .map(() => modifierTypes.BERRY_POUCH().withIdFromFunc(modifierTypes.BERRY_POUCH).newModifier()),
+          )
+          .concat(
+            new Array(1)
+              .fill(null)
+              .map(() => modifierTypes.STRANGE_BOX().withIdFromFunc(modifierTypes.STRANGE_BOX).newModifier()),
+          )
+          .concat([modifierTypes.IV_SCANNER().withIdFromFunc(modifierTypes.IV_SCANNER).newModifier()])
+          .concat([modifierTypes.MAP().withIdFromFunc(modifierTypes.MAP).newModifier()])
+          .concat([modifierTypes.LOCK_CAPSULE().withIdFromFunc(modifierTypes.LOCK_CAPSULE).newModifier()])
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.ABILITY_CHARM().withIdFromFunc(modifierTypes.ABILITY_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.SHINY_CHARM().withIdFromFunc(modifierTypes.SHINY_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.MARK_CHARM().withIdFromFunc(modifierTypes.MARK_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.OVAL_CHARM().withIdFromFunc(modifierTypes.OVAL_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.CATCHING_CHARM().withIdFromFunc(modifierTypes.CATCHING_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(4)
+              .fill(null)
+              .map(() => modifierTypes.HEALING_CHARM().withIdFromFunc(modifierTypes.HEALING_CHARM).newModifier()),
+          )
+          .concat([modifierTypes.MEGA_BRACELET().withIdFromFunc(modifierTypes.MEGA_BRACELET).newModifier()])
+          .concat([modifierTypes.DYNAMAX_BAND().withIdFromFunc(modifierTypes.DYNAMAX_BAND).newModifier()])
+          .concat([modifierTypes.ARMORITE_ORE().withIdFromFunc(modifierTypes.ARMORITE_ORE).newModifier()])
+          .concat([modifierTypes.TERA_ORB().withIdFromFunc(modifierTypes.TERA_ORB).newModifier()])
+          .concat([modifierTypes.Z_RING().withIdFromFunc(modifierTypes.Z_RING).newModifier()])
+          .concat([modifierTypes.Z_POWER_RING().withIdFromFunc(modifierTypes.Z_POWER_RING).newModifier()])
+          .concat(getDailyRunStarterModifiers(party))
+          .filter((modifier): modifier is Modifier => modifier !== null);
+
+        for (const modifier of modifiers) {
+          globalScene.addModifier(modifier, true, false, false, true);
+        }
+
+        globalScene.updateModifiers(true, true);
+
+        Promise.all(loadPokemonAssets).then(() => {
+          globalScene.time.delayedCall(500, () => globalScene.playBgm());
+
+          globalScene.newArena(globalScene.gameMode.getStartingBiome());
+
+          globalScene.newBattle();
+          globalScene.arena.init();
+
+          globalScene.sessionPlayTime = 0;
+          globalScene.lastSavePlayTime = 0;
+
+          this.end();
+        });
+      };
+
+      generateWeekly(getWeeklyRunSeed());
+    });
+  }
+
+  initMonthlyRun(): void {
+    globalScene.ui.clearText();
+
+    globalScene.ui.setMode(UiMode.SAVE_SLOT, SaveSlotUiMode.SAVE, (slotId: number) => {
+      if (slotId === -1) {
+        globalScene.phaseManager.toTitleScreen();
+        super.end();
+        return;
+      }
+
+      globalScene.phaseManager.clearPhaseQueue();
+      globalScene.sessionSlotId = slotId;
+
+      const generateMonthly = (seed: string) => {
+        globalScene.gameMode = getGameMode(GameModes.MONTHLY);
+
+        globalScene.setSeed(seed);
+        globalScene.resetSeed();
+
+        globalScene.money = globalScene.gameMode.getStartingMoney();
+
+        globalScene.pokeballCounts[PokeballType.POKEBALL] = 20;
+        globalScene.pokeballCounts[PokeballType.GREAT_BALL] = 20;
+        globalScene.pokeballCounts[PokeballType.ULTRA_BALL] = 20;
+        globalScene.pokeballCounts[PokeballType.ROGUE_BALL] = 20;
+        globalScene.pokeballCounts[PokeballType.MASTER_BALL] = 10;
+
+        const starters = getMonthlyRunStarters();
+        const startingLevel = globalScene.gameMode.getStartingLevel();
+
+        const party = globalScene.getPlayerParty();
+        const loadPokemonAssets: Promise<void>[] = [];
+
+        for (const starter of starters) {
+          const species = getPokemonSpecies(starter.speciesId);
+
+          const starterGender =
+            species.malePercent !== null ? (starter.female ? Gender.FEMALE : Gender.MALE) : Gender.GENDERLESS;
+
+          const starterPokemon = globalScene.addPlayerPokemon(
+            species,
+            startingLevel,
+            starter.abilityIndex,
+            starter.formIndex,
+            starterGender,
+            starter.shiny,
+            starter.variant,
+            starter.ivs,
+            starter.nature,
+          );
+
+          starterPokemon.setVisible(false);
+
+          if (starter.moveset) {
+            starterPokemon.tryPopulateMoveset(starter.moveset, true);
+          }
+
+          party.push(starterPokemon);
+
+          loadPokemonAssets.push(starterPokemon.loadAssets());
+        }
+
+        /*
+         * 주간 전용 ModifierPoolType을 아직 만들지 않았다면
+         * 임시로 DAILY_STARTER를 사용합니다.
+         */
+        regenerateModifierPoolThresholds(party, ModifierPoolType.DAILY_STARTER);
+
+        /*
+         * 첫 구현에서는 데일리 기반 아이템을 사용합니다.
+         * 이후 주간 전용 보상표로 분리하면 됩니다.
+         */
+        const modifiers: Modifier[] = new Array(5)
+          .fill(null)
+          .map(() => modifierTypes.EXP_SHARE().withIdFromFunc(modifierTypes.EXP_SHARE).newModifier())
+          .concat(
+            new Array(10)
+              .fill(null)
+              .map(() => modifierTypes.EXP_CHARM().withIdFromFunc(modifierTypes.EXP_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(10)
+              .fill(null)
+              .map(() => modifierTypes.SUPER_EXP_CHARM().withIdFromFunc(modifierTypes.SUPER_EXP_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(10)
+              .fill(null)
+              .map(() => modifierTypes.GOLDEN_EXP_CHARM().withIdFromFunc(modifierTypes.GOLDEN_EXP_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(20)
+              .fill(null)
+              .map(() => modifierTypes.CANDY_JAR().withIdFromFunc(modifierTypes.CANDY_JAR).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.BERRY_POUCH().withIdFromFunc(modifierTypes.BERRY_POUCH).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.STRANGE_BOX().withIdFromFunc(modifierTypes.STRANGE_BOX).newModifier()),
+          )
+          .concat([modifierTypes.IV_SCANNER().withIdFromFunc(modifierTypes.IV_SCANNER).newModifier()])
+          .concat([modifierTypes.MAP().withIdFromFunc(modifierTypes.MAP).newModifier()])
+          .concat([modifierTypes.LOCK_CAPSULE().withIdFromFunc(modifierTypes.LOCK_CAPSULE).newModifier()])
+          .concat(
+            new Array(4)
+              .fill(null)
+              .map(() => modifierTypes.ABILITY_CHARM().withIdFromFunc(modifierTypes.ABILITY_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(4)
+              .fill(null)
+              .map(() => modifierTypes.SHINY_CHARM().withIdFromFunc(modifierTypes.SHINY_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(4)
+              .fill(null)
+              .map(() => modifierTypes.MARK_CHARM().withIdFromFunc(modifierTypes.MARK_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.OVAL_CHARM().withIdFromFunc(modifierTypes.OVAL_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.CATCHING_CHARM().withIdFromFunc(modifierTypes.CATCHING_CHARM).newModifier()),
+          )
+          .concat(
+            new Array(5)
+              .fill(null)
+              .map(() => modifierTypes.AMULET_COIN().withIdFromFunc(modifierTypes.AMULET_COIN).newModifier()),
+          )
+          .concat(
+            new Array(3)
+              .fill(null)
+              .map(() => modifierTypes.COIN_CASE().withIdFromFunc(modifierTypes.COIN_CASE).newModifier()),
+          )
+          .concat(
+            new Array(5)
+              .fill(null)
+              .map(() => modifierTypes.HEALING_CHARM().withIdFromFunc(modifierTypes.HEALING_CHARM).newModifier()),
+          )
+          .concat([modifierTypes.MEGA_BRACELET().withIdFromFunc(modifierTypes.MEGA_BRACELET).newModifier()])
+          .concat([modifierTypes.DYNAMAX_BAND().withIdFromFunc(modifierTypes.DYNAMAX_BAND).newModifier()])
+          .concat([modifierTypes.ARMORITE_ORE().withIdFromFunc(modifierTypes.ARMORITE_ORE).newModifier()])
+          .concat([modifierTypes.TERA_ORB().withIdFromFunc(modifierTypes.TERA_ORB).newModifier()])
+          .concat([modifierTypes.Z_RING().withIdFromFunc(modifierTypes.Z_RING).newModifier()])
+          .concat([modifierTypes.Z_POWER_RING().withIdFromFunc(modifierTypes.Z_POWER_RING).newModifier()])
+          .concat(getDailyRunStarterModifiers(party))
+          .filter((modifier): modifier is Modifier => modifier !== null);
+
+        for (const modifier of modifiers) {
+          globalScene.addModifier(modifier, true, false, false, true);
+        }
+
+        globalScene.updateModifiers(true, true);
+
+        Promise.all(loadPokemonAssets).then(() => {
+          globalScene.time.delayedCall(500, () => globalScene.playBgm());
+
+          globalScene.newArena(globalScene.gameMode.getStartingBiome());
+
+          globalScene.newBattle();
+          globalScene.arena.init();
+
+          globalScene.sessionPlayTime = 0;
+          globalScene.lastSavePlayTime = 0;
+
+          this.end();
+        });
+      };
+
+      generateMonthly(getMonthlyRunSeed());
+    });
+  }
+
   // TODO: Refactor this
   end(): void {
     if (this.enteringRogueShop) {
-    super.end();
-    return;
-  }
-    if (!this.loaded && !globalScene.gameMode.isDaily) {
+      super.end();
+      return;
+    }
+    const hasGeneratedStarters =
+      globalScene.gameMode.modeId === GameModes.DAILY
+      || globalScene.gameMode.modeId === GameModes.WEEKLY
+      || globalScene.gameMode.modeId === GameModes.MONTHLY;
+
+    if (!this.loaded && !hasGeneratedStarters) {
       globalScene.arena.preloadBgm();
       globalScene.gameMode = getGameMode(this.gameMode);
+
       if (this.gameMode === GameModes.CHALLENGE) {
         globalScene.phaseManager.pushNew("SelectChallengePhase");
       } else {
         globalScene.phaseManager.pushNew("SelectStarterPhase");
       }
+
       globalScene.newArena(globalScene.gameMode.getStartingBiome());
     } else {
       globalScene.playBgm();

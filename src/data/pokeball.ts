@@ -1,5 +1,6 @@
 import { globalScene } from "#app/global-scene";
 import { PokeballType } from "#enums/pokeball";
+import type { Pokemon } from "#field/pokemon";
 import { NumberHolder } from "#utils/common";
 import i18next from "i18next";
 
@@ -19,6 +20,8 @@ export function getPokeballAtlasKey(type: PokeballType): string {
       return "mb";
     case PokeballType.LUXURY_BALL:
       return "lb";
+    case PokeballType.QUICK_BALL:
+      return "qb";
   }
 }
 
@@ -43,24 +46,35 @@ export function getPokeballName(type: PokeballType): string {
     case PokeballType.LUXURY_BALL:
       ret = i18next.t("pokeball:luxuryBall");
       break;
+    case PokeballType.QUICK_BALL:
+      ret = i18next.t("pokeball:quickBall");
+      break;
   }
   return ret;
 }
 
-export function getPokeballCatchMultiplier(type: PokeballType): number {
+export function getPokeballCatchMultiplier(type: PokeballType, pokemon?: Pokemon): number {
   switch (type) {
     case PokeballType.POKEBALL:
       return 1;
+
     case PokeballType.GREAT_BALL:
       return 1.5;
+
     case PokeballType.ULTRA_BALL:
       return 2;
+
     case PokeballType.ROGUE_BALL:
       return 3;
+
     case PokeballType.MASTER_BALL:
       return -1;
+
     case PokeballType.LUXURY_BALL:
       return 1;
+
+    case PokeballType.QUICK_BALL:
+      return pokemon?.tempSummonData.waveTurnCount === 1 ? 6 : 3;
   }
 }
 
@@ -78,6 +92,8 @@ export function getPokeballTintColor(type: PokeballType): number {
       return 0xa441bd;
     case PokeballType.LUXURY_BALL:
       return 0xffde6a;
+    case PokeballType.QUICK_BALL:
+      return 0x4fc3f7;
   }
 }
 

@@ -2890,8 +2890,6 @@ export function initBiomes() {
       [ BiomeId.MOUNTAIN, BiomePoolTier.BOSS, [ TimeOfDay.DAWN, TimeOfDay.DAY ]],
       [ BiomeId.GREEN_MOUNTAIN, BiomePoolTier.RARE ],
       [ BiomeId.GREEN_MOUNTAIN, BiomePoolTier.BOSS_RARE ],
-      [ BiomeId.TOWN, BiomePoolTier.COMMON ],
-      [ BiomeId.TOWN, BiomePoolTier.BOSS ],
       [ BiomeId.BLACK_FIELD, BiomePoolTier.COMMON ],
       [ BiomeId.BLACK_FIELD, BiomePoolTier.BOSS ],
       [ BiomeId.DARK_FOREST, BiomePoolTier.COMMON ],
@@ -10245,6 +10243,11 @@ export function initBiomes() {
       [ BiomeId.DRAGON_FOREST, BiomePoolTier.BOSS ]
     ]
     ],
+    [ SpeciesId.BATTLE_BOND_GRENINJA, PokemonType.WATER, PokemonType.DARK, [
+      [ BiomeId.LAKE, BiomePoolTier.ULTRA_RARE ],
+      [ BiomeId.LAKE, BiomePoolTier.BOSS_SUPER_RARE ]
+    ]
+    ],
     [ SpeciesId.ETERNAL_FLOETTE, PokemonType.FAIRY, -1, [
       [ BiomeId.FAIRY_FOREST, BiomePoolTier.RARE ],
       [ BiomeId.FAIRY_FOREST, BiomePoolTier.BOSS_RARE ]
@@ -10430,6 +10433,12 @@ export function initBiomes() {
       [ BiomeId.MEADOW, BiomePoolTier.BOSS_RARE, [ TimeOfDay.DAWN, TimeOfDay.DAY ]],
       [ BiomeId.BAMBOO_FOREST, BiomePoolTier.UNCOMMON ],
       [ BiomeId.BAMBOO_FOREST, BiomePoolTier.BOSS ]
+    ]
+    ],
+    [ SpeciesId.HISUI_BASCULIN, PokemonType.WATER, -1, [
+      [ BiomeId.SEABED, BiomePoolTier.COMMON ],
+      [ BiomeId.RIVER, BiomePoolTier.UNCOMMON ],
+      [ BiomeId.GHOST_SHIP, BiomePoolTier.RARE ]
     ]
     ],
     [ SpeciesId.HISUI_ZORUA, PokemonType.NORMAL, PokemonType.GHOST, [

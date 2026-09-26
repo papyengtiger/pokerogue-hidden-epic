@@ -1,6 +1,7 @@
 import "#app/polyfills"; // All polyfills MUST be loaded first for side effects
 import "#plugins/i18n"; // Initializes i18n on import
 
+import { GrayscalePostFX } from "#app/pipelines/grayscale";
 import { InvertPostFX } from "#app/pipelines/invert";
 import { isBeta, isDev } from "#constants/app-constants";
 import { version } from "#package.json";
@@ -80,7 +81,7 @@ async function startGame(gameManifest?: Record<string, string>): Promise<void> {
       createContainer: true,
     },
     antialias: false,
-    pipeline: [InvertPostFX] as unknown as Phaser.Types.Core.PipelineConfig,
+    pipeline: [InvertPostFX, GrayscalePostFX] as unknown as Phaser.Types.Core.PipelineConfig,
     scene: [LoadingScene, BattleScene],
     version,
   });

@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "bluk-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 24
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 10,
+						"w": 18,
+						"h": 22
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 22
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 10,
+						"w": 17,
+						"h": 22
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 17,
+						"h": 22
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:bb1625eaafbe81ebeb716493fc74b334:5874adfe0cf2647ebce415dd90319b5d:de5a85ec85ef3789e2107a0d296857a8$"
+	}
+}

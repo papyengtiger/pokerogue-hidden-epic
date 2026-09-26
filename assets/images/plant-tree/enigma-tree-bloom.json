@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "enigma-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 20,
+				"h": 59
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 4,
+						"w": 18,
+						"h": 28
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 28
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 5,
+						"w": 18,
+						"h": 27
+					},
+					"frame": {
+						"x": 1,
+						"y": 31,
+						"w": 18,
+						"h": 27
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5ca95dc9f5acc06c97079c2decffe509:71692d8b5db530567fab31b73662f530:f9fb2e9e71d792016ff97953233a0f91$"
+	}
+}

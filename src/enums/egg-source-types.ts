@@ -4,4 +4,5 @@ export enum EggSourceType {
   GACHA_SHINY,
   SAME_SPECIES_EGG,
   EVENT,
+  GACHA_MARK,
 }

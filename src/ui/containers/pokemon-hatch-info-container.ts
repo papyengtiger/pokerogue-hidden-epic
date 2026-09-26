@@ -1,10 +1,12 @@
 import { globalScene } from "#app/global-scene";
-import { starterColors } from "#app/global-vars/starter-colors";
+import { getStarterColors } from "#app/global-vars/starter-colors";
 import { speciesEggMoves } from "#balance/egg-moves";
 import { allMoves } from "#data/data-lists";
 import { getEggTierForSpecies } from "#data/egg";
 import type { EggHatchData } from "#data/egg-hatch-data";
 import { Gender } from "#data/gender";
+import { getMarkData } from "#data/mark";
+import { MarkId } from "#enums/mark-id";
 import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
 import { TextStyle } from "#enums/text-style";
@@ -32,6 +34,7 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
   private pokemonCandyIcon: Phaser.GameObjects.Sprite;
   private pokemonCandyOverlayIcon: Phaser.GameObjects.Sprite;
   private pokemonCandyCountText: Phaser.GameObjects.Text;
+  private pokemonMarkText: Phaser.GameObjects.Text;
 
   constructor(listContainer: Phaser.GameObjects.Container, x = 115, y = 9) {
     super(x, y);
@@ -63,6 +66,12 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
     this.pokemonHatchedIcon.setOrigin(0, 0.2);
     this.pokemonHatchedIcon.setScale(0.8);
     this.pokemonListContainer.add(this.pokemonHatchedIcon);
+
+    this.pokemonMarkText = addTextObject(7, 101, "", TextStyle.SUMMARY, { fontSize: "40px" });
+
+    this.pokemonMarkText.setOrigin(0, 0);
+    this.pokemonMarkText.setVisible(false);
+    this.pokemonListContainer.add(this.pokemonMarkText);
 
     this.pokemonCandyIcon = globalScene.add.sprite(4.5, 40, "candy");
     this.pokemonCandyIcon.setScale(0.5);
@@ -151,7 +160,7 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
     this.displayPokemon(pokemon);
 
     super.show(pokemon, false, 1, hatchInfo.getDex(), hatchInfo.getStarterEntry(), true);
-    const colorScheme = starterColors[species.speciesId];
+    const colorScheme = getStarterColors(species.speciesId);
 
     this.pokemonCandyIcon.setTint(argbFromRgba(rgbHexToRgba(colorScheme[0])));
     this.pokemonCandyIcon.setVisible(true);
@@ -162,6 +171,14 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
 
     this.pokemonNumberText.setText(padInt(species.speciesId, 4));
     this.pokemonNameText.setText(species.name);
+
+    if (pokemon.mark !== MarkId.NONE) {
+      const markData = getMarkData(pokemon.mark);
+
+      this.pokemonNameText.setFontSize("44px").setText(`${markData.title}\n${species.name}`);
+    } else {
+      this.pokemonNameText.setFontSize("64px").setText(species.name);
+    }
 
     const hasEggMoves = species && speciesEggMoves.hasOwnProperty(species.speciesId);
 

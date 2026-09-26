@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "pamtre-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 20,
+				"h": 59
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 5,
+						"w": 18,
+						"h": 27
+					},
+					"frame": {
+						"x": 1,
+						"y": 31,
+						"w": 18,
+						"h": 27
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 4,
+						"w": 18,
+						"h": 28
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 28
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0466f0bc42461e98b81e72e93ef7de59:2fa1d075a47d1462541c1a654a462e2c:369026564c23169e4a946c5cdc19ccf9$"
+	}
+}

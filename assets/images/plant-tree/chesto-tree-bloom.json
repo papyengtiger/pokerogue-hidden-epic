@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "chesto-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 44,
+				"h": 28
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 7,
+						"w": 18,
+						"h": 24
+					},
+					"frame": {
+						"x": 25,
+						"y": 1,
+						"w": 18,
+						"h": 24
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 5,
+						"w": 22,
+						"h": 26
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 22,
+						"h": 26
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:384ac4f59cca6d630c0a2c84b0680305:1d1b3bce46762085f6474de446c672bb:a50f6493485885f47865075345dc3742$"
+	}
+}

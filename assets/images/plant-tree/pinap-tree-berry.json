@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "pinap-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 14,
+				"h": 42
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 13,
+						"w": 12,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 12,
+						"h": 19
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 13,
+						"w": 12,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 22,
+						"w": 12,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0019651c15954ceb796d22e9571a7420:da0b6d296d93816af9b4fc1521a261ad:f82a4a1a6550606f768b175199205255$"
+	}
+}

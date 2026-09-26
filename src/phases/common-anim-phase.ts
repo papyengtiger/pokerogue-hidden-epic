@@ -11,7 +11,7 @@ export class CommonAnimPhase extends PokemonPhase {
   private anim: CommonAnim | null;
   private targetIndex?: BattlerIndex;
 
-  constructor(battlerIndex?: BattlerIndex, targetIndex?: BattlerIndex, anim: CommonAnim | null = null) {
+  constructor(battlerIndex?: BattlerIndex | number, targetIndex?: BattlerIndex, anim: CommonAnim | null = null) {
     super(battlerIndex);
 
     this.anim = anim;

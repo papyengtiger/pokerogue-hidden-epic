@@ -20,6 +20,8 @@ export class CommandUiHandler extends UiHandler {
 
   private teraButton: Phaser.GameObjects.Sprite;
 
+  private rotomDexButton: Phaser.GameObjects.Sprite;
+
   protected fieldIndex = 0;
   protected cursor2 = 0;
 
@@ -52,6 +54,11 @@ export class CommandUiHandler extends UiHandler {
       isTerastallized: false,
     });
     this.commandsContainer.add(this.teraButton);
+    console.log("[ROTOM_DEX_TEXTURE_EXISTS]", globalScene.textures.exists("button_rotom_dex"));
+    this.rotomDexButton = globalScene.add.sprite(-60, 15, "button_rotom_dex");
+    this.rotomDexButton.setName("rotom-dex-button");
+    this.rotomDexButton.setScale(0.3);
+    this.commandsContainer.add(this.rotomDexButton);
 
     for (let c = 0; c < commands.length; c++) {
       const commandText = addTextObject(
@@ -71,6 +78,8 @@ export class CommandUiHandler extends UiHandler {
     this.fieldIndex = args.length > 0 ? (args[0] as number) : 0;
 
     this.commandsContainer.setVisible(true);
+
+    this.rotomDexButton.setVisible(true);
 
     let commandPhase: CommandPhase;
     const currentPhase = globalScene.phaseManager.getCurrentPhase();
@@ -155,6 +164,10 @@ export class CommandUiHandler extends UiHandler {
             );
             success = true;
             break;
+          case Command.ROTOM_DEX:
+            ui.setMode(UiMode.ROTOM_DEX, this.fieldIndex);
+            success = true;
+            break;
         }
       } else {
         (globalScene.phaseManager.getCurrentPhase() as CommandPhase).cancel();
@@ -174,17 +187,27 @@ export class CommandUiHandler extends UiHandler {
         case Button.LEFT:
           if (cursor === Command.BALL || cursor === Command.RUN) {
             success = this.setCursor(cursor - 1);
-          } else if ((cursor === Command.FIGHT || cursor === Command.POKEMON) && this.canTera()) {
-            success = this.setCursor(Command.TERA);
+          } else if (cursor === Command.TERA) {
+            success = this.setCursor(Command.ROTOM_DEX);
+            this.toggleTeraButton();
+          } else if (cursor === Command.ROTOM_DEX) {
+            success = false;
+          } else if (cursor === Command.FIGHT || cursor === Command.POKEMON) {
+            success = this.canTera() ? this.setCursor(Command.TERA) : this.setCursor(Command.ROTOM_DEX);
+
             this.toggleTeraButton();
           }
           break;
         case Button.RIGHT:
-          if (cursor === Command.FIGHT || cursor === Command.POKEMON) {
-            success = this.setCursor(cursor + 1);
+          if (cursor === Command.ROTOM_DEX) {
+            success = this.canTera() ? this.setCursor(Command.TERA) : this.setCursor(Command.FIGHT);
+
+            this.toggleTeraButton();
           } else if (cursor === Command.TERA) {
             success = this.setCursor(Command.FIGHT);
             this.toggleTeraButton();
+          } else if (cursor === Command.FIGHT || cursor === Command.POKEMON) {
+            success = this.setCursor(cursor + 1);
           }
           break;
       }
@@ -237,6 +260,9 @@ export class CommandUiHandler extends UiHandler {
 
     if (cursor === Command.TERA) {
       this.cursorObj.setVisible(false);
+    } else if (cursor === Command.ROTOM_DEX) {
+      this.cursorObj.setPosition(-65, 15);
+      this.cursorObj.setVisible(true);
     } else {
       this.cursorObj.setPosition(-5 + (cursor % 2 === 1 ? 56 : 0), 8 + (cursor >= 2 ? 16 : 0));
       this.cursorObj.setVisible(true);

@@ -47,17 +47,32 @@ export class DamageAnimPhase extends PokemonPhase {
   }
 
   applyDamage() {
+    const pokemon = this.getPokemon();
+
+    if (!pokemon) {
+      console.log("[DAMAGE_ANIM_SKIP_VIRTUAL_TARGET]", {
+        battlerIndex: this.battlerIndex,
+        amount: this.amount,
+        damageResult: this.damageResult,
+      });
+
+      this.end();
+      return;
+    }
+
     switch (this.damageResult) {
       case HitResult.EFFECTIVE:
       case HitResult.CONFUSION:
         globalScene.playSound("se/hit");
         break;
+
       case HitResult.SUPER_EFFECTIVE:
       case HitResult.EXTREMELY_EFFECTIVE:
       case HitResult.INDIRECT_KO:
       case HitResult.ONE_HIT_KO:
         globalScene.playSound("se/hit_strong");
         break;
+
       case HitResult.NOT_VERY_EFFECTIVE:
       case HitResult.MOSTLY_INEFFECTIVE:
         globalScene.playSound("se/hit_weak");
@@ -65,7 +80,7 @@ export class DamageAnimPhase extends PokemonPhase {
     }
 
     if (this.amount) {
-      globalScene.damageNumberHandler.add(this.getPokemon(), this.amount, this.damageResult, this.critical);
+      globalScene.damageNumberHandler.add(pokemon, this.amount, this.damageResult, this.critical);
     }
 
     if (this.damageResult !== HitResult.INDIRECT && this.amount > 0) {
@@ -74,20 +89,15 @@ export class DamageAnimPhase extends PokemonPhase {
         repeat: 5,
         startAt: 200,
         callback: () => {
-          this.getPokemon()
-            .getSprite()
-            .setVisible(flashTimer.repeatCount % 2 === 0);
+          pokemon.getSprite().setVisible(flashTimer.repeatCount % 2 === 0);
+
           if (!flashTimer.repeatCount) {
-            this.getPokemon()
-              .updateInfo()
-              .then(() => this.end());
+            pokemon.updateInfo().then(() => this.end());
           }
         },
       });
     } else {
-      this.getPokemon()
-        .updateInfo()
-        .then(() => this.end());
+      pokemon.updateInfo().then(() => this.end());
     }
   }
 

@@ -16,7 +16,7 @@ export class PracticeResultPhase extends Phase {
   private canClose = false;
   private closed = false;
 
-  private readonly maxPage = 2;
+  private readonly maxPage = 3;
 
   start(): void {
     super.start();
@@ -28,33 +28,23 @@ export class PracticeResultPhase extends Phase {
 
     this.result = (globalScene as any).practiceTurnResult;
 
-if (!this.result) {
-  this.end();
-  return;
-}
+    if (!this.result) {
+      this.end();
+      return;
+    }
 
-// ✅ 연습모드 이론 경험치
-if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  if ((this.result.expGained ?? 0) <= 0) {
-    const theoreticalExp =
-  (globalScene.currentBattle as any)
-    ?.practiceDummy
-    ?.getExpValue?.() ?? 1000;
+    // ✅ 연습모드 이론 경험치
+    if ((globalScene.currentBattle as any)?.isPracticeBattle && (this.result.expGained ?? 0) <= 0) {
+      const theoreticalExp = (globalScene.currentBattle as any)?.practiceDummy?.getExpValue?.() ?? 1000;
 
-    this.result.expGained += theoreticalExp;
+      this.result.expGained += theoreticalExp;
 
-    this.result.expFactors ??= [];
+      this.result.expFactors ??= [];
 
-    this.result.expFactors.push(
-      `이론 경험치 +${theoreticalExp}`,
-    );
+      this.result.expFactors.push(`이론 경험치 +${theoreticalExp}`);
 
-    console.log(
-      "[PRACTICE_THEORY_EXP]",
-      theoreticalExp,
-    );
-  }
-}
+      console.log("[PRACTICE_THEORY_EXP]", theoreticalExp);
+    }
 
     const sWidth = globalScene.scaledCanvas.width;
     const sHeight = globalScene.scaledCanvas.height;
@@ -72,30 +62,13 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
     const window = addWindow(x, y, windowW, windowH);
     this.container.add(window);
 
-    const title = addTextObject(
-      x + 12,
-      y + 10,
-      "실험 결과",
-      TextStyle.SUMMARY,
-    );
+    const title = addTextObject(x + 12, y + 10, "실험 결과", TextStyle.SUMMARY);
     this.container.add(title);
 
-    this.pageText = addTextObject(
-  x + 14,
-  y + 34,
-  "",
-  TextStyle.WINDOW,
-  { fontSize: "28px", lineSpacing: 3 },
-);
+    this.pageText = addTextObject(x + 14, y + 34, "", TextStyle.WINDOW, { fontSize: "34px", lineSpacing: 1 });
     this.container.add(this.pageText);
 
-    this.footerText = addTextObject(
-  x + 14,
-  y + windowH - 18,
-  "",
-  TextStyle.WINDOW,
-  { fontSize: "24px" },
-);
+    this.footerText = addTextObject(x + 180, y + windowH - 12, "", TextStyle.WINDOW, { fontSize: "34px" });
     this.container.add(this.footerText);
 
     globalScene.uiContainer.add(this.container);
@@ -106,6 +79,12 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
       this.canClose = true;
       this.bindKeys();
     });
+  }
+
+  private safeNumber(value: any, fallback = 0): number {
+    const n = Number(value);
+
+    return Number.isFinite(n) ? n : fallback;
   }
 
   private refreshPage(): void {
@@ -120,7 +99,7 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
     const short = (arr?: string[], max = 3): string => {
       const list = unique(arr);
 
-      if (!list.length) {
+      if (list.length === 0) {
         return "-";
       }
 
@@ -131,43 +110,40 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
       return `${list.slice(0, max).join(" / ")} 외 ${list.length - max}개`;
     };
 
-    const detailGrid = (
-  title: string,
-  arr?: string[],
-  rowsPerCol = 12,
-  maxCols = 2,
-): string[] => {
-  const list = unique(arr);
+    const detailGrid = (title: string, arr?: string[], rowsPerCol = 8, maxCols = 2): string[] => {
+      const list = unique(arr);
 
-  if (!list.length) {
-    return [`${title}: -`];
-  }
+      if (list.length === 0) {
+        return [`${title}: -`];
+      }
 
-  const maxItems = rowsPerCol * maxCols;
-  const shown = list.slice(0, maxItems);
-  const hidden = list.length - shown.length;
+      const maxItems = rowsPerCol * maxCols;
+      const shown = list.slice(0, maxItems);
+      const hidden = list.length - shown.length;
 
-  const cols: string[][] = [];
+      const cols: string[][] = [];
 
-  for (let c = 0; c < maxCols; c++) {
-    cols[c] = shown.slice(c * rowsPerCol, (c + 1) * rowsPerCol);
-  }
+      for (let c = 0; c < maxCols; c++) {
+        cols[c] = shown.slice(c * rowsPerCol, (c + 1) * rowsPerCol);
+      }
 
-  const lines = [`${title}:`];
+      const lines = [`${title}:`];
 
-  for (let r = 0; r < rowsPerCol; r++) {
-    const left = cols[0]?.[r] ? `- ${cols[0][r]}` : "";
-    const right = cols[1]?.[r] ? `- ${cols[1][r]}` : "";
+      for (let i = 0; i < rowsPerCol; i++) {
+        const left = cols[0]?.[i] ? `- ${cols[0][i]}` : "";
+        const right = cols[1]?.[i] ? `- ${cols[1][i]}` : "";
 
-    lines.push(`${left.padEnd(22, " ")}${right}`);
-  }
+        if (left || right) {
+          lines.push(`${left.padEnd(13, " ")}${right}`);
+        }
+      }
 
-  if (hidden > 0) {
-    lines.push(`외 ${hidden}개`);
-  }
+      if (hidden > 0) {
+        lines.push(`외 ${hidden}개`);
+      }
 
-  return lines;
-};
+      return lines;
+    };
 
     let lines: string[] = [];
 
@@ -190,35 +166,49 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
         `대미지요인: ${short(r.enemyDamageFactors)}`,
         "",
         "[보상]",
-        `경험치: ${r.expGained ?? 0}`,
-        `골드: ${r.moneyGained ?? 0}`,
-        `RP: ${r.roguePointsGained ?? 0}`,
+        `경험치: ${this.safeNumber(r.expGained)}   골드: ${this.safeNumber(r.moneyGained)}`,
+        `RP: ${this.safeNumber(r.roguePointsGained)}`,
+        `경험치요인: ${short(r.expFactors)}`,
+        `골드요인: ${short(r.moneyFactors)}`,
+        `RP요인: ${short(r.roguePointFactors)}`,
       ];
     }
 
     if (this.page === 1) {
-  lines = [
-    "[아군 상세]",
-    "",
-    ...detailGrid("대미지요인", r.playerDamageFactors, 12, 2),
-    "",
-    ...detailGrid("명중요인", r.playerAccuracyFactors, 4, 2),
-    "",
-    ...detailGrid("급소요인", r.playerCritFactors, 4, 2),
-  ];
-}
+      lines = [
+        "[아군 상세]",
+        "",
+        ...detailGrid("대미지요인", r.playerDamageFactors, 8, 2),
+        "",
+        ...detailGrid("명중요인", r.playerAccuracyFactors, 3, 2),
+        "",
+        ...detailGrid("급소요인", r.playerCritFactors, 3, 2),
+      ];
+    }
 
-   if (this.page === 2) {
-  lines = [
-    "[상대 상세]",
-    "",
-    ...detailGrid("대미지요인", r.enemyDamageFactors, 12, 2),
-    "",
-    ...detailGrid("명중요인", r.enemyAccuracyFactors, 4, 2),
-    "",
-    ...detailGrid("급소요인", r.enemyCritFactors, 4, 2),
-  ];
-}
+    if (this.page === 2) {
+      lines = [
+        "[상대 상세]",
+        "",
+        ...detailGrid("대미지요인", r.enemyDamageFactors, 8, 2),
+        "",
+        ...detailGrid("명중요인", r.enemyAccuracyFactors, 3, 2),
+        "",
+        ...detailGrid("급소요인", r.enemyCritFactors, 3, 2),
+      ];
+    }
+
+    if (this.page === 3) {
+      lines = [
+        "[보상 상세]",
+        "",
+        ...detailGrid("경험치요인", r.expFactors, 6, 2),
+        "",
+        ...detailGrid("골드요인", r.moneyFactors, 3, 2),
+        "",
+        ...detailGrid("RP요인", r.roguePointFactors, 3, 2),
+      ];
+    }
 
     this.pageText.setText(lines.join("\n"));
     this.footerText.setText(`←/→ 페이지 ${this.page + 1}/${this.maxPage + 1}   Z/X 닫기`);
@@ -272,23 +262,19 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
     this.container?.destroy(true);
     this.container = null;
 
-    if (
-  (globalScene as any)
-    .practiceDummyNeedsRefresh
-) {
-  (globalScene as any)
-    .practiceDummyNeedsRefresh = false;
+    if ((globalScene as any).practiceDummyNeedsRefresh) {
+      (globalScene as any).practiceDummyNeedsRefresh = false;
 
-  globalScene.refreshPracticeDummy?.();
-}
+      globalScene.refreshPracticeDummy?.();
+    }
 
     this.pageText = null;
     this.footerText = null;
 
     // ✅ 여기 추가
-if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  globalScene.refreshPracticeDummy?.();
-}
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      globalScene.refreshPracticeDummy?.();
+    }
 
     globalScene.time.delayedCall(100, () => {
       this.end();

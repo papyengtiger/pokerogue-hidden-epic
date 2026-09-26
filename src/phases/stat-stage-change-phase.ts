@@ -9,11 +9,21 @@ import { ArenaTagSide } from "#enums/arena-tag-side";
 import { ArenaTagType } from "#enums/arena-tag-type";
 import type { BattlerIndex } from "#enums/battler-index";
 import { type BattleStat, getStatKey, getStatStageChangeDescriptionKey, Stat } from "#enums/stat";
+import { StatChangeSource } from "#enums/stat-change-source";
 import type { Pokemon } from "#field/pokemon";
-import { ResetNegativeStatStageModifier, ProtectStatModifier, StatStageChangeCopyModifier, StatStageChangeBoostModifier, StatStageChangeReverseModifier, DuskManeBeadModifier, PreserveItemModifier } from "#modifiers/modifier";
+import {
+  DuskManeBeadModifier,
+  PreserveItemModifier,
+  ProtectStatModifier,
+  ResetNegativeStatStageModifier,
+  StatStageChangeBoostModifier,
+  StatStageChangeCopyModifier,
+  StatStageChangeReverseModifier,
+} from "#modifiers/modifier";
 import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import { PokemonPhase } from "#phases/pokemon-phase";
 import type { ConditionalUserFieldProtectStatAbAttrParams, PreStatStageChangeAbAttrParams } from "#types/ability-types";
+import type { StatChange, StatStageChangePhaseOptions } from "#types/stat-change";
 import { BooleanHolder, NumberHolder } from "#utils/common";
 import i18next from "i18next";
 
@@ -33,14 +43,15 @@ export class StatStageChangePhase extends PokemonPhase {
   private onChange: StatStageChangeCallback | null;
   private comingFromMirrorArmorUser: boolean;
   private comingFromStickyWeb: boolean;
+  private expectedPokemonId?: number;
   private statList?: BattleStat[];
   private stage?: number;
 
   constructor(
-    battlerIndex: BattlerIndex,
-    selfTarget: boolean,
-    stats: BattleStat[],
-    stages: number,
+    optionsOrBattlerIndex: StatStageChangePhaseOptions | BattlerIndex,
+    selfTarget = true,
+    stats: BattleStat[] = [],
+    stages = 0,
     showMessage = true,
     ignoreAbilities = false,
     canBeCopied = true,
@@ -49,7 +60,37 @@ export class StatStageChangePhase extends PokemonPhase {
     comingFromStickyWeb = false,
     expectedPokemonId?: number,
   ) {
-    super(battlerIndex);
+    if (typeof optionsOrBattlerIndex === "object") {
+      const options = optionsOrBattlerIndex;
+      super(options.battlerIndex as BattlerIndex);
+
+      const changes = Array.isArray(options.changes) ? options.changes : [options.changes];
+
+      this.selfTarget = options.sourcePokemon != null && options.sourcePokemon === this.getPokemon();
+      this.stats = changes.map(c => c.stat);
+      this.stages = changes[0]?.stages ?? 0;
+      this.showMessage = true;
+      this.ignoreAbilities = !!options.ignoreAbilities;
+      this.canBeCopied = true;
+      this.onChange = options.onChange
+        ? (target, changed, relativeChanges) => {
+            const resultChanges: StatChange[] = changed.map((stat, i) => ({
+              stat,
+              stages: relativeChanges[i] ?? this.stages,
+            }));
+            options.onChange?.(target, resultChanges);
+          }
+        : null;
+      this.comingFromMirrorArmorUser = options.sourceEffectType === StatChangeSource.MIRROR_ARMOR;
+      this.comingFromStickyWeb = false;
+      this.expectedPokemonId = undefined;
+
+      this.statList = this.stats;
+      this.stage = this.stages;
+      return;
+    }
+
+    super(optionsOrBattlerIndex);
 
     this.selfTarget = selfTarget;
     this.stats = stats;
@@ -60,8 +101,8 @@ export class StatStageChangePhase extends PokemonPhase {
     this.onChange = onChange;
     this.comingFromMirrorArmorUser = comingFromMirrorArmorUser;
     this.comingFromStickyWeb = comingFromStickyWeb;
+    this.expectedPokemonId = expectedPokemonId;
 
-    // 🔽 추가
     this.statList = stats;
     this.stage = stages;
   }
@@ -70,12 +111,14 @@ export class StatStageChangePhase extends PokemonPhase {
     console.log("StatStageChangePhase start", this.battlerIndex);
 
     const pokemon = this.getPokemon();
-if (!pokemon || !pokemon.isActive(true)) return this.end();
+    if (!pokemon || !pokemon.isActive(true)) {
+      return this.end();
+    }
 
-if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
-  console.log("[SSCP] target mismatch", { expected: this.expectedPokemonId, got: pokemon.id });
-  return this.end();
-}
+    if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
+      console.log("[SSCP] target mismatch", { expected: this.expectedPokemonId, got: pokemon.id });
+      return this.end();
+    }
 
     if (this.stats.length > 1) {
       for (let i = 0; i < this.stats.length; i++) {
@@ -116,20 +159,18 @@ if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
           }
         });
       }
+    } else if (!this.comingFromStickyWeb) {
+      opponentPokemon = globalScene.getPlayerField()[globalScene.currentBattle.lastPlayerInvolved];
     } else {
-      if (!this.comingFromStickyWeb) {
-        opponentPokemon = globalScene.getPlayerField()[globalScene.currentBattle.lastPlayerInvolved];
-      } else {
-        const stickyTagID = globalScene.arena.findTagsOnSide(
-          (t: ArenaTag) => t.tagType === ArenaTagType.STICKY_WEB,
-          ArenaTagSide.ENEMY,
-        )[0].sourceId;
-        globalScene.getPlayerField().forEach(e => {
-          if (e.id === stickyTagID) {
-            opponentPokemon = e;
-          }
-        });
-      }
+      const stickyTagID = globalScene.arena.findTagsOnSide(
+        (t: ArenaTag) => t.tagType === ArenaTagType.STICKY_WEB,
+        ArenaTagSide.ENEMY,
+      )[0].sourceId;
+      globalScene.getPlayerField().forEach(e => {
+        if (e.id === stickyTagID) {
+          opponentPokemon = e;
+        }
+      });
     }
 
     if (!pokemon.isActive(true)) {
@@ -138,49 +179,44 @@ if (this.expectedPokemonId != null && pokemon.id !== this.expectedPokemonId) {
 
     // ProtectStatModifier(클리어참)가 적용된 상태인지 확인
     // ✅ 클리어참: 해당 포켓몬이 실제로 들고 있는지 확인
-const hasClearAmulet = pokemon.getHeldItems?.().some(
-  item => item instanceof ProtectStatModifier,
-);
+    const hasClearAmulet = pokemon.getHeldItems?.().some(item => item instanceof ProtectStatModifier);
 
     const stages = new NumberHolder(this.stages);
     let statProtected = false; // 보호 여부 변수 추가
     const protectedStats: BattleStat[] = []; // 보호된 능력치 목록 추가
 
-   // 특성/아이템 배율
-let boostMultiplier = 1;
-let reverseMultiplier = 1;
+    // 특성/아이템 배율
+    let boostMultiplier = 1;
+    let reverseMultiplier = 1;
 
-// 특성 적용 (예: 단순)
-if (!this.ignoreAbilities) {
-  applyAbAttrs(
-    "StatStageChangeMultiplierAbAttr",
-    {
-      pokemon,
-      numStages: stages,
-    },
-  );
+    // 특성 적용 (예: 단순)
+    if (!this.ignoreAbilities) {
+      applyAbAttrs("StatStageChangeMultiplierAbAttr", {
+        pokemon,
+        numStages: stages,
+      });
 
-  // 단순한밴드
-  const boostModifier = pokemon.getHeldItems?.().find(
-    item => item instanceof StatStageChangeBoostModifier,
-  ) as StatStageChangeBoostModifier | undefined;
+      // 단순한밴드
+      const boostModifier = pokemon.getHeldItems?.().find(item => item instanceof StatStageChangeBoostModifier) as
+        | StatStageChangeBoostModifier
+        | undefined;
 
-  if (boostModifier) {
-    boostMultiplier = 2;
-  }
+      if (boostModifier) {
+        boostMultiplier = 2;
+      }
 
-  // 내맘대로밴드
-  const reverseModifier = pokemon.getHeldItems?.().find(
-    item => item instanceof StatStageChangeReverseModifier,
-  ) as StatStageChangeReverseModifier | undefined;
+      // 내맘대로밴드
+      const reverseModifier = pokemon.getHeldItems?.().find(item => item instanceof StatStageChangeReverseModifier) as
+        | StatStageChangeReverseModifier
+        | undefined;
 
-  if (reverseModifier) {
-    reverseMultiplier = -1;
-  }
-}
+      if (reverseModifier) {
+        reverseMultiplier = -1;
+      }
+    }
 
-// 최종 배율 적용
-stages.value *= boostMultiplier * reverseMultiplier;
+    // 최종 배율 적용
+    stages.value *= boostMultiplier * reverseMultiplier;
 
     // Ensure holder is initialized and properly used in subsequent logic
     if (stages && stages.value !== undefined) {
@@ -217,9 +253,9 @@ stages.value *= boostMultiplier * reverseMultiplier;
     let simulate = false;
     const filteredStats: BattleStat[] = []; // 필터링된 결과를 담을 배열
 
-    const duskBeadMods = pokemon.getHeldItems().filter(
-  i => i instanceof DuskManeBeadModifier
-) as DuskManeBeadModifier[];
+    const duskBeadMods = pokemon
+      .getHeldItems()
+      .filter(i => i instanceof DuskManeBeadModifier) as DuskManeBeadModifier[];
 
     // stats 배열을 순회하면서 필터링
     for (let i = 0; i < this.stats.length; i++) {
@@ -227,20 +263,20 @@ stages.value *= boostMultiplier * reverseMultiplier;
       const cancelled = new BooleanHolder(false);
 
       // ✅ 황혼비드: 능력치 감소 가드 (감소 + 상대효과일 때만)
-  if (!this.selfTarget && stages.value < 0 && duskBeadMods.length) {
-    const cur = pokemon.getStatStage(stat);
-    const desiredStage = Math.max(cur + stages.value, -6);
+      if (!this.selfTarget && stages.value < 0 && duskBeadMods.length > 0) {
+        const cur = pokemon.getStatStage(stat);
+        const desiredStage = Math.max(cur + stages.value, -6);
 
-    let finalStage = desiredStage;
-    for (const m of duskBeadMods) {
-      finalStage = m.applyStatChange(pokemon, stat, finalStage, opponentPokemon);
-    }
+        let finalStage = desiredStage;
+        for (const m of duskBeadMods) {
+          finalStage = m.applyStatChange(pokemon, stat, finalStage, opponentPokemon);
+        }
 
-    if (finalStage === cur) {
-      cancelled.value = true;
-      protectedStats.push(stat);
-    }
-  }
+        if (finalStage === cur) {
+          cancelled.value = true;
+          protectedStats.push(stat);
+        }
+      }
 
       // MistTag가 있을 때 능력치 보호
       if (!this.selfTarget && stages.value < 0 && pokemon.findTag(tag => tag instanceof MistTag)) {
@@ -262,8 +298,8 @@ stages.value *= boostMultiplier * reverseMultiplier;
           target: pokemon,
           stages: this.stages,
         };
-      // 능력치 변화가 있는 경우만 적용 (단, 상승하는 경우는 제외)
-      applyAbAttrs("ProtectStatAbAttr", abAttrParams);
+        // 능력치 변화가 있는 경우만 적용 (단, 상승하는 경우는 제외)
+        applyAbAttrs("ProtectStatAbAttr", abAttrParams);
         applyAbAttrs("ConditionalUserFieldProtectStatAbAttr", abAttrParams);
         // TODO: Consider skipping this call if `cancelled` is false.
         const ally = pokemon.getAlly();
@@ -271,13 +307,13 @@ stages.value *= boostMultiplier * reverseMultiplier;
           applyAbAttrs("ConditionalUserFieldProtectStatAbAttr", { ...abAttrParams, pokemon: ally });
         }
 
-      // Mirror Armor와 반사 능력치 변경 (Octolock에 의한 변화 제외)
-      if (
-          opponentPokemon !== undefined &&
-          // TODO: investigate whether this is stoping mirror armor from applying to non-octolock
+        // Mirror Armor와 반사 능력치 변경 (Octolock에 의한 변화 제외)
+        if (
+          opponentPokemon !== undefined
+          && // TODO: investigate whether this is stoping mirror armor from applying to non-octolock
           // reasons for stat drops if the user has the Octolock tag
-          !pokemon.findTag(t => t instanceof OctolockTag) &&
-          !this.comingFromMirrorArmorUser
+          !pokemon.findTag(t => t instanceof OctolockTag)
+          && !this.comingFromMirrorArmorUser
         ) {
           applyAbAttrs("ReflectStatStageChangeAbAttr", {
             pokemon,
@@ -351,60 +387,58 @@ stages.value *= boostMultiplier * reverseMultiplier;
 
       const copiedSet = new Set<number>(); // 중복 방지용
 
-      if (this.statList?.length && this.stage > 0 && this.canBeCopied) {
+      if (this.statList?.length > 0 && this.stage > 0 && this.canBeCopied) {
         for (const opponent of pokemon.getOpponents()) {
-          if (copiedSet.has(opponent.id)) continue;
+          if (copiedSet.has(opponent.id)) {
+            continue;
+          }
 
           // ✅ 이미 같은 battlerIndex 대상으로 복사 큐에 있으면 생략
           const existingPhase = globalScene.phaseManager.hasPhaseOfType(
-        p => p.is("StatStageChangePhase") && p.battlerIndex === this.battlerIndex,
-      );
-          if (existingPhase) continue;
+            p => p.is("StatStageChangePhase") && p.battlerIndex === this.battlerIndex,
+          );
+          if (existingPhase) {
+            continue;
+          }
 
           // ✅ opponent에게 실제 적용된 흉내허브 modifier만 필터링
           // ✅ opponent에게 실제 적용된 흉내허브 modifier만 필터링
-const mirrorHerb = opponent.getHeldItems?.().find(
-  item => item instanceof StatStageChangeCopyModifier,
-) as StatStageChangeCopyModifier | undefined;
+          const mirrorHerb = opponent.getHeldItems?.().find(item => item instanceof StatStageChangeCopyModifier) as
+            | StatStageChangeCopyModifier
+            | undefined;
 
-if (!mirrorHerb) {
-  continue;
-}
+          if (!mirrorHerb) {
+            continue;
+          }
 
-const copied = mirrorHerb.apply(opponent, this.statList, this.stage);
+          const copied = mirrorHerb.apply(opponent, this.statList, this.stage);
 
-if (copied) {
-  copiedSet.add(opponent.id);
+          if (copied) {
+            copiedSet.add(opponent.id);
 
-  const preserve = new BooleanHolder(false);
+            const preserve = new BooleanHolder(false);
 
-  globalScene.applyModifiers(
-    PreserveItemModifier,
-    opponent.isPlayer(),
-    opponent,
-    preserve,
-    "item",
-  );
+            globalScene.applyModifiers(PreserveItemModifier, opponent.isPlayer(), opponent, preserve, "item");
 
-  if (!preserve.value) {
-    recordRecycleSnapshot(opponent, mirrorHerb, { args: [] });
+            if (!preserve.value) {
+              recordRecycleSnapshot(opponent, mirrorHerb, { args: [] });
 
-    if (mirrorHerb.stackCount > 1) {
-      mirrorHerb.stackCount--;
-    } else {
-      opponent.loseHeldItem(mirrorHerb);
-    }
-  }
+              if (mirrorHerb.stackCount > 1) {
+                mirrorHerb.stackCount--;
+              } else {
+                opponent.loseHeldItem(mirrorHerb);
+              }
+            }
 
-  globalScene.updateModifiers(opponent.isPlayer());
-  opponent.updateInfo();
+            globalScene.updateModifiers(opponent.isPlayer());
+            opponent.updateInfo();
 
-  applyAbAttrs("StatStageChangeCopyAbAttr", {
-    pokemon: opponent,
-    stats: this.stats,
-    numStages: stages.value,
-  });
-}
+            applyAbAttrs("StatStageChangeCopyAbAttr", {
+              pokemon: opponent,
+              stats: this.stats,
+              numStages: stages.value,
+            });
+          }
         }
       }
 
@@ -432,18 +466,14 @@ if (copied) {
 
       pokemon.updateInfo();
 
-if ((pokemon as any).isPracticeDummy) {
-  (pokemon as any).keepDummySpriteVisible?.();
-}
+      if ((pokemon as any).isPracticeDummy) {
+        (pokemon as any).keepDummySpriteVisible?.();
+      }
 
-handleTutorial(Tutorial.Stat_Change).then(() => super.end());
+      handleTutorial(Tutorial.Stat_Change).then(() => super.end());
     };
 
-    if (
-  relLevels.filter(l => l).length
-  && globalScene.moveAnimations
-  && !(pokemon as any).isPracticeDummy
-) {
+    if (relLevels.filter(l => l).length > 0 && globalScene.moveAnimations && !(pokemon as any).isPracticeDummy) {
       pokemon.enableMask();
       const pokemonMaskSprite = pokemon.maskSprite;
 
@@ -503,13 +533,13 @@ handleTutorial(Tutorial.Stat_Change).then(() => super.end());
       while (
         (existingPhase = globalScene.phaseManager.hasPhaseOfType(
           p =>
-            p.is("StatStageChangePhase") &&
-            p.battlerIndex === this.battlerIndex &&
-            p.stats.length === 1 &&
-            p.stats[0] === this.stats[0] &&
-            p.selfTarget === this.selfTarget &&
-            p.showMessage === this.showMessage &&
-            p.ignoreAbilities === this.ignoreAbilities,
+            p.is("StatStageChangePhase")
+            && p.battlerIndex === this.battlerIndex
+            && p.stats.length === 1
+            && p.stats[0] === this.stats[0]
+            && p.selfTarget === this.selfTarget
+            && p.showMessage === this.showMessage
+            && p.ignoreAbilities === this.ignoreAbilities,
         ) as StatStageChangePhase)
       ) {
         this.stages += existingPhase.stages;
@@ -522,13 +552,13 @@ handleTutorial(Tutorial.Stat_Change).then(() => super.end());
     while (
       (existingPhase = globalScene.phaseManager.hasPhaseOfType(
         p =>
-          p.is("StatStageChangePhase") &&
-          p.battlerIndex === this.battlerIndex &&
-          p.selfTarget === this.selfTarget &&
-          accEva.some(s => p.stats.includes(s)) === isAccEva &&
-          p.stages === this.stages &&
-          p.showMessage === this.showMessage &&
-          p.ignoreAbilities === this.ignoreAbilities,
+          p.is("StatStageChangePhase")
+          && p.battlerIndex === this.battlerIndex
+          && p.selfTarget === this.selfTarget
+          && accEva.some(s => p.stats.includes(s)) === isAccEva
+          && p.stages === this.stages
+          && p.showMessage === this.showMessage
+          && p.ignoreAbilities === this.ignoreAbilities,
       ) as StatStageChangePhase)
     ) {
       this.stats.push(...existingPhase.stats);

@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "lum-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 18,
+				"h": 59
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 4,
+						"w": 16,
+						"h": 28
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 16,
+						"h": 28
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 5,
+						"w": 16,
+						"h": 27
+					},
+					"frame": {
+						"x": 1,
+						"y": 31,
+						"w": 16,
+						"h": 27
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f07a2194f5ed199aefdf2e3f5f393519:e494b2aa2f831b1868ad3f31922822b4:ad8b1320c2214fdd29de7276201e035c$"
+	}
+}

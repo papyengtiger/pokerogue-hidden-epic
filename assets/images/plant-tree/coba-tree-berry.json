@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "coba-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 20,
+				"h": 33
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 17,
+						"w": 17,
+						"h": 15
+					},
+					"frame": {
+						"x": 1,
+						"y": 17,
+						"w": 17,
+						"h": 15
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 18,
+						"w": 18,
+						"h": 14
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 14
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:61cc49bec244bf56f6ab9457d26aa517:a2ad0af50e3876537bf16855c8b9022a:3303239418886cfdac195d0e9d2ec617$"
+	}
+}

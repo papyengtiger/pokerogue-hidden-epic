@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "kelpsy-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 18
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 16,
+						"w": 18,
+						"h": 16
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 16
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 16,
+						"w": 18,
+						"h": 16
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 18,
+						"h": 16
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:cda28f12af5779a5746377c5dd1a4814:33bdb694b239c0fbcf1651b9d3fe55f3:440783e8a869b2e6dfb37514a4687365$"
+	}
+}

@@ -31,6 +31,32 @@ export class PostSummonPhasePriorityQueue extends PokemonPhasePriorityQueue<Post
 
     const phasePokemon = phase.getPokemon();
 
+    if (!phasePokemon) {
+      console.warn("[POST_SUMMON_QUEUE_MISSING_POKEMON]", {
+        phase: phase.phaseName,
+        playerField: globalScene.getPlayerField().map(p => ({
+          id: p?.id,
+          name: p?.name,
+          battlerIndex: p?.getBattlerIndex?.(),
+        })),
+        enemyField: globalScene.getEnemyField().map(p => ({
+          id: p?.id,
+          name: p?.name,
+          battlerIndex: p?.getBattlerIndex?.(),
+        })),
+        enemyParty: globalScene.getEnemyParty().map((p, index) => ({
+          index,
+          id: p?.id,
+          name: p?.name,
+          battlerIndex: p?.getBattlerIndex?.(),
+          onField: p?.isOnField?.(),
+          fainted: p?.isFainted?.(),
+        })),
+      });
+
+      return;
+    }
+
     phasePokemon.getAbilityPriorities().forEach((priority, idx) => {
       const activateAbilityPhase = new PostSummonActivateAbilityPhase(
         phasePokemon.getBattlerIndex(),

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "kebia-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 18,
+				"h": 25
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "KebiaTreeBloom.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 9,
+						"w": 16,
+						"h": 23
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 16,
+						"h": 23
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0ce0fae5bb879fa939b44ee80832c5b9:7655d4e8d58eaad3fe6fbe5fe3624819:70d75f1056683b1a5256341713c05547$"
+	}
+}

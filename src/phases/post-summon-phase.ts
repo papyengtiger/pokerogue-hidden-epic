@@ -1,41 +1,31 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
-import {
-  CommanderAbAttr,
-  PostSummonAbAttr,
-  PostTerrainChangeAddBattlerTagAttr,
-  PostWeatherChangeAddBattlerTagAttr,
-  BoostEnergyTagAttr,
-} from "#app/data/abilities/ability";
+import { WeatherType } from "#app/enums/weather-type";
 import { globalScene } from "#app/global-scene";
+import { getPokemonNameWithAffix } from "#app/messages";
+import {
+  BeastBoostStartStatBoostModifier,
+  BoostEnergyModifier,
+  PreserveItemModifier,
+  TerrainSeedTrainerModifier,
+  WeatherRockTrainerModifier,
+  WishingStarModifier,
+} from "#app/modifier/modifier";
+import { DynamaxPhase } from "#app/phases/dynamax-phase";
 import { EntryHazardTag } from "#data/arena-tag";
 import {
   MysteryEncounterPostSummonTag,
-  HighestStatBoostTag,
-  WeatherHighestStatBoostTag,
-  TerrainHighestStatBoostTag,
 } from "#data/battler-tags";
-import { BattlerTagType } from "#enums/battler-tag-type";
-import { StatusEffect } from "#enums/status-effect";
-import { PokemonPhase } from "#phases/pokemon-phase";
-import { DynamaxPhase } from "#app/phases/dynamax-phase";
-import {
-  BoostEnergyModifier,
-  WishingStarModifier,
-  WeatherRockTrainerModifier,
-  TerrainSeedTrainerModifier,
-  BeastBoostStartStatBoostModifier,
-  PreserveItemModifier,
-} from "#app/modifier/modifier";
-import { SpeciesId } from "#enums/species-id";
-import { EFFECTIVE_STATS } from "#enums/stat"; // 네 코드에서 사용 중
-import { WeatherType } from "#app/enums/weather-type";
 import { TerrainType } from "#data/terrain";
+import { trapManager } from "#data/trap/trap-manager";
+import { BattlerTagType } from "#enums/battler-tag-type";
+import { SpeciesId } from "#enums/species-id";
+import { type BattleStat, EFFECTIVE_STATS, Stat, Stat } from "#enums/stat";
+import { StatusEffect } from "#enums/status-effect";
 import type { Pokemon } from "#field/pokemon";
-import { BATTLE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, EFFECTIVE_STATS, type BattleStat, Stat } from "#enums/stat";
-import { BooleanHolder, NumberHolder } from "#utils/common";
 import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
+import { PokemonPhase } from "#phases/pokemon-phase";
+import { BooleanHolder, } from "#utils/common";
 import i18next from "i18next";
-import { getPokemonNameWithAffix } from "#app/messages";
 
 export class PostSummonPhase extends PokemonPhase {
   public readonly phaseName = "PostSummonPhase";
@@ -59,6 +49,8 @@ export class PostSummonPhase extends PokemonPhase {
     // ✅ 엔트리 해저드 처리
     globalScene.arena.applyTags(EntryHazardTag, false, pokemon);
 
+    trapManager.applyPendingTrap(pokemon);
+
     // ✅ Mystery Encounter Post Summon 처리(기존 유지)
     if (
       globalScene.currentBattle.isBattleMysteryEncounter() &&
@@ -79,7 +71,7 @@ this.applyBoostEnergyTag(pokemon);
 this.applyUltraEnergyStartBoost(pokemon);
 
 // ✅ BoostEnergyTagAttr 강제 실행(기존 유지)
-console.debug(`[PostSummonPhase] BoostEnergyTagAttr 실행 시도`);
+console.debug("[PostSummonPhase] BoostEnergyTagAttr 실행 시도");
 applyAbAttrs("BoostEnergyTagAttr", pokemon);
 
 // ✅ Commander 처리(기존 유지)
@@ -94,9 +86,9 @@ for (const p of field) {
 
     for (const mod of modifiers) {
       const modPokemon = mod.getPokemon?.();
-      if (!modPokemon) continue;
-      if (forbiddenSpecies.has(modPokemon.speciesId)) continue;
-      if (!modPokemon.isOnField?.()) continue;
+      if (!modPokemon) { continue; }
+      if (forbiddenSpecies.has(modPokemon.speciesId)) { continue; }
+      if (!modPokemon.isOnField?.()) { continue; }
 
       if (!modPokemon.isDynamaxed && !modPokemon.isMax?.()) {
         globalScene.phaseManager.unshiftPhase(new DynamaxPhase(modPokemon, globalScene));
@@ -311,8 +303,8 @@ if (!boostEnergyItem) {
     }
 
     const added = pokemon.addTag(BattlerTagType.PROTOSYNTHESIS, 0);
-    if (added) console.log("[PostSummonPhase] Protosynthesis activated (Boost Energy or Sun)");
-    else console.warn("[PostSummonPhase] Failed to add Protosynthesis tag");
+    if (added) { console.log("[PostSummonPhase] Protosynthesis activated (Boost Energy or Sun)"); }
+    else { console.warn("[PostSummonPhase] Failed to add Protosynthesis tag"); }
   }
 
   private activateQuarkDrive(pokemon: Pokemon) {
@@ -322,8 +314,8 @@ if (!boostEnergyItem) {
     }
 
     const added = pokemon.addTag(BattlerTagType.QUARK_DRIVE, 0);
-    if (added) console.log("[PostSummonPhase] Quark Drive activated (Boost Energy or Electric Terrain)");
-    else console.warn("[PostSummonPhase] Failed to add Quark Drive tag");
+    if (added) { console.log("[PostSummonPhase] Quark Drive activated (Boost Energy or Electric Terrain)"); }
+    else { console.warn("[PostSummonPhase] Failed to add Quark Drive tag"); }
   }
 
   public getPriority() {
@@ -337,6 +329,6 @@ private applyUltraEnergyStartBoost(pokemon: Pokemon) {
     pokemon,
     1,
   );
-  if (appliedAny) globalScene.updateModifiers(pokemon.isPlayer());
+  if (appliedAny) { globalScene.updateModifiers(pokemon.isPlayer()); }
   }
 }

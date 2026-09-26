@@ -11,6 +11,8 @@ export const BASE_SHINY_CHANCE = 512;
 /** `256/65536 -> 1/256` */
 export const BASE_HIDDEN_ABILITY_CHANCE = 512;
 
+export const BASE_MARK_RATE = 50;
+
 // #region Egg properties
 
 // Threshold x at which a gacha egg is determined to be a certain tier
@@ -42,6 +44,7 @@ export const SAME_SPECIES_EGG_HA_RATE = 2;
 export const MANAPHY_EGG_MANAPHY_RATE = 2;
 export const GACHA_EGG_HA_RATE = 192;
 
+export const GACHA_MARK_RATE_MULTIPLIER = 5;
 // Odds are 1/x
 // [COMMON, RARE, EPIC/MANAPHY, LEGEND]
 export const RARE_EGGMOVE_RATES: readonly number[] = [48, 24, 12, 6];
@@ -51,6 +54,11 @@ export const BOOSTED_RARE_EGGMOVE_RATES: readonly number[] = [16, 12, 6, 3];
 // The chance x/10 of a shiny being a variant, then of being specifically an epic variant
 export const SHINY_VARIANT_CHANCE = 4;
 export const SHINY_EPIC_CHANCE = 1;
+
+export const MARK_RARE_CHANCE = 10;
+export const MARK_ROGUE_CHANCE = 25;
+export const MARK_EPIC_CHANCE = 50;
+export const MARK_LEGENDARY_CHANCE = 100;
 
 // The catch rate bonus for shiny mons, introduced in Z-A. Can be boosted in events.
 export const SHINY_CATCH_RATE_MULTIPLIER = 2;

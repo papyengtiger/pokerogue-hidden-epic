@@ -97,9 +97,12 @@ export class DelayedAttackTag extends PositionalTag implements DelayedAttackArgs
   }
 
   public override trigger(): void {
-    // Bangs are justified as the `shouldTrigger` method will queue the tag for removal
-    // if the source or target no longer exist
-    const target = this.getTarget()!;
+    const source = globalScene.getPokemonById(this.sourceId);
+    const target = this.getTarget();
+
+    if (!source || !target || target.isFainted()) {
+      return;
+    }
 
     globalScene.phaseManager.queueMessage(
       i18next.t("moveTriggers:tookMoveAttack", {
@@ -110,9 +113,7 @@ export class DelayedAttackTag extends PositionalTag implements DelayedAttackArgs
 
     globalScene.phaseManager.unshiftNew(
       "MoveEffectPhase",
-      // TODO: Find an alternate method of passing the (currently off-field) source pokemon
-      // instead of relying on pokemon getter jank
-      this.sourceId,
+      source.id,
       [this.targetIndex],
       allMoves[this.sourceMove],
       MoveUseMode.DELAYED_ATTACK,
@@ -122,12 +123,8 @@ export class DelayedAttackTag extends PositionalTag implements DelayedAttackArgs
   public override shouldTrigger(): boolean {
     const source = globalScene.getPokemonById(this.sourceId);
     const target = this.getTarget();
-    // Silently disappear if either source or target are missing or happen to be the same pokemon
-    // (i.e. targeting oneself)
-    // We also need to check for fainted targets as they don't technically leave the field until _after_ the turn ends
-    // TODO: Figure out a way to store the target's offensive stat if they faint to allow pending attacks to persist
-    // TODO: Remove the `?.scene` checks once battle anims are cleaned up - needed to avoid catch+release crash
-    return !!source?.scene && !!target?.scene && source !== target && !target.isFainted();
+
+    return !!source && !!target?.scene && source !== target && !target.isFainted();
   }
 }
 

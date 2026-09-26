@@ -108,17 +108,21 @@ MoveId.G_MAX_ONE_BLOW,
 MoveId.G_MAX_RAPID_FLOW,
 ]);
 
+export function isGMaxMove(moveId: MoveId): boolean {
+  return GMaxMovesSet.has(moveId);
+}
+
 export function getCompatibleMaxMovesForPokemon(pokemon: PlayerPokemon): Moves[] {
   try {
     const speciesMovesMap = getSpeciesMaxMoves(); // ✅ 올바른 값
     const entries = speciesMovesMap[pokemon.id]; // ✅ speciesMaxMoves → speciesMovesMap
-    if (!entries || entries.length === 0) return [];
+    if (!entries || entries.length === 0) { return []; }
 
     return entries
       .map(entry => {
         if (Array.isArray(entry) && typeof entry[1] === 'number') {
           return entry[1] as Moves;
-        } else if (typeof entry === 'number') {
+        }if (typeof entry === 'number') {
           return entry as Moves;
         }
         return null;
@@ -151,14 +155,14 @@ export function transposeSpeciesMoveMap(source: Record<MoveId, (PokemonSpecies |
 
         const speciesKey = Number(baseSpecies);
 
-        if (!flipped[speciesKey]) flipped[speciesKey] = [];
+        if (!flipped[speciesKey]) { flipped[speciesKey] = []; }
 
         for (const form of forms) {
           flipped[speciesKey].push([form, moveKey]);
         }
       } else {
         const speciesKey = Number(species);
-        if (!flipped[speciesKey]) flipped[speciesKey] = [];
+        if (!flipped[speciesKey]) { flipped[speciesKey] = []; }
         flipped[speciesKey].push(moveKey);
       }
     }

@@ -15,7 +15,6 @@ import {
   SpeciesFormChangeTeraTrigger,
   type SpeciesFormChangeTrigger,
   SpeciesFormChangeWeatherTrigger,
-  SpeciesFormChangeZMoveKnownTrigger,
 } from "#data/form-change-triggers";
 import { AbilityId } from "#enums/ability-id";
 import { FormChangeItem } from "#enums/form-change-item";
@@ -394,7 +393,7 @@ export const pokemonFormChanges: PokemonFormChanges = {
     new SpeciesFormChange(SpeciesId.DELPHOX, "", SpeciesFormKey.MEGA, new SpeciesFormChangeItemTrigger(FormChangeItem.DELPHOXITE))
   ],
   [SpeciesId.PYROAR]: [
-    new SpeciesFormChange(SpeciesId.PYROAR, "", SpeciesFormKey.MEGA, new SpeciesFormChangeItemTrigger(FormChangeItem.PYORARITE))
+    new SpeciesFormChange(SpeciesId.PYROAR, "", SpeciesFormKey.MEGA, new SpeciesFormChangeItemTrigger(FormChangeItem.PYROARITE))
   ],
   [SpeciesId.MEOWSTIC]: [
   // ✅ 어떤 성별 폼에서든 아이템으로 Mega 가능
@@ -512,12 +511,11 @@ export const pokemonFormChanges: PokemonFormChanges = {
     new SpeciesFormChange(SpeciesId.GENESECT, "", "douse", new SpeciesFormChangeItemTrigger(FormChangeItem.DOUSE_DRIVE))
   ],
   [SpeciesId.GRENINJA]: [
-  // ✅ 배틀본드 <-> 아쉬 폼 왕복
-  new SpeciesFormChange(SpeciesId.GRENINJA, "battle-bond", "ash", new SpeciesFormChangeAbilityTrigger(), true),
-  new SpeciesFormChange(SpeciesId.GRENINJA, "ash", "battle-bond", new SpeciesFormChangeAbilityTrigger(), true),
-
-  // ✅ 어떤 폼이든 메가 가능
   new SpeciesFormChange(SpeciesId.GRENINJA, "", SpeciesFormKey.MEGA, new SpeciesFormChangeItemTrigger(FormChangeItem.GRENINJITE)),
+],
+  [SpeciesId.BATTLE_BOND_GRENINJA]: [
+  new SpeciesFormChange(SpeciesId.BATTLE_BOND_GRENINJA, "battle-bond", "ash", new SpeciesFormChangeAbilityTrigger(), true),
+  new SpeciesFormChange(SpeciesId.BATTLE_BOND_GRENINJA, "ash", "battle-bond", new SpeciesFormChangeAbilityTrigger(), true)
 ],
   [SpeciesId.PALAFIN] : [
     new SpeciesFormChange(SpeciesId.PALAFIN, "zero", "hero", new SpeciesFormChangeAbilityTrigger(), true),

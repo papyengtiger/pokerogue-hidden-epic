@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "salac-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 17,
+				"h": 51
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 8,
+						"w": 15,
+						"h": 24
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 24
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 9,
+						"w": 15,
+						"h": 23
+					},
+					"frame": {
+						"x": 1,
+						"y": 27,
+						"w": 15,
+						"h": 23
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9926dc953dee1b262b619efa12cd39c5:b7c501f727d25dfbe44c7c0cb6154ae6:a660a7fafd95b80cfb346fa1e6b71a77$"
+	}
+}

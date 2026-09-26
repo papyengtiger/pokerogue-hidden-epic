@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "rawst-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 20,
+				"h": 33
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 17,
+						"w": 17,
+						"h": 15
+					},
+					"frame": {
+						"x": 1,
+						"y": 17,
+						"w": 17,
+						"h": 15
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 18,
+						"w": 18,
+						"h": 14
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 14
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8e67910067bfafac375a30e9e7fa8222:7239ea0b80a51719ae41498467e33235:d62896c5d146aa6862843d653ee4138f$"
+	}
+}

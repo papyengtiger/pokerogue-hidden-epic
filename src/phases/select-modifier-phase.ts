@@ -1,5 +1,6 @@
 import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
+import type { BerryType } from "#enums/berry-type";
 import { ModifierPoolType } from "#enums/modifier-pool-type";
 import { ModifierTier } from "#enums/modifier-tier";
 import { UiMode } from "#enums/ui-mode";
@@ -12,7 +13,10 @@ import {
 } from "#modifiers/modifier";
 import type { CustomModifierSettings, ModifierType, ModifierTypeOption } from "#modifiers/modifier-type";
 import {
+  BerryModifierType,
+  ChangeAbilityModifierType,
   FusePokemonModifierType,
+  getModifierTypeById,
   getPlayerModifierTypeOptions,
   getPlayerShopModifierTypeOptionsForWave,
   PokemonModifierType,
@@ -22,22 +26,17 @@ import {
   RememberMoveModifierType,
   regenerateModifierPoolThresholds,
   TmModifierType,
-  MaxIvModifierType,
-  ChangeAbilityModifierType,
-  RegisterAbilityModifierType,
-  MaxAllIvModifierType,
   TrModifierType,
-  ZGenericCrystalMoveModifierType,
   ZExclusiveCrystalMoveModifierType,
-  BerryModifierType,
+  ZGenericCrystalMoveModifierType,
 } from "#modifiers/modifier-type";
 import { BattlePhase } from "#phases/battle-phase";
+import { questManager } from "#system/quest-manager";
 import type { ModifierSelectUiHandler } from "#ui/modifier-select-ui-handler";
 import { SHOP_OPTIONS_ROW_LIMIT } from "#ui/modifier-select-ui-handler";
 import { PartyOption, PartyUiHandler, PartyUiMode } from "#ui/party-ui-handler";
 import { NumberHolder } from "#utils/common";
 import i18next from "i18next";
-import { BerryType } from "#enums/berry-type";
 
 export type ModifierSelectCallback = (rowCursor: number, cursor: number) => boolean;
 
@@ -85,21 +84,50 @@ export class SelectModifierPhase extends BattlePhase {
 
     this.typeOptions = this.getModifierTypeOptions(modifierCount);
 
+    // ★ REWARD 방식 물건 찾기 의뢰
+    const rewardItemQuest = questManager.getActiveRewardItemFindQuest(globalScene.currentBattle.waveIndex);
+
+    if (rewardItemQuest && rewardItemQuest.targetItemId) {
+      const questModifierType = getModifierTypeById(rewardItemQuest.targetItemId);
+
+      if (questModifierType) {
+        this.typeOptions = [
+          {
+            type: questModifierType,
+            upgradeCount: 0,
+            cost: 0,
+          } as ModifierTypeOption,
+        ];
+
+        console.log("[QUEST_REWARD_ITEM_FORCED]", {
+          questId: rewardItemQuest.id,
+          wave: globalScene.currentBattle.waveIndex,
+          itemId: rewardItemQuest.targetItemId,
+          itemName: rewardItemQuest.targetItemName,
+        });
+      } else {
+        console.warn("[QUEST_REWARD_ITEM_TYPE_NOT_FOUND]", {
+          questId: rewardItemQuest.id,
+          itemId: rewardItemQuest.targetItemId,
+        });
+      }
+    }
+
     const modifierSelectCallback = (rowCursor: number, cursor: number) => {
       if (rowCursor < 0 || cursor < 0) {
         globalScene.ui.showText(i18next.t("battle:skipItemQuestion"), null, () => {
           globalScene.ui.setOverlayMode(
-  UiMode.CONFIRM,
-  () => {
-    globalScene.ui.revertMode();
-    globalScene.ui.setMode(UiMode.MESSAGE);
-    super.end();
-  },
-  () => {
-    globalScene.ui.revertMode(); // 핵심
-    this.resetModifierSelect(modifierSelectCallback);
-  },
-);
+            UiMode.CONFIRM,
+            () => {
+              globalScene.ui.revertMode();
+              globalScene.ui.setMode(UiMode.MESSAGE);
+              super.end();
+            },
+            () => {
+              globalScene.ui.revertMode(); // 핵심
+              this.resetModifierSelect(modifierSelectCallback);
+            },
+          );
         });
         return false;
       }
@@ -107,72 +135,66 @@ export class SelectModifierPhase extends BattlePhase {
       switch (rowCursor) {
         // Execute one of the options from the bottom row
         case 0:
-  switch (cursor) {
-  case 0:
-    return this.rerollModifiers();
+          switch (cursor) {
+            case 0:
+              return this.rerollModifiers();
 
-  case 1:
-    return this.openModifierTransferScreen(modifierSelectCallback);
+            case 1:
+              return this.openModifierTransferScreen(modifierSelectCallback);
 
-  case 2:
-    globalScene.ui.setModeWithoutClear(
-      UiMode.ROGUE_SHOP,
-      {
-        source: "MENU",
-        allowShop: false,
-        allowBank: true,
-        allowStorage: false,
-        initialTab: "BANK",
-        onExit: () => {
-          this.resetModifierSelect(modifierSelectCallback);
-        },
-      },
-    );
-    return true;
+            case 2:
+              globalScene.ui.setModeWithoutClear(UiMode.ROGUE_SHOP, {
+                source: "MENU",
+                allowShop: false,
+                allowBank: true,
+                allowStorage: false,
+                initialTab: "BANK",
+                onExit: () => {
+                  this.resetModifierSelect(modifierSelectCallback);
+                },
+              });
+              return true;
 
-  case 3: {
-  const starters = globalScene.getPlayerParty().map(p => ({
-    speciesId: p.species.speciesId,
-    formIndex: p.formIndex ?? 0,
-    shiny: !!p.shiny,
-    variant: p.variant ?? 0,
-    female: !!p.female,
-  }));
+            case 3: {
+              const starters = globalScene.getPlayerParty().map(p => ({
+                speciesId: p.species.speciesId,
+                formIndex: p.formIndex ?? 0,
+                shiny: !!p.shiny,
+                variant: p.variant ?? 0,
+                female: !!p.female,
+              }));
 
-  console.log("[SELECT_MODIFIER] open storage", {
-    starters,
-    length: starters.length,
-  });
+              console.log("[SELECT_MODIFIER] open storage", {
+                starters,
+                length: starters.length,
+              });
 
-  globalScene.ui.setModeWithoutClear(
-    UiMode.ROGUE_SHOP,
-    {
-      source: "MENU",
-      starters,
-      allowShop: false,
-      allowBank: false,
-      allowStorage: true,
-      initialTab: "STORAGE",
-      onExit: () => {
-        this.resetModifierSelect(modifierSelectCallback);
-      },
-    },
-  );
-  return true;
-}
+              globalScene.ui.setModeWithoutClear(UiMode.ROGUE_SHOP, {
+                source: "MENU",
+                starters,
+                allowShop: false,
+                allowBank: false,
+                allowStorage: true,
+                initialTab: "STORAGE",
+                onExit: () => {
+                  this.resetModifierSelect(modifierSelectCallback);
+                },
+              });
+              return true;
+            }
 
-  case 4:
-    globalScene.ui.setModeWithoutClear(UiMode.PARTY, PartyUiMode.CHECK, -1, () => {
-      this.resetModifierSelect(modifierSelectCallback);
-    });
-    return true;
+            case 4:
+              globalScene.ui.setModeWithoutClear(UiMode.PARTY, PartyUiMode.CHECK, -1, () => {
+                this.resetModifierSelect(modifierSelectCallback);
+              });
+              return true;
 
-  case 5:
-    return this.toggleRerollLock();
+            case 5:
+              return this.toggleRerollLock();
 
-  default:
-    return false;
-}
+            default:
+              return false;
+          }
 
         // Pick an option from the rewards
         case 1:
@@ -187,143 +209,133 @@ export class SelectModifierPhase extends BattlePhase {
     this.resetModifierSelect(modifierSelectCallback);
   }
 
-  private openRewardActionMenu(
-  cursor: number,
-  modifierSelectCallback: ModifierSelectCallback,
-): boolean {
-  const typeOption = this.typeOptions[cursor];
-  const modifierType = typeOption?.type;
+  private openRewardActionMenu(cursor: number, modifierSelectCallback: ModifierSelectCallback): boolean {
+    const typeOption = this.typeOptions[cursor];
+    const modifierType = typeOption?.type;
 
-  if (!modifierType) {
+    if (!modifierType) {
+      return false;
+    }
+
+    globalScene.ui.setOverlayMode(UiMode.MENU_OPTION_SELECT, {
+      options: [
+        {
+          label: "포켓몬에게 지니게 한다",
+          handler: () => {
+            globalScene.ui.revertMode(); // 오버레이만 먼저 닫기
+            return this.applyRewardToPokemon(cursor, modifierSelectCallback);
+          },
+          keepOpen: true,
+        },
+        {
+          label: "창고로 보낸다",
+          handler: () => {
+            globalScene.ui.revertMode(); // 오버레이만 먼저 닫기
+            return this.sendRewardToStorage(cursor, modifierSelectCallback);
+          },
+          keepOpen: true,
+        },
+        {
+          label: "취소",
+          handler: () => {
+            globalScene.ui.revertMode(); // 오버레이만 닫기
+            return true;
+          },
+          keepOpen: true,
+        },
+      ],
+      xOffset: 0,
+      yOffset: 48,
+      maxOptions: 3,
+    });
+
+    console.log("NEW MENU CODE");
     return false;
   }
-
-  globalScene.ui.setOverlayMode(UiMode.MENU_OPTION_SELECT, {
-    options: [
-      {
-        label: "포켓몬에게 지니게 한다",
-        handler: () => {
-          globalScene.ui.revertMode(); // 오버레이만 먼저 닫기
-          return this.applyRewardToPokemon(cursor, modifierSelectCallback);
-        },
-        keepOpen: true,
-      },
-      {
-        label: "창고로 보낸다",
-        handler: () => {
-          globalScene.ui.revertMode(); // 오버레이만 먼저 닫기
-          return this.sendRewardToStorage(cursor, modifierSelectCallback);
-        },
-        keepOpen: true,
-      },
-      {
-        label: "취소",
-        handler: () => {
-          globalScene.ui.revertMode(); // 오버레이만 닫기
-          return true;
-        },
-        keepOpen: true,
-      },
-    ],
-    xOffset: 0,
-    yOffset: 48,
-    maxOptions: 3,
-  });
-
-  console.log("NEW MENU CODE");
-  return false;
-}
 
   // Pick a modifier from among the rewards and apply it
-  private selectRewardModifierOption(
-  cursor: number,
-  modifierSelectCallback: ModifierSelectCallback
-): boolean {
-  const modifierType = this.typeOptions[cursor]?.type;
-  if (!modifierType) {
-    return false;
+  private selectRewardModifierOption(cursor: number, modifierSelectCallback: ModifierSelectCallback): boolean {
+    const modifierType = this.typeOptions[cursor]?.type;
+    if (!modifierType) {
+      return false;
+    }
+
+    // 포켓몬 대상 아이템만 메뉴 표시
+    if (modifierType instanceof PokemonModifierType) {
+      return this.openRewardActionMenu(cursor, modifierSelectCallback);
+    }
+
+    // 금구슬 등 즉시/비포켓몬 대상 아이템은 기존처럼 바로 처리
+    return this.applyChosenModifier(modifierType, -1, modifierSelectCallback);
   }
 
-  // 포켓몬 대상 아이템만 메뉴 표시
-  if (modifierType instanceof PokemonModifierType) {
-    return this.openRewardActionMenu(cursor, modifierSelectCallback);
+  private applyRewardToPokemon(cursor: number, modifierSelectCallback: ModifierSelectCallback): boolean {
+    const modifierType = this.typeOptions[cursor]?.type;
+    if (!modifierType) {
+      return false;
+    }
+
+    if (!(modifierType instanceof PokemonModifierType)) {
+      globalScene.ui.showText("이 아이템은 포켓몬에게 지니게 할 수 없습니다.", 1000, () => {
+        this.resetModifierSelect(modifierSelectCallback);
+      });
+      return true;
+    }
+
+    return this.applyChosenModifier(modifierType, -1, modifierSelectCallback);
   }
 
-  // 금구슬 등 즉시/비포켓몬 대상 아이템은 기존처럼 바로 처리
-  return this.applyChosenModifier(modifierType, -1, modifierSelectCallback);
-}
+  private sendRewardToStorage(cursor: number, modifierSelectCallback: ModifierSelectCallback): boolean {
+    const modifierType = this.typeOptions[cursor]?.type;
+    if (!modifierType) {
+      return false;
+    }
 
-  private applyRewardToPokemon(
-  cursor: number,
-  modifierSelectCallback: ModifierSelectCallback
-): boolean {
-  const modifierType = this.typeOptions[cursor]?.type;
-  if (!modifierType) {
-    return false;
-  }
+    let itemId = modifierType.id;
 
-  if (!(modifierType instanceof PokemonModifierType)) {
-    globalScene.ui.showText("이 아이템은 포켓몬에게 지니게 할 수 없습니다.", 1000, () => {
-      this.resetModifierSelect(modifierSelectCallback);
+    if (modifierType instanceof BerryModifierType) {
+      const berryType = (modifierType as any).berryType as BerryType;
+      itemId = `BERRY_${berryType}`;
+    }
+
+    if (!itemId) {
+      globalScene.ui.showText("창고로 보낼 수 없는 아이템입니다.", 1000);
+      return true;
+    }
+
+    let purchaseMode: "INSTANT" | "SELECT_POKEMON" | "TRAINER_LOADOUT";
+
+    if (modifierType instanceof PokemonModifierType) {
+      purchaseMode = "SELECT_POKEMON";
+    } else {
+      purchaseMode = "TRAINER_LOADOUT";
+    }
+
+    const stored = globalScene.gameData.addToStorage(itemId, 1, {
+      purchaseMode,
     });
-    return true;
-  }
 
-  return this.applyChosenModifier(modifierType, -1, modifierSelectCallback);
-}
-  
-  private sendRewardToStorage(
-  cursor: number,
-  modifierSelectCallback: ModifierSelectCallback
-): boolean {
-  const modifierType = this.typeOptions[cursor]?.type;
-  if (!modifierType) {
-    return false;
-  }
+    if (!stored) {
+      globalScene.ui.showText("창고 저장에 실패했습니다.");
+      return true;
+    }
 
-  let itemId = modifierType.id;
+    const completedQuests = questManager.onItemObtained(itemId, 1);
 
-if (modifierType instanceof BerryModifierType) {
-  const berryType = (modifierType as any).berryType as BerryType;
-  itemId = `BERRY_${berryType}`;
-}
+    if (completedQuests.length > 0 && questManager.isAcceptedQuestClear()) {
+      globalScene.phaseManager.unshiftNew("QuestClearPromptPhase");
+    }
 
-  if (!itemId) {
-    globalScene.ui.showText("창고로 보낼 수 없는 아이템입니다.", 1000);
-    return true;
-  }
+    globalScene.gameData.saveSystem();
 
-  let purchaseMode: "INSTANT" | "SELECT_POKEMON" | "TRAINER_LOADOUT";
-
-  if (modifierType instanceof PokemonModifierType) {
-    purchaseMode = "SELECT_POKEMON";
-  } else {
-    purchaseMode = "TRAINER_LOADOUT";
-  }
-
-  const stored = globalScene.gameData.addToStorage(itemId, 1, {
-    purchaseMode,
-  });
-
-  if (!stored) {
-    globalScene.ui.showText("창고 저장에 실패했습니다.");
-    return true;
-  }
-
-  globalScene.gameData.saveSystem();
-
-  globalScene.ui.showText(
-    `${modifierType.name}을(를) 창고로 보냈습니다.`,
-    undefined,
-    () => {
+    globalScene.ui.showText(`${modifierType.name}을(를) 창고로 보냈습니다.`, undefined, () => {
       globalScene.ui.clearText();
       globalScene.ui.setMode(UiMode.MESSAGE);
       super.end();
-    }
-  );
+    });
 
-  return true;
-}
+    return true;
+  }
 
   // Pick a modifier from the shop and apply it
   private selectShopModifierOption(
@@ -397,84 +409,80 @@ if (modifierType instanceof BerryModifierType) {
 
   // Transfer modifiers among party pokemon
   private openModifierTransferScreen(modifierSelectCallback: ModifierSelectCallback) {
-  const party = globalScene.getPlayerParty();
+    const party = globalScene.getPlayerParty();
 
-  globalScene.ui.setModeWithoutClear(
-    UiMode.PARTY,
-    PartyUiMode.MODIFIER_TRANSFER,
-    -1,
-    (fromSlotIndex: number, itemIndex: number, itemQuantity: number, toSlotIndex: number) => {
-      if (fromSlotIndex < 6 && itemIndex > -1) {
-        const itemModifiers = globalScene.findModifiers(
-          m => m instanceof PokemonHeldItemModifier && m.isTransferable && m.pokemonId === party[fromSlotIndex].id,
-        ) as PokemonHeldItemModifier[];
+    globalScene.ui.setModeWithoutClear(
+      UiMode.PARTY,
+      PartyUiMode.MODIFIER_TRANSFER,
+      -1,
+      (fromSlotIndex: number, itemIndex: number, itemQuantity: number, toSlotIndex: number) => {
+        if (fromSlotIndex < 6 && itemIndex > -1) {
+          const itemModifiers = globalScene.findModifiers(
+            m => m instanceof PokemonHeldItemModifier && m.isTransferable && m.pokemonId === party[fromSlotIndex].id,
+          ) as PokemonHeldItemModifier[];
 
-        const itemModifier = itemModifiers[itemIndex];
-        if (!itemModifier) {
-          this.resetModifierSelect(modifierSelectCallback);
-          return;
-        }
-
-        // 창고로 보내기
-        if (toSlotIndex === -2) {
-          let itemId = itemModifier.type?.id;
-
-if (itemModifier.type instanceof BerryModifierType) {
-  const berryType = (itemModifier.type as any).berryType as BerryType;
-  itemId = `BERRY_${berryType}`;
-}
-
-          if (!itemId) {
-            globalScene.ui.showText("창고로 보낼 수 없는 아이템입니다.", 1000);
+          const itemModifier = itemModifiers[itemIndex];
+          if (!itemModifier) {
             this.resetModifierSelect(modifierSelectCallback);
             return;
           }
 
-          const stored = globalScene.gameData.addToStorage(itemId, itemQuantity);
-          if (!stored) {
-            globalScene.ui.showText("창고 저장에 실패했습니다.", 1000);
+          // 창고로 보내기
+          if (toSlotIndex === -2) {
+            let itemId = itemModifier.type?.id;
+
+            if (itemModifier.type instanceof BerryModifierType) {
+              const berryType = (itemModifier.type as any).berryType as BerryType;
+              itemId = `BERRY_${berryType}`;
+            }
+
+            if (!itemId) {
+              globalScene.ui.showText("창고로 보낼 수 없는 아이템입니다.", 1000);
+              this.resetModifierSelect(modifierSelectCallback);
+              return;
+            }
+
+            const stored = globalScene.gameData.addToStorage(itemId, itemQuantity);
+            if (!stored) {
+              globalScene.ui.showText("창고 저장에 실패했습니다.", 1000);
+              this.resetModifierSelect(modifierSelectCallback);
+              return;
+            }
+
+            if (itemQuantity >= itemModifier.stackCount) {
+              globalScene.removeModifier(itemModifier);
+            } else {
+              itemModifier.stackCount -= itemQuantity;
+            }
+
+            globalScene.updateModifiers(true);
+            globalScene.gameData.saveSystem();
+            globalScene.ui.showText(`${itemModifier.type.name}을(를) 창고로 보냈습니다.`, 1000);
             this.resetModifierSelect(modifierSelectCallback);
             return;
           }
 
-          if (itemQuantity >= itemModifier.stackCount) {
-            globalScene.removeModifier(itemModifier);
+          // 기존 포켓몬끼리 이동
+          if (toSlotIndex !== undefined && toSlotIndex < 6 && fromSlotIndex !== toSlotIndex) {
+            globalScene.tryTransferHeldItemModifier(
+              itemModifier,
+              party[toSlotIndex],
+              true,
+              itemQuantity,
+              undefined,
+              undefined,
+              false,
+            );
           } else {
-            itemModifier.stackCount -= itemQuantity;
+            this.resetModifierSelect(modifierSelectCallback);
           }
-
-          globalScene.updateModifiers(true);
-          globalScene.gameData.saveSystem();
-          globalScene.ui.showText(`${itemModifier.type.name}을(를) 창고로 보냈습니다.`, 1000);
-          this.resetModifierSelect(modifierSelectCallback);
-          return;
-        }
-
-        // 기존 포켓몬끼리 이동
-        if (
-          toSlotIndex !== undefined &&
-          toSlotIndex < 6 &&
-          fromSlotIndex !== toSlotIndex
-        ) {
-          globalScene.tryTransferHeldItemModifier(
-            itemModifier,
-            party[toSlotIndex],
-            true,
-            itemQuantity,
-            undefined,
-            undefined,
-            false,
-          );
         } else {
           this.resetModifierSelect(modifierSelectCallback);
         }
-      } else {
-        this.resetModifierSelect(modifierSelectCallback);
-      }
-    },
-    PartyUiHandler.FilterItemMaxStacks,
-  );
-}
+      },
+      PartyUiHandler.FilterItemMaxStacks,
+    );
+  }
 
   // Toggle reroll lock
   private toggleRerollLock() {
@@ -493,21 +501,21 @@ if (itemModifier.type instanceof BerryModifierType) {
   }
 
   private getModifierTierRoguePoints(tier?: ModifierTier): number {
-  switch (tier) {
-    case ModifierTier.COMMON:
-      return 10;
-    case ModifierTier.GREAT:
-      return 20;
-    case ModifierTier.ULTRA:
-      return 40;
-    case ModifierTier.ROGUE:
-      return 70;
-    case ModifierTier.MASTER:
-      return 120;
-    default:
-      return 0;
+    switch (tier) {
+      case ModifierTier.COMMON:
+        return 10;
+      case ModifierTier.GREAT:
+        return 20;
+      case ModifierTier.ULTRA:
+        return 40;
+      case ModifierTier.ROGUE:
+        return 70;
+      case ModifierTier.MASTER:
+        return 120;
+      default:
+        return 0;
+    }
   }
-}
 
   /**
    * Apply the effects of the chosen modifier
@@ -516,49 +524,78 @@ if (itemModifier.type instanceof BerryModifierType) {
    * @param playSound - Whether the 'obtain modifier' sound should be played when adding the modifier.
    */
   private applyModifier(modifier: Modifier, cost = -1, playSound = false): void {
-  const result = globalScene.addModifier(modifier, false, playSound, undefined, undefined, cost);
+    const result = globalScene.addModifier(modifier, false, playSound, undefined, undefined, cost);
 
-  // ✅ 아이템 획득 로그포인트 (등급별)
-  if (result) {
-    const gainedRp = this.getModifierTierRoguePoints(modifier.type?.tier);
+    if (result && cost === -1) {
+      const itemId = modifier.type?.id;
+      const amount = (modifier as any).stackCount ?? 1;
 
-    if (gainedRp > 0) {
-      globalScene.gameData.addRoguePoints(gainedRp);
-      globalScene.updateroguePointText();
-    }
-  }
+      if (itemId) {
+        const completedQuests = questManager.onItemObtained(itemId, amount);
 
-  if (
-    cost !== -1 &&
-    (
-      modifier.type instanceof RememberMoveModifierType ||
-      modifier.type instanceof TmModifierType ||
-      modifier.type instanceof TrModifierType ||
-      modifier.type instanceof ZGenericCrystalMoveModifierType ||
-      modifier.type instanceof ZExclusiveCrystalMoveModifierType
-    )
-  ) {
-    globalScene.phaseManager.unshiftPhase(this.copy());
-  }
+        if (completedQuests.length > 0) {
+          for (const quest of completedQuests) {
+            console.log("[QUEST_ITEM_COMPLETE]", quest.title);
+          }
 
-  if (cost !== -1 && !(modifier.type instanceof RememberMoveModifierType)) {
-    if (result) {
-      if (!Overrides.WAIVE_ROLL_FEE_OVERRIDE) {
-        globalScene.money -= cost;
-        globalScene.updateMoneyText();
-        globalScene.animateMoneyChanged(false);
+          if (questManager.isAcceptedQuestClear()) {
+            console.log("[QUEST_ALL_ACCEPTED_CLEAR]");
+
+            globalScene.phaseManager.unshiftNew("QuestClearPromptPhase");
+          }
+        }
       }
-      globalScene.playSound("se/buy");
-      (globalScene.ui.getHandler() as ModifierSelectUiHandler).updateCostText();
-    } else {
-      globalScene.ui.playError();
     }
-  } else {
-    globalScene.ui.clearText();
-    globalScene.ui.setMode(UiMode.MESSAGE);
-    super.end();
+
+    const shouldTrackRunItem = modifier instanceof PokemonHeldItemModifier && !(modifier as any).isPracticeRental;
+
+    if (result && shouldTrackRunItem) {
+      const itemId = modifier.type?.id;
+      const amount = (modifier as any).stackCount ?? 1;
+
+      if (itemId) {
+        globalScene.gameData.addRunStorageItem(itemId, amount);
+      }
+    }
+
+    if (result) {
+      const gainedRp = this.getModifierTierRoguePoints(modifier.type?.tier);
+
+      if (gainedRp > 0) {
+        globalScene.gameData.addRoguePoints(gainedRp);
+        globalScene.updateroguePointText();
+      }
+    }
+
+    if (
+      cost !== -1
+      && (modifier.type instanceof RememberMoveModifierType
+        || modifier.type instanceof TmModifierType
+        || modifier.type instanceof TrModifierType
+        || modifier.type instanceof ZGenericCrystalMoveModifierType
+        || modifier.type instanceof ZExclusiveCrystalMoveModifierType)
+    ) {
+      globalScene.phaseManager.unshiftPhase(this.copy());
+    }
+
+    if (cost !== -1 && !(modifier.type instanceof RememberMoveModifierType)) {
+      if (result) {
+        if (!Overrides.WAIVE_ROLL_FEE_OVERRIDE) {
+          globalScene.money -= cost;
+          globalScene.updateMoneyText();
+          globalScene.animateMoneyChanged(false);
+        }
+        globalScene.playSound("se/buy");
+        (globalScene.ui.getHandler() as ModifierSelectUiHandler).updateCostText();
+      } else {
+        globalScene.ui.playError();
+      }
+    } else {
+      globalScene.ui.clearText();
+      globalScene.ui.setMode(UiMode.MESSAGE);
+      super.end();
+    }
   }
-}
 
   // Opens the party menu specifically for fusions
   private openFusionMenu(
@@ -573,10 +610,10 @@ if (itemModifier.type instanceof BerryModifierType) {
       -1,
       (fromSlotIndex: number, spliceSlotIndex: number) => {
         if (
-          spliceSlotIndex !== undefined &&
-          fromSlotIndex < 6 &&
-          spliceSlotIndex < 6 &&
-          fromSlotIndex !== spliceSlotIndex
+          spliceSlotIndex !== undefined
+          && fromSlotIndex < 6
+          && spliceSlotIndex < 6
+          && fromSlotIndex !== spliceSlotIndex
         ) {
           globalScene.ui.setMode(UiMode.MODIFIER_SELECT, this.isPlayer()).then(() => {
             const modifier = modifierType.newModifier(party[fromSlotIndex], party[spliceSlotIndex])!; //TODO: is the bang correct?
@@ -609,15 +646,12 @@ if (itemModifier.type instanceof BerryModifierType) {
     const isPpRestoreModifier =
       modifierType instanceof PokemonPpRestoreModifierType || modifierType instanceof PokemonPpUpModifierType;
     const partyUiMode = isMoveModifier
-  ? PartyUiMode.MOVE_MODIFIER
-  : isTmModifier ||
-    isTrModifier ||
-    isZGenericCrystalMoveModifier ||
-    isZExclusiveCrystalMoveModifier
-  ? PartyUiMode.TM_MODIFIER
-  : isRememberMoveModifier
-  ? PartyUiMode.REMEMBER_MOVE_MODIFIER
-  : PartyUiMode.MODIFIER;
+      ? PartyUiMode.MOVE_MODIFIER
+      : isTmModifier || isTrModifier || isZGenericCrystalMoveModifier || isZExclusiveCrystalMoveModifier
+        ? PartyUiMode.TM_MODIFIER
+        : isRememberMoveModifier
+          ? PartyUiMode.REMEMBER_MOVE_MODIFIER
+          : PartyUiMode.MODIFIER;
     const tmMoveId = isTmModifier ? (modifierType as TmModifierType).moveId : undefined;
     globalScene.ui.setModeWithoutClear(
       UiMode.PARTY,
@@ -655,9 +689,9 @@ if (itemModifier.type instanceof BerryModifierType) {
     // If custom modifiers are specified, overrides default item count
     if (this.customModifierSettings) {
       const newItemCount =
-        (this.customModifierSettings.guaranteedModifierTiers?.length ?? 0) +
-        (this.customModifierSettings.guaranteedModifierTypeOptions?.length ?? 0) +
-        (this.customModifierSettings.guaranteedModifierTypeFuncs?.length ?? 0);
+        (this.customModifierSettings.guaranteedModifierTiers?.length ?? 0)
+        + (this.customModifierSettings.guaranteedModifierTypeOptions?.length ?? 0)
+        + (this.customModifierSettings.guaranteedModifierTypeFuncs?.length ?? 0);
       if (this.customModifierSettings.fillRemaining) {
         const originalCount = modifierCountHolder.value;
         modifierCountHolder.value = originalCount > newItemCount ? originalCount : newItemCount;

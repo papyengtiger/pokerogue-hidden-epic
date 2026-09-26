@@ -11,6 +11,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
     case PokemonType.NORMAL:
       switch (attackType) {
         case PokemonType.FIGHTING:
+        case PokemonType.DARK:
+        case PokemonType.FAIRY:
           return 2;
         case PokemonType.GHOST:
           return 0;
@@ -26,6 +28,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.ROCK:
         case PokemonType.DARK:
+        case PokemonType.GHOST:
+        case PokemonType.ICE:
           return 0.5;
         default:
           return 1;
@@ -38,7 +42,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.POISON:
           return 2;
         case PokemonType.FIGHTING:
-        case PokemonType.GRASS:
+        case PokemonType.DARK:
+        case PokemonType.NORMAL:
           return 0.5;
         case PokemonType.GROUND:
           return 0;
@@ -51,6 +56,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.PSYCHIC:
         case PokemonType.FLYING:
         case PokemonType.ROCK:
+        case PokemonType.WATER:
           return 2;
         case PokemonType.FIGHTING:
         case PokemonType.BUG:
@@ -68,6 +74,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.POISON:
         case PokemonType.ROCK:
+        case PokemonType.DARK:
+        case PokemonType.GROUND:
           return 0.5;
         case PokemonType.ELECTRIC:
           return 0;
@@ -84,7 +92,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.NORMAL:
         case PokemonType.FLYING:
-        case PokemonType.POISON:
+        case PokemonType.GHOST:
         case PokemonType.FIRE:
           return 0.5;
         default:
@@ -99,7 +107,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.FIGHTING:
         case PokemonType.GROUND:
-        case PokemonType.GRASS:
+        case PokemonType.PSYCHIC:
+        case PokemonType.WATER:
           return 0.5;
         default:
           return 1;
@@ -113,6 +122,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.POISON:
         case PokemonType.FAIRY:
+        case PokemonType.DRAGON:
           return 0.5;
         case PokemonType.NORMAL:
         case PokemonType.FIGHTING:
@@ -178,6 +188,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.STEEL:
         case PokemonType.BUG:
         case PokemonType.FIRE:
+        case PokemonType.DARK:
           return 2;
         case PokemonType.GROUND:
         case PokemonType.WATER:
@@ -193,10 +204,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.GRASS:
         case PokemonType.ROCK:
         case PokemonType.PSYCHIC:
+        case PokemonType.GHOST:
           return 2;
         case PokemonType.FLYING:
         case PokemonType.STEEL:
         case PokemonType.ELECTRIC:
+        case PokemonType.BUG:
           return 0.5;
         default:
           return 1;
@@ -210,6 +223,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.FIGHTING:
         case PokemonType.PSYCHIC:
+        case PokemonType.NORMAL:
+        case PokemonType.FAIRY:
           return 0.5;
         default:
           return 1;
@@ -220,6 +235,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.ROCK:
         case PokemonType.STEEL:
         case PokemonType.FIRE:
+        case PokemonType.WATER:
           return 2;
         case PokemonType.ICE:
         case PokemonType.POISON:
@@ -252,6 +268,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.GHOST:
         case PokemonType.DARK:
+        case PokemonType.POISON:
           return 0.5;
         case PokemonType.PSYCHIC:
           return 0;
@@ -265,8 +282,9 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.PSYCHIC:
         case PokemonType.ELECTRIC:
           return 2;
-        case PokemonType.GHOST:
         case PokemonType.DARK:
+        case PokemonType.ICE:
+        case PokemonType.FLYING:
           return 0.5;
         case PokemonType.DRAGON:
           return 0;
@@ -275,11 +293,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
       }
     case PokemonType.STELLAR:
       return 1;
+    case PokemonType.MYSTERY:
+      return 0.5;
   }
 
   return 1;
 }
-
 
 /**
  * Retrieve the color corresponding to a specific damage multiplier
@@ -288,6 +307,7 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
 export function getTypeDamageMultiplierColor(
   multiplier: TypeDamageMultiplier,
   side: "defense" | "offense",
+  highContrast = false,
 ): string | undefined {
   if (side === "offense") {
     switch (multiplier) {
@@ -300,34 +320,32 @@ export function getTypeDamageMultiplierColor(
       case 0.5:
         return "#FE8E00";
       case 1:
-        return undefined;
+        return;
       case 2:
-        return "#4AA500";
+        return highContrast ? "#2DB4FF" : "#4AA500";
       case 4:
-        return "#4BB400";
+        return highContrast ? "#00A4FF" : "#4BB400";
       case 8:
-        return "#52C200";
+        return highContrast ? "#0093FF" : "#52C200";
     }
   }
-  if (side === "defense") {
-    switch (multiplier) {
-      case 0:
-        return "#B1B100";
-      case 0.125:
-        return "#2DB4FF";
-      case 0.25:
-        return "#00A4FF";
-      case 0.5:
-        return "#0093FF";
-      case 1:
-        return undefined;
-      case 2:
-        return "#FE8E00";
-      case 4:
-        return "#FF7400";
-      case 8:
-        return "#FF5500";
-    }
+  switch (multiplier) {
+    case 0:
+      return "#B1B100";
+    case 0.125:
+      return "#2DB4FF";
+    case 0.25:
+      return "#00A4FF";
+    case 0.5:
+      return "#0093FF";
+    case 1:
+      return;
+    case 2:
+      return "#FE8E00";
+    case 4:
+      return "#FF7400";
+    case 8:
+      return "#FF5500";
   }
 }
 

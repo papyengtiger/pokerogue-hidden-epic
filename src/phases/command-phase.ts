@@ -3,6 +3,8 @@ import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { speciesStarterCosts } from "#balance/starters";
 import { TrappedTag } from "#data/battler-tags";
+import { kecleonShopManager } from "#data/kecleon-shop/kecleon-shop-manager";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import { AbilityId } from "#enums/ability-id";
 import { ArenaTagSide } from "#enums/arena-tag-side";
 import { ArenaTagType } from "#enums/arena-tag-type";
@@ -20,6 +22,7 @@ import type { PlayerPokemon } from "#field/pokemon";
 import type { MoveTargetSet } from "#moves/move";
 import { getMoveTargets } from "#moves/move-utils";
 import { FieldPhase } from "#phases/field-phase";
+import { questManager } from "#system/quest-manager";
 import type { TurnMove } from "#types/turn-move";
 import i18next from "i18next";
 
@@ -36,6 +39,16 @@ export class CommandPhase extends FieldPhase {
     super();
 
     this.fieldIndex = fieldIndex;
+  }
+
+  private isQuestCatchTargetBattle(): boolean {
+    const enemy = globalScene.getEnemyPokemon(false);
+
+    if (!enemy) {
+      return false;
+    }
+
+    return questManager.isActiveCatchQuestTarget(enemy.species.speciesId, globalScene.currentBattle.waveIndex);
   }
 
   /**
@@ -164,168 +177,172 @@ export class CommandPhase extends FieldPhase {
   }
 
   public override start(): void {
-  super.start();
+    super.start();
 
-  const playerPokemon = this.getPokemon();
-  const td: any = playerPokemon.turnData;
+    const playerPokemon = this.getPokemon();
+    const td: any = playerPokemon.turnData;
 
-  // ✅ FLING 자동 확정
-  if (td._autoConfirmFling) {
-    td._autoConfirmFling = false;
+    // ✅ FLING 자동 확정
+    if (td._autoConfirmFling) {
+      td._autoConfirmFling = false;
 
-    const pending = td._flingCmdPending;
-    delete td._flingCmdPending;
+      const pending = td._flingCmdPending;
+      delete td._flingCmdPending;
 
-    if (pending && td.flingItemSelectedThisTurn) {
-      this.handleFightCommand(
-        pending.command,
-        pending.cursor,
-        pending.useMode,
-        pending.move,
-      );
+      if (pending && td.flingItemSelectedThisTurn) {
+        this.handleFightCommand(pending.command, pending.cursor, pending.useMode, pending.move);
+      }
+
+      this.end();
+      return;
     }
 
-    this.end();
-    return;
-  }
+    if (td._autoConfirmMonsterHouseBall) {
+      td._autoConfirmMonsterHouseBall = false;
+
+      const pending = td._monsterHouseBallPending;
+
+      if (pending) {
+        const success = this.handleBallCommand(pending.cursor);
+
+        if (success) {
+          this.end();
+        }
+      } else {
+        delete td._monsterHouseCaptureSelectedId;
+
+        globalScene.ui.setMode(UiMode.COMMAND, this.fieldIndex);
+      }
+
+      return;
+    }
 
     if (td._autoConfirmBestow) {
-  td._autoConfirmBestow = false;
+      td._autoConfirmBestow = false;
 
-  const pending = td._bestowCmdPending;
-  delete td._bestowCmdPending;
+      const pending = td._bestowCmdPending;
+      delete td._bestowCmdPending;
 
-  // ✅ 이 CommandPhase의 포켓몬을 기준으로 다시 잡기(안전)
-  const playerPokemon = this.getPokemon();
-  const selected = (playerPokemon.summonData as any).bestowItem as PokemonHeldItemModifier | undefined;
+      // ✅ 이 CommandPhase의 포켓몬을 기준으로 다시 잡기(안전)
+      const playerPokemon = this.getPokemon();
+      const selected = (playerPokemon.summonData as any).bestowItem as PokemonHeldItemModifier | undefined;
 
-  // 선택이 없으면 그냥 입력으로 복귀
-  if (!pending || !selected) {
-    globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-    return;
-  }
+      // 선택이 없으면 그냥 입력으로 복귀
+      if (!pending || !selected) {
+        globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+        return;
+      }
 
-  // ✅ 여기서 handleFightCommand는 "다시 선택창 띄우면 안 됨"
-  const ok = this.handleFightCommand(pending.command, pending.cursor, pending.useMode, pending.move);
+      // ✅ 여기서 handleFightCommand는 "다시 선택창 띄우면 안 됨"
+      const ok = this.handleFightCommand(pending.command, pending.cursor, pending.useMode, pending.move);
 
-  if (ok) {
-    this.end();
-  } else {
-    // 실패면 선택값을 날려서 루프 방지 + 입력 복귀
-    delete (playerPokemon.summonData as any).bestowItem;
-    globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-  }
+      if (ok) {
+        this.end();
+      } else {
+        // 실패면 선택값을 날려서 루프 방지 + 입력 복귀
+        delete (playerPokemon.summonData as any).bestowItem;
+        globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+      }
 
-  return;
-}
-
-  // ✅✅✅ TRICK 자동 확정 (여기 추가)
-  if (td._autoConfirmTrick) {
-    td._autoConfirmTrick = false;
-
-    const pending = td._trickCmdPending;
-    delete td._trickCmdPending;
-
-    if (pending && td.trickItemSelectedThisTurn) {
-      this.handleFightCommand(
-        pending.command,
-        pending.cursor,
-        pending.useMode,
-        pending.move,
-      );
+      return;
     }
 
-    this.end();
-    return;
+    // ✅✅✅ TRICK 자동 확정 (여기 추가)
+    if (td._autoConfirmTrick) {
+      td._autoConfirmTrick = false;
+
+      const pending = td._trickCmdPending;
+      delete td._trickCmdPending;
+
+      if (pending && td.trickItemSelectedThisTurn) {
+        this.handleFightCommand(pending.command, pending.cursor, pending.useMode, pending.move);
+      }
+
+      this.end();
+      return;
+    }
+
+    // ✅ NATURAL GIFT 자동 확정
+    if (td._autoConfirmNaturalGift) {
+      td._autoConfirmNaturalGift = false;
+
+      const pending = td._naturalGiftCmdPending;
+      delete td._naturalGiftCmdPending;
+
+      const hasPick = td.naturalGiftReservedBerry != null;
+
+      // 선택이 없거나 pending이 없으면 입력 복귀
+      if (!pending || !hasPick) {
+        globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+        return;
+      }
+
+      const ok = this.handleFightCommand(pending.command, pending.cursor, pending.useMode, pending.move);
+
+      if (ok) {
+        this.end();
+      } else {
+        // 실패면 예약값 날리고 루프 방지 + 입력 복귀
+        delete td.naturalGiftReservedBerry;
+        delete td.naturalGiftReservedMoveId;
+        globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+      }
+
+      return;
+    }
+
+    globalScene.updateGameInfo();
+    this.resetCursorIfNeeded();
+
+    if (this.fieldIndex) {
+      this.handleFieldIndexLogic();
+    }
+
+    this.checkCommander();
+
+    playerPokemon.lapseTag(BattlerTagType.ENCORE);
+
+    if (globalScene.currentBattle.turnCommands[this.fieldIndex]?.skip) {
+      this.end();
+      return;
+    }
+
+    if (this.tryExecuteQueuedMove()) {
+      return;
+    }
+
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      globalScene.ui.clearText();
+      globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+    } else if (
+      globalScene.currentBattle.isBattleMysteryEncounter()
+      && globalScene.currentBattle.mysteryEncounter?.skipToFightInput
+    ) {
+      globalScene.ui.clearText();
+      globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
+    } else {
+      globalScene.ui.setMode(UiMode.COMMAND, this.fieldIndex);
+    }
   }
-
-  // ✅ NATURAL GIFT 자동 확정
-if (td._autoConfirmNaturalGift) {
-  td._autoConfirmNaturalGift = false;
-
-  const pending = td._naturalGiftCmdPending;
-  delete td._naturalGiftCmdPending;
-
-  const hasPick = td.naturalGiftReservedBerry != null;
-
-  // 선택이 없거나 pending이 없으면 입력 복귀
-  if (!pending || !hasPick) {
-    globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-    return;
-  }
-
-  const ok = this.handleFightCommand(
-    pending.command,
-    pending.cursor,
-    pending.useMode,
-    pending.move,
-  );
-
-  if (ok) {
-    this.end();
-  } else {
-    // 실패면 예약값 날리고 루프 방지 + 입력 복귀
-    delete td.naturalGiftReservedBerry;
-    delete td.naturalGiftReservedMoveId;
-    globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-  }
-
-  return;
-}
-
-  globalScene.updateGameInfo();
-  this.resetCursorIfNeeded();
-
-  if (this.fieldIndex) {
-    this.handleFieldIndexLogic();
-  }
-
-  this.checkCommander();
-
-  playerPokemon.lapseTag(BattlerTagType.ENCORE);
-
-  if (globalScene.currentBattle.turnCommands[this.fieldIndex]?.skip) {
-    this.end();
-    return;
-  }
-
-  if (this.tryExecuteQueuedMove()) {
-    return;
-  }
-
-  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  globalScene.ui.clearText();
-  globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-}
-else if (
-  globalScene.currentBattle.isBattleMysteryEncounter()
-  && globalScene.currentBattle.mysteryEncounter?.skipToFightInput
-) {
-  globalScene.ui.clearText();
-  globalScene.ui.setMode(UiMode.FIGHT, this.fieldIndex);
-} else {
-  globalScene.ui.setMode(UiMode.COMMAND, this.fieldIndex);
-}
-}
 
   /**
    * Submethod of {@linkcode handleFightCommand} responsible for queuing the provided error message when the move cannot be used
    * @param msg - The reason why the move cannot be used
    */
   private queueFightErrorMessage(msg: string): void {
-  const ui = globalScene.ui;
-  ui.setMode(UiMode.MESSAGE);
-  ui.showText(
-    msg,
-    null,
-    () => {
-      ui.clearText();
-      ui.setMode(UiMode.FIGHT, this.fieldIndex);
-    },
-    null,
-    true,
-  );
-}
+    const ui = globalScene.ui;
+    ui.setMode(UiMode.MESSAGE);
+    ui.showText(
+      msg,
+      null,
+      () => {
+        ui.clearText();
+        ui.setMode(UiMode.FIGHT, this.fieldIndex);
+      },
+      null,
+      true,
+    );
+  }
 
   /**
    * Helper method for {@linkcode handleFightCommand} that returns the moveID for the phase
@@ -350,188 +367,217 @@ else if (
    * @param move - The move to force the command to use, if any.
    */
   private handleFightCommand(
-  command: Command.FIGHT | Command.TERA,
-  cursor: number,
-  useMode: MoveUseMode = MoveUseMode.NORMAL,
-  move?: TurnMove,
-): boolean {
-  const playerPokemon = this.getPokemon();
-  const ignorePP = isIgnorePP(useMode);
-  const [canUse, reason] = cursor === -1 ? [true, ""] : playerPokemon.trySelectMove(cursor, ignorePP);
+    command: Command.FIGHT | Command.TERA,
+    cursor: number,
+    useMode: MoveUseMode = MoveUseMode.NORMAL,
+    move?: TurnMove,
+  ): boolean {
+    const playerPokemon = this.getPokemon();
 
-  const useStruggle = canUse
-    ? false
-    : cursor > -1 && !playerPokemon.getMoveset().some(m => m.isUsable(playerPokemon, ignorePP, true)[0]);
+    const isCatchQuestTarget = this.isQuestCatchTargetBattle();
 
-  if (!canUse && !useStruggle) {
-    console.error("Cannot use move:", reason);
-    this.queueFightErrorMessage(reason);
-    return false;
-  }
+    const ignorePP = isIgnorePP(useMode);
+    const [canUse, reason] = cursor === -1 ? [true, ""] : playerPokemon.trySelectMove(cursor, ignorePP);
 
-  const moveId = useStruggle ? MoveId.STRUGGLE : this.computeMoveId(playerPokemon, cursor, move);
+    const useStruggle = canUse
+      ? false
+      : cursor > -1 && !playerPokemon.getMoveset().some(m => m.isUsable(playerPokemon, ignorePP, true)[0]);
 
-  // ✅ FLING: 아이템 선택이 먼저다 (turnCommands 확정 전에!)
-  if (moveId === MoveId.FLING) {
-    const td: any = playerPokemon.turnData;
-
-    // 아직 선택 안 했으면: 선택창 띄우고 커맨드 확정은 보류
-    if (!td.flingItemSelectedThisTurn) {
-      td._flingCmdPending = { command, cursor, useMode, move };
-      td._flingReturnFieldIndex = this.fieldIndex;
-
-      // ✅ 안전빵: 혹시 남아있을지 모르는 흔적 제거
-      playerPokemon.turnData.acted = false;
-      delete globalScene.currentBattle.turnCommands[this.fieldIndex];
-      delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
-
-      const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
-      if (partyIndex >= 0) {
-        globalScene.phaseManager.unshiftNew("FlingItemSelectPhase", partyIndex);
-
-        // ✅ 중요: 현재 CommandPhase는 종료(선택 끝나면 새 CommandPhase를 다시 올릴 거니까)
-        this.end();
-        return false;
-      }
-
-      // 파티 인덱스 못 찾으면 그냥 실패 취급
+    if (!canUse && !useStruggle) {
+      console.error("Cannot use move:", reason);
+      this.queueFightErrorMessage(reason);
       return false;
     }
-  }
+
+    const moveId = useStruggle ? MoveId.STRUGGLE : this.computeMoveId(playerPokemon, cursor, move);
+
+    // ✅ FLING: 아이템 선택이 먼저다 (turnCommands 확정 전에!)
+    if (moveId === MoveId.FLING) {
+      const td: any = playerPokemon.turnData;
+
+      // 아직 선택 안 했으면: 선택창 띄우고 커맨드 확정은 보류
+      if (!td.flingItemSelectedThisTurn) {
+        td._flingCmdPending = { command, cursor, useMode, move };
+        td._flingReturnFieldIndex = this.fieldIndex;
+
+        // ✅ 안전빵: 혹시 남아있을지 모르는 흔적 제거
+        playerPokemon.turnData.acted = false;
+        delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+        delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+        const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
+        if (partyIndex >= 0) {
+          globalScene.phaseManager.unshiftNew("FlingItemSelectPhase", partyIndex);
+
+          // ✅ 중요: 현재 CommandPhase는 종료(선택 끝나면 새 CommandPhase를 다시 올릴 거니까)
+          this.end();
+          return false;
+        }
+
+        // 파티 인덱스 못 찾으면 그냥 실패 취급
+        return false;
+      }
+    }
 
     if (moveId === MoveId.BESTOW) {
-  const td: any = playerPokemon.turnData;
+      const td: any = playerPokemon.turnData;
 
-  // ✅ 플래그 말고 "실제 선택된 아이템" 기준
-  const chosen = (playerPokemon.summonData as any).bestowItem as PokemonHeldItemModifier | undefined;
+      // ✅ 플래그 말고 "실제 선택된 아이템" 기준
+      const chosen = (playerPokemon.summonData as any).bestowItem as PokemonHeldItemModifier | undefined;
 
-  if (!chosen) {
-    td._bestowCmdPending = { command, cursor, useMode, move };
-    td._bestowReturnFieldIndex = this.fieldIndex;
+      if (!chosen) {
+        td._bestowCmdPending = { command, cursor, useMode, move };
+        td._bestowReturnFieldIndex = this.fieldIndex;
 
-    playerPokemon.turnData.acted = false;
-    delete globalScene.currentBattle.turnCommands[this.fieldIndex];
-    delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+        playerPokemon.turnData.acted = false;
+        delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+        delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
 
-    const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
-    if (partyIndex >= 0) {
-      globalScene.phaseManager.unshiftNew("BestowItemSelectPhase", partyIndex);
-      this.end();
-      return false;
-    }
-    return false;
-  }
-}
-
-  if (moveId === MoveId.TRICK) {
-  const td: any = playerPokemon.turnData;
-
-  if (!td.trickItemSelectedThisTurn) {
-    td._trickCmdPending = { command, cursor, useMode, move };
-    td._trickReturnFieldIndex = this.fieldIndex;
-
-    // 흔적 제거
-    playerPokemon.turnData.acted = false;
-    delete globalScene.currentBattle.turnCommands[this.fieldIndex];
-    delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
-
-    const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
-    if (partyIndex >= 0) {
-      // ✅ getMoveTargets() 쓰지 말고 "상대 활성"에서 직접 고르기
-      const enemies = globalScene.getEnemyField().filter(p => p?.isActive(true));
-      const targetPokemon = enemies[0]; // 가장 앞 활성 1마리
-      const targetIndex = targetPokemon?.getBattlerIndex();
-
-      if (typeof targetIndex === "number") {
-        globalScene.phaseManager.unshiftNew("TrickItemSelectPhase", partyIndex, targetIndex);
-        this.end();
+        const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
+        if (partyIndex >= 0) {
+          globalScene.phaseManager.unshiftNew("BestowItemSelectPhase", partyIndex);
+          this.end();
+          return false;
+        }
         return false;
       }
+    }
 
-      // 타겟이 진짜 없으면 그냥 실패 처리
-      this.end();
+    if (moveId === MoveId.TRICK) {
+      const td: any = playerPokemon.turnData;
+
+      if (!td.trickItemSelectedThisTurn) {
+        td._trickCmdPending = { command, cursor, useMode, move };
+        td._trickReturnFieldIndex = this.fieldIndex;
+
+        // 흔적 제거
+        playerPokemon.turnData.acted = false;
+        delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+        delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+        const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
+        if (partyIndex >= 0) {
+          // ✅ getMoveTargets() 쓰지 말고 "상대 활성"에서 직접 고르기
+          const enemies = globalScene.getEnemyField().filter(p => p?.isActive(true));
+          const targetPokemon = enemies[0]; // 가장 앞 활성 1마리
+          const targetIndex = targetPokemon?.getBattlerIndex();
+
+          if (typeof targetIndex === "number") {
+            globalScene.phaseManager.unshiftNew("TrickItemSelectPhase", partyIndex, targetIndex);
+            this.end();
+            return false;
+          }
+
+          // 타겟이 진짜 없으면 그냥 실패 처리
+          this.end();
+          return false;
+        }
+
+        return false;
+      }
+    }
+
+    if (moveId === MoveId.NATURAL_GIFT) {
+      const td: any = playerPokemon.turnData;
+
+      const hasPick = td.naturalGiftReservedBerry != null; // + 필요하면 moveId까지 체크
+
+      if (!hasPick) {
+        td._naturalGiftCmdPending = { command, cursor, useMode, move };
+        td._naturalGiftReturnFieldIndex = this.fieldIndex;
+
+        playerPokemon.turnData.acted = false;
+        delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+        delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+        const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
+        if (partyIndex >= 0) {
+          globalScene.phaseManager.unshiftNew("NaturalGiftBerrySelectPhase", partyIndex);
+          this.end();
+          return false;
+        }
+
+        return false;
+      }
+    }
+
+    // ---- 이하 기존 로직 그대로 ----
+    const turnCommand: TurnCommand = {
+      command: Command.FIGHT,
+      cursor,
+      move: { move: moveId, targets: [], useMode },
+      args: [useMode, move],
+    };
+    const preTurnCommand: TurnCommand = {
+      command,
+      targets: [this.fieldIndex],
+      skip: command === Command.FIGHT,
+    };
+
+    const moveTargets: MoveTargetSet =
+      move === undefined
+        ? getMoveTargets(playerPokemon, moveId)
+        : {
+            targets: move.targets,
+            multiple: move.targets.length > 1,
+          };
+
+    const waveIndex = globalScene.currentBattle.waveIndex;
+
+    const protectedQuestTargets = moveTargets.targets
+      .map(targetIndex => globalScene.getField(true).find(p => p?.getBattlerIndex?.() === targetIndex))
+      .filter(targetPokemon => targetPokemon && !targetPokemon.isPlayer())
+      .filter(Boolean)
+      .filter(targetPokemon => {
+        const heldItemQuestTarget = questManager.isActiveHeldItemQuestPokemon(targetPokemon!.id, waveIndex);
+
+        const catchQuestTarget = questManager.isActiveCatchQuestTarget(targetPokemon!.species.speciesId, waveIndex);
+
+        return heldItemQuestTarget || catchQuestTarget;
+      });
+
+    if (protectedQuestTargets.length > 0) {
+      const protectedPokemon = protectedQuestTargets[0]!;
+
+      const isHeldItemQuestTarget = questManager.isActiveHeldItemQuestPokemon(protectedPokemon.id, waveIndex);
+
+      this.queueFightErrorMessage(
+        isHeldItemQuestTarget ? "의뢰 물품을 지닌 포켓몬이라 공격할 수 없다!" : "의뢰 대상 포켓몬이라 공격할 수 없다!",
+      );
+
       return false;
     }
 
-    return false;
-  }
-}
-
-if (moveId === MoveId.NATURAL_GIFT) {
-  const td: any = playerPokemon.turnData;
-
-  const hasPick = td.naturalGiftReservedBerry != null; // + 필요하면 moveId까지 체크
-
-  if (!hasPick) {
-    td._naturalGiftCmdPending = { command, cursor, useMode, move };
-    td._naturalGiftReturnFieldIndex = this.fieldIndex;
-
-    playerPokemon.turnData.acted = false;
-    delete globalScene.currentBattle.turnCommands[this.fieldIndex];
-    delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
-
-    const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === playerPokemon.id);
-    if (partyIndex >= 0) {
-      globalScene.phaseManager.unshiftNew("NaturalGiftBerrySelectPhase", partyIndex);
-      this.end();
-      return false;
+    if (moveId === MoveId.NONE) {
+      turnCommand.targets = [this.fieldIndex];
     }
 
-    return false;
+    if (moveTargets.targets.length > 1 && moveTargets.multiple) {
+      globalScene.phaseManager.unshiftNew("SelectTargetPhase", this.fieldIndex);
+    }
+
+    if (turnCommand.move && (moveTargets.targets.length <= 1 || moveTargets.multiple)) {
+      turnCommand.move.targets = moveTargets.targets;
+    } else if (
+      turnCommand.move
+      && playerPokemon.getTag(BattlerTagType.CHARGING)
+      && playerPokemon.getMoveQueue().length > 0
+    ) {
+      turnCommand.move.targets = playerPokemon.getMoveQueue()[0].targets;
+    } else {
+      globalScene.phaseManager.unshiftNew("SelectTargetPhase", this.fieldIndex);
+    }
+
+    globalScene.currentBattle.preTurnCommands[this.fieldIndex] = preTurnCommand;
+    globalScene.currentBattle.turnCommands[this.fieldIndex] = turnCommand;
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      console.log("[PRACTICE] player command set", {
+        fieldIndex: this.fieldIndex,
+        command: globalScene.currentBattle.turnCommands[this.fieldIndex],
+      });
+    }
+    return true;
   }
-}
-
-  // ---- 이하 기존 로직 그대로 ----
-  const turnCommand: TurnCommand = {
-    command: Command.FIGHT,
-    cursor,
-    move: { move: moveId, targets: [], useMode },
-    args: [useMode, move],
-  };
-  const preTurnCommand: TurnCommand = {
-    command,
-    targets: [this.fieldIndex],
-    skip: command === Command.FIGHT,
-  };
-
-  const moveTargets: MoveTargetSet =
-    move === undefined
-      ? getMoveTargets(playerPokemon, moveId)
-      : {
-          targets: move.targets,
-          multiple: move.targets.length > 1,
-        };
-
-  if (moveId === MoveId.NONE) {
-    turnCommand.targets = [this.fieldIndex];
-  }
-
-  if (moveTargets.targets.length > 1 && moveTargets.multiple) {
-    globalScene.phaseManager.unshiftNew("SelectTargetPhase", this.fieldIndex);
-  }
-
-  if (turnCommand.move && (moveTargets.targets.length <= 1 || moveTargets.multiple)) {
-    turnCommand.move.targets = moveTargets.targets;
-  } else if (
-    turnCommand.move
-    && playerPokemon.getTag(BattlerTagType.CHARGING)
-    && playerPokemon.getMoveQueue().length > 0
-  ) {
-    turnCommand.move.targets = playerPokemon.getMoveQueue()[0].targets;
-  } else {
-    globalScene.phaseManager.unshiftNew("SelectTargetPhase", this.fieldIndex);
-  }
-
-  globalScene.currentBattle.preTurnCommands[this.fieldIndex] = preTurnCommand;
-  globalScene.currentBattle.turnCommands[this.fieldIndex] = turnCommand;
-  if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  console.log("[PRACTICE] player command set", {
-    fieldIndex: this.fieldIndex,
-    command: globalScene.currentBattle.turnCommands[this.fieldIndex],
-  });
-}
-  return true;
-}
 
   /**
    * Set the mode in preparation to show the text, and then show the text.
@@ -568,6 +614,13 @@ if (moveId === MoveId.NATURAL_GIFT) {
    * @returns Whether a pokeball can be thrown
    */
   private checkCanUseBall(): boolean {
+    // 캘리몬 도둑질 추격전의 캘리몬은 전부 포획 불가.
+    // 캘리몬 추격전 전용
+    if (kecleonShopManager.isTheftBattleActive()) {
+      this.queueShowText("battle:kecleonCaptureBlocked");
+      return false;
+    }
+
     const { arena, currentBattle, gameData, gameMode } = globalScene;
     const { battleType } = currentBattle;
     const { biomeType } = arena;
@@ -634,45 +687,269 @@ if (moveId === MoveId.NATURAL_GIFT) {
       return false;
     }
 
-    const isChallengeActive = globalScene.gameMode.hasAnyChallenges();
-    const isFinalBoss = globalScene.gameMode.isBattleClassicFinalBoss(globalScene.currentBattle.waveIndex);
+    const numBallTypes = Object.keys(globalScene.pokeballCounts).length;
 
-    const numBallTypes = 5;
-    if (cursor < numBallTypes) {
-      const targetPokemon = globalScene.getEnemyPokemon(false);
-      if (
-        targetPokemon?.isBoss()
-        && targetPokemon?.bossSegmentIndex >= 1 // TODO: Decouple this hardcoded exception for wonder guard and just check the target...
-        && !targetPokemon?.hasAbility(AbilityId.WONDER_GUARD, false, true)
-      ) {
-        // When facing the final boss, it must be weakened unless a Master Ball is used AND no challenges are active.
-        // The message is customized for the final boss.
-        if (
-          isFinalBoss
-          && (cursor < PokeballType.MASTER_BALL || (cursor === PokeballType.MASTER_BALL && isChallengeActive))
-        ) {
-          this.queueShowText("battle:noPokeballForceFinalBossCatchable");
-          return false;
-        }
-        // When facing any other boss, Master Ball can always be used, and we use the standard message.
-        if (cursor < PokeballType.MASTER_BALL) {
-          this.queueShowText("battle:noPokeballStrong");
-          return false;
-        }
+    if (cursor >= numBallTypes) {
+      return false;
+    }
+
+    const targetPokemon = globalScene.getEnemyPokemon(false);
+
+    const playerPokemon = this.getPokemon();
+    const td: any = playerPokemon.turnData;
+
+    /*
+     * ============================
+     * 몬스터소굴 일반 개체 포획
+     * ============================
+     */
+    if (monsterHouseManager.isActive() && targetPokemon && !monsterHouseManager.isBossPokemon(targetPokemon)) {
+      const selectedPokemonId = td._monsterHouseCaptureSelectedId;
+
+      // 아직 선택하지 않음
+      if (selectedPokemonId == null) {
+        td._monsterHouseBallPending = {
+          cursor,
+          fieldIndex: this.fieldIndex,
+        };
+
+        playerPokemon.turnData.acted = false;
+
+        delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+
+        delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+        globalScene.phaseManager.unshiftNew(
+          "MonsterHouseCaptureSelectPhase",
+
+          // 선택 완료
+          (pokemonId: number) => {
+            td._monsterHouseCaptureSelectedId = pokemonId;
+
+            const pending = td._monsterHouseBallPending;
+
+            if (!pending) {
+              globalScene.phaseManager.unshiftNew("CommandPhase", this.fieldIndex);
+              return;
+            }
+
+            td._autoConfirmMonsterHouseBall = true;
+
+            globalScene.phaseManager.unshiftNew("CommandPhase", pending.fieldIndex);
+          },
+
+          // 취소
+          () => {
+            delete td._monsterHouseBallPending;
+            delete td._monsterHouseCaptureSelectedId;
+            delete td._autoConfirmMonsterHouseBall;
+
+            playerPokemon.turnData.acted = false;
+
+            delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+
+            delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+            globalScene.phaseManager.unshiftNew("CommandPhase", this.fieldIndex);
+          },
+        );
+
+        this.end();
+        return false;
       }
 
+      // 선택 완료 후 BALL 커맨드 확정
       globalScene.currentBattle.turnCommands[this.fieldIndex] = {
         command: Command.BALL,
         cursor,
+        targets,
+        args: [selectedPokemonId],
       };
-      globalScene.currentBattle.turnCommands[this.fieldIndex]!.targets = targets;
+
+      delete td._monsterHouseBallPending;
+      delete td._monsterHouseCaptureSelectedId;
+      delete td._autoConfirmMonsterHouseBall;
+
       if (this.fieldIndex) {
         globalScene.currentBattle.turnCommands[this.fieldIndex - 1]!.skip = true;
       }
+
       return true;
     }
 
-    return false;
+    /*
+     * ============================
+     * 일반 포획 / 소굴 우두머리
+     * ============================
+     */
+
+    const isChallengeActive = globalScene.gameMode.hasAnyChallenges();
+
+    const isFinalBoss = globalScene.gameMode.isBattleClassicFinalBoss(globalScene.currentBattle.waveIndex);
+
+    const isMasterBall = cursor === PokeballType.MASTER_BALL;
+
+    const isQuickBallBossCatch =
+      cursor === PokeballType.QUICK_BALL
+      && ((monsterHouseManager.isActive()
+        && monsterHouseManager.isBossPokemon(targetPokemon)
+        && targetPokemon.tempSummonData.monsterHouseFirstTurn)
+        || (!monsterHouseManager.isActive() && targetPokemon.tempSummonData.waveTurnCount === 1));
+
+    if (
+      targetPokemon?.isBoss()
+      && targetPokemon.bossSegmentIndex >= 1
+      && !targetPokemon.hasAbility(AbilityId.WONDER_GUARD, false, true)
+    ) {
+      /*
+       * 소굴 우두머리
+       * - 마스터볼: 즉시 포획 시도 가능
+       * - 퀵볼: 첫 턴이면 즉시 포획 시도 가능
+       */
+      if (monsterHouseManager.isActive() && monsterHouseManager.isBossPokemon(targetPokemon)) {
+        if (!isMasterBall && !isQuickBallBossCatch) {
+          this.queueShowText("battle:noPokeballStrong");
+          return false;
+        }
+      } else if (isFinalBoss && ((!isMasterBall && !isQuickBallBossCatch) || isChallengeActive)) {
+
+      /*
+       * 클래식 최종보스
+       */
+        this.queueShowText("battle:noPokeballForceFinalBossCatchable");
+        return false;
+      } else if (!isFinalBoss && !isMasterBall && !isQuickBallBossCatch) {
+
+      /*
+       * 일반 보스
+       */
+        this.queueShowText("battle:noPokeballStrong");
+        return false;
+      }
+    }
+
+    globalScene.currentBattle.turnCommands[this.fieldIndex] = {
+      command: Command.BALL,
+      cursor,
+      targets,
+    };
+
+    if (this.fieldIndex) {
+      globalScene.currentBattle.turnCommands[this.fieldIndex - 1]!.skip = true;
+    }
+
+    return true;
+
+    /*
+     * 몬스터소굴 일반 개체 포획
+     *
+     * 아직 포획 대상이 선택되지 않았다면
+     * BALL 커맨드를 확정하지 않고 먼저 대상 선택창을 연다.
+     *
+     * 우두머리가 실제 필드에 나온 뒤에는
+     * 일반 포획 흐름을 그대로 사용한다.
+     */
+    if (monsterHouseManager.isActive() && targetPokemon && !monsterHouseManager.isBossPokemon(targetPokemon)) {
+      const selectedPokemonId = td._monsterHouseCaptureSelectedId;
+
+      /*
+       * 아직 대상 선택 전
+       */
+      if (selectedPokemonId == null) {
+        td._monsterHouseBallPending = {
+          cursor,
+          fieldIndex: this.fieldIndex,
+        };
+
+        playerPokemon.turnData.acted = false;
+
+        delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+
+        delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+        globalScene.phaseManager.unshiftNew(
+          "MonsterHouseCaptureSelectPhase",
+
+          // 선택 완료
+          (pokemonId: number) => {
+            td._monsterHouseCaptureSelectedId = pokemonId;
+
+            const pending = td._monsterHouseBallPending;
+
+            if (!pending) {
+              globalScene.phaseManager.unshiftNew("CommandPhase", this.fieldIndex);
+              return;
+            }
+
+            /*
+             * 새 CommandPhase에서 handleBallCommand를
+             * 다시 호출하도록 표시
+             */
+            td._autoConfirmMonsterHouseBall = true;
+
+            globalScene.phaseManager.unshiftNew("CommandPhase", pending.fieldIndex);
+          },
+
+          // 선택 취소
+          () => {
+            delete td._monsterHouseBallPending;
+            delete td._monsterHouseCaptureSelectedId;
+            delete td._autoConfirmMonsterHouseBall;
+
+            playerPokemon.turnData.acted = false;
+
+            delete globalScene.currentBattle.turnCommands[this.fieldIndex];
+
+            delete globalScene.currentBattle.preTurnCommands[this.fieldIndex];
+
+            globalScene.phaseManager.unshiftNew("CommandPhase", this.fieldIndex);
+          },
+        );
+
+        /*
+         * 현재 CommandPhase는 여기서 끝낸다.
+         * 아직 BALL 커맨드는 확정되지 않았다.
+         */
+        this.end();
+        return false;
+      }
+
+      /*
+       * 대상 선택 완료 후 재진입한 경우.
+       * 이제 BALL 커맨드를 최종 확정한다.
+       */
+      globalScene.currentBattle.turnCommands[this.fieldIndex] = {
+        command: Command.BALL,
+        cursor,
+        targets,
+        args: [selectedPokemonId],
+      };
+
+      delete td._monsterHouseBallPending;
+      delete td._monsterHouseCaptureSelectedId;
+      delete td._autoConfirmMonsterHouseBall;
+
+      if (this.fieldIndex) {
+        globalScene.currentBattle.turnCommands[this.fieldIndex - 1]!.skip = true;
+      }
+
+      return true;
+    }
+
+    /*
+     * 일반 야생 포켓몬 / 소굴 우두머리
+     */
+    globalScene.currentBattle.turnCommands[this.fieldIndex] = {
+      command: Command.BALL,
+      cursor,
+      targets,
+    };
+
+    if (this.fieldIndex) {
+      globalScene.currentBattle.turnCommands[this.fieldIndex - 1]!.skip = true;
+    }
+
+    return true;
   }
 
   /**
@@ -768,6 +1045,32 @@ if (moveId === MoveId.NATURAL_GIFT) {
    * @returns Whether the pokemon is able to leave the field, indicating the command phase should end
    */
   private handleRunCommand(): boolean {
+    if (kecleonShopManager.isTheftBattleActive()) {
+      this.queueShowText("battle:noEscapeKecleon");
+      return false;
+    }
+
+    const isCatchQuestTarget = this.isQuestCatchTargetBattle();
+
+    const isHeldItemQuestTarget = this.isQuestHeldItemTargetBattle();
+
+    if (isCatchQuestTarget || isHeldItemQuestTarget) {
+      globalScene.ui.setMode(UiMode.MESSAGE);
+
+      globalScene.ui.showText(
+        isHeldItemQuestTarget ? "의뢰 물품을 두고 도망칠 수 없다!" : "의뢰 대상 포켓몬을 두고 도망칠 수 없다!",
+        null,
+        () => {
+          globalScene.ui.showText("", 0);
+          globalScene.ui.setMode(UiMode.COMMAND, this.fieldIndex);
+        },
+        null,
+        true,
+      );
+
+      return false;
+    }
+
     const { currentBattle, arena } = globalScene;
     const mysteryEncounterFleeAllowed = currentBattle.mysteryEncounter?.fleeAllowed ?? true;
     if (arena.biomeType === BiomeId.END || !mysteryEncounterFleeAllowed) {
@@ -785,6 +1088,16 @@ if (moveId === MoveId.NATURAL_GIFT) {
     const success = this.tryLeaveField();
 
     return success;
+  }
+
+  private isQuestHeldItemTargetBattle(): boolean {
+    const enemy = globalScene.getEnemyPokemon(false);
+
+    if (!enemy) {
+      return false;
+    }
+
+    return questManager.isActiveHeldItemQuestPokemon(enemy.id, globalScene.currentBattle.waveIndex);
   }
 
   /**

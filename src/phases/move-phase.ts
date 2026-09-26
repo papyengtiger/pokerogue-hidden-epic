@@ -2,33 +2,43 @@ import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { MOVE_COLOR } from "#app/constants/colors";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import {
+  BerryModifier,
+  DanceMoveModifier,
+  LegendPlateModifier,
+  PreventBerryUseItemModifier,
+} from "#app/modifier/modifier";
 import Overrides from "#app/overrides";
 import { PokemonPhase } from "#app/phases/pokemon-phase";
-import { CenterOfAttentionTag } from "#data/battler-tags";
+import { BideTag, CenterOfAttentionTag, FlinchedTag } from "#data/battler-tags";
+import { getBerryName, TYPE_PRIORITY_BERRIES, TYPE_PRIORITY_TYPE_MAP } from "#data/berry";
 import { SpeciesFormChangePreMoveTrigger } from "#data/form-change-triggers";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import { getStatusEffectActivationText } from "#data/status-effect";
 import { getTerrainBlockMessage } from "#data/terrain";
-import { getWeatherBlockMessage } from "#data/weather";
 import { AbilityId } from "#enums/ability-id";
 import { ArenaTagSide } from "#enums/arena-tag-side";
 import { ArenaTagType } from "#enums/arena-tag-type";
 import { BattlerIndex } from "#enums/battler-index";
 import { BattlerTagLapseType } from "#enums/battler-tag-lapse-type";
 import { BattlerTagType } from "#enums/battler-tag-type";
+import { BerryType } from "#enums/berry-type";
 import { ChallengeType } from "#enums/challenge-type";
 import { CommonAnim } from "#enums/move-anims-common";
+import { MoveCategory } from "#enums/move-category";
 import { MoveFlags } from "#enums/move-flags";
 import { MoveId } from "#enums/move-id";
 import { MovePhaseTimingModifier } from "#enums/move-phase-timing-modifier";
 import { MoveResult } from "#enums/move-result";
 import { isIgnorePP, isIgnoreStatus, isReflected, isVirtual, MoveUseMode } from "#enums/move-use-mode";
 import { PokemonType } from "#enums/pokemon-type";
+import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
-import { MoveUsedEvent } from "#events/battle-scene";
+import { BerryUsedEvent, MoveUsedEvent } from "#events/battle-scene";
 import type { Pokemon } from "#field/pokemon";
 import { applyMoveAttrs } from "#moves/apply-attrs";
 import { frenzyMissFunc } from "#moves/move-utils";
-import { PartyStatusCureAttr } from "#moves/move";
+import { NATURAL_GIFT_BERRY_TO_MOVE } from "#moves/natural-gift-utils";
 import type { PokemonMove } from "#moves/pokemon-move";
 import type { Move, PreUseInterruptAttr } from "#types/move-types";
 import type { TurnMove } from "#types/turn-move";
@@ -37,15 +47,6 @@ import { BooleanHolder, NumberHolder } from "#utils/common";
 import { enumValueToKey } from "#utils/enums";
 import { inSpeedOrder } from "#utils/speed-order-generator";
 import i18next from "i18next";
-import { DanceMoveModifier, BerryModifier, LegendPlateModifier } from "#app/modifier/modifier";
-import { FlinchedTag, BideTag } from "#data/battler-tags";
-import { MoveTarget } from "#enums/move-target";
-import { MoveCategory } from "#enums/move-category";
-import { BerryType } from "#enums/berry-type";
-import { BerryUsedEvent } from "#events/battle-scene";
-import { getBerryEffectFunc, getBerryPredicate, getBerryName, TYPE_PRIORITY_BERRIES, TYPE_PRIORITY_TYPE_MAP } from "#data/berry";
-import { NATURAL_GIFT_BERRY_TO_MOVE, hasNaturalGiftMapping, getNaturalGiftCandidateBerries, getNaturalGiftMoveId, getNaturalGiftDisplayText } from "#moves/natural-gift-utils";
-import { SpeciesId } from "#enums/species-id";
 
 export class MovePhase extends PokemonPhase {
   public readonly phaseName = "MovePhase";
@@ -62,71 +63,100 @@ export class MovePhase extends PokemonPhase {
 
   /** Flag set to `true` during {@linkcode checkFreeze} that indicates that the pokemon will thaw if it passes the failure conditions */
   private declare thaw?: boolean;
+  private preUseInterruptMessageShown = false;
+  private readonly monsterHouseVirtualUser: boolean;
   private endPhaseOnly(): void {
-  super.end(); // MoveEndPhase 없이 종료
-}
+    super.end(); // MoveEndPhase 없이 종료
+  }
 
   private consumeReservedPriorityBerry(): void {
-  const user: any = this.pokemon;
-  const td: any = user?.turnData;
-  if (!td?.priorityBerryReserved) return;
+    const user: any = this.pokemon;
+    const td: any = user?.turnData;
+    if (!td?.priorityBerryReserved) {
+      return;
+    }
 
-  const moveId = this.move?.getMove?.().id ?? this.move?.moveId;
-  if (td.priorityBerryReservedMoveId !== moveId) {
-    td.priorityBerryReserved = undefined;
-    td.priorityBerryReservedMoveId = undefined;
-    return;
-  }
+    const moveId = this.move?.getMove?.().id ?? this.move?.moveId;
+    if (td.priorityBerryReservedMoveId !== moveId) {
+      delete td.priorityBerryReserved;
+      delete td.priorityBerryReservedMoveId;
+      return;
+    }
 
-  const berryType: BerryType = td.priorityBerryReserved;
+    const berryType: BerryType = td.priorityBerryReserved;
 
-  // ✅ (A) "이번 턴 선공 발동" 플래그만
-  td.priorityItemActivated = true;
-  td.priorityItemType = "PRIORITY_BERRY";
-  td.forceActFirstThisTurn = true; // 너가 쓰는 정렬 키에 맞춰서
+    const opponents = user.getOpponents?.() ?? [];
 
-  // ✅ (B) BerryModifier를 '먹기'가 아니라 '소모'만 (조용히)
-  const target = globalScene
-    .getModifiers(BerryModifier, user.isPlayer())
-    .find((m: any) =>
-      m instanceof BerryModifier &&
-      m.pokemonId === user.id &&
-      !m.consumed &&
-      m.berryType === berryType
-    ) as any;
-
-  if (target) {
-    // 여기서 apply(user) 금지!
-    target.consumed = true;                 // 또는 target.consumeSilently()
-    user.loseHeldItemSilently?.(target);    // 없으면 직접 modifier만 제거하는 함수 만들기
-    // 중요: loseHeldItem이 내부에서 updateModifiers/이벤트를 태우면 안 됨
-  }
-
-  // ✅ 메시지는 "지금 당장"이 아니라, 턴 메시지 큐에만 적재(OK)
-  // queueMessage는 보통 안전하지만, 이것도 순서 꼬이면 MoveEndPhase로 미루는 게 더 안전
-  if (berryType === BerryType.CUSTAP) {
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battle:berryActivatedPriority", {
-        pokemonName: getPokemonNameWithAffix(user),
-        berryName: getBerryName(berryType),
-      }),
+    const hasPreventBerryUseItem = opponents.some((opp: any) =>
+      globalScene
+        .getModifiers(PreventBerryUseItemModifier, opp.isPlayer?.())
+        .some((mod: any) => mod.pokemonId === opp.id),
     );
-  } else if (TYPE_PRIORITY_BERRIES.has(berryType)) {
-    const mappedType = TYPE_PRIORITY_TYPE_MAP[berryType];
-    if (mappedType != null) {
+
+    const cancelled = new BooleanHolder(false);
+    opponents.forEach((opp: any) => applyAbAttrs("PreventBerryUseAbAttr", { pokemon: opp, cancelled }));
+
+    if (hasPreventBerryUseItem || cancelled.value) {
+      delete td.priorityBerryReserved;
+      delete td.priorityBerryReservedMoveId;
+      return;
+    }
+
+    const target = globalScene
+      .getModifiers(BerryModifier, user.isPlayer())
+      .find(
+        (m: any) => m instanceof BerryModifier && m.pokemonId === user.id && !m.consumed && m.berryType === berryType,
+      ) as BerryModifier | undefined;
+
+    if (!target) {
+      delete td.priorityBerryReserved;
+      delete td.priorityBerryReservedMoveId;
+      return;
+    }
+
+    td.priorityItemActivated = true;
+    td.priorityItemType = "PRIORITY_BERRY";
+    td.forceActFirstThisTurn = true;
+
+    const stack = target.stackCount ?? 1;
+
+    if (stack > 1) {
+      target.stackCount = stack - 1;
+    } else {
+      user.loseHeldItem(target);
+    }
+
+    globalScene.eventTarget.dispatchEvent(new BerryUsedEvent(target));
+    globalScene.updateModifiers(user.isPlayer());
+
+    delete td.priorityBerryReserved;
+    delete td.priorityBerryReservedMoveId;
+
+    // ✅ 메시지는 "지금 당장"이 아니라, 턴 메시지 큐에만 적재(OK)
+    // queueMessage는 보통 안전하지만, 이것도 순서 꼬이면 MoveEndPhase로 미루는 게 더 안전
+    if (berryType === BerryType.CUSTAP) {
       globalScene.phaseManager.queueMessage(
-        i18next.t("battle:berryActivatedPriorityType", {
+        i18next.t("battle:berryActivatedPriority", {
           pokemonName: getPokemonNameWithAffix(user),
-          typeName: i18next.t(`pokemonInfo:type.${PokemonType[mappedType].toLowerCase()}`),
           berryName: getBerryName(berryType),
         }),
       );
+    } else if (TYPE_PRIORITY_BERRIES.has(berryType)) {
+      const mappedType = TYPE_PRIORITY_TYPE_MAP[berryType];
+      if (mappedType != null) {
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battle:berryActivatedPriorityType", {
+            pokemonName: getPokemonNameWithAffix(user),
+            typeName: i18next.t(`pokemonInfo:type.${PokemonType[mappedType].toLowerCase()}`),
+            berryName: getBerryName(berryType),
+          }),
+        );
+      }
     }
-  }
 
-  td.priorityBerryReserved = undefined;
-  td.priorityBerryReservedMoveId = undefined;
-}
+    td.priorityBerryReserved = undefined;
+    td.priorityBerryReservedMoveId = undefined;
+  }
 
   /** The move history entry object that is pushed to the pokemon's move history
    *
@@ -166,14 +196,19 @@ export class MovePhase extends PokemonPhase {
     move: PokemonMove,
     useMode: MoveUseMode,
     timingModifier: MovePhaseTimingModifier = MovePhaseTimingModifier.NORMAL,
+    monsterHouseVirtualUser = false,
   ) {
-    super(pokemon.getBattlerIndex());
+    const isMonsterHouseVirtualUser = monsterHouseManager.isActive() && !pokemon.isPlayer() && !pokemon.isActive(true);
+
+    super(isMonsterHouseVirtualUser ? pokemon.id : pokemon.getBattlerIndex());
 
     this.pokemon = pokemon;
     this.targets = targets;
     this.move = move;
     this.useMode = useMode;
     this.timingModifier = timingModifier;
+    this.monsterHouseVirtualUser = monsterHouseVirtualUser;
+
     this.moveHistoryEntry = {
       move: MoveId.NONE,
       targets,
@@ -182,226 +217,252 @@ export class MovePhase extends PokemonPhase {
   }
 
   //#region Phase Start
-public start(): void {
-  super.start();
-  console.log("### MOVE_PHASE_START_MARKER_20260103 ###");
-  console.log("[MovePhase START]", this.pokemon?.getName?.(), this.pokemon?.getBattlerIndex?.());
+  public start(): void {
+    super.start();
+    console.log("### MOVE_PHASE_START_MARKER_20260103 ###");
+    console.log("[MovePhase START]", this.pokemon?.getName?.(), this.pokemon?.getBattlerIndex?.());
 
-  // ✅ PURSUIT 교체 인터셉트: 교체가 먼저 일어나도 타겟을 "원래 나갈 포켓몬"으로 되돌림
-  if (this.move?.moveId === MoveId.PURSUIT) {
-    const battle: any = globalScene.currentBattle;
-    const pending = battle.pendingSwitchOut ?? {};
+    // ✅ PURSUIT 교체 인터셉트: 교체가 먼저 일어나도 타겟을 "원래 나갈 포켓몬"으로 되돌림
+    if (this.move?.moveId === MoveId.PURSUIT) {
+      const battle: any = globalScene.currentBattle;
+      const pending = battle.pendingSwitchOut ?? {};
 
-    // Pursuit 사용자는 상대를 치므로, "상대편" pending을 봐야 함
-    const opponentKey = this.pokemon.isPlayer() ? "player" : "enemy";
-    const outgoingBI = pending[opponentKey];
+      // Pursuit 사용자는 상대를 치므로, "상대편" pending을 봐야 함
+      const opponentKey = this.pokemon.isPlayer() ? "player" : "enemy";
+      const outgoingBI = pending[opponentKey];
 
-    if (typeof outgoingBI === "number") {
-      // ✅ 타겟을 교체 전 포켓몬으로 강제
-      this.targets = [outgoingBI];
+      if (typeof outgoingBI === "number") {
+        // ✅ 타겟을 교체 전 포켓몬으로 강제
+        this.targets = [outgoingBI];
 
-      // 디버그
-      const outMon = globalScene.getField(true).find(p => p.getBattlerIndex() === outgoingBI);
-      console.log("[PURSUIT][OVERRIDE] forced target battlerIndex=", outgoingBI, "name=", outMon?.getName?.());
+        // 디버그
+        const outMon = globalScene.getField(true).find(p => p.getBattlerIndex() === outgoingBI);
+        console.log("[PURSUIT][OVERRIDE] forced target battlerIndex=", outgoingBI, "name=", outMon?.getName?.());
+      }
     }
-  }
 
-  const user = this.pokemon;
+    const user = this.pokemon;
 
-  // Fallback - end phase early if the user is removed from the field or faints before using a move.
-  if (!user.isActive(true)) {
-    this.endPhaseOnly();
-    return;
-  }
+    const isMonsterHouseVirtualUser = monsterHouseManager.isActive() && !user.isPlayer() && !user.isActive(true);
 
-  // ✅ (1) 메탈버스트/카운터가 참고하는 "맞은 기록"이 남아있는지 확인
-  console.log(
-    "[DEBUG] attacksReceived=",
-    user.turnData.attacksReceived?.map(a => ({
-      move: a.move,
-      damage: a.damage,
-      sourceId: a.sourceId,
-      sourceBI: a.sourceBattlerIndex,
-    })),
-  );
-
-  // ✅ BIDE: 타겟/상태 확정은 어떤 resolve보다 먼저!
-  if (this.move?.id === MoveId.BIDE) {
-    const tag = user.getTag(BideTag);
-
-    // 발사 턴: 마지막 공격자
-    if (tag?.releasing && tag.lastAttackerIndex != null) {
-      this.targets = [tag.lastAttackerIndex];
-      console.log("[BIDE][MovePhase] pre-override targets ->", this.targets);
-    } else {
-      // 대기 턴(태그 붙이는 턴/참는 턴): 자기 자신으로 고정
-      this.targets = [user.getBattlerIndex()];
-    }
-  }
-
-  this.resolveRedirectTarget();
-  this.resolveCounterAttackTarget();
-
-  console.log("[DEBUG] raw this.targets=", JSON.stringify(this.targets));
-
-  // ✅ (3) 이제 getActiveTargetPokemon() 호출해도 안전 (위에서 resolve 했으니까)
-  const targets = this.getActiveTargetPokemon();
-  console.log(
-    "[DEBUG] activeTargets=",
-    targets.map(t => ({ name: t.name, bi: t.getBattlerIndex() })),
-  );
-
-  const target0 = targets[0];
-
-  console.log(
-    "[DEBUG] (start) user=",
-    user.name,
-    "cancelled=",
-    this.cancelled,
-    "user hasFlinch(enum)=",
-    !!user.getTag(BattlerTagType.FLINCHED),
-    "user hasFlinch(class)=",
-    !!user.getTag(FlinchedTag),
-  );
-
-  console.log(
-    "[DEBUG] (start) target0=",
-    target0?.name,
-    "target0 hasFlinch(enum)=",
-    target0 ? !!target0.getTag(BattlerTagType.FLINCHED) : "no target",
-    "target0 hasFlinch(class)=",
-    target0 ? !!target0.getTag(FlinchedTag) : "no target",
-  );
-
-  const { useMode } = this;
-  const ignoreStatus = isIgnoreStatus(useMode);
-  const isFollowUp = useMode === MoveUseMode.FOLLOW_UP;
-
-  console.log(
-    `%cUser: ${user.name}`
-      + `\nMove: ${MoveId[this.move.moveId]}`
-      + `\nUse Mode: ${enumValueToKey(MoveUseMode, this.useMode)}`,
-    `color:${MOVE_COLOR}`,
-  );
-
-  // Removing Glaive Rush's two flags happens before everything else
-  user.removeTag(BattlerTagType.ALWAYS_GET_HIT);
-  user.removeTag(BattlerTagType.RECEIVE_DOUBLE_DAMAGE);
-
-  user.turnData.acted = true;
-
-  if (!ignoreStatus) {
-    this.firstFailureCheck();
-    console.log(
-      "[DEBUG] after firstFailureCheck (post-check) user=",
-      user.name,
-      "cancelled=",
-      this.cancelled,
-      "hasFlinch=",
-      !!user.getTag(BattlerTagType.FLINCHED),
-    );
-
-    user.lapseTags(BattlerTagLapseType.PRE_MOVE);
-  } else if (isFollowUp) {
-    this.followUpMoveFirstFailureCheck();
-  }
-
-  if (this.cancelled) {
-  // (선택) 예약 정리
-  const td: any = (this.pokemon as any).turnData;
-  if (td) {
-    td.priorityBerryReserved = undefined;
-    td.priorityBerryReservedMoveId = undefined;
-  }
-
-  this.handlePreMoveFailures();
-  this.endPhaseOnly();
-  return;
-}
-
-console.log(
-  "[PRIORITY_BERRY][MovePhase]",
-  "before consume",
-  "user=", user.name,
-  "reserved=", (user as any).turnData?.priorityBerryReserved,
-  "reservedMoveId=", (user as any).turnData?.priorityBerryReservedMoveId,
-  "thisMove=", MoveId[this.move.moveId],
-);
-
-// ✅ 여기서만 소모
-this.consumeReservedPriorityBerry();
-
-  if (!isFollowUp) {
-    this.doThawCheck();
-  }
-
-  const pokemonMove = this.move;
-
-  if (
-    pokemonMove.getMove().doesFlagEffectApply({
-      flag: MoveFlags.IGNORE_ABILITIES,
-      user,
-      isFollowUp: isVirtual(useMode),
-    })
-  ) {
-    globalScene.arena.setIgnoreAbilities(true, user.getBattlerIndex());
-  }
-
-  // ✅ 기존 코드 흐름 유지 (중복 호출이어도 OK)
-  this.resolveRedirectTarget();
-  this.resolveCounterAttackTarget();
-
-  const move = this.move.getMove();
-  const isChargingMove = move.isChargingMove();
-  const charging = isChargingMove && !user.getTag(BattlerTagType.CHARGING);
-  const releasing = isChargingMove && !charging;
-
-  if (!move.hasAttr("CopyMoveAttr") && !isReflected(useMode)) {
-    globalScene.currentBattle.lastMove = move.id;
-  }
-
-  if (!releasing) {
-    this.usePP();
-  }
-
-  if (!isFollowUp) {
-    globalScene.triggerPokemonFormChange(user, SpeciesFormChangePreMoveTrigger);
-  }
-
-  this.showMoveText();
-
-  if (this.secondFailureCheck()) {
-    this.handlePreMoveFailures();
-    this.endPhaseOnly();
-    return;
-  }
-
-  if (!this.resolveFinalPreMoveCancellationChecks()) {
-    this.useMove(charging);
-  }
-
-  // ✅ BIDE(참기) 강제 유지: 태그 있으면 2턴 동안 어떤 기술을 골라도 행동 불가
-  const bide = user.getTag(BideTag);
-  if (bide && !bide.releasing && !bide.releaseDone) {
-    const curTurn = globalScene.currentBattle.turn;
-    const elapsed = curTurn - bide.startTurn;
-
-    // startTurn(0) = 기술 사용한 턴
-    // elapsed 1,2 = "참는 턴" → 무조건 행동 취소
-    if (elapsed >= 1 && elapsed <= 2) {
-      console.log("[BIDE][MovePhase] FORCE HOLD -> cancel this MovePhase");
-      this.cancel();
+    if (!isMonsterHouseVirtualUser && !user.isActive(true)) {
       this.endPhaseOnly();
       return;
     }
+
+    if (isMonsterHouseVirtualUser && user.isFainted()) {
+      this.endPhaseOnly();
+      return;
+    }
+
+    if (this.monsterHouseVirtualUser && (user.isFainted() || user.hp <= 0)) {
+      this.endPhaseOnly();
+      return;
+    }
+
+    // ✅ (1) 메탈버스트/카운터가 참고하는 "맞은 기록"이 남아있는지 확인
+    console.log(
+      "[DEBUG] attacksReceived=",
+      user.turnData.attacksReceived?.map(a => ({
+        move: a.move,
+        damage: a.damage,
+        sourceId: a.sourceId,
+        sourceBI: a.sourceBattlerIndex,
+      })),
+    );
+
+    // ✅ BIDE: 타겟/상태 확정은 어떤 resolve보다 먼저!
+    if (this.move?.id === MoveId.BIDE) {
+      const tag = user.getTag(BideTag);
+
+      // 발사 턴: 마지막 공격자
+      if (tag?.releasing && tag.lastAttackerIndex != null) {
+        this.targets = [tag.lastAttackerIndex];
+        console.log("[BIDE][MovePhase] pre-override targets ->", this.targets);
+      } else {
+        // 대기 턴(태그 붙이는 턴/참는 턴): 자기 자신으로 고정
+        this.targets = [user.getBattlerIndex()];
+      }
+    }
+
+    this.resolveRedirectTarget();
+    this.resolveCounterAttackTarget();
+
+    console.log("[DEBUG] raw this.targets=", JSON.stringify(this.targets));
+
+    // ✅ (3) 이제 getActiveTargetPokemon() 호출해도 안전 (위에서 resolve 했으니까)
+    const targets = this.getActiveTargetPokemon();
+    console.log(
+      "[DEBUG] activeTargets=",
+      targets.map(t => ({ name: t.name, bi: t.getBattlerIndex() })),
+    );
+
+    const target0 = targets[0];
+
+    const move = this.move.getMove();
+
+    console.log(
+      "[DEBUG] (start) user=",
+      user.name,
+      "cancelled=",
+      this.cancelled,
+      "user hasFlinch(enum)=",
+      !!user.getTag(BattlerTagType.FLINCHED),
+      "user hasFlinch(class)=",
+      !!user.getTag(FlinchedTag),
+    );
+
+    console.log(
+      "[DEBUG] (start) target0=",
+      target0?.name,
+      "target0 hasFlinch(enum)=",
+      target0 ? !!target0.getTag(BattlerTagType.FLINCHED) : "no target",
+      "target0 hasFlinch(class)=",
+      target0 ? !!target0.getTag(FlinchedTag) : "no target",
+    );
+
+    const { useMode } = this;
+    const ignoreStatus = isIgnoreStatus(useMode);
+    const isFollowUp = useMode === MoveUseMode.FOLLOW_UP;
+
+    console.log(
+      `%cUser: ${user.name}`
+        + `\nMove: ${MoveId[this.move.moveId]}`
+        + `\nUse Mode: ${enumValueToKey(MoveUseMode, this.useMode)}`,
+      `color:${MOVE_COLOR}`,
+    );
+
+    // Removing Glaive Rush's two flags happens before everything else
+    user.removeTag(BattlerTagType.ALWAYS_GET_HIT);
+    user.removeTag(BattlerTagType.RECEIVE_DOUBLE_DAMAGE);
+
+    if (!ignoreStatus) {
+      this.firstFailureCheck();
+      console.log(
+        "[DEBUG] after firstFailureCheck (post-check) user=",
+        user.name,
+        "cancelled=",
+        this.cancelled,
+        "hasFlinch=",
+        !!user.getTag(BattlerTagType.FLINCHED),
+      );
+
+      user.lapseTags(BattlerTagLapseType.PRE_MOVE);
+    } else if (isFollowUp) {
+      this.followUpMoveFirstFailureCheck();
+    }
+
+    if (this.cancelled) {
+      // (선택) 예약 정리
+      const td: any = (this.pokemon as any).turnData;
+      if (td) {
+        td.priorityBerryReserved = undefined;
+        td.priorityBerryReservedMoveId = undefined;
+      }
+
+      this.handlePreMoveFailures();
+      this.endPhaseOnly();
+      return;
+    }
+
+    applyMoveAttrs("MoveHeaderAttr", user, target0, move);
+
+    console.log(
+      "[PRIORITY_BERRY][MovePhase]",
+      "before consume",
+      "user=",
+      user.name,
+      "reserved=",
+      (user as any).turnData?.priorityBerryReserved,
+      "reservedMoveId=",
+      (user as any).turnData?.priorityBerryReservedMoveId,
+      "thisMove=",
+      MoveId[this.move.moveId],
+    );
+
+    // ✅ 여기서만 소모
+    this.consumeReservedPriorityBerry();
+
+    if (!isFollowUp) {
+      this.doThawCheck();
+    }
+
+    const pokemonMove = this.move;
+
+    if (
+      pokemonMove.getMove().doesFlagEffectApply({
+        flag: MoveFlags.IGNORE_ABILITIES,
+        user,
+        isFollowUp: isVirtual(useMode),
+      })
+    ) {
+      globalScene.arena.setIgnoreAbilities(true, user.getBattlerIndex());
+    }
+
+    // ✅ 기존 코드 흐름 유지 (중복 호출이어도 OK)
+    this.resolveRedirectTarget();
+    this.resolveCounterAttackTarget();
+
+    const isChargingMove = move.isChargingMove();
+    const charging = isChargingMove && !user.getTag(BattlerTagType.CHARGING);
+    const releasing = isChargingMove && !charging;
+
+    if (!move.hasAttr("CopyMoveAttr") && !isReflected(useMode)) {
+      globalScene.currentBattle.lastMove = move.id;
+    }
+
+    if (!releasing) {
+      this.usePP();
+    }
+
+    if (!isFollowUp) {
+      globalScene.triggerPokemonFormChange(user, SpeciesFormChangePreMoveTrigger);
+    }
+
+    this.showMoveText();
+
+    if (this.secondFailureCheck()) {
+      this.handlePreMoveFailures();
+      this.endPhaseOnly();
+      return;
+    }
+
+    console.log("[PLAYER_BEFORE_USE_MOVE]", {
+      user: user.getName?.(),
+      move: this.move?.getName?.(),
+      targets: this.targets,
+      activeTargets: this.getActiveTargetPokemon().map(p => p.getName?.()),
+      cancelled: this.cancelled,
+      failed: this.failed,
+    });
+
+    if (!this.resolveFinalPreMoveCancellationChecks()) {
+      user.turnData.acted = true;
+      this.useMove(charging);
+    }
+
+    // ✅ BIDE(참기) 강제 유지: 태그 있으면 2턴 동안 어떤 기술을 골라도 행동 불가
+    const bide = user.getTag(BideTag);
+    if (bide && !bide.releasing && !bide.releaseDone) {
+      const curTurn = globalScene.currentBattle.turn;
+      const elapsed = curTurn - bide.startTurn;
+
+      // startTurn(0) = 기술 사용한 턴
+      // elapsed 1,2 = "참는 턴" → 무조건 행동 취소
+      if (elapsed >= 1 && elapsed <= 2) {
+        console.log("[BIDE][MovePhase] FORCE HOLD -> cancel this MovePhase");
+        this.cancel();
+        this.endPhaseOnly();
+        return;
+      }
+    }
+
+    // ✅ FLING 관련 플래그는 여기서 만지지 않는다
+    // (턴 입력/선택은 CommandPhase에서만 처리)
+
+    this.end();
   }
-
-  // ✅ FLING 관련 플래그는 여기서 만지지 않는다
-  // (턴 입력/선택은 CommandPhase에서만 처리)
-
-  this.end();
-}
-//#endregion
+  //#endregion
 
   //#endregion Phase Start
 
@@ -642,19 +703,33 @@ this.consumeReservedPriorityBerry();
    * @see {@linkcode PreUseInterruptAttr}
    */
   private checkPreUseInterrupt(): boolean {
-  const move = this.move.getMove();
-  const user = this.pokemon;
+    const move = this.move.getMove();
+    const user = this.pokemon;
+    const target = this.getActiveTargetPokemon()[0];
 
-  const target = this.getActiveTargetPokemon()[0];
+    if (!target) {
+      return false;
+    }
 
-  // ✅ ATTACKER(-1) 같은 플레이스홀더 상태면 타겟이 없으니 스킵
-  if (!target) return false;
+    for (const attr of move.getAttrs("PreUseInterruptAttr")) {
+      if (attr.apply(user, target, move)) {
+        if (!this.preUseInterruptMessageShown) {
+          const failedText = (attr as any).getInterruptText?.(user, target, move);
 
-  return move.getAttrs("PreUseInterruptAttr").some(attr => {
-    attr.apply(user, target, move);
-    return this.cancelled;
-  });
-}
+          if (failedText) {
+            globalScene.phaseManager.queueMessage(failedText);
+          }
+
+          this.preUseInterruptMessageShown = true;
+        }
+
+        this.cancel();
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   /**
    * Handle move failures due to Gravity.
@@ -799,69 +874,64 @@ this.consumeReservedPriorityBerry();
    * move is marked for failure
    */
   protected resolveCounterAttackTarget(): void {
-  const targets = this.targets;
-  if (targets.length !== 1 || targets[0] !== BattlerIndex.ATTACKER) return;
-
-  const moveId = this.move.moveId;
-
-  // ✅ BIDE 특례 처리
-  if (moveId === MoveId.BIDE) {
-    const tag = this.pokemon.getTag(BideTag) as BideTag | undefined;
-
-    // 시작턴(태그 없거나 releasing=false): 태그를 붙이기 위해 "자기 자신"을 타겟으로
-    if (!tag || !tag.releasing) {
-      targets[0] = this.pokemon.getBattlerIndex();
+    const targets = this.targets;
+    if (targets.length !== 1 || targets[0] !== BattlerIndex.ATTACKER) {
       return;
     }
 
-    // 방출턴(releasing=true): 마지막으로 때린 상대를 타겟으로
-    const desired = tag.lastAttackerIndex;
-    if (desired != null && desired !== this.pokemon.getBattlerIndex()) {
-      targets[0] = desired;
+    const moveId = this.move.moveId;
+
+    // ✅ BIDE 특례 처리
+    if (moveId === MoveId.BIDE) {
+      const tag = this.pokemon.getTag(BideTag) as BideTag | undefined;
+
+      // 시작턴(태그 없거나 releasing=false): 태그를 붙이기 위해 "자기 자신"을 타겟으로
+      if (!tag || !tag.releasing) {
+        targets[0] = this.pokemon.getBattlerIndex();
+        return;
+      }
+
+      // 방출턴(releasing=true): 마지막으로 때린 상대를 타겟으로
+      const desired = tag.lastAttackerIndex;
+      if (desired != null && desired !== this.pokemon.getBattlerIndex()) {
+        targets[0] = desired;
+        return;
+      }
+
+      // 공격자 못 찾으면 실패
+      this.fail();
       return;
     }
 
-    // 공격자 못 찾으면 실패
-    this.fail();
-    return;
+    // ✅ 기존 CounterRedirectAttr 로직
+    const targetHolder = new NumberHolder(BattlerIndex.ATTACKER);
+    applyMoveAttrs("CounterRedirectAttr", this.pokemon, null, this.move.getMove(), targetHolder);
+    targets[0] = targetHolder.value;
+
+    if (targets[0] === BattlerIndex.ATTACKER) {
+      this.fail();
+    }
   }
-
-  // ✅ 기존 CounterRedirectAttr 로직
-  const targetHolder = new NumberHolder(BattlerIndex.ATTACKER);
-  applyMoveAttrs("CounterRedirectAttr", this.pokemon, null, this.move.getMove(), targetHolder);
-  targets[0] = targetHolder.value;
-
-  if (targets[0] === BattlerIndex.ATTACKER) {
-    this.fail();
-  }
-}
-
 
   /**
    * Deduct PP from the move being used, accounting for Pressure and other effects.
    */
   protected usePP(): void {
-  const battle = globalScene.currentBattle as any;
+    const battle = globalScene.currentBattle as any;
 
-  if (
-    battle?.isPracticeBattle &&
-    battle.practiceNoPpCost &&
-    this.pokemon?.isPlayer?.()
-  ) {
-    console.log("[PRACTICE] PP use blocked");
-    return;
+    if (battle?.isPracticeBattle && battle.practiceNoPpCost && this.pokemon?.isPlayer?.()) {
+      console.log("[PRACTICE] PP use blocked");
+      return;
+    }
+
+    if (!isIgnorePP(this.useMode)) {
+      const move = this.move;
+      const ppUsed = 1 + this.getPpIncreaseFromPressure(this.getActiveTargetPokemon());
+      move.usePp(ppUsed);
+
+      globalScene.eventTarget.dispatchEvent(new MoveUsedEvent(this.pokemon.id, move.getMove(), move.ppUsed));
+    }
   }
-
-  if (!isIgnorePP(this.useMode)) {
-    const move = this.move;
-    const ppUsed = 1 + this.getPpIncreaseFromPressure(this.getActiveTargetPokemon());
-    move.usePp(ppUsed);
-
-    globalScene.eventTarget.dispatchEvent(
-      new MoveUsedEvent(this.pokemon.id, move.getMove(), move.ppUsed)
-    );
-  }
-}
 
   /**
    * Apply PP increasing abilities (currently only {@linkcode AbilityId.PRESSURE | Pressure})
@@ -928,34 +998,37 @@ this.consumeReservedPriorityBerry();
    * After all checks, Powder causing the user to explode
    */
   protected secondFailureCheck(): boolean {
-  const move = this.move.getMove();
-  const user = this.pokemon;
-  const arena = globalScene.arena;
+    const move = this.move.getMove();
+    const user = this.pokemon;
+    const arena = globalScene.arena;
 
-  const t0 = this.getActiveTargetPokemon()[0];
+    const t0 = this.getActiveTargetPokemon()[0];
 
-  console.log("[SEQ2][ENTER]", MoveId[move.id], "user=", user?.name, "t0=", t0?.name);
+    console.log("[SEQ2][ENTER]", MoveId[move.id], "user=", user?.name, "t0=", t0?.name);
 
-  const okSeq2 = move.applyConditions(user, t0, 2);
+    const isDelayedAttackMove = move.id === MoveId.FUTURE_SIGHT || move.id === MoveId.DOOM_DESIRE;
 
-  if (!okSeq2) {
-    console.warn("[SEQ2][FAIL]", MoveId[move.id], "user=", user?.name, "t0=", t0?.name);
-    this.failed = true;
-  } else if (arena.isMoveWeatherCancelled(user, move)) {
-    console.warn("[SEQ2][WEATHER_CANCEL]", MoveId[move.id], "weather=", arena.getWeatherType?.());
-    this.failed = true;
-  } else {
-    user.lapseTag(BattlerTagType.POWDER, BattlerTagLapseType.PRE_MOVE);
-    console.log("[SEQ2][PASS]", MoveId[move.id]);
-    return this.failed;
+    const okSeq2 = isDelayedAttackMove ? true : move.applyConditions(user, t0, 2);
+
+    if (!okSeq2) {
+      console.warn("[SEQ2][FAIL]", MoveId[move.id], "user=", user?.name, "t0=", t0?.name);
+      this.failed = true;
+    } else if (!isDelayedAttackMove && arena.isMoveWeatherCancelled(user, move)) {
+      console.warn("[SEQ2][WEATHER_CANCEL]", MoveId[move.id], "weather=", arena.getWeatherType?.());
+      this.failed = true;
+    } else {
+      user.lapseTag(BattlerTagType.POWDER, BattlerTagLapseType.PRE_MOVE);
+      console.log("[SEQ2][PASS]", MoveId[move.id]);
+      return this.failed;
+    }
+
+    if (this.failed) {
+      this.showFailedText();
+      return true;
+    }
+
+    return false;
   }
-
-  if (this.failed) {
-    this.showFailedText();
-    return true;
-  }
-  return false;
-}
 
   //#endregion Second Failure Check
 
@@ -1034,7 +1107,7 @@ this.consumeReservedPriorityBerry();
     this.applyLegendPlateIfNeeded(user, move, opponent);
 
     // ✅ Legend Plate (PLA): Judgment 사용 시 move.type + Arceus 타입 변경
-this.applyLegendPlateIfNeeded(user, move, opponent);
+    this.applyLegendPlateIfNeeded(user, move, opponent);
     // TODO: Move this to the Move effect phase where it belongs.
     // Fourth failure check happens _after_ protean
     if (!move.applyConditions(user, opponent, 4)) {
@@ -1101,131 +1174,131 @@ this.applyLegendPlateIfNeeded(user, move, opponent);
   }
 
   private trySnatchIntercept(user: Pokemon, move: Move, targets: BattlerIndex[]): boolean {
-  if (!this.isSnatchableNow(user, move, targets)) return false;
-
-  const snatcher = inSpeedOrder(ArenaTagSide.BOTH).find(p =>
-    p && p.isActive(true) && !p.isFainted()
-    && p.id !== user.id
-    && !!p.getTag(BattlerTagType.SNATCH_READY)
-  );
-
-  if (!snatcher) return false;
-
-  // 소모
-  snatcher.removeTag?.(BattlerTagType.SNATCH_READY);
-
-  // 메시지
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battle:snatch", { pokemonNameWithAffix: getPokemonNameWithAffix(snatcher) })
-  );
-
-  // ✅ 원래 사용자: "기술은 가로채여서 실행되지 않음" → 실패 메시지는 X
-  this.moveHistoryEntry.result = MoveResult.FAIL;
-  user.pushMoveHistory(this.moveHistoryEntry);
-
-  // ✅ snatcher가 기술 실행 (PP 소모 X)
-  globalScene.phaseManager.unshiftNew(
-    "MoveEffectPhase",
-    snatcher.getBattlerIndex(),
-    [snatcher.getBattlerIndex()],
-    move,
-    MoveUseMode.REFLECTED /* 없으면 IGNORE_PP */
-  );
-
-  return true;
-}
-
-private isSnatchableNow(user: Pokemon, move: Move, targets: BattlerIndex[]): boolean {
-  // 변화기만
-  if (move.category !== MoveCategory.STATUS) return false;
-
-  // 자기 자신 대상만 (targets가 유저 자기 자신으로 고정되어야 함)
-  if (targets.length !== 1 || targets[0] !== user.getBattlerIndex()) return false;
-
-  // 제외 목록(최소)
-  switch (move.id) {
-    case MoveId.SNATCH:
-    case MoveId.PROTECT:
-    case MoveId.DETECT:
-    case MoveId.KING_S_SHIELD:
-    case MoveId.SPIKY_SHIELD:
-    case MoveId.BANEFUL_BUNKER:
+    if (!this.isSnatchableNow(user, move, targets)) {
       return false;
+    }
+
+    const snatcher = inSpeedOrder(ArenaTagSide.BOTH).find(
+      p => p && p.isActive(true) && !p.isFainted() && p.id !== user.id && !!p.getTag(BattlerTagType.SNATCH_READY),
+    );
+
+    if (!snatcher) {
+      return false;
+    }
+
+    // 소모
+    snatcher.removeTag?.(BattlerTagType.SNATCH_READY);
+
+    // 메시지
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battle:snatch", { pokemonNameWithAffix: getPokemonNameWithAffix(snatcher) }),
+    );
+
+    // ✅ 원래 사용자: "기술은 가로채여서 실행되지 않음" → 실패 메시지는 X
+    this.moveHistoryEntry.result = MoveResult.FAIL;
+    user.pushMoveHistory(this.moveHistoryEntry);
+
+    // ✅ snatcher가 기술 실행 (PP 소모 X)
+    globalScene.phaseManager.unshiftNew(
+      "MoveEffectPhase",
+      snatcher.getBattlerIndex(),
+      [snatcher.getBattlerIndex()],
+      move,
+      MoveUseMode.REFLECTED /* 없으면 IGNORE_PP */,
+    );
+
+    return true;
   }
 
-  return true;
-}
+  private isSnatchableNow(user: Pokemon, move: Move, targets: BattlerIndex[]): boolean {
+    // 변화기만
+    if (move.category !== MoveCategory.STATUS) {
+      return false;
+    }
+
+    // 자기 자신 대상만 (targets가 유저 자기 자신으로 고정되어야 함)
+    if (targets.length !== 1 || targets[0] !== user.getBattlerIndex()) {
+      return false;
+    }
+
+    // 제외 목록(최소)
+    switch (move.id) {
+      case MoveId.SNATCH:
+      case MoveId.PROTECT:
+      case MoveId.DETECT:
+      case MoveId.KING_S_SHIELD:
+      case MoveId.SPIKY_SHIELD:
+      case MoveId.BANEFUL_BUNKER:
+        return false;
+    }
+
+    return true;
+  }
 
   /** Execute the current move and apply its effects. */
   private executeMove() {
     const user = this.pokemon;
 
-      // ✅ FOLLOW_UP 같은 "같은 턴 안의 추가 MovePhase"를 위해 멀티히트 카운터 초기화
-  if (user?.turnData) {
-    user.turnData.hitCount = 0;
-    user.turnData.hitsLeft = -1;
-    user.turnData.totalDamageDealt = 0;
-    user.turnData.singleHitDamageDealt = 0;
-  }
-    
+    // ✅ FOLLOW_UP 같은 "같은 턴 안의 추가 MovePhase"를 위해 멀티히트 카운터 초기화
+    if (user?.turnData) {
+      user.turnData.hitCount = 0;
+      user.turnData.hitsLeft = -1;
+      user.turnData.totalDamageDealt = 0;
+      user.turnData.singleHitDamageDealt = 0;
+    }
+
     // ✅ ME FIRST 차단 태그가 있으면 여기서 실패 처리
-  const block = user.getTag?.(BattlerTagType.CUSTOM_ME_FIRST_INTERRUPTED as any) as MeFirstInterruptedTag | undefined;
-  if (block && block.interruptedMove === MoveId.id) {
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battle:meFirstBlocked", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(user),
-      }),
-    );
+    const block = user.getTag?.(BattlerTagType.CUSTOM_ME_FIRST_INTERRUPTED as any) as MeFirstInterruptedTag | undefined;
+    if (block && block.interruptedMove === MoveId.id) {
+      globalScene.phaseManager.queueMessage(
+        i18next.t("battle:meFirstBlocked", {
+          pokemonNameWithAffix: getPokemonNameWithAffix(user),
+        }),
+      );
 
-    // PP는 이미 usePP()에서 빠졌으니 fail이 자연스러움
-    this.failMove();     // ✅ 실패 메시지/히스토리/태그정리까지 엔진 방식으로 처리
-    return;
-  }
+      // PP는 이미 usePP()에서 빠졌으니 fail이 자연스러움
+      this.failMove(); // ✅ 실패 메시지/히스토리/태그정리까지 엔진 방식으로 처리
+      return;
+    }
 
-    let move = this.move.getMove();   // ✅ const → let
-  const targets = this.targets;
+    let move = this.move.getMove(); // ✅ const → let
+    const targets = this.targets;
 
-  // ✅ NATURAL GIFT면 여기서 proxy move로 바꾼 뒤 실행
-  move = this.resolveNaturalGiftProxyMove(user, move);
+    // ✅ NATURAL GIFT면 여기서 proxy move로 바꾼 뒤 실행
+    move = this.resolveNaturalGiftProxyMove(user, move);
 
-  // ✅ 스내치는 "실제로 실행될 기술" 기준으로 판정하는 게 자연스러움
-  if (this.trySnatchIntercept(user, move, targets)) {
-    return; // 원래 사용자의 MoveEffectPhase는 실행 안 함
-  }
+    // ✅ 스내치는 "실제로 실행될 기술" 기준으로 판정하는 게 자연스러움
+    if (this.trySnatchIntercept(user, move, targets)) {
+      return; // 원래 사용자의 MoveEffectPhase는 실행 안 함
+    }
 
-  globalScene.phaseManager.unshiftNew(
-    "MoveEffectPhase",
-    user.getBattlerIndex(),
-    targets,
-    move,
-    this.useMode,
-  );
+    globalScene.phaseManager.unshiftNew("MoveEffectPhase", this.battlerIndex, targets, move, this.useMode);
 
     // Handle Dancer, which triggers immediately after a move is used (rather than waiting on `this.end()`).
     // Note the MoveUseMode check here prevents an infinite Dancer loop.
     // TODO: This needs to go at the end of `MoveEffectPhase` to check move results
     const dancerModes: MoveUseMode[] = [MoveUseMode.INDIRECT, MoveUseMode.REFLECTED] as const;
-if (this.move.getMove().hasFlag(MoveFlags.DANCE_MOVE) && !dancerModes.includes(this.useMode)) {
-  globalScene.getField(true).forEach(pokemon => {
-    // ✅ 무희 특성 (기존)
-    applyAbAttrs("PostMoveUsedAbAttr", { pokemon, move: this.move, source: this.pokemon, targets: this.targets });
+    if (this.move.getMove().hasFlag(MoveFlags.DANCE_MOVE) && !dancerModes.includes(this.useMode)) {
+      globalScene.getField(true).forEach(pokemon => {
+        // ✅ 무희 특성 (기존)
+        applyAbAttrs("PostMoveUsedAbAttr", { pokemon, move: this.move, source: this.pokemon, targets: this.targets });
 
-    // ✅ DanceMoveModifier (도구 버전)
-    const mods = globalScene.findModifiers(
-      m => m instanceof DanceMoveModifier && m.pokemonId === pokemon.id
-    ) as DanceMoveModifier[];
+        // ✅ DanceMoveModifier (도구 버전)
+        const mods = globalScene.findModifiers(
+          m => m instanceof DanceMoveModifier && m.pokemonId === pokemon.id,
+        ) as DanceMoveModifier[];
 
-    for (const mod of mods) {
-      mod.onPostMoveUsed({
-        source: this.pokemon,   // 춤을 쓴 쪽
-        pokemon,                // 따라 추는 쪽
-        move: this.move,        // 원본 기술
-        targets: this.targets,  // 대상
-        simulated: false,
+        for (const mod of mods) {
+          mod.onPostMoveUsed({
+            source: this.pokemon, // 춤을 쓴 쪽
+            pokemon, // 따라 추는 쪽
+            move: this.move, // 원본 기술
+            targets: this.targets, // 대상
+            simulated: false,
+          });
+        }
       });
     }
-  });
-}
   }
 
   /**
@@ -1234,7 +1307,7 @@ if (this.move.getMove().hasFlag(MoveFlags.DANCE_MOVE) && !dancerModes.includes(t
   protected chargeMove() {
     globalScene.phaseManager.unshiftNew(
       "MoveChargePhase",
-      this.pokemon.getBattlerIndex(),
+      this.battlerIndex,
       this.targets[0],
       this.move,
       this.useMode === MoveUseMode.NORMAL ? MoveUseMode.IGNORE_PP : this.useMode,
@@ -1245,21 +1318,21 @@ if (this.move.getMove().hasFlag(MoveFlags.DANCE_MOVE) && !dancerModes.includes(t
    * Queue a {@linkcode MoveEndPhase} and then end this phase.
    */
   public end(): void {
-  const td: any = (this.pokemon as any).turnData;
-  if (td) {
-    delete td._naturalGiftResolved;
-    delete td._naturalGiftResolvedMoveId;
+    const td: any = (this.pokemon as any).turnData;
+    if (td) {
+      delete td._naturalGiftResolved;
+      delete td._naturalGiftResolvedMoveId;
+    }
+
+    globalScene.phaseManager.unshiftNew(
+      "MoveEndPhase",
+      this.battlerIndex,
+      this.getActiveTargetPokemon(),
+      isVirtual(this.useMode),
+    );
+
+    super.end();
   }
-
-  globalScene.phaseManager.unshiftNew(
-    "MoveEndPhase",
-    this.pokemon.getBattlerIndex(),
-    this.getActiveTargetPokemon(),
-    isVirtual(this.useMode),
-  );
-
-  super.end();
-}
 
   //#endregion Move Execution
 
@@ -1398,95 +1471,106 @@ if (this.move.getMove().hasFlag(MoveFlags.DANCE_MOVE) && !dancerModes.includes(t
       this.cancelled = true;
     }
   }
-  
+
   private applyLegendPlateIfNeeded(user: Pokemon, move: Move, opponent?: Pokemon): void {
-  if (!opponent) return;
+    if (!opponent) {
+      return;
+    }
 
-  // 아르세우스 + 심판만
-  if (user.getSpeciesForm(true).speciesId !== SpeciesId.ARCEUS) return;
-  if (move.id !== MoveId.JUDGMENT) return;
+    // 아르세우스 + 심판만
+    if (user.getSpeciesForm(true).speciesId !== SpeciesId.ARCEUS) {
+      return;
+    }
+    if (move.id !== MoveId.JUDGMENT) {
+      return;
+    }
 
-  // 아이템 보유 확인
-  const held = user.getHeldItems?.() ?? [];
-  const plate = held.find(
-    i => i instanceof LegendPlateModifier && i.type === ModifierType.LEGEND_PLATE
-  ) as LegendPlateModifier | undefined;
+    // 아이템 보유 확인
+    const held = user.getHeldItems?.() ?? [];
+    const plate = held.find(i => i instanceof LegendPlateModifier && i.type === ModifierType.LEGEND_PLATE) as
+      | LegendPlateModifier
+      | undefined;
 
-  if (!plate) return;
+    if (!plate) {
+      return;
+    }
 
-  // moveType holder로 계산해서 move.type에 반영
-  const moveTypeHolder = new NumberHolder(move.type);
+    // moveType holder로 계산해서 move.type에 반영
+    const moveTypeHolder = new NumberHolder(move.type);
 
-  plate.tryApplyLegendPlate({
-    user,
-    target: opponent,
-    move,
-    moveTypeHolder,
-    simulated: false, // 실제 실행 타이밍
-  });
+    plate.tryApplyLegendPlate({
+      user,
+      target: opponent,
+      move,
+      moveTypeHolder,
+      simulated: false, // 실제 실행 타이밍
+    });
 
-  // ✅ Move 객체 타입을 실제로 바꿔줘야 MoveEffectPhase/데미지 쪽이 그대로 따라감
-  move.type = moveTypeHolder.value as PokemonType;
-}
+    // ✅ Move 객체 타입을 실제로 바꿔줘야 MoveEffectPhase/데미지 쪽이 그대로 따라감
+    move.type = moveTypeHolder.value as PokemonType;
+  }
 
   private resolveNaturalGiftProxyMove(user: Pokemon, baseMove: Move): Move {
-  if (baseMove.id !== MoveId.NATURAL_GIFT) return baseMove;
+    if (baseMove.id !== MoveId.NATURAL_GIFT) {
+      return baseMove;
+    }
 
-  const td: any = user.turnData ?? (user.turnData = {});
-  if (td._naturalGiftResolved) {
-    // 같은 MovePhase 내 다중호출 방지
-    const cached = td._naturalGiftResolvedMoveId;
-    return cached ? allMoves[cached] ?? baseMove : baseMove;
+    const td: any = user.turnData ?? (user.turnData = {});
+    if (td._naturalGiftResolved) {
+      // 같은 MovePhase 내 다중호출 방지
+      const cached = td._naturalGiftResolvedMoveId;
+      return cached ? (allMoves[cached] ?? baseMove) : baseMove;
+    }
+    td._naturalGiftResolved = true;
+
+    const berryType: BerryType | undefined = td.naturalGiftReservedBerry;
+    if (berryType == null) {
+      this.failMove(); // or this.fail();
+      return baseMove;
+    }
+
+    const mappedMoveId: MoveId | undefined = NATURAL_GIFT_BERRY_TO_MOVE[berryType];
+    if (mappedMoveId == null || mappedMoveId === MoveId.NONE) {
+      this.failMove();
+      return baseMove;
+    }
+
+    // ✅ 실제로 그 베리를 들고 있는지 확인 (플레이어/적 pool 정확히)
+    const berryMod = globalScene
+      .getModifiers(BerryModifier, user.isPlayer())
+      .find(
+        (m: any) =>
+          m instanceof BerryModifier
+          && m.pokemonId === user.id
+          && !m.consumed
+          && (m.stackCount ?? 1) > 0
+          && m.berryType === berryType,
+      ) as BerryModifier | undefined;
+
+    if (!berryMod) {
+      this.failMove();
+      return baseMove;
+    }
+
+    // ✅ 효과 발동 없이 1스택 소모
+    const stack = berryMod.stackCount ?? 1;
+    if (stack > 1) {
+      berryMod.stackCount = stack - 1;
+      globalScene.updateModifiers(user.isPlayer());
+    } else {
+      user.loseHeldItem(berryMod); // BerryModifier 제거
+      globalScene.updateModifiers(user.isPlayer());
+    }
+
+    // ✅ 1회성 예약값 정리
+    delete td.naturalGiftReservedBerry;
+    delete td.naturalGiftReservedMoveId;
+
+    // (선택) 디버그/캐시
+    td._naturalGiftResolvedMoveId = mappedMoveId;
+
+    return allMoves[mappedMoveId] ?? baseMove;
   }
-  td._naturalGiftResolved = true;
-
-  const berryType: BerryType | undefined = td.naturalGiftReservedBerry;
-  if (berryType == null) {
-    this.failMove(); // or this.fail();
-    return baseMove;
-  }
-
-  const mappedMoveId: MoveId | undefined = NATURAL_GIFT_BERRY_TO_MOVE[berryType];
-  if (mappedMoveId == null || mappedMoveId === MoveId.NONE) {
-    this.failMove();
-    return baseMove;
-  }
-
-  // ✅ 실제로 그 베리를 들고 있는지 확인 (플레이어/적 pool 정확히)
-  const berryMod = globalScene
-    .getModifiers(BerryModifier, user.isPlayer())
-    .find((m: any) =>
-      m instanceof BerryModifier &&
-      m.pokemonId === user.id &&
-      !m.consumed &&
-      (m.stackCount ?? 1) > 0 &&
-      m.berryType === berryType
-    ) as BerryModifier | undefined;
-
-  if (!berryMod) {
-    this.failMove();
-    return baseMove;
-  }
-
-  // ✅ 효과 발동 없이 1스택 소모
-  const stack = berryMod.stackCount ?? 1;
-  if (stack > 1) {
-    berryMod.stackCount = stack - 1;
-    globalScene.updateModifiers(user.isPlayer());
-  } else {
-    user.loseHeldItem(berryMod); // BerryModifier 제거
-    globalScene.updateModifiers(user.isPlayer());
-  }
-
-  // ✅ 1회성 예약값 정리
-  delete td.naturalGiftReservedBerry;
-  delete td.naturalGiftReservedMoveId;
-
-  // (선택) 디버그/캐시
-  td._naturalGiftResolvedMoveId = mappedMoveId;
-
-  return allMoves[mappedMoveId] ?? baseMove;
-}
 
   //#endregion Helpers
 }

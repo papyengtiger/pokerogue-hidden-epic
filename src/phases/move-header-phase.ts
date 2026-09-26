@@ -1,3 +1,4 @@
+import { MoveId } from "#enums/move-id";
 import type { Pokemon } from "#field/pokemon";
 import { applyMoveAttrs } from "#moves/apply-attrs";
 import type { PokemonMove } from "#moves/pokemon-move";
@@ -16,7 +17,15 @@ export class MoveHeaderPhase extends BattlePhase {
   }
 
   canMove(): boolean {
-    return this.pokemon.isActive(true) && this.move.isUsable(this.pokemon);
+    if (!this.pokemon.isActive(true) || !this.move.isUsable(this.pokemon)) {
+      return false;
+    }
+
+    if (this.move.moveId === MoveId.FOCUS_PUNCH && this.pokemon.turnData.attacksReceived?.some(r => r.damage > 0)) {
+      return false;
+    }
+
+    return true;
   }
 
   start() {

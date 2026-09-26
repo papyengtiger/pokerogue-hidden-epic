@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "pecha-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 20,
+				"h": 33
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 17,
+						"w": 17,
+						"h": 15
+					},
+					"frame": {
+						"x": 1,
+						"y": 17,
+						"w": 17,
+						"h": 15
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 18,
+						"w": 18,
+						"h": 14
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 14
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9f458720a90a160a89538eae08325ad8:794decf418ccbce9416e1167850c750e:414c16276cbd421707a2165277630ef3$"
+	}
+}

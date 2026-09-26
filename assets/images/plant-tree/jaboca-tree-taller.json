@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "jaboca-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 19
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 15,
+						"w": 18,
+						"h": 17
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 17
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 15,
+						"w": 18,
+						"h": 17
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 18,
+						"h": 17
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:069e22a787d3fb6ec1debd7fe41e09ba:1264d575bdce308b6cc53b415086716d:fadab510478e3f9379ea5ed047ea5697$"
+	}
+}

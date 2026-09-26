@@ -1,0 +1,2078 @@
+{
+	"textures": [
+		{
+			"image": "mining_resources.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 1813,
+				"h": 256
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "armor_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 80,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 8,
+						"y": 0,
+						"w": 64,
+						"h": 64
+					},
+					"frame": {
+						"x": 1321,
+						"y": 1,
+						"w": 64,
+						"h": 64
+					}
+				},
+				{
+					"filename": "big_nugget.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 98,
+						"h": 114
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 9,
+						"w": 94,
+						"h": 94
+					},
+					"frame": {
+						"x": 382,
+						"y": 127,
+						"w": 94,
+						"h": 94
+					}
+				},
+				{
+					"filename": "black_augurite.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 129,
+						"h": 130
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 129,
+						"h": 127
+					},
+					"frame": {
+						"x": 129,
+						"y": 1,
+						"w": 129,
+						"h": 127
+					}
+				},
+				{
+					"filename": "blue_shard.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 47,
+						"h": 46
+					},
+					"frame": {
+						"x": 1705,
+						"y": 1,
+						"w": 47,
+						"h": 46
+					}
+				},
+				{
+					"filename": "bug_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 733,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "claw_fossil.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 64,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 64,
+						"h": 80
+					},
+					"frame": {
+						"x": 1516,
+						"y": 163,
+						"w": 64,
+						"h": 80
+					}
+				},
+				{
+					"filename": "comet_shard.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 88,
+						"h": 95
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 5,
+						"w": 82,
+						"h": 82
+					},
+					"frame": {
+						"x": 568,
+						"y": 1,
+						"w": 82,
+						"h": 82
+					}
+				},
+				{
+					"filename": "copper.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 64,
+						"h": 56
+					},
+					"frame": {
+						"x": 1386,
+						"y": 199,
+						"w": 64,
+						"h": 56
+					}
+				},
+				{
+					"filename": "cover_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 133,
+						"h": 123
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 2,
+						"w": 126,
+						"h": 120
+					},
+					"frame": {
+						"x": 1,
+						"y": 134,
+						"w": 126,
+						"h": 120
+					}
+				},
+				{
+					"filename": "damp_rock.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 0,
+						"w": 46,
+						"h": 40
+					},
+					"frame": {
+						"x": 652,
+						"y": 165,
+						"w": 46,
+						"h": 40
+					}
+				},
+				{
+					"filename": "dark_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 2,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 733,
+						"y": 69,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "dawn_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 92,
+						"h": 91
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 3,
+						"w": 86,
+						"h": 88
+					},
+					"frame": {
+						"x": 478,
+						"y": 123,
+						"w": 86,
+						"h": 88
+					}
+				},
+				{
+					"filename": "dome_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 80,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 2,
+						"w": 79,
+						"h": 61
+					},
+					"frame": {
+						"x": 1237,
+						"y": 142,
+						"w": 79,
+						"h": 61
+					}
+				},
+				{
+					"filename": "draco_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 624,
+						"y": 209,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "dragon_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 733,
+						"y": 137,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "dread_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 688,
+						"y": 207,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "dusk_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 90,
+						"h": 93
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 2,
+						"w": 84,
+						"h": 90
+					},
+					"frame": {
+						"x": 566,
+						"y": 117,
+						"w": 84,
+						"h": 90
+					}
+				},
+				{
+					"filename": "earth_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 816,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "electric_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 817,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "everstone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 0,
+						"w": 61,
+						"h": 32
+					},
+					"frame": {
+						"x": 358,
+						"y": 93,
+						"w": 61,
+						"h": 32
+					}
+				},
+				{
+					"filename": "fairy_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 817,
+						"y": 69,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "fighting_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 817,
+						"y": 137,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "fire_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 901,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "fire_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 0,
+						"w": 45,
+						"h": 48
+					},
+					"frame": {
+						"x": 1632,
+						"y": 147,
+						"w": 45,
+						"h": 48
+					}
+				},
+				{
+					"filename": "fist_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 880,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "flame_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 944,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "flying_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 3,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 901,
+						"y": 69,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "fossilized_bird.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 58,
+						"h": 63
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 57,
+						"h": 63
+					},
+					"frame": {
+						"x": 1390,
+						"y": 66,
+						"w": 57,
+						"h": 63
+					}
+				},
+				{
+					"filename": "fossilized_dino.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 79,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 4,
+						"w": 73,
+						"h": 71
+					},
+					"frame": {
+						"x": 1237,
+						"y": 69,
+						"w": 73,
+						"h": 71
+					}
+				},
+				{
+					"filename": "fossilized_drake.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 78,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 10,
+						"w": 76,
+						"h": 66
+					},
+					"frame": {
+						"x": 1312,
+						"y": 69,
+						"w": 76,
+						"h": 66
+					}
+				},
+				{
+					"filename": "fossilized_fish.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 82,
+						"h": 84
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 4,
+						"w": 79,
+						"h": 80
+					},
+					"frame": {
+						"x": 652,
+						"y": 1,
+						"w": 79,
+						"h": 80
+					}
+				},
+				{
+					"filename": "ghost_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 3,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 901,
+						"y": 137,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "grass_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 985,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "green_shard.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1008,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "ground_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 985,
+						"y": 69,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "hard_stone.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 32
+					},
+					"frame": {
+						"x": 434,
+						"y": 223,
+						"w": 32,
+						"h": 32
+					}
+				},
+				{
+					"filename": "heart_scale.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 8,
+						"w": 25,
+						"h": 24
+					},
+					"frame": {
+						"x": 551,
+						"y": 91,
+						"w": 25,
+						"h": 24
+					}
+				},
+				{
+					"filename": "heat_rock.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 2,
+						"w": 60,
+						"h": 46
+					},
+					"frame": {
+						"x": 1643,
+						"y": 1,
+						"w": 60,
+						"h": 46
+					}
+				},
+				{
+					"filename": "helix_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 64,
+						"h": 63
+					},
+					"frame": {
+						"x": 1387,
+						"y": 1,
+						"w": 64,
+						"h": 63
+					}
+				},
+				{
+					"filename": "ice_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 6,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 985,
+						"y": 137,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "ice_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 94,
+						"h": 92
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 90,
+						"h": 88
+					},
+					"frame": {
+						"x": 384,
+						"y": 1,
+						"w": 90,
+						"h": 88
+					}
+				},
+				{
+					"filename": "icicle_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1072,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "icy_rock.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 64,
+						"h": 56
+					},
+					"frame": {
+						"x": 1448,
+						"y": 131,
+						"w": 64,
+						"h": 56
+					}
+				},
+				{
+					"filename": "insect_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1136,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "iron_ball.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 48
+					},
+					"frame": {
+						"x": 1757,
+						"y": 49,
+						"w": 48,
+						"h": 48
+					}
+				},
+				{
+					"filename": "iron_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1200,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "jaw_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 135
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 4,
+						"w": 126,
+						"h": 131
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 126,
+						"h": 131
+					}
+				},
+				{
+					"filename": "large_blue_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 2,
+						"w": 42,
+						"h": 42
+					},
+					"frame": {
+						"x": 1679,
+						"y": 152,
+						"w": 42,
+						"h": 42
+					}
+				},
+				{
+					"filename": "large_green_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 2,
+						"w": 42,
+						"h": 42
+					},
+					"frame": {
+						"x": 1723,
+						"y": 152,
+						"w": 42,
+						"h": 42
+					}
+				},
+				{
+					"filename": "large_pale_sphere.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 48
+					},
+					"frame": {
+						"x": 1642,
+						"y": 97,
+						"w": 48,
+						"h": 48
+					}
+				},
+				{
+					"filename": "large_prism_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 2,
+						"w": 45,
+						"h": 44
+					},
+					"frame": {
+						"x": 1737,
+						"y": 99,
+						"w": 45,
+						"h": 44
+					}
+				},
+				{
+					"filename": "large_red_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 2,
+						"w": 42,
+						"h": 42
+					},
+					"frame": {
+						"x": 1767,
+						"y": 145,
+						"w": 42,
+						"h": 42
+					}
+				},
+				{
+					"filename": "leaf_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 5,
+						"w": 43,
+						"h": 53
+					},
+					"frame": {
+						"x": 1692,
+						"y": 97,
+						"w": 43,
+						"h": 53
+					}
+				},
+				{
+					"filename": "light_clay.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 6,
+						"w": 62,
+						"h": 49
+					},
+					"frame": {
+						"x": 752,
+						"y": 205,
+						"w": 62,
+						"h": 49
+					}
+				},
+				{
+					"filename": "max_revive.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 2,
+						"w": 46,
+						"h": 46
+					},
+					"frame": {
+						"x": 1582,
+						"y": 195,
+						"w": 46,
+						"h": 46
+					}
+				},
+				{
+					"filename": "meadow_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1264,
+						"y": 205,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "mind_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1515,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "moon_Stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 8,
+						"y": 0,
+						"w": 50,
+						"h": 32
+					},
+					"frame": {
+						"x": 382,
+						"y": 223,
+						"w": 50,
+						"h": 32
+					}
+				},
+				{
+					"filename": "normal_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 2,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1069,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "odd_keystone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 3,
+						"w": 56,
+						"h": 61
+					},
+					"frame": {
+						"x": 1449,
+						"y": 66,
+						"w": 56,
+						"h": 61
+					}
+				},
+				{
+					"filename": "old_amber.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 0,
+						"w": 62,
+						"h": 63
+					},
+					"frame": {
+						"x": 1318,
+						"y": 137,
+						"w": 62,
+						"h": 63
+					}
+				},
+				{
+					"filename": "oval_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 1,
+						"w": 42,
+						"h": 47
+					},
+					"frame": {
+						"x": 1726,
+						"y": 196,
+						"w": 42,
+						"h": 47
+					}
+				},
+				{
+					"filename": "pixie_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 123,
+						"h": 92
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 1,
+						"w": 122,
+						"h": 90
+					},
+					"frame": {
+						"x": 260,
+						"y": 1,
+						"w": 122,
+						"h": 90
+					}
+				},
+				{
+					"filename": "plume_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 123,
+						"h": 125
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 1,
+						"w": 123,
+						"h": 124
+					},
+					"frame": {
+						"x": 129,
+						"y": 130,
+						"w": 123,
+						"h": 124
+					}
+				},
+				{
+					"filename": "poison_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1069,
+						"y": 69,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "psychic_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 3,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1069,
+						"y": 137,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "pure_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 2,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1153,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "rare_bone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 96,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 10,
+						"w": 96,
+						"h": 28
+					},
+					"frame": {
+						"x": 260,
+						"y": 93,
+						"w": 96,
+						"h": 28
+					}
+				},
+				{
+					"filename": "red_shard.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 44,
+						"h": 46
+					},
+					"frame": {
+						"x": 1680,
+						"y": 196,
+						"w": 44,
+						"h": 46
+					}
+				},
+				{
+					"filename": "relic-copper.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 63,
+						"h": 44
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 5,
+						"w": 59,
+						"h": 39
+					},
+					"frame": {
+						"x": 563,
+						"y": 213,
+						"w": 59,
+						"h": 39
+					}
+				},
+				{
+					"filename": "relic-silver.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 58,
+						"h": 56
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 56,
+						"h": 51
+					},
+					"frame": {
+						"x": 1328,
+						"y": 202,
+						"w": 56,
+						"h": 51
+					}
+				},
+				{
+					"filename": "relic_gold.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 70,
+						"h": 51
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 7,
+						"w": 59,
+						"h": 40
+					},
+					"frame": {
+						"x": 502,
+						"y": 213,
+						"w": 59,
+						"h": 40
+					}
+				},
+				{
+					"filename": "revive.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 11,
+						"y": 6,
+						"w": 26,
+						"h": 36
+					},
+					"frame": {
+						"x": 700,
+						"y": 165,
+						"w": 26,
+						"h": 36
+					}
+				},
+				{
+					"filename": "rock_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 2,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1153,
+						"y": 69,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "root_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 80,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 79,
+						"h": 80
+					},
+					"frame": {
+						"x": 652,
+						"y": 83,
+						"w": 79,
+						"h": 80
+					}
+				},
+				{
+					"filename": "sail_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 127,
+						"h": 121
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 1,
+						"w": 126,
+						"h": 120
+					},
+					"frame": {
+						"x": 254,
+						"y": 130,
+						"w": 126,
+						"h": 120
+					}
+				},
+				{
+					"filename": "shiny_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 98,
+						"h": 96
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 5,
+						"w": 90,
+						"h": 88
+					},
+					"frame": {
+						"x": 476,
+						"y": 1,
+						"w": 90,
+						"h": 88
+					}
+				},
+				{
+					"filename": "skull_fossil.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 64,
+						"h": 60
+					},
+					"frame": {
+						"x": 1382,
+						"y": 137,
+						"w": 64,
+						"h": 60
+					}
+				},
+				{
+					"filename": "sky_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1452,
+						"y": 189,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "small_blue_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 0,
+						"w": 30,
+						"h": 30
+					},
+					"frame": {
+						"x": 455,
+						"y": 91,
+						"w": 30,
+						"h": 30
+					}
+				},
+				{
+					"filename": "small_green_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 0,
+						"w": 30,
+						"h": 30
+					},
+					"frame": {
+						"x": 487,
+						"y": 91,
+						"w": 30,
+						"h": 30
+					}
+				},
+				{
+					"filename": "small_pale_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 31
+					},
+					"frame": {
+						"x": 468,
+						"y": 223,
+						"w": 32,
+						"h": 31
+					}
+				},
+				{
+					"filename": "small_prism_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 1,
+						"w": 32,
+						"h": 29
+					},
+					"frame": {
+						"x": 421,
+						"y": 91,
+						"w": 32,
+						"h": 29
+					}
+				},
+				{
+					"filename": "small_red_sphere.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 32,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 0,
+						"w": 30,
+						"h": 30
+					},
+					"frame": {
+						"x": 519,
+						"y": 91,
+						"w": 30,
+						"h": 30
+					}
+				},
+				{
+					"filename": "smooth_rock.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 7,
+						"w": 60,
+						"h": 55
+					},
+					"frame": {
+						"x": 1453,
+						"y": 1,
+						"w": 60,
+						"h": 55
+					}
+				},
+				{
+					"filename": "splash_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1514,
+						"y": 115,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "spooky_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1569,
+						"y": 49,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "star_piece.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 3,
+						"w": 42,
+						"h": 42
+					},
+					"frame": {
+						"x": 1770,
+						"y": 189,
+						"w": 42,
+						"h": 42
+					}
+				},
+				{
+					"filename": "steel.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 7,
+						"w": 60,
+						"h": 55
+					},
+					"frame": {
+						"x": 1507,
+						"y": 58,
+						"w": 60,
+						"h": 55
+					}
+				},
+				{
+					"filename": "steel_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 2,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1153,
+						"y": 137,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "stone_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1579,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "sun_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 5,
+						"w": 48,
+						"h": 43
+					},
+					"frame": {
+						"x": 1630,
+						"y": 197,
+						"w": 48,
+						"h": 43
+					}
+				},
+				{
+					"filename": "thunder_stone.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 48
+					},
+					"frame": {
+						"x": 1582,
+						"y": 145,
+						"w": 48,
+						"h": 48
+					}
+				},
+				{
+					"filename": "toxic_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1578,
+						"y": 97,
+						"w": 62,
+						"h": 46
+					}
+				},
+				{
+					"filename": "water_gem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 95,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 7,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					},
+					"frame": {
+						"x": 1237,
+						"y": 1,
+						"w": 82,
+						"h": 66
+					}
+				},
+				{
+					"filename": "water_stone.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 48,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 47,
+						"h": 46
+					},
+					"frame": {
+						"x": 1754,
+						"y": 1,
+						"w": 47,
+						"h": 46
+					}
+				},
+				{
+					"filename": "yellow_shard.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 58,
+						"h": 46
+					},
+					"frame": {
+						"x": 1697,
+						"y": 49,
+						"w": 58,
+						"h": 46
+					}
+				},
+				{
+					"filename": "zap_plate.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 64,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 46
+					},
+					"frame": {
+						"x": 1633,
+						"y": 49,
+						"w": 62,
+						"h": 46
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b18f47e06f2988cd274e897d26c0e245:09d72627065155b4e3a8459e5078160b:ac2cdb4b9174bbae67ff56d19f7d183a$"
+	}
+}

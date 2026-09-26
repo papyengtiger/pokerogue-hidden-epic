@@ -2,6 +2,7 @@ import { globalScene } from "#app/global-scene";
 import { biomeLinks } from "#balance/biomes";
 import { BiomeId } from "#enums/biome-id";
 import { ChallengeType } from "#enums/challenge-type";
+import { GameModes } from "#enums/game-modes";
 import { UiMode } from "#enums/ui-mode";
 import { MapModifier, MoneyInterestModifier } from "#modifiers/modifier";
 import { BattlePhase } from "#phases/battle-phase";
@@ -46,6 +47,8 @@ export class SelectBiomePhase extends BattlePhase {
     if (
       (gameMode.isClassic && gameMode.isWaveFinal(nextWaveIndex + 9))
       || (gameMode.isDaily && gameMode.isWaveFinal(nextWaveIndex))
+      || ((gameMode.modeId === GameModes.WEEKLY || gameMode.modeId === GameModes.MONTHLY)
+        && gameMode.isWaveFinal(nextWaveIndex))
       || (gameMode.hasShortBiomes && !(nextWaveIndex % 50))
     ) {
       setNextBiome(BiomeId.END);

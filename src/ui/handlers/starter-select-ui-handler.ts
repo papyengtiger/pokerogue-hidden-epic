@@ -1,7 +1,7 @@
 import type { Ability } from "#abilities/ability";
 import { PLAYER_PARTY_MAX_SIZE } from "#app/constants";
 import { globalScene } from "#app/global-scene";
-import { starterColors } from "#app/global-vars/starter-colors";
+import { getStarterColors } from "#app/global-vars/starter-colors";
 import Overrides from "#app/overrides";
 import { handleTutorial, Tutorial } from "#app/tutorial";
 import { speciesEggMoves } from "#balance/egg-moves";
@@ -19,6 +19,7 @@ import { allAbilities, allMoves, allSpecies } from "#data/data-lists";
 import { Egg, getEggTierForSpecies } from "#data/egg";
 import { GrowthRate, getGrowthRateColor } from "#data/exp";
 import { Gender, getGenderColor, getGenderSymbol } from "#data/gender";
+import { getMarkTitle } from "#data/mark";
 import { getNatureName } from "#data/nature";
 import { pokemonFormChanges } from "#data/pokemon-forms";
 import type { PokemonSpecies } from "#data/pokemon-species";
@@ -32,6 +33,7 @@ import { DexAttr } from "#enums/dex-attr";
 import { DropDownColumn } from "#enums/drop-down-column";
 import { EggSourceType } from "#enums/egg-source-types";
 import { GameModes } from "#enums/game-modes";
+import { MarkId } from "#enums/mark-id";
 import type { MoveId } from "#enums/move-id";
 import type { Nature } from "#enums/nature";
 import { Passive as PassiveAttr } from "#enums/passive";
@@ -272,6 +274,7 @@ interface SpeciesDetails {
   natureIndex?: number;
   forSeen?: boolean; // default = false
   teraType?: PokemonType;
+  mark?: MarkId;
 }
 
 export class StarterSelectUiHandler extends MessageUiHandler {
@@ -332,6 +335,8 @@ export class StarterSelectUiHandler extends MessageUiHandler {
   private formIconElement: Phaser.GameObjects.Sprite;
   private abilityIconElement: Phaser.GameObjects.Sprite;
   private genderIconElement: Phaser.GameObjects.Sprite;
+  private markIconElement: Phaser.GameObjects.Sprite;
+  private markLabel: Phaser.GameObjects.Text;
   private natureIconElement: Phaser.GameObjects.Sprite;
   private teraIconElement: Phaser.GameObjects.Sprite;
   private goFilterIconElement: Phaser.GameObjects.Sprite;
@@ -379,6 +384,7 @@ export class StarterSelectUiHandler extends MessageUiHandler {
   private canCycleForm: boolean;
   private canCycleGender: boolean;
   private canCycleAbility: boolean;
+  private canCycleMark: boolean;
   private canCycleNature: boolean;
   private canCycleTera: boolean;
 
@@ -409,6 +415,7 @@ export class StarterSelectUiHandler extends MessageUiHandler {
   private practiceSelectedSpecies: PokemonSpecies | null = null;
   private practiceSelectedFormIndex = 0;
   private practiceSelectedTeraType: PokemonType = PokemonType.UNKNOWN;
+  private pokemonNameDefaultFontSize = "64px";
 
   private pendingPracticeRentalItemId: string | null = null;
   private selectingPracticeRentalTarget = false;
@@ -420,10 +427,13 @@ export class StarterSelectUiHandler extends MessageUiHandler {
    */
   private hasSwappedMoves = false;
   private practiceMoveOverrides: Record<string, StarterMoveset> = {};
-  private practiceAbilityOverrides: Record<string, {
-  ability?: AbilityId;
-  passive?: AbilityId;
-}> = {};
+  private practiceAbilityOverrides: Record<
+    string,
+    {
+      ability?: AbilityId;
+      passive?: AbilityId;
+    }
+  > = {};
 
   protected blockInput = false;
   private allowTera: boolean;
@@ -999,6 +1009,14 @@ export class StarterSelectUiHandler extends MessageUiHandler {
       { fontSize: instructionTextSize },
     ).setName("text-ability-label");
 
+    this.markIconElement = new Phaser.GameObjects.Sprite(globalScene, iRowX, iRowY, "keyboard", "P.png")
+      .setName("sprite-mark-icon-element")
+      .setScale(0.675)
+      .setOrigin(0);
+
+    this.markLabel = addTextObject(iRowTextX, iRowY, "증표 전환", TextStyle.INSTRUCTIONS_TEXT, {
+      fontSize: instructionTextSize,
+    }).setName("text-mark-label");
     this.natureIconElement = new Phaser.GameObjects.Sprite(globalScene, iRowX, iRowY, "keyboard", "N.png")
       .setName("sprite-nature-icon-element")
       .setScale(0.675)
@@ -1181,21 +1199,21 @@ export class StarterSelectUiHandler extends MessageUiHandler {
         // Initialize the StarterAttributes for this species
         const keySpeciesId = this.getStarterKeySpeciesId(species);
 
-this.starterPreferences[species.speciesId] =
-  this.initStarterPrefs(species, this.starterPreferences);
+        this.starterPreferences[species.speciesId] = this.initStarterPrefs(species, this.starterPreferences);
 
-if (this.starterPreferences[keySpeciesId]?.tera !== undefined) {
-  this.starterPreferences[species.speciesId].tera =
-    this.starterPreferences[keySpeciesId].tera;
-}
+        if (this.starterPreferences[keySpeciesId]?.tera !== undefined) {
+          this.starterPreferences[species.speciesId].tera = this.starterPreferences[keySpeciesId].tera;
+        }
 
-this.originalStarterPreferences[species.speciesId] =
-  this.initStarterPrefs(species, this.originalStarterPreferences, true);
+        this.originalStarterPreferences[species.speciesId] = this.initStarterPrefs(
+          species,
+          this.originalStarterPreferences,
+          true,
+        );
 
-if (this.originalStarterPreferences[keySpeciesId]?.tera !== undefined) {
-  this.originalStarterPreferences[species.speciesId].tera =
-    this.originalStarterPreferences[keySpeciesId].tera;
-}
+        if (this.originalStarterPreferences[keySpeciesId]?.tera !== undefined) {
+          this.originalStarterPreferences[species.speciesId].tera = this.originalStarterPreferences[keySpeciesId].tera;
+        }
 
         if (dexEntry.caughtAttr) {
           icon.clearTint();
@@ -1250,15 +1268,15 @@ if (this.originalStarterPreferences[keySpeciesId]?.tera !== undefined) {
     // if preferences for the species is undefined, set it to an empty object
     preferences[species.speciesId] ??= {};
 
-const keySpeciesId = this.getStarterKeySpeciesId(species);
-preferences[keySpeciesId] ??= {};
+    const keySpeciesId = this.getStarterKeySpeciesId(species);
+    preferences[keySpeciesId] ??= {};
 
-const starterAttributes = preferences[species.speciesId];
+    const starterAttributes = preferences[species.speciesId];
 
-// root 쪽에 저장된 테라를 현재 species에도 반영
-if (preferences[keySpeciesId].tera !== undefined) {
-  starterAttributes.tera = preferences[keySpeciesId].tera;
-}
+    // root 쪽에 저장된 테라를 현재 species에도 반영
+    if (preferences[keySpeciesId].tera !== undefined) {
+      starterAttributes.tera = preferences[keySpeciesId].tera;
+    }
     const { dexEntry, starterDataEntry: starterData } = this.getSpeciesData(species.speciesId, !ignoreChallenge);
 
     // no preferences or Pokemon wasn't caught, return empty attribute
@@ -1332,6 +1350,14 @@ if (preferences[keySpeciesId].tera !== undefined) {
       starterAttributes.form = undefined;
     }
 
+    if (starterAttributes.mark !== undefined) {
+      const unlockedMarks = starterData.marks ?? [];
+
+      if (!unlockedMarks.includes(starterAttributes.mark)) {
+        starterAttributes.mark = undefined;
+      }
+    }
+
     if (starterAttributes.nature !== undefined) {
       const unlockedNatures = globalScene.gameData.getNaturesForAttr(dexEntry.natureAttr);
       if (unlockedNatures.indexOf(starterAttributes.nature as unknown as Nature) < 0) {
@@ -1341,18 +1367,18 @@ if (preferences[keySpeciesId].tera !== undefined) {
     }
 
     if (starterAttributes.tera !== undefined) {
-  const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(species);
+      const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(species);
 
-  if (!unlockedTeraTypes.includes(starterAttributes.tera)) {
-    starterAttributes.tera = unlockedTeraTypes[0];
-    preferences[keySpeciesId].tera = starterAttributes.tera;
-  }
+      if (!unlockedTeraTypes.includes(starterAttributes.tera)) {
+        starterAttributes.tera = unlockedTeraTypes[0];
+        preferences[keySpeciesId].tera = starterAttributes.tera;
+      }
 
-  if (globalScene.gameMode.hasChallenge(Challenges.FRESH_START) && !ignoreChallenge) {
-    starterAttributes.tera = species.type1;
-    preferences[keySpeciesId].tera = species.type1;
-  }
-}
+      if (globalScene.gameMode.hasChallenge(Challenges.FRESH_START) && !ignoreChallenge) {
+        starterAttributes.tera = species.type1;
+        preferences[keySpeciesId].tera = species.type1;
+      }
+    }
 
     return starterAttributes;
   }
@@ -1596,14 +1622,14 @@ if (preferences[keySpeciesId].tera !== undefined) {
   }
 
   processInput(button: Button): boolean {
-  console.log("[STARTER_SELECT] processInput", button);
+    console.log("[STARTER_SELECT] processInput", button);
     if (this.blockInput) {
       return false;
     }
 
     if (this.selectingPracticeRentalTarget) {
-  return this.processPracticeRentalTargetInput(button);
-}
+      return this.processPracticeRentalTargetInput(button);
+    }
 
     const maxColumns = 9;
     const maxRows = 9;
@@ -1893,24 +1919,23 @@ if (preferences[keySpeciesId].tera !== undefined) {
       // Bangs are safe here due to the above check
       const keySpeciesId = this.getStarterKeySpeciesId(this.lastSpecies);
 
-this.starterPreferences[keySpeciesId] ??= {};
-this.originalStarterPreferences[keySpeciesId] ??= {};
-this.starterPreferences[this.lastSpecies.speciesId] ??= {};
-this.originalStarterPreferences[this.lastSpecies.speciesId] ??= {};
+      this.starterPreferences[keySpeciesId] ??= {};
+      this.originalStarterPreferences[keySpeciesId] ??= {};
+      this.starterPreferences[this.lastSpecies.speciesId] ??= {};
+      this.originalStarterPreferences[this.lastSpecies.speciesId] ??= {};
 
-// root 쪽 테라를 현재 species 쪽에도 먼저 주입
-if (this.starterPreferences[keySpeciesId].tera !== undefined) {
-  this.starterPreferences[this.lastSpecies.speciesId].tera =
-    this.starterPreferences[keySpeciesId].tera;
-}
+      // root 쪽 테라를 현재 species 쪽에도 먼저 주입
+      if (this.starterPreferences[keySpeciesId].tera !== undefined) {
+        this.starterPreferences[this.lastSpecies.speciesId].tera = this.starterPreferences[keySpeciesId].tera;
+      }
 
-if (this.originalStarterPreferences[keySpeciesId].tera !== undefined) {
-  this.originalStarterPreferences[this.lastSpecies.speciesId].tera =
-    this.originalStarterPreferences[keySpeciesId].tera;
-}
+      if (this.originalStarterPreferences[keySpeciesId].tera !== undefined) {
+        this.originalStarterPreferences[this.lastSpecies.speciesId].tera =
+          this.originalStarterPreferences[keySpeciesId].tera;
+      }
 
-const starterAttributes = this.starterPreferences[this.lastSpecies.speciesId]!;
-const originalStarterAttributes = this.originalStarterPreferences[this.lastSpecies.speciesId]!;
+      const starterAttributes = this.starterPreferences[this.lastSpecies.speciesId]!;
+      const originalStarterAttributes = this.originalStarterPreferences[this.lastSpecies.speciesId]!;
 
       // this gets the correct pokemon cursor depending on whether you're in the starter screen or the party icons
       if (!this.starterIconsCursorObj.visible) {
@@ -1931,21 +1956,16 @@ const originalStarterAttributes = this.originalStarterPreferences[this.lastSpeci
           const ui = this.getUi();
           let options: any[] = []; // TODO: add proper type
           const partySpecies =
-  this.isPracticeMode() && this.practiceSelectedSpecies
-    ? this.practiceSelectedSpecies
-    : this.lastSpecies;
+            this.isPracticeMode() && this.practiceSelectedSpecies ? this.practiceSelectedSpecies : this.lastSpecies;
 
           const [isDupe, removeIndex]: [boolean, number] = this.isInParty(partySpecies);
 
           const isPartyValid = this.isPartyValid();
           const isValidForChallenge = checkStarterValidForChallenge(
-  partySpecies,
-  globalScene.gameData.getSpeciesDexAttrProps(
-    partySpecies,
-    this.getCurrentDexProps(partySpecies.speciesId),
-  ),
-  isPartyValid,
-);
+            partySpecies,
+            globalScene.gameData.getSpeciesDexAttrProps(partySpecies, this.getCurrentDexProps(partySpecies.speciesId)),
+            isPartyValid,
+          );
 
           const currentPartyValue = this.starterSpecies
             .map(s => s.generation)
@@ -1955,35 +1975,35 @@ const originalStarterAttributes = this.originalStarterPreferences[this.lastSpeci
               0,
             );
           const newCost =
-  globalScene.gameData.getSpeciesStarterValue(partySpecies.speciesId)
-  || globalScene.gameData.getSpeciesStarterValue(partySpecies.getRootSpeciesId(false));
+            globalScene.gameData.getSpeciesStarterValue(partySpecies.speciesId)
+            || globalScene.gameData.getSpeciesStarterValue(partySpecies.getRootSpeciesId(false));
           if (
-  !isDupe
-  && isValidForChallenge
-  && (this.isPracticeMode() || currentPartyValue + newCost <= this.getValueLimit())
-  && this.starterSpecies.length < PLAYER_PARTY_MAX_SIZE
-) {
+            !isDupe
+            && isValidForChallenge
+            && (this.isPracticeMode() || currentPartyValue + newCost <= this.getValueLimit())
+            && this.starterSpecies.length < PLAYER_PARTY_MAX_SIZE
+          ) {
             options = [
               {
                 label: i18next.t("starterSelectUiHandler:addToParty"),
                 handler: () => {
                   ui.setMode(UiMode.STARTER_SELECT);
                   const isOverValueLimit = this.tryUpdateValue(
-  globalScene.gameData.getSpeciesStarterValue(partySpecies.speciesId),
-  true,
-);
+                    globalScene.gameData.getSpeciesStarterValue(partySpecies.speciesId),
+                    true,
+                  );
                   if (!isDupe && isValidForChallenge && isOverValueLimit) {
                     this.starterCursorObjs[this.starterSpecies.length]
                       .setVisible(true)
                       .setPosition(this.cursorObj.x, this.cursorObj.y);
                     this.addToParty(
-  partySpecies,
-  this.getCurrentDexProps(partySpecies.speciesId),
-  this.abilityCursor,
-  this.natureCursor as unknown as Nature,
-  this.starterMoveset?.slice(0) as StarterMoveset,
-  this.teraCursor,
-);
+                      partySpecies,
+                      this.getCurrentDexProps(partySpecies.speciesId),
+                      this.abilityCursor,
+                      this.natureCursor as unknown as Nature,
+                      this.starterMoveset?.slice(0) as StarterMoveset,
+                      this.teraCursor,
+                    );
                     ui.playSelect();
                   } else {
                     ui.playError(); // this should be redundant as there is now a trigger for when a pokemon can't be added to party
@@ -2021,62 +2041,59 @@ const originalStarterAttributes = this.originalStarterPreferences[this.lastSpeci
           if (this.speciesStarterMoves.length > 1) {
             // this lets you change the pokemon moves
             const showSwapOptions = (moveset: StarterMoveset) => {
-  if (this.isPracticeMode()) {
-  this.hasSwappedMoves = false;
-  this.moveInfoOverlay.clear();
+              if (this.isPracticeMode()) {
+                this.hasSwappedMoves = false;
+                this.moveInfoOverlay.clear();
 
-  ui.setMode(UiMode.STARTER_SELECT).then(() => {
-    ui.setOverlayMode(UiMode.STARTER_PRACTICE_MOVE_FORM, {
-      moveset: moveset.slice(0),
-      title: `${this.lastSpecies.getName()} 기술 배치`,
+                ui.setMode(UiMode.STARTER_SELECT).then(() => {
+                  ui.setOverlayMode(UiMode.STARTER_PRACTICE_MOVE_FORM, {
+                    moveset: moveset.slice(0),
+                    title: `${this.lastSpecies.getName()} 기술 배치`,
 
-      onChange: (slotIndex: number, newMove: MoveId, previousMove: MoveId) => {
-  const nextMoveset = (this.starterMoveset?.slice(0) ?? moveset.slice(0)) as StarterMoveset;
+                    onChange: (slotIndex: number, newMove: MoveId, previousMove: MoveId) => {
+                      const nextMoveset = (this.starterMoveset?.slice(0) ?? moveset.slice(0)) as StarterMoveset;
 
-  nextMoveset[slotIndex] = newMove;
+                      nextMoveset[slotIndex] = newMove;
 
-  const speciesId = this.lastSpecies.speciesId;
-  const formIndex =
-    this.starterPreferences[speciesId]?.form
-    ?? globalScene.gameData.getSpeciesDexAttrProps(
-      this.lastSpecies,
-      this.dexAttrCursor,
-    ).formIndex;
+                      const speciesId = this.lastSpecies.speciesId;
+                      const formIndex =
+                        this.starterPreferences[speciesId]?.form
+                        ?? globalScene.gameData.getSpeciesDexAttrProps(this.lastSpecies, this.dexAttrCursor).formIndex;
 
-  this.practiceMoveOverrides[this.getPracticeMoveKey(speciesId, formIndex)] = nextMoveset;
+                      this.practiceMoveOverrides[this.getPracticeMoveKey(speciesId, formIndex)] = nextMoveset;
 
-  this.starterMoveset = nextMoveset;
-  moveset[slotIndex] = newMove;
+                      this.starterMoveset = nextMoveset;
+                      moveset[slotIndex] = newMove;
 
-  for (const [index, species] of this.starterSpecies.entries()) {
-    if (species.speciesId === speciesId) {
-      this.starters[index].moveset = nextMoveset;
-    }
-  }
+                      for (const [index, species] of this.starterSpecies.entries()) {
+                        if (species.speciesId === speciesId) {
+                          this.starters[index].moveset = nextMoveset;
+                        }
+                      }
 
-  for (let m = 0; m < 4; m++) {
-    const move = nextMoveset[m] !== undefined ? allMoves[nextMoveset[m]] : null;
+                      for (let m = 0; m < 4; m++) {
+                        const move = nextMoveset[m] !== undefined ? allMoves[nextMoveset[m]] : null;
 
-    this.pokemonMoveBgs[m].setFrame(
-      PokemonType[move ? move.type : PokemonType.UNKNOWN].toString().toLowerCase(),
-    );
+                        this.pokemonMoveBgs[m].setFrame(
+                          PokemonType[move ? move.type : PokemonType.UNKNOWN].toString().toLowerCase(),
+                        );
 
-    this.pokemonMoveLabels[m].setText(move ? move.name : "-");
-    this.pokemonMoveContainers[m].setVisible(!!move);
-  }
+                        this.pokemonMoveLabels[m].setText(move ? move.name : "-");
+                        this.pokemonMoveContainers[m].setVisible(!!move);
+                      }
 
-  this.hasSwappedMoves = true;
-},
+                      this.hasSwappedMoves = true;
+                    },
 
-      onClose: () => {
-  this.moveInfoOverlay.clear();
-  this.blockInput = false;
-},
-    });
-  });
+                    onClose: () => {
+                      this.moveInfoOverlay.clear();
+                      this.blockInput = false;
+                    },
+                  });
+                });
 
-  return;
-}
+                return;
+              }
               this.blockInput = true;
 
               ui.setMode(UiMode.STARTER_SELECT).then(() => {
@@ -2178,6 +2195,77 @@ const originalStarterAttributes = this.originalStarterPreferences[this.lastSpeci
               },
             });
           }
+          if (this.canCycleMark) {
+            const showMarkOptions = () => {
+              this.blockInput = true;
+
+              ui.setMode(UiMode.STARTER_SELECT).then(() => {
+                ui.showText("증표를 선택해주세요.", null, () => {
+                  const marks = starterData.marks ?? [];
+                  const availableMarks = [MarkId.NONE, ...marks];
+
+                  ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
+                    options: availableMarks
+                      .map((m: MarkId) => {
+                        const option: OptionSelectItem = {
+                          label: m === MarkId.NONE ? "증표 없음" : getMarkTitle(m),
+                          handler: () => {
+                            starterAttributes.mark = m;
+                            originalStarterAttributes.mark = m;
+
+                            this.clearText();
+                            ui.setMode(UiMode.STARTER_SELECT);
+
+                            this.setSpeciesDetails(this.lastSpecies, {
+                              mark: m,
+                            });
+
+                            const baseName = starterAttributes.nickname
+                              ? decodeURIComponent(escape(atob(starterAttributes.nickname)))
+                              : this.lastSpecies.name;
+
+                            if (m !== MarkId.NONE) {
+                              const title = getMarkTitle(m);
+
+                              this.pokemonNameText.setText(title ? `${title} ${baseName}` : baseName);
+                            } else {
+                              this.pokemonNameText.setText(baseName);
+                            }
+
+                            this.truncateName(m !== MarkId.NONE);
+
+                            this.blockInput = false;
+                            return true;
+                          },
+                        };
+
+                        return option;
+                      })
+                      .concat({
+                        label: i18next.t("menu:cancel"),
+                        handler: () => {
+                          this.clearText();
+                          ui.setMode(UiMode.STARTER_SELECT);
+                          this.blockInput = false;
+                          return true;
+                        },
+                      }),
+
+                    maxOptions: 8,
+                    yOffset: 19,
+                  });
+                });
+              });
+            };
+
+            options.push({
+              label: "증표 선택",
+              handler: () => {
+                showMarkOptions();
+                return true;
+              },
+            });
+          }
           if (this.canCycleNature) {
             // if we could cycle natures, enable the improved nature menu
             const showNatureOptions = () => {
@@ -2232,155 +2320,183 @@ const originalStarterAttributes = this.originalStarterPreferences[this.lastSpeci
 
           const passiveAttr = starterData.passiveAttr;
 
-if (passiveAttr & PassiveAttr.UNLOCKED) {
-  // 기존 패시브 ON/OFF
-  const label = i18next.t(
-    passiveAttr & PassiveAttr.ENABLED
-      ? "starterSelectUiHandler:disablePassive"
-      : "starterSelectUiHandler:enablePassive",
-  );
+          if (passiveAttr & PassiveAttr.UNLOCKED) {
+            // 기존 패시브 ON/OFF
+            const label = i18next.t(
+              passiveAttr & PassiveAttr.ENABLED
+                ? "starterSelectUiHandler:disablePassive"
+                : "starterSelectUiHandler:enablePassive",
+            );
 
-  options.push({
-    label,
-    handler: () => {
-      starterData.passiveAttr ^= PassiveAttr.ENABLED;
-      persistentStarterData.passiveAttr ^= PassiveAttr.ENABLED;
-      ui.setMode(UiMode.STARTER_SELECT);
-      this.setSpeciesDetails(this.lastSpecies);
-      return true;
-    },
-  });
-}
+            options.push({
+              label,
+              handler: () => {
+                starterData.passiveAttr ^= PassiveAttr.ENABLED;
+                persistentStarterData.passiveAttr ^= PassiveAttr.ENABLED;
+                ui.setMode(UiMode.STARTER_SELECT);
+                this.setSpeciesDetails(this.lastSpecies);
+                return true;
+              },
+            });
+          }
 
-if (this.isPracticeMode()) {
-  options.push({
-    label: "연습용 특성 선택",
-    handler: () => {
-  const selectedSpecies = this.lastSpecies;
+          if (this.isPracticeMode()) {
+            options.push({
+              label: "연습용 특성 선택",
+              handler: () => {
+                const selectedSpecies = this.lastSpecies;
 
-  if (!selectedSpecies) {
-    return true;
-  }
+                if (!selectedSpecies) {
+                  return true;
+                }
 
-  ui.setMode(UiMode.STARTER_SELECT);
+                ui.setMode(UiMode.STARTER_SELECT);
 
-  globalScene.time.delayedCall(1, () => {
-    ui.setModeWithoutClear(UiMode.PRACTICE_ABILITY_FORM, {
-      target: "ability",
-      title: "플레이어 특성을 선택하시오",
-      buttonActions: [
-  (abilityId: AbilityId) => {
-    const formIndex =
-  this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
-    ? this.practiceSelectedFormIndex
-    : (this.starterPreferences[selectedSpecies.speciesId]?.form ?? 0);
+                globalScene.time.delayedCall(1, () => {
+                  ui.setModeWithoutClear(UiMode.PRACTICE_ABILITY_FORM, {
+                    target: "ability",
+                    title: "플레이어 특성을 선택하시오",
+                    buttonActions: [
+                      (abilityId: AbilityId) => {
+                        const formIndex =
+                          this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
+                            ? this.practiceSelectedFormIndex
+                            : (this.starterPreferences[selectedSpecies.speciesId]?.form ?? 0);
 
-const teraType =
-  this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
-    ? this.practiceSelectedTeraType
-    : (this.starterPreferences[selectedSpecies.speciesId]?.tera ?? selectedSpecies.type1);
+                        const teraType =
+                          this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
+                            ? this.practiceSelectedTeraType
+                            : (this.starterPreferences[selectedSpecies.speciesId]?.tera ?? selectedSpecies.type1);
 
-const key = this.getPracticeOverrideKey(
-  selectedSpecies.speciesId,
-  formIndex,
-);
+                        const key = this.getPracticeOverrideKey(selectedSpecies.speciesId, formIndex, teraType);
 
-this.practiceAbilityOverrides ??= {};
-this.practiceAbilityOverrides[key] ??= {};
-this.practiceAbilityOverrides[key].ability = abilityId;
+                        this.practiceAbilityOverrides ??= {};
+                        this.practiceAbilityOverrides[key] ??= {};
+                        this.practiceAbilityOverrides[key].ability = abilityId;
 
-console.log("[PRACTICE_ABILITY_SAVED]", {
-  name: selectedSpecies.name,
-  key,
-  abilityId,
-});
+                        const partyIndex = this.starterSpecies.findIndex(
+                          s =>
+                            s.speciesId === selectedSpecies.speciesId
+                            && (this.starters[this.starterSpecies.indexOf(s)] as any)?.formIndex === formIndex,
+                        );
 
-    ui.setMode(UiMode.STARTER_SELECT);
-    this.setSpeciesDetails(selectedSpecies);
-  },
-  () => {
-    ui.setMode(UiMode.STARTER_SELECT);
-    this.setSpeciesDetails(selectedSpecies);
-  },
-],
-    });
-  });
+                        if (partyIndex >= 0) {
+                          (this.starters[partyIndex] as any).practiceAbilityId = abilityId;
 
-  return true;
-},
-  });
-}
+                          console.log("[PRACTICE_ABILITY_APPLIED_TO_EXISTING_STARTER]", {
+                            partyIndex,
+                            species: selectedSpecies.name,
+                            formIndex,
+                            abilityId,
+                          });
+                        }
 
-if (this.isPracticeMode()) {
-  options.push({
-    label: "연습용 패시브 선택",
-    handler: () => {
-      const selectedSpecies = this.lastSpecies;
+                        console.log("[PRACTICE_ABILITY_SAVED]", {
+                          name: selectedSpecies.name,
+                          key,
+                          abilityId,
+                        });
 
-      if (!selectedSpecies) {
-        return true;
-      }
+                        ui.setMode(UiMode.STARTER_SELECT);
+                        this.setSpeciesDetails(selectedSpecies);
+                      },
+                      () => {
+                        ui.setMode(UiMode.STARTER_SELECT);
+                        this.setSpeciesDetails(selectedSpecies);
+                      },
+                    ],
+                  });
+                });
 
-      ui.setMode(UiMode.STARTER_SELECT);
+                return true;
+              },
+            });
+          }
 
-      globalScene.time.delayedCall(1, () => {
-        ui.setModeWithoutClear(UiMode.PRACTICE_ABILITY_FORM, {
-          target: "passive",
-          title: "플레이어 패시브를 선택하시오",
-          buttonActions: [
-            (abilityId: AbilityId) => {
-              const formIndex =
-                this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
-                  ? this.practiceSelectedFormIndex
-                  : (this.starterPreferences[selectedSpecies.speciesId]?.form ?? 0);
+          if (this.isPracticeMode()) {
+            options.push({
+              label: "연습용 패시브 선택",
+              handler: () => {
+                const selectedSpecies = this.lastSpecies;
 
-              const teraType =
-                this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
-                  ? this.practiceSelectedTeraType
-                  : (this.starterPreferences[selectedSpecies.speciesId]?.tera ?? selectedSpecies.type1);
+                if (!selectedSpecies) {
+                  return true;
+                }
 
-              const key = this.getPracticeOverrideKey(
-                selectedSpecies.speciesId,
-                formIndex,
-                teraType,
-              );
+                ui.setMode(UiMode.STARTER_SELECT);
 
-              this.practiceAbilityOverrides ??= {};
-              this.practiceAbilityOverrides[key] ??= {};
-              this.practiceAbilityOverrides[key].passive = abilityId;
+                globalScene.time.delayedCall(1, () => {
+                  ui.setModeWithoutClear(UiMode.PRACTICE_ABILITY_FORM, {
+                    target: "passive",
+                    title: "플레이어 패시브를 선택하시오",
+                    buttonActions: [
+                      (abilityId: AbilityId) => {
+                        const formIndex =
+                          this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
+                            ? this.practiceSelectedFormIndex
+                            : (this.starterPreferences[selectedSpecies.speciesId]?.form ?? 0);
 
-              console.log("[PRACTICE_PASSIVE_SAVED]", {
-                name: selectedSpecies.name,
-                key,
-                abilityId,
-              });
+                        const teraType =
+                          this.practiceSelectedSpecies?.speciesId === selectedSpecies.speciesId
+                            ? this.practiceSelectedTeraType
+                            : (this.starterPreferences[selectedSpecies.speciesId]?.tera ?? selectedSpecies.type1);
 
-              ui.setMode(UiMode.STARTER_SELECT);
-              this.setSpeciesDetails(selectedSpecies);
-            },
-            () => {
-              ui.setMode(UiMode.STARTER_SELECT);
-              this.setSpeciesDetails(selectedSpecies);
-            },
-          ],
-        });
-      });
+                        const key = this.getPracticeOverrideKey(selectedSpecies.speciesId, formIndex, teraType);
 
-      return true;
-    },
-  });
-}
+                        const passivePartyIndex = this.starterSpecies.findIndex(
+                          s =>
+                            s.speciesId === selectedSpecies.speciesId
+                            && (this.starters[this.starterSpecies.indexOf(s)] as any)?.formIndex === formIndex,
+                        );
 
-if (this.isPracticeMode()) {
-  options.push({
-    label: "렌탈 도구 선택",
-    handler: () => {
-      console.log("[PRACTICE_RENTAL_OPTION_CLICKED]");
-      this.openPracticeRentalItemMenuForSelectedStarter();
-      return true;
-    },
-  });
-}
+                        if (passivePartyIndex >= 0) {
+                          (this.starters[passivePartyIndex] as any).practicePassiveAbilityId = abilityId;
+                          (this.starters[passivePartyIndex] as any).practicePassiveId = abilityId;
+
+                          console.log("[PRACTICE_PASSIVE_APPLIED_TO_EXISTING_STARTER]", {
+                            partyIndex: passivePartyIndex,
+                            species: selectedSpecies.name,
+                            formIndex,
+                            passiveId: abilityId,
+                          });
+                        }
+
+                        this.practiceAbilityOverrides ??= {};
+                        this.practiceAbilityOverrides[key] ??= {};
+                        this.practiceAbilityOverrides[key].passive = abilityId;
+
+                        console.log("[PRACTICE_PASSIVE_SAVED]", {
+                          name: selectedSpecies.name,
+                          key,
+                          abilityId,
+                        });
+
+                        ui.setMode(UiMode.STARTER_SELECT);
+                        this.setSpeciesDetails(selectedSpecies);
+                      },
+                      () => {
+                        ui.setMode(UiMode.STARTER_SELECT);
+                        this.setSpeciesDetails(selectedSpecies);
+                      },
+                    ],
+                  });
+                });
+
+                return true;
+              },
+            });
+          }
+
+          if (this.isPracticeMode()) {
+            options.push({
+              label: "렌탈 도구 선택",
+              handler: () => {
+                console.log("[PRACTICE_RENTAL_OPTION_CLICKED]");
+                this.openPracticeRentalItemMenuForSelectedStarter();
+                return true;
+              },
+            });
+          }
 
           // if container.favorite is false, show the favorite option
           const isFavorite = starterAttributes?.favorite ?? false;
@@ -2419,7 +2535,7 @@ if (this.isPracticeMode()) {
               ui.playSelect();
               let nickname = starterAttributes.nickname ? String(starterAttributes.nickname) : "";
               nickname = decodeURIComponent(escape(atob(nickname)));
-              ui.setModeWithoutClear(
+              ui.setMode(
                 UiMode.RENAME_POKEMON,
                 {
                   buttonActions: [
@@ -2428,12 +2544,19 @@ if (this.isPracticeMode()) {
                       starterAttributes.nickname = sanitizedName;
                       originalStarterAttributes.nickname = sanitizedName;
                       const name = decodeURIComponent(escape(atob(starterAttributes.nickname)));
-                      if (name.length > 0) {
-                        this.pokemonNameText.setText(name);
+                      const baseName = name.length > 0 ? name : this.lastSpecies.name;
+
+                      const selectedMark = starterAttributes.mark ?? MarkId.NONE;
+
+                      if (selectedMark !== MarkId.NONE) {
+                        const title = getMarkTitle(selectedMark);
+
+                        this.pokemonNameText.setText(title ? `${title} ${baseName}` : baseName);
                       } else {
-                        this.pokemonNameText.setText(this.lastSpecies.name);
+                        this.pokemonNameText.setText(baseName);
                       }
-                      this.truncateName();
+
+                      this.truncateName(selectedMark !== MarkId.NONE);
                       ui.setMode(UiMode.STARTER_SELECT);
                     },
                     () => {
@@ -2485,7 +2608,7 @@ if (this.isPracticeMode()) {
                   return false;
                 },
                 item: "candy",
-                itemArgs: starterColors[this.lastSpecies.speciesId],
+                itemArgs: getStarterColors[this.lastSpecies.speciesId],
               });
             }
 
@@ -2525,7 +2648,7 @@ if (this.isPracticeMode()) {
                   return false;
                 },
                 item: "candy",
-                itemArgs: starterColors[this.lastSpecies.speciesId],
+                itemArgs: getStarterColors[this.lastSpecies.speciesId],
               });
             }
 
@@ -2580,7 +2703,7 @@ if (this.isPracticeMode()) {
                 return false;
               },
               item: "candy",
-              itemArgs: starterColors[this.lastSpecies.speciesId],
+              itemArgs: getStarterColors[this.lastSpecies.speciesId],
             });
             options.push({
               label: i18next.t("menu:cancel"),
@@ -2595,39 +2718,32 @@ if (this.isPracticeMode()) {
             });
           };
           options.push({
-  label: i18next.t("menuUiHandler:pokedex"),
-  handler: () => {
-    const openedSpecies = this.lastSpecies;
-    const openedCursor = this.cursor;
+            label: i18next.t("menuUiHandler:pokedex"),
+            handler: () => {
+              const openedSpecies = this.lastSpecies;
+              const openedCursor = this.cursor;
 
-    if (!openedSpecies) {
-      return true;
-    }
+              if (!openedSpecies) {
+                return true;
+              }
 
-    const attributes = {
-      shiny: starterAttributes.shiny,
-      variant: starterAttributes.variant,
-      form: starterAttributes.form,
-      female: starterAttributes.female,
-    };
+              const attributes = {
+                shiny: starterAttributes.shiny,
+                variant: starterAttributes.variant,
+                form: starterAttributes.form,
+                female: starterAttributes.female,
+              };
 
-    ui.setMode(
-      UiMode.POKEDEX_PAGE,
-      openedSpecies,
-      attributes,
-      null,
-      null,
-      () => {
-        ui.setMode(UiMode.STARTER_SELECT).then(() => {
-          this.cursor = openedCursor;
-          this.setSpecies(openedSpecies);
-        });
-      },
-    );
+              ui.setMode(UiMode.POKEDEX_PAGE, openedSpecies, attributes, null, null, () => {
+                ui.setMode(UiMode.STARTER_SELECT).then(() => {
+                  this.cursor = openedCursor;
+                  this.setSpecies(openedSpecies);
+                });
+              });
 
-    return true;
-  },
-});
+              return true;
+            },
+          });
           if (!pokemonPrevolutions.hasOwnProperty(this.lastSpecies.speciesId)) {
             options.push({
               label: i18next.t("starterSelectUiHandler:useCandies"),
@@ -2646,6 +2762,7 @@ if (this.isPracticeMode()) {
           });
           ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
             options,
+            maxOptions: 7,
             yOffset: 47,
           });
           success = true;
@@ -2726,45 +2843,45 @@ if (this.isPracticeMode()) {
             }
             break;
           case Button.CYCLE_FORM:
-  if (this.isPracticeMode()) {
-    success = this.cyclePracticeEvolution();
-    break;
-  }
+            if (this.isPracticeMode()) {
+              success = this.cyclePracticeEvolution();
+              break;
+            }
 
-  if (this.canCycleForm) {
-    const formCount = this.lastSpecies.forms.length;
-    let newFormIndex = props.formIndex;
+            if (this.canCycleForm) {
+              const formCount = this.lastSpecies.forms.length;
+              let newFormIndex = props.formIndex;
 
-    do {
-      newFormIndex = (newFormIndex + 1) % formCount;
+              do {
+                newFormIndex = (newFormIndex + 1) % formCount;
 
-      const form = this.lastSpecies.forms[newFormIndex];
+                const form = this.lastSpecies.forms[newFormIndex];
 
-      if (
-        form
-        && form.isStarterSelectable
-        && this.speciesStarterDexEntry!.caughtAttr! & globalScene.gameData.getFormAttr(newFormIndex)
-      ) {
-        break;
-      }
-    } while (newFormIndex !== props.formIndex);
+                if (
+                  form
+                  && form.isStarterSelectable
+                  && this.speciesStarterDexEntry!.caughtAttr! & globalScene.gameData.getFormAttr(newFormIndex)
+                ) {
+                  break;
+                }
+              } while (newFormIndex !== props.formIndex);
 
-    const selectedForm = this.lastSpecies.forms[newFormIndex];
+              const selectedForm = this.lastSpecies.forms[newFormIndex];
 
-    starterAttributes.form = newFormIndex;
-    originalStarterAttributes.form = newFormIndex;
+              starterAttributes.form = newFormIndex;
+              originalStarterAttributes.form = newFormIndex;
 
-    starterAttributes.tera = selectedForm?.type1 ?? this.lastSpecies.type1;
-    originalStarterAttributes.tera = starterAttributes.tera;
+              starterAttributes.tera = selectedForm?.type1 ?? this.lastSpecies.type1;
+              originalStarterAttributes.tera = starterAttributes.tera;
 
-    this.setSpeciesDetails(this.lastSpecies, {
-      formIndex: newFormIndex,
-      teraType: starterAttributes.tera,
-    });
+              this.setSpeciesDetails(this.lastSpecies, {
+                formIndex: newFormIndex,
+                teraType: starterAttributes.tera,
+              });
 
-    success = true;
-  }
-  break;
+              success = true;
+            }
+            break;
           case Button.CYCLE_GENDER:
             if (this.canCycleGender) {
               starterAttributes.female = !props.female;
@@ -2813,6 +2930,40 @@ if (this.isPracticeMode()) {
               success = true;
             }
             break;
+          case Button.CYCLE_MARK:
+            if (this.canCycleMark) {
+              const marks = starterData.marks ?? [];
+              const availableMarks = [MarkId.NONE, ...marks];
+
+              const currentMark = starterAttributes.mark ?? MarkId.NONE;
+              const currentIndex = availableMarks.indexOf(currentMark);
+
+              const nextMark = availableMarks[(currentIndex + 1) % availableMarks.length];
+
+              starterAttributes.mark = nextMark;
+              originalStarterAttributes.mark = nextMark;
+
+              this.setSpeciesDetails(this.lastSpecies, {
+                mark: nextMark,
+              });
+
+              const baseName = starterAttributes.nickname
+                ? decodeURIComponent(escape(atob(starterAttributes.nickname)))
+                : this.lastSpecies.name;
+
+              if (nextMark !== MarkId.NONE) {
+                const title = getMarkTitle(nextMark);
+
+                this.pokemonNameText.setText(title ? `${title} ${baseName}` : baseName);
+              } else {
+                this.pokemonNameText.setText(baseName);
+              }
+
+              this.truncateName(nextMark !== MarkId.NONE);
+
+              success = true;
+            }
+            break;
           case Button.CYCLE_NATURE:
             if (this.canCycleNature) {
               const natures = globalScene.gameData.getNaturesForAttr(this.speciesStarterDexEntry?.natureAttr);
@@ -2828,47 +2979,45 @@ if (this.isPracticeMode()) {
             }
             break;
           case Button.CYCLE_TERA:
-  if (this.canCycleTera) {
-    const keySpeciesId = this.getStarterKeySpeciesId(this.lastSpecies);
-    this.starterPreferences[keySpeciesId] ??= {};
-    this.originalStarterPreferences[keySpeciesId] ??= {};
+            if (this.canCycleTera) {
+              const keySpeciesId = this.getStarterKeySpeciesId(this.lastSpecies);
+              this.starterPreferences[keySpeciesId] ??= {};
+              this.originalStarterPreferences[keySpeciesId] ??= {};
 
-    const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(this.lastSpecies);
+              const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(this.lastSpecies);
 
-    if (unlockedTeraTypes.length > 0) {
-      const currentTera = this.starterPreferences[keySpeciesId].tera ?? unlockedTeraTypes[0];
-      const currentIndex = unlockedTeraTypes.indexOf(currentTera);
-      const nextIndex = currentIndex >= 0
-        ? (currentIndex + 1) % unlockedTeraTypes.length
-        : 0;
+              if (unlockedTeraTypes.length > 0) {
+                const currentTera = this.starterPreferences[keySpeciesId].tera ?? unlockedTeraTypes[0];
+                const currentIndex = unlockedTeraTypes.indexOf(currentTera);
+                const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % unlockedTeraTypes.length : 0;
 
-      const nextTera = unlockedTeraTypes[nextIndex];
+                const nextTera = unlockedTeraTypes[nextIndex];
 
-      // root 저장
-      this.starterPreferences[keySpeciesId].tera = nextTera;
-      this.originalStarterPreferences[keySpeciesId].tera = nextTera;
+                // root 저장
+                this.starterPreferences[keySpeciesId].tera = nextTera;
+                this.originalStarterPreferences[keySpeciesId].tera = nextTera;
 
-      // 같은 진화계열 전체에 동기화
-      for (const s of this.allSpecies) {
-        if (this.getStarterKeySpeciesId(s) !== keySpeciesId) {
-          continue;
-        }
+                // 같은 진화계열 전체에 동기화
+                for (const s of this.allSpecies) {
+                  if (this.getStarterKeySpeciesId(s) !== keySpeciesId) {
+                    continue;
+                  }
 
-        this.starterPreferences[s.speciesId] ??= {};
-        this.originalStarterPreferences[s.speciesId] ??= {};
+                  this.starterPreferences[s.speciesId] ??= {};
+                  this.originalStarterPreferences[s.speciesId] ??= {};
 
-        this.starterPreferences[s.speciesId].tera = nextTera;
-        this.originalStarterPreferences[s.speciesId].tera = nextTera;
-      }
+                  this.starterPreferences[s.speciesId].tera = nextTera;
+                  this.originalStarterPreferences[s.speciesId].tera = nextTera;
+                }
 
-      this.setSpeciesDetails(this.lastSpecies, {
-        teraType: nextTera,
-      });
+                this.setSpeciesDetails(this.lastSpecies, {
+                  teraType: nextTera,
+                });
 
-      success = true;
-    }
-  }
-  break;
+                success = true;
+              }
+            }
+            break;
           case Button.UP:
             if (!this.starterIconsCursorObj.visible) {
               if (currentRow > 0) {
@@ -3026,187 +3175,181 @@ if (this.isPracticeMode()) {
     return success || error;
   }
 
-private openPracticeRentalItemMenuForSelectedStarter(): void {
-  const index = this.starterIconsCursorObj.visible
-    ? this.starterIconsCursorIndex
-    : this.starterSpecies.findIndex(
-        s => s.speciesId === this.lastSpecies.speciesId,
-      );
+  private openPracticeRentalItemMenuForSelectedStarter(): void {
+    const index = this.starterIconsCursorObj.visible
+      ? this.starterIconsCursorIndex
+      : this.starterSpecies.findIndex(s => s.speciesId === this.lastSpecies.speciesId);
 
-  const starter = this.starters[index];
-  const species = this.starterSpecies[index];
+    const starter = this.starters[index];
+    const species = this.starterSpecies[index];
 
-  if (!starter) {
-    this.showText("먼저 스타팅에 추가한 포켓몬을 선택하세요.");
-    return;
+    if (!starter) {
+      this.showText("먼저 스타팅에 추가한 포켓몬을 선택하세요.");
+      return;
+    }
+
+    const ui = this.getUi();
+
+    console.log("[PRACTICE_RENTAL_MENU_OPEN_REQUEST]", {
+      index,
+      starter: species?.name,
+    });
+
+    ui.setMode(UiMode.STARTER_SELECT);
+
+    globalScene.time.delayedCall(1, () => {
+      ui.setOverlayMode(UiMode.PRACTICE_RENTAL_MODIFIER_SELECT, {
+        onSelect: (modifierType: PokemonHeldItemModifierType) => {
+          (starter as any).preRunItems ??= [];
+          (starter as any).preRunItems.push(modifierType);
+
+          console.log("[PRACTICE_RENTAL_STARTER_ITEM_ADDED]", {
+            modifier: modifierType.id,
+            starter: species?.name,
+            preRunItems: (starter as any).preRunItems,
+          });
+
+          this.getUi().revertMode();
+
+          globalScene.time.delayedCall(1, () => {
+            this.showText(`${species?.name ?? "포켓몬"}에게 렌탈 도구를 지급 예정으로 등록했습니다.`);
+            this.setSpeciesDetails(species ?? this.lastSpecies);
+          });
+        },
+      });
+    });
   }
 
-  const ui = this.getUi();
+  private isPracticeMode(): boolean {
+    return globalScene.gameMode.modeId === GameModes.PRACTICE;
+  }
 
-  console.log("[PRACTICE_RENTAL_MENU_OPEN_REQUEST]", {
-    index,
-    starter: species?.name,
-  });
+  private getPracticeSpeciesFormOptions(baseSpecies: PokemonSpecies): { species: PokemonSpecies; formIndex: number }[] {
+    const line = this.getPracticeEvolutionLine(baseSpecies);
+    const result: { species: PokemonSpecies; formIndex: number }[] = [];
 
-  ui.setMode(UiMode.STARTER_SELECT);
+    for (const species of line) {
+      const formCount = Math.max(1, species.forms?.length ?? 0);
 
-  globalScene.time.delayedCall(1, () => {
-    ui.setOverlayMode(UiMode.PRACTICE_RENTAL_MODIFIER_SELECT, {
-      onSelect: (modifierType: PokemonHeldItemModifierType) => {
-  (starter as any).preRunItems ??= [];
-  (starter as any).preRunItems.push(modifierType);
+      for (let formIndex = 0; formIndex < formCount; formIndex++) {
+        const form = species.forms?.[formIndex];
 
-  console.log("[PRACTICE_RENTAL_STARTER_ITEM_ADDED]", {
-    modifier: modifierType.id,
-    starter: species?.name,
-    preRunItems: (starter as any).preRunItems,
-  });
-
-  this.getUi().revertMode();
-
-  globalScene.time.delayedCall(1, () => {
-    this.showText(
-      `${species?.name ?? "포켓몬"}에게 렌탈 도구를 지급 예정으로 등록했습니다.`,
-    );
-    this.setSpeciesDetails(species ?? this.lastSpecies);
-  });
-},
-    });
-  });
-}
-
-private isPracticeMode(): boolean {
-  return globalScene.gameMode.modeId === GameModes.PRACTICE;
-}
-
-private getPracticeSpeciesFormOptions(baseSpecies: PokemonSpecies): { species: PokemonSpecies; formIndex: number }[] {
-  const line = this.getPracticeEvolutionLine(baseSpecies);
-  const result: { species: PokemonSpecies; formIndex: number }[] = [];
-
-  for (const species of line) {
-    const formCount = Math.max(1, species.forms?.length ?? 0);
-
-    for (let formIndex = 0; formIndex < formCount; formIndex++) {
-      const form = species.forms?.[formIndex];
-
-      // 연습모드라서 잠금은 무시하되, 실제 form 객체가 없으면 기본폼만 허용
-      if (formIndex === 0 || form) {
-        result.push({ species, formIndex });
+        // 연습모드라서 잠금은 무시하되, 실제 form 객체가 없으면 기본폼만 허용
+        if (formIndex === 0 || form) {
+          result.push({ species, formIndex });
+        }
       }
     }
+
+    return result;
   }
 
-  return result;
-}
-
-private cyclePracticeEvolution(): boolean {
-  if (!this.lastSpecies) {
-    return false;
-  }
-
-  const currentFormIndex =
-    this.starterPreferences[this.lastSpecies.speciesId]?.form
-    ?? this.originalStarterPreferences[this.lastSpecies.speciesId]?.form
-    ?? 0;
-
-  const options = this.getPracticeSpeciesFormOptions(this.lastSpecies);
-
-  if (options.length <= 0) {
-    return false;
-  }
-
-  const currentIndex = options.findIndex(
-    o => o.species.speciesId === this.lastSpecies.speciesId && o.formIndex === currentFormIndex,
-  );
-
-  const next = options[(currentIndex + 1) % options.length];
-
-  if (!next) {
-    return false;
-  }
-
-  const nextSpecies = next.species;
-  const nextFormIndex = next.formIndex;
-  const nextForm = nextSpecies.forms?.[nextFormIndex];
-
-  this.ensurePracticeStarterData(nextSpecies);
-
-  this.starterPreferences[nextSpecies.speciesId] ??= {};
-  this.originalStarterPreferences[nextSpecies.speciesId] ??= {};
-
-  this.starterPreferences[nextSpecies.speciesId].form = nextFormIndex;
-  this.originalStarterPreferences[nextSpecies.speciesId].form = nextFormIndex;
-
-  const teraType = nextForm?.type1 ?? nextSpecies.type1;
-
-this.practiceSelectedSpecies = nextSpecies;
-this.practiceSelectedFormIndex = nextFormIndex;
-this.practiceSelectedTeraType = teraType;
-
-console.log("[PRACTICE_SELECTED_SET]", {
-  name: nextSpecies.name,
-  speciesId: nextSpecies.speciesId,
-  formIndex: nextFormIndex,
-  teraType,
-});
-
-this.starterPreferences[nextSpecies.speciesId].tera = teraType;
-this.originalStarterPreferences[nextSpecies.speciesId].tera = teraType;
-
-this.setSpecies(nextSpecies);
-this.setSpeciesDetails(nextSpecies, {
-  formIndex: nextFormIndex,
-  teraType,
-});
-
-  return true;
-}
-
-private getPracticeEvolutionLine(species: PokemonSpecies): PokemonSpecies[] {
-  let rootId = species.speciesId as SpeciesId;
-
-  while (pokemonPrevolutions.hasOwnProperty(rootId)) {
-    rootId = pokemonPrevolutions[rootId] as SpeciesId;
-  }
-
-  return allSpecies.filter(s => {
-    let id = s.speciesId as SpeciesId;
-
-    while (pokemonPrevolutions.hasOwnProperty(id)) {
-      id = pokemonPrevolutions[id] as SpeciesId;
+  private cyclePracticeEvolution(): boolean {
+    if (!this.lastSpecies) {
+      return false;
     }
 
-    return id === rootId;
-  });
-}
+    const currentFormIndex =
+      this.starterPreferences[this.lastSpecies.speciesId]?.form
+      ?? this.originalStarterPreferences[this.lastSpecies.speciesId]?.form
+      ?? 0;
 
-private ensurePracticeStarterData(species: PokemonSpecies): void {
-  const starterData = globalScene.gameData.starterData;
+    const options = this.getPracticeSpeciesFormOptions(this.lastSpecies);
 
-  if (starterData[species.speciesId]) {
-    return;
+    if (options.length <= 0) {
+      return false;
+    }
+
+    const currentIndex = options.findIndex(
+      o => o.species.speciesId === this.lastSpecies.speciesId && o.formIndex === currentFormIndex,
+    );
+
+    const next = options[(currentIndex + 1) % options.length];
+
+    if (!next) {
+      return false;
+    }
+
+    const nextSpecies = next.species;
+    const nextFormIndex = next.formIndex;
+    const nextForm = nextSpecies.forms?.[nextFormIndex];
+
+    this.ensurePracticeStarterData(nextSpecies);
+
+    this.starterPreferences[nextSpecies.speciesId] ??= {};
+    this.originalStarterPreferences[nextSpecies.speciesId] ??= {};
+
+    this.starterPreferences[nextSpecies.speciesId].form = nextFormIndex;
+    this.originalStarterPreferences[nextSpecies.speciesId].form = nextFormIndex;
+
+    const teraType = nextForm?.type1 ?? nextSpecies.type1;
+
+    this.practiceSelectedSpecies = nextSpecies;
+    this.practiceSelectedFormIndex = nextFormIndex;
+    this.practiceSelectedTeraType = teraType;
+
+    console.log("[PRACTICE_SELECTED_SET]", {
+      name: nextSpecies.name,
+      speciesId: nextSpecies.speciesId,
+      formIndex: nextFormIndex,
+      teraType,
+    });
+
+    this.starterPreferences[nextSpecies.speciesId].tera = teraType;
+    this.originalStarterPreferences[nextSpecies.speciesId].tera = teraType;
+
+    this.setSpecies(nextSpecies);
+    this.setSpeciesDetails(nextSpecies, {
+      formIndex: nextFormIndex,
+      teraType,
+    });
+
+    return true;
   }
 
-  const rootId = species.getRootSpeciesId(false) as SpeciesId;
-  const rootData = starterData[rootId];
+  private getPracticeEvolutionLine(species: PokemonSpecies): PokemonSpecies[] {
+    let rootId = species.speciesId as SpeciesId;
 
-  starterData[species.speciesId] = {
-    moveset: rootData?.moveset ?? null,
-    eggMoves: rootData?.eggMoves ?? 0,
-    candyCount: rootData?.candyCount ?? 0,
-    friendship: rootData?.friendship ?? 0,
-    abilityAttr:
-      rootData?.abilityAttr
-      ?? (AbilityAttr.ABILITY_1 | AbilityAttr.ABILITY_2 | AbilityAttr.ABILITY_HIDDEN),
-    passiveAttr: rootData?.passiveAttr ?? 0,
-    valueReduction: rootData?.valueReduction ?? 0,
-    classicWinCount: rootData?.classicWinCount ?? 0,
-    teraTypeAttr:
-      rootData?.teraTypeAttr
-      ?? ((1 << (species.type1 + 1))
-        | (species.type2 != null && species.type2 !== PokemonType.UNKNOWN ? 1 << (species.type2 + 1) : 0)),
-  };
-}
+    while (pokemonPrevolutions.hasOwnProperty(rootId)) {
+      rootId = pokemonPrevolutions[rootId] as SpeciesId;
+    }
+
+    return allSpecies.filter(s => {
+      let id = s.speciesId as SpeciesId;
+
+      while (pokemonPrevolutions.hasOwnProperty(id)) {
+        id = pokemonPrevolutions[id] as SpeciesId;
+      }
+
+      return id === rootId;
+    });
+  }
+
+  private ensurePracticeStarterData(species: PokemonSpecies): void {
+    const starterData = globalScene.gameData.starterData;
+
+    if (starterData[species.speciesId]) {
+      return;
+    }
+
+    const rootId = species.getRootSpeciesId(false) as SpeciesId;
+    const rootData = starterData[rootId];
+
+    starterData[species.speciesId] = {
+      moveset: rootData?.moveset ?? null,
+      eggMoves: rootData?.eggMoves ?? 0,
+      candyCount: rootData?.candyCount ?? 0,
+      friendship: rootData?.friendship ?? 0,
+      abilityAttr: rootData?.abilityAttr ?? AbilityAttr.ABILITY_1 | AbilityAttr.ABILITY_2 | AbilityAttr.ABILITY_HIDDEN,
+      passiveAttr: rootData?.passiveAttr ?? 0,
+      valueReduction: rootData?.valueReduction ?? 0,
+      classicWinCount: rootData?.classicWinCount ?? 0,
+      teraTypeAttr:
+        rootData?.teraTypeAttr
+        ?? (1 << (species.type1 + 1))
+          | (species.type2 != null && species.type2 !== PokemonType.UNKNOWN ? 1 << (species.type2 + 1) : 0),
+    };
+  }
 
   isInParty(species: PokemonSpecies): [boolean, number] {
     let removeIndex = 0;
@@ -3231,28 +3374,24 @@ private ensurePracticeStarterData(species: PokemonSpecies): void {
     randomSelection = false,
   ) {
     console.log("[ADD_TO_PARTY_BEFORE_OVERRIDE]", {
-  inputName: species.name,
-  inputSpeciesId: species.speciesId,
-  selectedName: this.practiceSelectedSpecies?.name,
-  selectedSpeciesId: this.practiceSelectedSpecies?.speciesId,
-  selectedFormIndex: this.practiceSelectedFormIndex,
-});
-  console.log("[PRACTICE_ABILITY_OVERRIDES]", this.practiceAbilityOverrides);
+      inputName: species.name,
+      inputSpeciesId: species.speciesId,
+      selectedName: this.practiceSelectedSpecies?.name,
+      selectedSpeciesId: this.practiceSelectedSpecies?.speciesId,
+      selectedFormIndex: this.practiceSelectedFormIndex,
+    });
+    console.log("[PRACTICE_ABILITY_OVERRIDES]", this.practiceAbilityOverrides);
 
     if (this.isPracticeMode() && this.practiceSelectedSpecies) {
-  species = this.practiceSelectedSpecies;
-  dexAttr = this.getCurrentDexProps(species.speciesId);
-  teraType = this.practiceSelectedTeraType !== PokemonType.UNKNOWN
-    ? this.practiceSelectedTeraType
-    : teraType;
+      species = this.practiceSelectedSpecies;
+      dexAttr = this.getCurrentDexProps(species.speciesId);
+      teraType = this.practiceSelectedTeraType !== PokemonType.UNKNOWN ? this.practiceSelectedTeraType : teraType;
 
-  this.ensurePracticeStarterData(species);
-}
+      this.ensurePracticeStarterData(species);
+    }
     const props = globalScene.gameData.getSpeciesDexAttrProps(species, dexAttr);
 
-const practiceFormIndex = this.isPracticeMode()
-  ? this.practiceSelectedFormIndex
-  : props.formIndex;
+    const practiceFormIndex = this.isPracticeMode() ? this.practiceSelectedFormIndex : props.formIndex;
     this.starterIcons[this.starterSpecies.length].setTexture(
       species.getIconAtlasKey(practiceFormIndex, props.shiny, props.variant),
     );
@@ -3260,57 +3399,55 @@ const practiceFormIndex = this.isPracticeMode()
       species.getIconId(props.female, practiceFormIndex, props.shiny, props.variant),
     );
     this.checkIconId(
-  this.starterIcons[this.starterSpecies.length],
-  species,
-  props.female,
-  practiceFormIndex,
-  props.shiny,
-  props.variant,
-);
+      this.starterIcons[this.starterSpecies.length],
+      species,
+      props.female,
+      practiceFormIndex,
+      props.shiny,
+      props.variant,
+    );
 
     const { dexEntry, starterDataEntry } = this.getSpeciesData(species.speciesId);
 
     const starter = {
-  speciesId: species.speciesId,
-  shiny: props.shiny,
-  variant: props.variant,
-  formIndex: practiceFormIndex,
-  female: props.female,
-  abilityIndex,
-  passive: !(starterDataEntry.passiveAttr ^ (PassiveAttr.ENABLED | PassiveAttr.UNLOCKED)),
-  nature,
-  moveset,
-  pokerus: this.pokerusSpecies.includes(species),
-  nickname: this.starterPreferences[species.speciesId]?.nickname,
-  teraType,
-  ivs: dexEntry.ivs,
-};
+      speciesId: species.speciesId,
+      shiny: props.shiny,
+      variant: props.variant,
+      formIndex: practiceFormIndex,
+      female: props.female,
+      abilityIndex,
+      passive: !(starterDataEntry.passiveAttr ^ (PassiveAttr.ENABLED | PassiveAttr.UNLOCKED)),
+      nature,
+      moveset,
+      pokerus: this.pokerusSpecies.includes(species),
+      nickname: this.starterPreferences[species.speciesId]?.nickname,
+      teraType,
+      ivs: dexEntry.ivs,
 
-if (this.isPracticeMode()) {
-  this.practiceAbilityOverrides ??= {};
+      mark: this.starterPreferences[species.speciesId]?.mark,
+    };
 
-  const key = this.getPracticeOverrideKey(
-    starter.speciesId,
-    starter.formIndex,
-    starter.teraType,
-  );
+    if (this.isPracticeMode()) {
+      this.practiceAbilityOverrides ??= {};
 
-  const overrideData = this.practiceAbilityOverrides[key];
+      const key = this.getPracticeOverrideKey(starter.speciesId, starter.formIndex, starter.teraType);
 
-  if (overrideData?.ability !== undefined) {
-  (starter as any).practiceAbilityId = overrideData.ability;
-}
+      const overrideData = this.practiceAbilityOverrides[key];
 
-  if (overrideData?.passive !== undefined) {
-    (starter as any).practicePassiveAbilityId = overrideData.passive;
-  }
+      if (overrideData?.ability !== undefined) {
+        (starter as any).practiceAbilityId = overrideData.ability;
+      }
 
-  console.log("[STARTER_PRACTICE_ABILITY]", {
-    key,
-    ability: (starter as any).practiceAbilityId,
-    passive: (starter as any).practicePassiveAbilityId,
-  });
-}
+      if (overrideData?.passive !== undefined) {
+        (starter as any).practicePassiveAbilityId = overrideData.passive;
+      }
+
+      console.log("[STARTER_PRACTICE_ABILITY]", {
+        key,
+        ability: (starter as any).practiceAbilityId,
+        passive: (starter as any).practicePassiveAbilityId,
+      });
+    }
 
     this.starters.push(starter);
     this.starterSpecies.push(species);
@@ -3321,32 +3458,18 @@ if (this.isPracticeMode()) {
   }
 
   updatePartyIcon(species: PokemonSpecies, index: number) {
-  const props = globalScene.gameData.getSpeciesDexAttrProps(
-    species,
-    this.getCurrentDexProps(species.speciesId),
-  );
+    const props = globalScene.gameData.getSpeciesDexAttrProps(species, this.getCurrentDexProps(species.speciesId));
 
-  const practiceFormIndex = this.isPracticeMode()
-    ? (this.starterPreferences[species.speciesId]?.form ?? props.formIndex)
-    : props.formIndex;
+    const practiceFormIndex = this.isPracticeMode()
+      ? (this.starterPreferences[species.speciesId]?.form ?? props.formIndex)
+      : props.formIndex;
 
-  this.starterIcons[index].setTexture(
-    species.getIconAtlasKey(practiceFormIndex, props.shiny, props.variant),
-  );
+    this.starterIcons[index].setTexture(species.getIconAtlasKey(practiceFormIndex, props.shiny, props.variant));
 
-  this.starterIcons[index].setFrame(
-    species.getIconId(props.female, practiceFormIndex, props.shiny, props.variant),
-  );
+    this.starterIcons[index].setFrame(species.getIconId(props.female, practiceFormIndex, props.shiny, props.variant));
 
-  this.checkIconId(
-    this.starterIcons[index],
-    species,
-    props.female,
-    practiceFormIndex,
-    props.shiny,
-    props.variant,
-  );
-}
+    this.checkIconId(this.starterIcons[index], species, props.female, practiceFormIndex, props.shiny, props.variant);
+  }
 
   /**
    * Puts a move at the requested index in the current highlighted Pokemon's moveset.
@@ -3432,6 +3555,9 @@ if (this.isPracticeMode()) {
           break;
         case SettingKeyboard.Button_Cycle_Ability:
           iconPath = "E.png";
+          break;
+        case SettingKeyboard.Button_Cycle_Mark:
+          iconPath = "P.png";
           break;
         case SettingKeyboard.Button_Cycle_Nature:
           iconPath = "N.png";
@@ -3537,6 +3663,9 @@ if (this.isPracticeMode()) {
           this.abilityIconElement,
           this.abilityLabel,
         );
+      }
+      if (this.canCycleMark) {
+        this.updateButtonIcon(SettingKeyboard.Button_Cycle_Mark, gamepadType, this.markIconElement, this.markLabel);
       }
       if (this.canCycleNature) {
         this.updateButtonIcon(
@@ -3951,14 +4080,14 @@ if (this.isPracticeMode()) {
 
       // 'Candy Icon' mode
       if (globalScene.candyUpgradeDisplay === 0) {
-        if (!starterColors[speciesId]) {
+        if (!getStarterColors[speciesId]) {
           // Default to white if no colors are found
-          starterColors[speciesId] = ["ffffff", "ffffff"];
+          getStarterColors[speciesId] = ["ffffff", "ffffff"];
         }
 
         // Set the candy colors
-        container.candyUpgradeIcon.setTint(argbFromRgba(rgbHexToRgba(starterColors[speciesId][0])));
-        container.candyUpgradeOverlayIcon.setTint(argbFromRgba(rgbHexToRgba(starterColors[speciesId][1])));
+        container.candyUpgradeIcon.setTint(argbFromRgba(rgbHexToRgba(getStarterColors[speciesId][0])));
+        container.candyUpgradeOverlayIcon.setTint(argbFromRgba(rgbHexToRgba(getStarterColors[speciesId][1])));
 
         this.setUpgradeIcon(container);
       } else if (globalScene.candyUpgradeDisplay === 1) {
@@ -4070,8 +4199,8 @@ if (this.isPracticeMode()) {
     this.pokemonPassiveText.off("pointerover");
 
     const starterAttributes: StarterAttributes | null = species
-  ? { ...this.starterPreferences[this.getStarterKeySpeciesId(species)] }
-  : null;
+      ? { ...this.starterPreferences[this.getStarterKeySpeciesId(species)] }
+      : null;
 
     if (starterAttributes?.nature) {
       // load default nature from stater save data, if set
@@ -4098,34 +4227,42 @@ if (this.isPracticeMode()) {
     }
 
     if (this.lastSpecies) {
-  const dexAttr = this.getCurrentDexProps(this.lastSpecies.speciesId);
-  const props = globalScene.gameData.getSpeciesDexAttrProps(this.lastSpecies, dexAttr);
-  const speciesIndex = this.allSpecies.indexOf(this.lastSpecies);
-  const lastStarterContainer = speciesIndex >= 0 ? this.starterContainers[speciesIndex] : undefined;
-  const lastSpeciesIcon = lastStarterContainer?.icon;
+      const dexAttr = this.getCurrentDexProps(this.lastSpecies.speciesId);
+      const props = globalScene.gameData.getSpeciesDexAttrProps(this.lastSpecies, dexAttr);
+      const speciesIndex = this.allSpecies.indexOf(this.lastSpecies);
+      const lastStarterContainer = speciesIndex >= 0 ? this.starterContainers[speciesIndex] : undefined;
+      const lastSpeciesIcon = lastStarterContainer?.icon;
 
-  if (lastSpeciesIcon) {
-    this.checkIconId(lastSpeciesIcon, this.lastSpecies, props.female, props.formIndex, props.shiny, props.variant);
-    this.iconAnimHandler.addOrUpdate(lastSpeciesIcon, PokemonIconAnimMode.NONE);
+      if (lastSpeciesIcon) {
+        this.checkIconId(lastSpeciesIcon, this.lastSpecies, props.female, props.formIndex, props.shiny, props.variant);
+        this.iconAnimHandler.addOrUpdate(lastSpeciesIcon, PokemonIconAnimMode.NONE);
 
-    globalScene.tweens.getTweensOf(lastSpeciesIcon).forEach(tween => tween.play());
-  }
-}
+        globalScene.tweens.getTweensOf(lastSpeciesIcon).forEach(tween => tween.play());
+      }
+    }
 
     this.lastSpecies = species!; // TODO: is this bang correct?
 
     if (species && (this.speciesStarterDexEntry?.seenAttr || this.speciesStarterDexEntry?.caughtAttr)) {
       this.pokemonNumberText.setText(padInt(species.speciesId, 4));
-      if (starterAttributes?.nickname) {
-        const name = decodeURIComponent(escape(atob(starterAttributes.nickname)));
-        this.pokemonNameText.setText(name);
+      const baseName = starterAttributes?.nickname
+        ? decodeURIComponent(escape(atob(starterAttributes.nickname)))
+        : species.name;
+
+      const selectedMark = this.starterPreferences[species.speciesId]?.mark ?? MarkId.NONE;
+
+      if (selectedMark !== MarkId.NONE) {
+        const title = getMarkTitle(selectedMark);
+
+        this.pokemonNameText.setText(title ? `${title} ${baseName}` : baseName);
       } else {
-        this.pokemonNameText.setText(species.name);
+        this.pokemonNameText.setText(baseName);
       }
-      this.truncateName();
+
+      this.truncateName(selectedMark !== MarkId.NONE);
 
       if (this.speciesStarterDexEntry?.caughtAttr) {
-        const colorScheme = starterColors[species.speciesId];
+        const colorScheme = getStarterColors(species.speciesId);
 
         const luck = globalScene.gameData.getDexAttrLuck(this.speciesStarterDexEntry.caughtAttr);
         this.pokemonLuckText
@@ -4200,17 +4337,17 @@ if (this.isPracticeMode()) {
 
         // Pause the animation when the species is selected
         const speciesIndex = this.allSpecies.indexOf(species);
-const icon = speciesIndex >= 0 ? this.starterContainers[speciesIndex]?.icon : undefined;
+        const icon = speciesIndex >= 0 ? this.starterContainers[speciesIndex]?.icon : undefined;
 
-if (icon) {
-  if (this.isUpgradeAnimationEnabled()) {
-    globalScene.tweens.getTweensOf(icon).forEach(tween => tween.pause());
-    icon.x = -2;
-    icon.y = 2;
-  }
+        if (icon) {
+          if (this.isUpgradeAnimationEnabled()) {
+            globalScene.tweens.getTweensOf(icon).forEach(tween => tween.pause());
+            icon.x = -2;
+            icon.y = 2;
+          }
 
-  this.iconAnimHandler.addOrUpdate(icon, PokemonIconAnimMode.PASSIVE);
-}
+          this.iconAnimHandler.addOrUpdate(icon, PokemonIconAnimMode.PASSIVE);
+        }
 
         const starterIndex = this.starterSpecies.indexOf(species);
 
@@ -4245,22 +4382,22 @@ if (icon) {
           props.female = starterAttributes?.female ?? props.female;
 
           const keySpeciesId = this.getStarterKeySpeciesId(species);
-const rootTera = this.starterPreferences[keySpeciesId]?.tera;
-const ownTera = this.starterPreferences[species.speciesId]?.tera;
+          const rootTera = this.starterPreferences[keySpeciesId]?.tera;
+          const ownTera = this.starterPreferences[species.speciesId]?.tera;
 
-this.setSpeciesDetails(
-  species,
-  {
-    shiny: props.shiny,
-    formIndex: props.formIndex,
-    female: props.female,
-    variant: props.variant,
-    abilityIndex: defaultAbilityIndex,
-    natureIndex: defaultNature,
-    teraType: rootTera ?? ownTera ?? starterAttributes?.tera,
-  },
-  false,
-);
+          this.setSpeciesDetails(
+            species,
+            {
+              shiny: props.shiny,
+              formIndex: props.formIndex,
+              female: props.female,
+              variant: props.variant,
+              abilityIndex: defaultAbilityIndex,
+              natureIndex: defaultNature,
+              teraType: rootTera ?? ownTera ?? starterAttributes?.tera,
+            },
+            false,
+          );
         }
 
         if (props.formIndex != null) {
@@ -4366,7 +4503,10 @@ this.setSpeciesDetails(
   }
 
   setSpeciesDetails(species: PokemonSpecies, options: SpeciesDetails = {}, save = true): void {
-    let { shiny, formIndex, female, variant, abilityIndex, natureIndex, teraType } = options;
+    let { shiny, formIndex, female, variant, abilityIndex, natureIndex, teraType, mark } = options;
+    if (species && mark === undefined) {
+      mark = this.starterPreferences[species.speciesId]?.mark ?? MarkId.NONE;
+    }
     const forSeen: boolean = options.forSeen ?? false;
     const oldProps = species ? globalScene.gameData.getSpeciesDexAttrProps(species, this.dexAttrCursor) : null;
     const oldAbilityIndex =
@@ -4429,7 +4569,6 @@ this.setSpeciesDetails(
         this.updatePartyIcon(species, partyIndex);
       }
     }
-
     this.pokemonSprite.setVisible(false);
     this.pokemonPassiveLabelText.setVisible(false);
     this.pokemonPassiveText.setVisible(false);
@@ -4496,6 +4635,7 @@ this.setSpeciesDetails(
           starter.abilityIndex = this.abilityCursor;
           starter.nature = this.natureCursor;
           starter.teraType = this.teraCursor;
+          starter.mark = mark ?? MarkId.NONE;
         }
 
         const assetLoadCancelled = new BooleanHolder(false);
@@ -4565,14 +4705,15 @@ this.setSpeciesDetails(
             .filter(f => f.isStarterSelectable || !pokemonFormChanges[species.speciesId]?.find(fc => fc.formKey))
             .map((_, f) => dexEntry.caughtAttr & globalScene.gameData.getFormAttr(f))
             .filter(f => f).length > 1;
+        this.canCycleMark = (starterDataEntry.marks?.length ?? 0) > 0;
         this.canCycleNature = globalScene.gameData.getNaturesForAttr(dexEntry.natureAttr).length > 1;
         const unlockedTeraTypes = this.getUnlockedTeraTypesForSpecies(species);
 
-this.canCycleTera =
-  !this.statsMode
-  && this.allowTera
-  && unlockedTeraTypes.length > 1
-  && !globalScene.gameMode.hasChallenge(Challenges.FRESH_START);
+        this.canCycleTera =
+          !this.statsMode
+          && this.allowTera
+          && unlockedTeraTypes.length > 1
+          && !globalScene.gameMode.hasChallenge(Challenges.FRESH_START);
       }
 
       if (dexEntry.caughtAttr && species.malePercent !== null) {
@@ -4586,26 +4727,21 @@ this.canCycleTera =
       }
 
       if (dexEntry.caughtAttr) {
-  const practiceKey = this.getPracticeOverrideKey(
-    species.speciesId,
-    formIndex ?? 0,
-  );
+        const practiceKey = this.getPracticeOverrideKey(species.speciesId, formIndex ?? 0);
 
-  const practiceOverride = this.isPracticeMode()
-    ? this.practiceAbilityOverrides?.[practiceKey]
-    : undefined;
+        const practiceOverride = this.isPracticeMode() ? this.practiceAbilityOverrides?.[practiceKey] : undefined;
 
-  let ability: Ability;
+        let ability: Ability;
 
-  if (practiceOverride?.ability !== undefined) {
-    ability = allAbilities[practiceOverride.ability];
-  } else if (species.forms?.length > 1) {
-  ability = allAbilities[species.forms[formIndex ?? 0].getAbility(abilityIndex!)];
-} else {
-  ability = allAbilities[species.getAbility(abilityIndex!)];
-}
+        if (practiceOverride?.ability !== undefined) {
+          ability = allAbilities[practiceOverride.ability];
+        } else if (species.forms?.length > 1) {
+          ability = allAbilities[species.forms[formIndex ?? 0].getAbility(abilityIndex!)];
+        } else {
+          ability = allAbilities[species.getAbility(abilityIndex!)];
+        }
 
-  const isHidden = abilityIndex === (this.lastSpecies.ability2 ? 2 : 1);
+        const isHidden = abilityIndex === (this.lastSpecies.ability2 ? 2 : 1);
         this.pokemonAbilityText
           .setText(ability.name)
           .setColor(getTextColor(!isHidden ? TextStyle.SUMMARY_ALT : TextStyle.SUMMARY_GOLD))
@@ -4613,9 +4749,9 @@ this.canCycleTera =
 
         const passiveAttr = starterDataEntry.passiveAttr;
         const passiveAbility =
-  practiceOverride?.passive !== undefined
-    ? allAbilities[practiceOverride.passive]
-    : allAbilities[this.lastSpecies.getPassiveAbility(formIndex)];
+          practiceOverride?.passive !== undefined
+            ? allAbilities[practiceOverride.passive]
+            : allAbilities[this.lastSpecies.getPassiveAbility(formIndex)];
 
         if (this.pokemonAbilityText.visible) {
           if (this.activeTooltip === "ABILITY") {
@@ -4703,35 +4839,34 @@ this.canCycleTera =
 
         const speciesMoveData = starterDataEntry.moveset;
 
-const practiceMoveKey = this.getPracticeMoveKey(species.speciesId, formIndex!);
-const practiceMoveData = this.isPracticeMode()
-  ? this.practiceMoveOverrides[practiceMoveKey]
-  : null;
+        const practiceMoveKey = this.getPracticeMoveKey(species.speciesId, formIndex!);
+        const practiceMoveData = this.isPracticeMode() ? this.practiceMoveOverrides[practiceMoveKey] : null;
 
-const moveData: StarterMoveset | null = practiceMoveData
-  ?? (speciesMoveData
-    ? Array.isArray(speciesMoveData)
-      ? speciesMoveData
-      : speciesMoveData[formIndex!]
-    : null);
+        const moveData: StarterMoveset | null =
+          practiceMoveData
+          ?? (speciesMoveData
+            ? Array.isArray(speciesMoveData)
+              ? speciesMoveData
+              : speciesMoveData[formIndex!]
+            : null);
         const availableStarterMoves = this.speciesStarterMoves.concat(
           speciesEggMoves.hasOwnProperty(species.speciesId)
             ? speciesEggMoves[species.speciesId].filter((_: any, em: number) => starterDataEntry.eggMoves & (1 << em))
             : [],
         );
         if (this.isPracticeMode() && practiceMoveData) {
-  this.starterMoveset = practiceMoveData.slice(0, 4) as StarterMoveset;
-} else {
-  this.starterMoveset = (moveData || (this.speciesStarterMoves.slice(0, 4) as StarterMoveset)).filter(m =>
-    availableStarterMoves.find(sm => sm === m),
-  ) as StarterMoveset;
-}
+          this.starterMoveset = practiceMoveData.slice(0, 4) as StarterMoveset;
+        } else {
+          this.starterMoveset = (moveData || (this.speciesStarterMoves.slice(0, 4) as StarterMoveset)).filter(m =>
+            availableStarterMoves.find(sm => sm === m),
+          ) as StarterMoveset;
+        }
         // Consolidate move data if it contains an incompatible move
         if (
-  !this.isPracticeMode()
-  && this.starterMoveset.length < 4
-  && this.starterMoveset.length < availableStarterMoves.length
-) {
+          !this.isPracticeMode()
+          && this.starterMoveset.length < 4
+          && this.starterMoveset.length < availableStarterMoves.length
+        ) {
           this.starterMoveset.push(
             ...availableStarterMoves
               .filter(sm => this.starterMoveset?.indexOf(sm) === -1)
@@ -4741,10 +4876,10 @@ const moveData: StarterMoveset | null = practiceMoveData
 
         // Remove duplicate moves
         if (!this.isPracticeMode()) {
-  this.starterMoveset = this.starterMoveset.filter((move, i) => {
-    return this.starterMoveset?.indexOf(move) === i;
-  }) as StarterMoveset;
-}
+          this.starterMoveset = this.starterMoveset.filter((move, i) => {
+            return this.starterMoveset?.indexOf(move) === i;
+          }) as StarterMoveset;
+        }
 
         const speciesForm = getPokemonSpeciesForm(species.speciesId, formIndex!); // TODO: is the bang correct?
         const formText = species.getFormNameToDisplay(formIndex);
@@ -4907,23 +5042,23 @@ const moveData: StarterMoveset | null = practiceMoveData
   }
 
   tryUpdateValue(add?: number, addingToParty?: boolean): boolean {
-  if (this.isPracticeMode()) {
-    const value = this.starterSpecies.length;
-    const valueLimit = PLAYER_PARTY_MAX_SIZE;
+    if (this.isPracticeMode()) {
+      const value = this.starterSpecies.length;
+      const valueLimit = PLAYER_PARTY_MAX_SIZE;
 
-    this.valueLimitLabel
-      .setText(`${value}/${valueLimit}`)
-      .setColor(getTextColor(TextStyle.TOOLTIP_CONTENT))
-      .setShadowColor(getTextColor(TextStyle.TOOLTIP_CONTENT, true));
+      this.valueLimitLabel
+        .setText(`${value}/${valueLimit}`)
+        .setColor(getTextColor(TextStyle.TOOLTIP_CONTENT))
+        .setShadowColor(getTextColor(TextStyle.TOOLTIP_CONTENT, true));
 
-    for (let s = 0; s < this.allSpecies.length; s++) {
-      this.starterContainers[s].icon.setAlpha(1);
+      for (let s = 0; s < this.allSpecies.length; s++) {
+        this.starterContainers[s].icon.setAlpha(1);
+      }
+
+      return true;
     }
 
-    return true;
-  }
-
-  const value = this.starterSpecies
+    const value = this.starterSpecies
       .map(s => s.generation)
       .reduce(
         (total: number, _gen: number, i: number) =>
@@ -5239,6 +5374,8 @@ const moveData: StarterMoveset | null = practiceMoveData
     this.genderLabel.setVisible(false);
     this.abilityIconElement.setVisible(false);
     this.abilityLabel.setVisible(false);
+    this.markIconElement.setVisible(false);
+    this.markLabel.setVisible(false);
     this.natureIconElement.setVisible(false);
     this.natureLabel.setVisible(false);
     this.teraIconElement.setVisible(false);
@@ -5298,169 +5435,165 @@ const moveData: StarterMoveset | null = practiceMoveData
     this.originalStarterPreferences = {};
   }
 
-private getUnlockedTeraTypesForSpecies(species: PokemonSpecies): PokemonType[] {
-  const keySpeciesId = this.getStarterKeySpeciesId(species);
+  private getUnlockedTeraTypesForSpecies(species: PokemonSpecies): PokemonType[] {
+    const keySpeciesId = this.getStarterKeySpeciesId(species);
 
-  let teraAttr = 0;
+    let teraAttr = 0;
 
-  for (const s of this.allSpecies) {
-    if (this.getStarterKeySpeciesId(s) !== keySpeciesId) {
-      continue;
+    for (const s of this.allSpecies) {
+      if (this.getStarterKeySpeciesId(s) !== keySpeciesId) {
+        continue;
+      }
+
+      teraAttr |= Number(globalScene.gameData.starterData[s.speciesId]?.teraTypeAttr ?? 0);
     }
 
-    teraAttr |= Number(globalScene.gameData.starterData[s.speciesId]?.teraTypeAttr ?? 0);
-  }
+    const ret: PokemonType[] = [];
 
-  const ret: PokemonType[] = [];
+    ret.push(species.type1);
 
-  ret.push(species.type1);
+    if (species.type2 != null && species.type2 !== PokemonType.UNKNOWN && species.type2 !== species.type1) {
+      ret.push(species.type2);
+    }
 
-  if (
-    species.type2 != null &&
-    species.type2 !== PokemonType.UNKNOWN &&
-    species.type2 !== species.type1
-  ) {
-    ret.push(species.type2);
-  }
-
-  for (let t = PokemonType.NORMAL; t <= PokemonType.STELLAR; t++) {
-    if (teraAttr & (1 << (t + 1))) {
-      const type = t as PokemonType;
-      if (!ret.includes(type)) {
-        ret.push(type);
+    for (let t = PokemonType.NORMAL; t <= PokemonType.STELLAR; t++) {
+      if (teraAttr & (1 << (t + 1))) {
+        const type = t as PokemonType;
+        if (!ret.includes(type)) {
+          ret.push(type);
+        }
       }
     }
+
+    return ret;
   }
 
-  return ret;
-}
+  private getStarterKeySpeciesId(species: PokemonSpecies): SpeciesId {
+    let speciesId = species.speciesId as SpeciesId;
 
-private getStarterKeySpeciesId(species: PokemonSpecies): SpeciesId {
-  let speciesId = species.speciesId as SpeciesId;
+    while (pokemonPrevolutions.hasOwnProperty(speciesId)) {
+      speciesId = pokemonPrevolutions[speciesId] as SpeciesId;
+    }
 
-  while (pokemonPrevolutions.hasOwnProperty(speciesId)) {
-    speciesId = pokemonPrevolutions[speciesId] as SpeciesId;
+    return speciesId;
   }
 
-  return speciesId;
-}
+  private showPracticeRentalTargetSelect(): void {
+    if (this.starters.length === 0) {
+      this.showText("먼저 플레이할 포켓몬을 선택하세요.");
+      this.selectingPracticeRentalTarget = false;
+      this.pendingPracticeRentalItemId = null;
+      return;
+    }
 
-private showPracticeRentalTargetSelect(): void {
-  if (!this.starters.length) {
-    this.showText("먼저 플레이할 포켓몬을 선택하세요.");
-    this.selectingPracticeRentalTarget = false;
-    this.pendingPracticeRentalItemId = null;
-    return;
+    this.showText(
+      this.starters
+        .map((starter, i) => {
+          const species = this.starterSpecies[i];
+          return `${i === this.practiceRentalTargetCursor ? "▶ " : "   "}${species?.name ?? "???"}`;
+        })
+        .join("\n"),
+    );
   }
 
-  this.showText(
-    this.starters
-      .map((starter, i) => {
-        const species = this.starterSpecies[i];
-        return `${i === this.practiceRentalTargetCursor ? "▶ " : "   "}${species?.name ?? "???"}`;
-      })
-      .join("\n")
-  );
-}
+  private openPracticeRentalItemMenu(): void {
+    this.getUi().setOverlayMode(UiMode.PRACTICE_RENTAL_MODIFIER_SELECT, {
+      onSelect: (itemId: string) => {
+        this.pendingPracticeRentalItemId = itemId;
+        this.selectingPracticeRentalTarget = true;
+        this.practiceRentalTargetCursor = 0;
 
-private openPracticeRentalItemMenu(): void {
-  this.getUi().setOverlayMode(UiMode.PRACTICE_RENTAL_MODIFIER_SELECT, {
-    onSelect: (itemId: string) => {
-      this.pendingPracticeRentalItemId = itemId;
-      this.selectingPracticeRentalTarget = true;
-      this.practiceRentalTargetCursor = 0;
+        this.showPracticeRentalTargetSelect();
+      },
+    });
+  }
 
-      this.showPracticeRentalTargetSelect();
-    },
-  });
-}
+  private processPracticeRentalTargetInput(button: Button): boolean {
+    if (!this.pendingPracticeRentalItemId) {
+      this.selectingPracticeRentalTarget = false;
+      return false;
+    }
 
-private processPracticeRentalTargetInput(button: Button): boolean {
-  if (!this.pendingPracticeRentalItemId) {
-    this.selectingPracticeRentalTarget = false;
+    switch (button) {
+      case Button.UP:
+        this.practiceRentalTargetCursor =
+          this.practiceRentalTargetCursor > 0 ? this.practiceRentalTargetCursor - 1 : this.starters.length - 1;
+
+        this.showPracticeRentalTargetSelect();
+        this.getUi().playSelect();
+        return true;
+
+      case Button.DOWN:
+        this.practiceRentalTargetCursor =
+          this.practiceRentalTargetCursor < this.starters.length - 1 ? this.practiceRentalTargetCursor + 1 : 0;
+
+        this.showPracticeRentalTargetSelect();
+        this.getUi().playSelect();
+        return true;
+
+      case Button.ACTION:
+      case Button.SUBMIT:
+        return this.confirmPracticeRentalTarget();
+
+      case Button.CANCEL:
+        this.selectingPracticeRentalTarget = false;
+        this.pendingPracticeRentalItemId = null;
+        this.showText("렌탈 도구 지급을 취소했습니다.");
+        this.getUi().playSelect();
+        return true;
+    }
+
     return false;
   }
 
-  switch (button) {
-    case Button.UP:
-      this.practiceRentalTargetCursor =
-        this.practiceRentalTargetCursor > 0
-          ? this.practiceRentalTargetCursor - 1
-          : this.starters.length - 1;
+  private confirmPracticeRentalTarget(): boolean {
+    const itemId = this.pendingPracticeRentalItemId;
+    const starter = this.starters[this.practiceRentalTargetCursor];
+    const species = this.starterSpecies[this.practiceRentalTargetCursor];
 
-      this.showPracticeRentalTargetSelect();
-      this.getUi().playSelect();
+    if (!itemId || !starter) {
+      this.getUi().playError();
       return true;
+    }
 
-    case Button.DOWN:
-      this.practiceRentalTargetCursor =
-        this.practiceRentalTargetCursor < this.starters.length - 1
-          ? this.practiceRentalTargetCursor + 1
-          : 0;
+    (starter as any).preRunItems ??= [];
+    (starter as any).preRunItems.push(itemId);
 
-      this.showPracticeRentalTargetSelect();
-      this.getUi().playSelect();
-      return true;
+    console.log("[PRACTICE_RENTAL_PRE_RUN_ITEM_ADDED]", {
+      itemId,
+      starter: species?.name,
+      preRunItems: (starter as any).preRunItems,
+    });
 
-    case Button.ACTION:
-    case Button.SUBMIT:
-      return this.confirmPracticeRentalTarget();
+    this.selectingPracticeRentalTarget = false;
+    this.pendingPracticeRentalItemId = null;
 
-    case Button.CANCEL:
-      this.selectingPracticeRentalTarget = false;
-      this.pendingPracticeRentalItemId = null;
-      this.showText("렌탈 도구 지급을 취소했습니다.");
-      this.getUi().playSelect();
-      return true;
-  }
+    this.showText(`${species?.name ?? "포켓몬"}에게 렌탈 도구를 지급 예정으로 등록했습니다.`);
+    this.getUi().playSelect();
 
-  return false;
-}
-
-private confirmPracticeRentalTarget(): boolean {
-  const itemId = this.pendingPracticeRentalItemId;
-  const starter = this.starters[this.practiceRentalTargetCursor];
-  const species = this.starterSpecies[this.practiceRentalTargetCursor];
-
-  if (!itemId || !starter) {
-    this.getUi().playError();
     return true;
   }
 
-  (starter as any).preRunItems ??= [];
-  (starter as any).preRunItems.push(itemId);
+  private getPracticeOverrideKey(speciesId: SpeciesId, formIndex: number): string {
+    return `${speciesId}_${formIndex}`;
+  }
 
-  console.log("[PRACTICE_RENTAL_PRE_RUN_ITEM_ADDED]", {
-    itemId,
-    starter: species?.name,
-    preRunItems: (starter as any).preRunItems,
-  });
-
-  this.selectingPracticeRentalTarget = false;
-  this.pendingPracticeRentalItemId = null;
-
-  this.showText(`${species?.name ?? "포켓몬"}에게 렌탈 도구를 지급 예정으로 등록했습니다.`);
-  this.getUi().playSelect();
-
-  return true;
-}
-
-private getPracticeOverrideKey(
-  speciesId: SpeciesId,
-  formIndex: number,
-): string {
-  return `${speciesId}_${formIndex}`;
-}
-
-private getPracticeMoveKey(speciesId: SpeciesId, formIndex: number): string {
-  return `${speciesId}:${formIndex}`;
-}
+  private getPracticeMoveKey(speciesId: SpeciesId, formIndex: number): string {
+    return `${speciesId}:${formIndex}`;
+  }
 
   /**
    * Truncate the Pokémon name so it won't overlap into the starters.
    */
-  private truncateName() {
+  private truncateName(hasMark = false) {
     const name = this.pokemonNameText.text;
-    this.pokemonNameText.setText(truncateString(name, 15));
+
+    if (hasMark) {
+      this.pokemonNameText.setFontSize("64px");
+      this.pokemonNameText.setText(truncateString(name, 24));
+    } else {
+      this.pokemonNameText.setFontSize("82px");
+      this.pokemonNameText.setText(truncateString(name, 15));
+    }
   }
 }

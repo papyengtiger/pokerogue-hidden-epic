@@ -1,6 +1,8 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import { TYPE_PRIORITY_BERRIES } from "#data/berry";
+import { BerryType } from "#enums/berry-type";
 import { CommonAnim } from "#enums/move-anims-common";
 import { BerryUsedEvent } from "#events/battle-scene";
 import type { Pokemon } from "#field/pokemon";
@@ -8,7 +10,6 @@ import { BerryModifier, PreventBerryUseItemModifier } from "#modifiers/modifier"
 import { FieldPhase } from "#phases/field-phase";
 import { BooleanHolder } from "#utils/common";
 import i18next from "i18next";
-import { BerryType } from "#enums/berry-type";
 
 export class BerryPhase extends FieldPhase {
   public readonly phaseName = "BerryPhase";
@@ -33,9 +34,15 @@ export class BerryPhase extends FieldPhase {
     // ---- (A) "먹을 수 있는 열매"가 있는지 먼저 확인 (shouldApply 기준) ----
     const mods = globalScene
       .getModifiers(BerryModifier, pokemon.isPlayer())
-      .filter((m: any) => m instanceof BerryModifier && m.shouldApply(pokemon)) as BerryModifier[];
+      .filter(
+        (m: any) =>
+          m instanceof BerryModifier
+          && !TYPE_PRIORITY_BERRIES.has(m.berryType)
+          && m.berryType !== BerryType.CUSTAP
+          && m.shouldApply(pokemon),
+      ) as BerryModifier[];
 
-    if (!mods.length) {
+    if (mods.length === 0) {
       // ✅ 즉발 모드 플래그 정리
       delete td.battleStartImmediateBerryMode;
       delete td.battleStartImmediateBerryType;
@@ -89,8 +96,7 @@ export class BerryPhase extends FieldPhase {
 
       // ✅ 배틀당 "타입별 1회" 기록
       const bd: any = (pokemon as any).battleData ?? ((pokemon as any).battleData = {});
-      const used: Record<number, boolean> =
-        bd.immediateStartBerryUsed ?? (bd.immediateStartBerryUsed = {});
+      const used: Record<number, boolean> = bd.immediateStartBerryUsed ?? (bd.immediateStartBerryUsed = {});
 
       // 이미 이 타입 즉발을 배틀에서 썼으면 종료(애니메이션도 안 함)
       if (used[immediateType]) {

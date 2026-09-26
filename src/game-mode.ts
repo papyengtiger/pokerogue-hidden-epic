@@ -12,6 +12,7 @@ import {
 import { parseDailySeed } from "#data/daily-seed/daily-seed-utils";
 import { allSpecies } from "#data/data-lists";
 import type { PokemonSpecies } from "#data/pokemon-species";
+import { monthlyFixedBattles } from "#data/trainers/fixed-battle-configs";
 import { BiomeId } from "#enums/biome-id";
 import { ChallengeType } from "#enums/challenge-type";
 import { Challenges } from "#enums/challenges";
@@ -19,7 +20,6 @@ import { GameModes } from "#enums/game-modes";
 import { SpeciesId } from "#enums/species-id";
 import type { Arena } from "#field/arena";
 import { classicFixedBattles, type FixedBattleConfigs } from "#trainers/fixed-battle-configs";
-import type { CustomDailyRunConfig } from "#types/daily-run";
 import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder, randSeedInt, randSeedItem } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
@@ -121,7 +121,7 @@ export class GameMode implements GameModeConfig {
   /**
    * Helper function to get starting level for game mode.
    * @returns either:
-   * - starting level override from overrides.ts
+   * - starting level override from Overrides.ts
    * - 20 for Daily Runs
    * - 5 for all other modes
    */
@@ -132,6 +132,10 @@ export class GameMode implements GameModeConfig {
     switch (this.modeId) {
       case GameModes.DAILY:
         return 20;
+      case GameModes.WEEKLY:
+        return 50;
+      case GameModes.MONTHLY:
+        return 100;
       case GameModes.PRACTICE:
         return 100;
       default:
@@ -141,7 +145,7 @@ export class GameMode implements GameModeConfig {
 
   /**
    * @returns either:
-   * - override from overrides.ts
+   * - override from Overrides.ts
    * - 1000
    */
   getStartingMoney(): number {
@@ -156,9 +160,19 @@ export class GameMode implements GameModeConfig {
         if (dailyStartingMoney != null) {
           return dailyStartingMoney;
         }
+
+        return 9999999;
       }
+
+      case GameModes.WEEKLY:
+        return 9999999;
+
+      case GameModes.MONTHLY:
+        return 9999999;
+
       case GameModes.PRACTICE:
         return 9999999;
+
       default:
         return 1000;
     }
@@ -166,7 +180,7 @@ export class GameMode implements GameModeConfig {
 
   /**
    * @returns either:
-   * - override from overrides.ts
+   * - override from Overrides.ts
    * - random biome for Daily mode
    * - Town
    */
@@ -177,6 +191,8 @@ export class GameMode implements GameModeConfig {
 
     switch (this.modeId) {
       case GameModes.DAILY:
+      case GameModes.WEEKLY:
+      case GameModes.MONTHLY:
         return getDailyStartingBiome();
       case GameModes.PRACTICE:
         return BiomeId.TUTORIAL_ROOM;
@@ -207,42 +223,93 @@ export class GameMode implements GameModeConfig {
     if (this.isDaily) {
       return waveIndex % 10 === 5 || (!(waveIndex % 10) && waveIndex > 10 && !this.isWaveFinal(waveIndex));
     }
+
+    // =========================
+    // 주간 모드
+    // =========================
+    if (this.modeId === GameModes.WEEKLY) {
+      const weeklyGymWaves = [10, 30, 50, 70, 90, 110, 130, 149];
+
+      // 관장층은 무조건 트레이너전
+      if (weeklyGymWaves.includes(waveIndex)) {
+        return true;
+      }
+
+      // 일반 트레이너는 5층 단위
+      return waveIndex % 10 === 5 && !this.isWaveFinal(waveIndex);
+    }
+
+    // =========================
+    // 월간 모드
+    // =========================
+    if (this.modeId === GameModes.MONTHLY) {
+      const monthlyGymWaves = [30, 50, 70, 90, 110, 130, 150, 170];
+
+      const monthlyEliteFourWaves = [192, 194, 196, 198];
+
+      const monthlyChampionWave = 199;
+
+      // 관장 / 사천왕 / 챔피언은 무조건 트레이너전
+      if (
+        monthlyGymWaves.includes(waveIndex)
+        || monthlyEliteFourWaves.includes(waveIndex)
+        || waveIndex === monthlyChampionWave
+      ) {
+        return true;
+      }
+
+      // 200층은 야생 최종보스
+      if (this.isWaveFinal(waveIndex)) {
+        return false;
+      }
+
+      // 일반 트레이너는 190층 이전까지만 5층 단위
+      return waveIndex % 10 === 5 && waveIndex < 190;
+    }
+
+    // =========================
+    // 기존 일반 모드 로직
+    // =========================
     if (waveIndex % 30 === (globalScene.offsetGym ? 0 : 20) && !this.isWaveFinal(waveIndex)) {
       return true;
     }
+
     if (waveIndex % 10 !== 1 && waveIndex % 10) {
-      /**
-       * Do not check X1 floors since there's a bug that stops trainer sprites from appearing
-       * after a X0 full party heal, this also allows for a smoother biome transition for general gameplay feel
-       */
       const trainerChance = arena.getTrainerChance();
       let allowTrainerBattle = true;
+
       if (trainerChance) {
         const waveBase = Math.floor(waveIndex / 10) * 10;
-        // Stop generic trainers from spawning in within 2 waves of a fixed trainer battle
+
         for (let w = Math.max(waveIndex - 2, waveBase + 2); w <= Math.min(waveIndex + 2, waveBase + 9); w++) {
           if (w === waveIndex) {
             continue;
           }
+
           if (w % 30 === (globalScene.offsetGym ? 0 : 20) || this.isFixedBattle(w)) {
             allowTrainerBattle = false;
             break;
           }
+
           if (w < waveIndex) {
             globalScene.executeWithSeedOffset(() => {
               const waveTrainerChance = arena.getTrainerChance();
+
               if (!randSeedInt(waveTrainerChance)) {
                 allowTrainerBattle = false;
               }
             }, w);
+
             if (!allowTrainerBattle) {
               break;
             }
           }
         }
       }
+
       return Boolean(allowTrainerBattle && trainerChance && !randSeedInt(trainerChance));
     }
+
     return false;
   }
 
@@ -250,6 +317,22 @@ export class GameMode implements GameModeConfig {
     switch (this.modeId) {
       case GameModes.DAILY:
         return waveIndex > 10 && waveIndex < 50 && !(waveIndex % 10);
+
+      case GameModes.WEEKLY:
+        return [10, 30, 50, 70, 90, 110, 130, 149].includes(waveIndex);
+
+      case GameModes.MONTHLY:
+        return [
+          // 월간 관장 8명
+          30, 50, 70, 90, 110, 130, 150, 170,
+
+          // 사천왕 4명
+          192, 194, 196, 198,
+
+          // 챔피언
+          199,
+        ].includes(waveIndex);
+
       default:
         return (
           waveIndex % 30 === (offsetGym ? 0 : 20)
@@ -259,24 +342,99 @@ export class GameMode implements GameModeConfig {
   }
 
   getOverrideSpecies(waveIndex: number): PokemonSpecies | null {
-    if (this.isDaily && this.isWaveFinal(waveIndex)) {
+    // ================================
+    // 데일리 최종보스
+    // ================================
+    if (this.modeId === GameModes.DAILY && this.isWaveFinal(waveIndex)) {
       const eventBoss = getDailyEventSeedBoss();
+
       if (eventBoss?.speciesId != null) {
-        // Cannot set form index here, it will be overriden when adding it as enemy pokemon.
         return getPokemonSpecies(eventBoss.speciesId);
       }
 
-      const allFinalBossSpecies = allSpecies.filter(
+      const dailyFinalBosses = allSpecies.filter(
         s =>
           (s.subLegendary || s.legendary || s.mythical)
-          && s.baseTotal >= 600
+          && s.baseTotal >= 580
           && s.speciesId !== SpeciesId.ETERNATUS
           && s.speciesId !== SpeciesId.ARCEUS,
       );
-      return randSeedItem(allFinalBossSpecies);
+
+      return randSeedItem(dailyFinalBosses);
     }
 
-    return getDailyForcedWaveSpecies(waveIndex);
+    // ================================
+    // 주간 150층 최종보스
+    // - 무한다이노 / 아르세우스 참전
+    // ================================
+    if (this.modeId === GameModes.WEEKLY && this.isWaveFinal(waveIndex)) {
+      const weeklyFinalBosses = allSpecies.filter(s => (s.legendary || s.mythical) && s.baseTotal >= 580);
+
+      return randSeedItem(weeklyFinalBosses);
+    }
+
+    // ================================
+    // 월간 200층 최종보스
+    //
+    // 여기는 "강화폼의 기본 종"을 뽑습니다.
+    // 실제 강화폼 변경은 EncounterPhase에서 합니다.
+    //
+    // 후보는 이후 계속 추가 가능
+    // ================================
+    if (this.modeId === GameModes.MONTHLY && this.isWaveFinal(waveIndex)) {
+      const monthlyFinalBossIds: SpeciesId[] = [
+        SpeciesId.MEWTWO,
+        SpeciesId.LATIAS,
+        SpeciesId.LATIOS,
+        SpeciesId.KYOGRE, // → 원시가이오가
+        SpeciesId.GROUDON,
+        SpeciesId.RAYQUAZA,
+        SpeciesId.DEOXYS,
+        SpeciesId.DIALGA, // → 오리진폼
+        SpeciesId.PALKIA,
+        SpeciesId.HEATRAN,
+        SpeciesId.GIRATINA,
+        SpeciesId.DARKRAI,
+        SpeciesId.SHAYMIN,
+        SpeciesId.ARCEUS,
+        SpeciesId.TORNADUS,
+        SpeciesId.THUNDURUS,
+        SpeciesId.LANDORUS,
+        SpeciesId.KYUREM,
+        SpeciesId.KELDEO,
+        SpeciesId.MELOETTA,
+        SpeciesId.GENESECT,
+        SpeciesId.XERNEAS,
+        SpeciesId.ZYGARDE,
+        SpeciesId.DIANCIE,
+        SpeciesId.HOOPA,
+        SpeciesId.NECROZMA,
+        SpeciesId.MAGEARNA,
+        SpeciesId.ZERAORA,
+        SpeciesId.MELMETAL,
+        SpeciesId.ZACIAN,
+        SpeciesId.ZAMAZENTA,
+        SpeciesId.ETERNATUS,
+        SpeciesId.URSHIFU,
+        SpeciesId.ZARUDE,
+        SpeciesId.CALYREX, // → 흑마렉스
+        SpeciesId.ENAMORUS,
+        SpeciesId.OGERPON,
+        SpeciesId.TERAPAGOS,
+        SpeciesId.BATTLE_BOND_GRENINJA,
+        SpeciesId.ETERNAL_FLOETTE,
+        SpeciesId.BLOODMOON_URSALUNA,
+      ];
+
+      return getPokemonSpecies(randSeedItem(monthlyFinalBossIds));
+    }
+
+    // 데일리 강제 웨이브는 기존대로 유지
+    if (this.modeId === GameModes.DAILY) {
+      return getDailyForcedWaveSpecies(waveIndex);
+    }
+
+    return null;
   }
 
   /**
@@ -289,12 +447,15 @@ export class GameMode implements GameModeConfig {
     switch (modeId) {
       case GameModes.CLASSIC:
       case GameModes.CHALLENGE:
+      case GameModes.MONTHLY:
         return waveIndex === 200;
       case GameModes.ENDLESS:
       case GameModes.SPLICED_ENDLESS:
         return !(waveIndex % 250);
       case GameModes.DAILY:
         return waveIndex === 50;
+      case GameModes.WEEKLY:
+        return waveIndex === 150;
     }
   }
 
@@ -379,10 +540,15 @@ export class GameMode implements GameModeConfig {
   getClearScoreBonus(): number {
     switch (this.modeId) {
       case GameModes.CLASSIC:
-      case GameModes.CHALLENGE:
         return 5000;
       case GameModes.DAILY:
-        return 2500;
+        return 7500;
+      case GameModes.CHALLENGE:
+        return 5000;
+      case GameModes.WEEKLY:
+        return 10000;
+      case GameModes.MONTHLY:
+        return 50000;
       default:
         return 0;
     }
@@ -394,6 +560,10 @@ export class GameMode implements GameModeConfig {
       case GameModes.CHALLENGE:
       case GameModes.DAILY:
         return !isBoss ? 18 : 6;
+      case GameModes.WEEKLY:
+        return !isBoss ? 16 : 5;
+      case GameModes.MONTHLY:
+        return !isBoss ? 12 : 3;
       case GameModes.ENDLESS:
       case GameModes.SPLICED_ENDLESS:
         return !isBoss ? 12 : 4;
@@ -410,6 +580,10 @@ export class GameMode implements GameModeConfig {
         return i18next.t("gameMode:endlessSpliced");
       case GameModes.DAILY:
         return i18next.t("gameMode:dailyRun");
+      case GameModes.WEEKLY:
+        return i18next.t("gameMode:weeklyRun");
+      case GameModes.MONTHLY:
+        return i18next.t("gameMode:monthlyRun");
       case GameModes.CHALLENGE:
         return i18next.t("gameMode:challenge");
       case GameModes.PRACTICE:
@@ -453,6 +627,10 @@ export class GameMode implements GameModeConfig {
         return i18next.t("gameMode:endlessSpliced");
       case GameModes.DAILY:
         return i18next.t("gameMode:dailyRun");
+      case GameModes.WEEKLY:
+        return i18next.t("gameMode:weeklyRun");
+      case GameModes.MONTHLY:
+        return i18next.t("gameMode:monthlyRun");
       case GameModes.CHALLENGE:
         return i18next.t("gameMode:challenge");
     }
@@ -486,6 +664,26 @@ export function getGameMode(gameMode: GameModes): GameMode {
         hasTrainers: true,
         hasNoShop: true,
       });
+    case GameModes.WEEKLY:
+      return new GameMode(GameModes.WEEKLY, {
+        isDaily: false,
+        hasTrainers: true,
+        hasNoShop: false,
+        hasRandomBosses: true,
+        hasMysteryEncounters: false,
+      });
+    case GameModes.MONTHLY:
+      return new GameMode(
+        GameModes.MONTHLY,
+        {
+          isDaily: false,
+          hasTrainers: true,
+          hasNoShop: false,
+          hasRandomBosses: true,
+          hasMysteryEncounters: false,
+        },
+        monthlyFixedBattles,
+      );
     case GameModes.CHALLENGE:
       return new GameMode(
         GameModes.CHALLENGE,
@@ -498,12 +696,10 @@ export function getGameMode(gameMode: GameModes): GameMode {
         classicFixedBattles,
       );
     case GameModes.PRACTICE:
-      return new GameMode(
-        GameModes.PRACTICE,
-        {
-          hasNoShop:true,
-          hasRandomBiomes:false,
-          hasTrainers:false
-  });
+      return new GameMode(GameModes.PRACTICE, {
+        hasNoShop: true,
+        hasRandomBiomes: false,
+        hasTrainers: false,
+      });
   }
 }

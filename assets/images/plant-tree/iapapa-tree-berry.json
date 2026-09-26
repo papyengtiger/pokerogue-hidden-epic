@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "iapapa-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 14,
+				"h": 42
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 13,
+						"w": 12,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 12,
+						"h": 19
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 13,
+						"w": 12,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 22,
+						"w": 12,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2fe2e4e587f87facff1a33d2417bba1d:b7f69495d949891e56567d7f9f8f091e:2cd6a6d64ea5f290876d0176dd420325$"
+	}
+}

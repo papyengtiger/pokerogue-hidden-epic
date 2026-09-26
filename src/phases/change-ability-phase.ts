@@ -1,22 +1,21 @@
-import { globalScene } from "#app/global-scene";
 import type { Ability } from "#app/data/abilities/ability-class";
 import { allAbilities } from "#app/data/data-lists";
-import type { PlayerPokemon } from "#app/field/pokemon";
-import { getPokemonNameWithAffix } from "#app/messages";
-import { UiMode } from "#enums/ui-mode";
-import i18next from "i18next";
 import type Pokemon from "#app/field/pokemon";
+import type { PlayerPokemon } from "#app/field/pokemon";
+import { globalScene } from "#app/global-scene";
+import { getPokemonNameWithAffix } from "#app/messages";
 import { ChangeAbilityModifier, RegisterAbilityModifier } from "#app/modifier/modifier";
-import { applyAbAttrs } from "#abilities/apply-ab-attrs";
-import type { OptionSelectConfig, OptionSelectItem } from "#app/ui/abstact-option-select-ui-handler";
+import type { Phase } from "#app/phase";
 import { PlayerPartyMemberPokemonPhase } from "#app/phases/player-party-member-pokemon-phase";
-import { TitleUiHandler } from "#app/ui/handlers/title-ui-handler";
+import { SelectModifierPhase } from "#app/phases/select-modifier-phase";
+import type { OptionSelectConfig, OptionSelectItem } from "#app/ui/abstact-option-select-ui-handler";
+import { BallUiHandler } from "#app/ui/handlers/ball-ui-handler";
 import { CommandUiHandler } from "#app/ui/handlers/command-ui-handler";
 import { FightUiHandler } from "#app/ui/handlers/fight-ui-handler";
-import { BallUiHandler } from "#app/ui/handlers/ball-ui-handler";
-import { selectPokemonForOption } from "#app/data/mystery-encounters/utils/encounter-phase-utils";
-import { SelectModifierPhase } from "#app/phases/select-modifier-phase";
+import { TitleUiHandler } from "#app/ui/handlers/title-ui-handler";
 import { AbilityAttr } from "#enums/ability-attr";
+import { UiMode } from "#enums/ui-mode";
+import i18next from "i18next";
 
 export enum ChangeAbilityType {
   /** For changing a Pokémon's ability using an Ability Capsule */
@@ -71,36 +70,6 @@ export class ChangeAbilityPhase extends PlayerPartyMemberPokemonPhase {
     this.showAbilitySelectionUI();
   }
 
-  async returnToStoreScreen() {
-    const confirmed = await globalScene.ui.showTextPromise(i18next.t("battle:confirmStopChangingAbility"));
-
-    if (confirmed) {
-      const newPhase = new SelectModifierPhase();
-      globalScene.shiftPhase(newPhase);
-      await globalScene.ui.showTextPromise(i18next.t("battle:returningToModifierSelect"), undefined, true);
-    } else {
-      const reverted = await globalScene.ui.revertMode();
-      if (!reverted) {
-        console.warn("이전 UI 모드 복원 실패");
-      }
-
-      if (this.previousPhase) {
-        globalScene.shiftPhase(this.previousPhase);
-
-        if (this.previousPhase instanceof SelectModifierPhase) {
-          this.previousPhase.showAbilitySelectionUI();
-          globalScene.ui.setMode(
-            UiMode.MODIFIER_SELECT,
-            this.previousPhase.isPlayer(),
-            this.previousPhase.typeOptions,
-            this.previousPhase.modifierSelectCallback,
-            this.previousPhase.getRerollCost(globalScene.lockModifierTiers),
-          );
-        }
-      }
-    }
-  }
-
   public async showAbilitySelectionScreen(pokemon: Pokemon): Promise<void> {
     console.log("[AbilityUI] showAbilitySelectionScreen 호출됨");
 
@@ -150,12 +119,18 @@ export class ChangeAbilityPhase extends PlayerPartyMemberPokemonPhase {
 
     for (let i = 0; i < abilityCount; i++) {
       const abilityId = speciesForm.getAbility(i);
-      if (!abilityId) continue;
+      if (!abilityId) {
+        continue;
+      }
 
       const ability = allAbilities[abilityId];
-      if (!ability) continue;
+      if (!ability) {
+        continue;
+      }
 
-      if (ability.name === pokemon.getAbility()?.name) continue;
+      if (ability.name === pokemon.getAbility()?.name) {
+        continue;
+      }
 
       const isHidden = abilityId === speciesForm.hiddenAbility;
       const abilityBit = isHidden ? AbilityAttr.ABILITY_HIDDEN : 1 << i;
@@ -179,37 +154,17 @@ export class ChangeAbilityPhase extends PlayerPartyMemberPokemonPhase {
 
     if (options.length === 0) {
       globalScene.ui.showTextPromise(i18next.t("battle:noOtherAbilities")).then(() => {
-        this.returnToStoreScreen();
+        this.returnToPreviousScreen();
       });
       return;
     }
 
     options.push({
       label: i18next.t("menu:cancel"),
-      handler: async () => {
+      handler: () => {
         globalScene.ui.clearText();
 
-        await globalScene.ui.showTextPromise(i18next.t("battle:cancelAbilityChange"), undefined, false);
-
-        globalScene.ui.setModeWithoutClear(
-          UiMode.CONFIRM,
-          () => {
-            selectPokemonForOption(
-              async (selectedPokemon: PlayerPokemon) => {
-                await this.showAbilitySelectionScreen(selectedPokemon);
-                this.returnToStoreScreen();
-              },
-              () => {
-                globalScene.ui.setMode(UiMode.CONFIRM);
-                this.end();
-              },
-            );
-          },
-          () => {
-            globalScene.ui.setMode(this.messageMode);
-            this.showAbilitySelectionUI();
-          },
-        );
+        this.returnToPreviousScreen();
 
         return true;
       },
@@ -224,6 +179,38 @@ export class ChangeAbilityPhase extends PlayerPartyMemberPokemonPhase {
     };
 
     globalScene.ui.setModeWithoutClear(UiMode.OPTION_SELECT, config, null, true);
+  }
+
+  private returnToPreviousScreen(): void {
+    console.log("[AbilityUI] 이전 화면으로 복귀");
+
+    // 현재 OPTION_SELECT 종료
+    globalScene.ui.clearText();
+
+    if (this.previousPhase instanceof SelectModifierPhase) {
+      // 현재 ChangeAbilityPhase만 끝낸 뒤
+      // 원래 아이템/보상 선택 화면으로 복귀
+      globalScene.ui.setMode(
+        UiMode.MODIFIER_SELECT,
+        this.previousPhase.isPlayer(),
+        this.previousPhase.typeOptions,
+        this.previousPhase.modifierSelectCallback,
+        this.previousPhase.getRerollCost(globalScene.lockModifierTiers),
+      );
+
+      this.end();
+      return;
+    }
+
+    // previousPhase가 따로 없다면 UI 스택으로 복귀
+    globalScene.ui.revertMode().then(reverted => {
+      if (!reverted) {
+        console.warn("[AbilityUI] 이전 UI 모드 복원 실패");
+        globalScene.ui.setMode(UiMode.MESSAGE);
+      }
+
+      this.end();
+    });
   }
 
   private async attemptUnlockAbility(speciesId: string, abilityBit: number): Promise<boolean> {

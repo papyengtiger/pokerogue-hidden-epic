@@ -1,19 +1,17 @@
-import { VoucherType } from "#system/voucher";
-import { ModifierTier } from "#enums/modifier-tier";
-import {
-  PokemonHeldItemModifier,
-  PersistentModifier
-} from "#modifiers/modifier";
-import { ModifierTypeOption, type WeightedModifierType, type RogueShopPurchaseMode, ModifierTypeGenerator, BaseStatBoosterModifierType, AttackTypeBoosterModifierType, TypeSpecificMoveBoosterModifierType, PokemonHeldItemModifierType, ShopPersistentModifierType, PersistentModifierType } from "#modifiers/modifier-type";
-import { modifierPool, wildModifierPool, dailyStarterModifierPool } from "#modifiers/modifier-pools";
-import type { RogueShopListing } from "#ui/rogue-shop-ui-handler";
 import { modifierTypes } from "#data/data-lists";
-import type { PermanentStat, TempBattleStat } from "#enums/stat";
-import { getStatKey, Stat, TEMP_BATTLE_STATS } from "#enums/stat";
-import { PokemonType } from "#enums/pokemon-type";
-import { TYPE_BOOST_ITEM_BOOST_PERCENT } from "#app/constants";
-import { getBerryEffectDescription, getBerryName } from "#data/berry";
 import { BerryType } from "#enums/berry-type";
+import { ModifierTier } from "#enums/modifier-tier";
+import { PokemonType } from "#enums/pokemon-type";
+import { Stat } from "#enums/stat";
+import { dailyStarterModifierPool, modifierPool, wildModifierPool } from "#modifiers/modifier-pools";
+import {
+  type ModifierTypeGenerator,
+  ModifierTypeOption,
+  type RogueShopPurchaseMode,
+  type WeightedModifierType,
+} from "#modifiers/modifier-type";
+import { VoucherType } from "#system/voucher";
+import type { RogueShopListing } from "#ui/rogue-shop-ui-handler";
 
 export function getVoucherShopTier(v: VoucherType): ModifierTier {
   switch (v) {
@@ -91,13 +89,45 @@ function buildVoucherShopListings(): RogueShopListing[] {
     const func = (modifierTypes as Record<string, () => any>)[entry.key];
     const type = func().withIdFromFunc(func);
 
-    return createListing(
-      entry.key,
-      entry.tier,
-      new ModifierTypeOption(type, 1, 0),
-      entry.purchaseMode,
-      99,
-    );
+    return createListing(entry.key, entry.tier, new ModifierTypeOption(type, 1, 0), entry.purchaseMode, 99);
+  });
+}
+
+function buildPokeballListings(): RogueShopListing[] {
+  const entries = [
+    {
+      key: "POKEBALL",
+      tier: ModifierTier.COMMON,
+    },
+    {
+      key: "GREAT_BALL",
+      tier: ModifierTier.GREAT,
+    },
+    {
+      key: "ULTRA_BALL",
+      tier: ModifierTier.ULTRA,
+    },
+    {
+      key: "ROGUE_BALL",
+      tier: ModifierTier.ROGUE,
+    },
+    {
+      key: "MASTER_BALL",
+      tier: ModifierTier.MASTER,
+    },
+    {
+      key: "QUICK_BALL",
+      tier: ModifierTier.ROGUE,
+    },
+  ] as const;
+
+  return entries.map(entry => {
+    const func = (modifierTypes as Record<string, () => any>)[entry.key];
+
+    const type = func().withIdFromFunc(func);
+    type.setTier(entry.tier);
+
+    return createListing(entry.key, entry.tier, new ModifierTypeOption(type, 1, 0), "INSTANT", 99);
   });
 }
 
@@ -194,7 +224,7 @@ function expandGeneratorForShop(type: ModifierType): ModifierType[] {
     }
 
     default:
-       return [type];
+      return [type];
   }
 }
 
@@ -220,12 +250,16 @@ function buildListingsFromPool(
       const expandedTypes = expandGeneratorForShop(entry.modifierType);
 
       for (const type of expandedTypes) {
-  const id = type.id;
-  if (!id) continue;
+        const id = type.id;
+        if (!id) {
+          continue;
+        }
 
-  if (!shouldShowInShop(type)) continue;
+        if (!shouldShowInShop(type)) {
+          continue;
+        }
 
-  listings.push(
+        listings.push(
           createListing(
             id,
             tier,
@@ -259,6 +293,7 @@ function dedupeListings(listings: RogueShopListing[]): RogueShopListing[] {
 export function buildRogueShopListings(): RogueShopListing[] {
   const voucherListings = buildVoucherShopListings();
   const berryListings = buildBerryListings();
+  const pokeballListings = buildPokeballListings();
 
   const wildListings = buildListingsFromPool(wildModifierPool);
   const dailyStarterListings = buildListingsFromPool(dailyStarterModifierPool);
@@ -266,6 +301,7 @@ export function buildRogueShopListings(): RogueShopListing[] {
 
   return dedupeListings([
     ...voucherListings,
+    ...pokeballListings,
     ...berryListings,
     ...wildListings,
     ...dailyStarterListings,

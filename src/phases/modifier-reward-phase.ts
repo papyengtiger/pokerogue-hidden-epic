@@ -27,8 +27,16 @@ export class ModifierRewardPhase extends BattlePhase {
   doReward(): Promise<void> {
     return new Promise<void>(resolve => {
       const newModifier = this.modifierType.newModifier();
+
       globalScene.addModifier(newModifier);
+
+      // 런 아이템 기록
+      if (this.phaseName !== "GameOverModifierRewardPhase" && newModifier?.type?.id) {
+        globalScene.gameData.addRunStorageItem(newModifier.type.id, (newModifier as any).stackCount ?? 1);
+      }
+
       globalScene.playSound("item_fanfare");
+
       globalScene.ui.showText(
         i18next.t("battle:rewardGain", {
           modifierName: newModifier?.type.name,

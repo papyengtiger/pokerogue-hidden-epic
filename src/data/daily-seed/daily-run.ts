@@ -85,14 +85,15 @@ export function getDailyStartingBiome(): BiomeId {
     return eventBiome;
   }
 
-  // TODO: use weighted RNG utility function `weightedPick` from `src/utils/random.ts`
-  const biomes = Object.values(BiomeId);
+  // END와 연습센터는 시작 바이옴 후보에서 제외
+  const biomes = Object.values(BiomeId).filter(biome => biome !== BiomeId.END && biome !== BiomeId.TUTORIAL_ROOM);
+
   let totalWeight = 0;
   const biomeThresholds: number[] = [];
+
   for (const biome of biomes) {
     const weight = dailyBiomeWeights[biome];
 
-    // Keep track of the total weight & each biome's cumulative weight
     totalWeight += weight;
     biomeThresholds.push(totalWeight);
   }

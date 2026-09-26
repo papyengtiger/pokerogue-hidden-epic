@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "rowap-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 33,
+				"h": 15
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 19,
+						"w": 14,
+						"h": 13
+					},
+					"frame": {
+						"x": 18,
+						"y": 1,
+						"w": 14,
+						"h": 13
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 19,
+						"w": 15,
+						"h": 13
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 15,
+						"h": 13
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:62e4dffb0e3daee5973d889fd9438f4e:020a41c60bf07baf04c75e4ceff59bc2:221aee4613c65a6a026ef5913dbd734a$"
+	}
+}

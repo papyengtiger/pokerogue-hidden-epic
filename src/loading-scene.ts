@@ -2,6 +2,7 @@ import { timedEventManager } from "#app/global-event-manager";
 import { initializeGame } from "#app/init/init";
 import { SceneBase } from "#app/scene-base";
 import { isMobile } from "#app/touch-controls";
+import { BerryType } from "#enums/berry-type";
 import { BiomeId } from "#enums/biome-id";
 import { GachaType } from "#enums/gacha-types";
 import { getBiomeHasProps } from "#field/arena";
@@ -68,6 +69,7 @@ export class LoadingScene extends SceneBase {
     this.loadImage("overlay_exp", "ui");
     this.loadImage("icon_owned", "ui");
     this.loadImage("icon_egg_move", "ui");
+    this.loadImage("icon_mark", "ui");
     this.loadImage("ability_bar_left", "ui");
     this.loadImage("ability_bar_right", "ui");
     this.loadImage("bgm_bar", "ui");
@@ -97,6 +99,7 @@ export class LoadingScene extends SceneBase {
     this.loadImage("type_tera", "ui");
     this.loadAtlas("type_bgs", "ui");
     this.loadAtlas("button_tera", "ui");
+    this.loadImage("button_rotom_dex", "ui");
     this.loadImage("common_egg", "ui");
     this.loadImage("normal_memory", "ui");
 
@@ -343,6 +346,107 @@ export class LoadingScene extends SceneBase {
       }
     }
 
+    this.loadImage("berry_planter_bg", "berrypots", "bg_pot.png");
+
+    this.loadImage("berry_planter_pot", "berrypots", "pot.png");
+
+    this.loadImage("berry_planter_pot_space", "berrypots", "pot_space.png");
+
+    // 나무열매 성장 스프라이트
+    // 심기/새싹 단계는 모든 나무열매가 공용
+    this.loadAtlas("berry_tree_seed", "plant-tree", "all-tree-seed");
+
+    this.loadAtlas("berry_tree_sprout", "plant-tree", "all-tree-sprout");
+
+    // taller / bloom / berry 단계는
+    // 파일명 앞부분만 나무열매 이름으로 바뀌는 구조.
+    // 예: aguav-tree-taller.png / aguav-tree-bloom.png / aguav-tree-berry.png
+    const berryTreeStages = ["taller", "bloom", "berry"] as const;
+
+    for (const berryType of getEnumValues(BerryType)) {
+      const berryKey = BerryType[berryType].toLowerCase();
+
+      for (const stage of berryTreeStages) {
+        this.loadAtlas(`berry_tree_${berryKey}_${stage}`, "plant-tree", `${berryKey}-tree-${stage}`);
+      }
+    }
+
+    this.load.spritesheet("apricorn_tree_black", "images/plant-tree/berry-tree-black-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_blue", "images/plant-tree/berry-tree-blue-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_green", "images/plant-tree/berry-tree-green-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_hisui", "images/plant-tree/berry-tree-hisui-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_pink", "images/plant-tree/berry-tree-pink-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_red", "images/plant-tree/berry-tree-red-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_white", "images/plant-tree/berry-tree-white-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.load.spritesheet("apricorn_tree_yellow", "images/plant-tree/berry-tree-yellow-apricorn.png", {
+      frameWidth: 32,
+      frameHeight: 64,
+    });
+
+    this.loadImage("rogue_mine_bg", "mining/ui", "miningbg.png");
+
+    this.load.spritesheet("rogue_mine_tiles", "images/mining/ui/tiles.png", {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+
+    this.load.spritesheet("rogue_mine_tool_icons", "images/mining/ui/toolicons.png", {
+      frameWidth: 68,
+      frameHeight: 100,
+    });
+
+    this.load.spritesheet("rogue_mine_tools", "images/mining/ui/tools.png", {
+      frameWidth: 96,
+      frameHeight: 96,
+    });
+
+    // 균열
+    this.load.spritesheet("rogue_mine_cracks", "images/mining/ui/cracks.png", {
+      frameWidth: 96,
+      frameHeight: 52,
+    });
+
+    // 커서
+    this.loadImage("rogue_mine_cursor", "mining/ui", "cursor.png");
+
+    // 타격 이펙트
+    this.loadImage("rogue_mine_hits", "mining/ui", "hits.png");
+
+    // 암반
+    this.loadImage("rogue_mine_irons", "mining/ui", "irons.png");
+
+    this.load.image("rogue_mine_cover_fossil", "images/mining/cover_fossil.png");
+
+    this.load.image("rogue_mine_sail_fossil", "images/mining/sail_fossil.png");
+
     this.loadAtlas("categories", "");
 
     this.loadAtlas("egg", "egg");
@@ -425,6 +529,8 @@ export class LoadingScene extends SceneBase {
     this.loadSe("PRSFX- Transform", "battle_anims");
 
     this.loadBgm("menu");
+
+    this.loadBgm("rogue_center");
 
     this.loadBgm("level_up_fanfare", "bw/level_up_fanfare.mp3");
     this.loadBgm("item_fanfare", "bw/item_fanfare.mp3");

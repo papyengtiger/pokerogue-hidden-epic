@@ -1,25 +1,19 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import { allMoves } from "#data/data-lists";
 import { getStatusEffectHealText } from "#data/status-effect";
 import { BattlerTagType } from "#enums/battler-tag-type";
 import { BerryType } from "#enums/berry-type";
+import { Command } from "#enums/command";
 import { HitResult } from "#enums/hit-result";
+import { PokemonType } from "#enums/pokemon-type";
 import { type BattleStat, Stat } from "#enums/stat";
 import type { Pokemon } from "#field/pokemon";
+import type { Move } from "#moves/move";
 import { NumberHolder, randSeedInt, toDmgValue } from "#utils/common";
 import i18next from "i18next";
-import {getNatureStatMultiplier} from "/src/data/nature";
-import type { BattleStat, EffectiveStat } from "#enums/stat";
-import { PokemonType } from "#enums/pokemon-type";
-import type { EnemyPokemon, Pokemon } from "#field/pokemon";
-import { MoveId } from "#enums/move-id";
-import { Move } from "#moves/move";
-import { toCamelCase, toTitleCase } from "#utils/strings";
-import { Command } from "#enums/command";
-import { allAbilities, allMoves, allSpecies, modifierTypes } from "#data/data-lists";
-import { MoveCategory } from "#enums/move-category";
-import { PokemonTurnData } from "#data/pokemon-data";
+import { getNatureStatMultiplier } from "/src/data/nature";
 
 export function getBerryName(berryType: BerryType): string {
   return i18next.t(`berry:${BerryType[berryType].toLowerCase()}.name`);
@@ -54,10 +48,24 @@ export const berryResistTypeMap: Record<BerryType, Type> = {
 };
 
 export const TYPE_PRIORITY_BERRIES = new Set([
-  BerryType.CHERI, BerryType.CHESTO, BerryType.PECHA, BerryType.RAWST, BerryType.ASPEAR,
-  BerryType.ORAN, BerryType.PERSIM, BerryType.WEPEAR, BerryType.BELUE, BerryType.CORNN,
-  BerryType.MAGOST, BerryType.RABUTA, BerryType.NOMEL, BerryType.SPELON, BerryType.PAMTRE,
-  BerryType.WATMEL, BerryType.DURIN, BerryType.PINAP
+  BerryType.CHERI,
+  BerryType.CHESTO,
+  BerryType.PECHA,
+  BerryType.RAWST,
+  BerryType.ASPEAR,
+  BerryType.ORAN,
+  BerryType.PERSIM,
+  BerryType.WEPEAR,
+  BerryType.BELUE,
+  BerryType.CORNN,
+  BerryType.MAGOST,
+  BerryType.RABUTA,
+  BerryType.NOMEL,
+  BerryType.SPELON,
+  BerryType.PAMTRE,
+  BerryType.WATMEL,
+  BerryType.DURIN,
+  BerryType.PINAP,
 ]);
 
 export const TYPE_PRIORITY_TYPE_MAP: Record<BerryType, PokemonType> = {
@@ -90,11 +98,10 @@ export function getBerryPredicate(berryType: BerryType): BerryPredicate {
     case BerryType.LUM:
       return (pokemon: Pokemon) => !!pokemon.status || !!pokemon.getTag(BattlerTagType.CONFUSED);
     case BerryType.ENIGMA:
-  return (pokemon: Pokemon) =>
-    !!pokemon.turnData.attacksReceived.filter(
-      a => a.result === HitResult.SUPER_EFFECTIVE ||
-           a.result === HitResult.EXTREMELY_EFFECTIVE
-    ).length;
+      return (pokemon: Pokemon) =>
+        pokemon.turnData.attacksReceived.filter(
+          a => a.result === HitResult.SUPER_EFFECTIVE || a.result === HitResult.EXTREMELY_EFFECTIVE,
+        ).length > 0;
     case BerryType.LIECHI:
     case BerryType.GANLON:
     case BerryType.PETAYA:
@@ -108,62 +115,78 @@ export function getBerryPredicate(berryType: BerryType): BerryPredicate {
         return pokemon.getHpRatio() < hpRatioReq.value && pokemon.getStatStage(stat) < 6;
       };
     case BerryType.MICLE:
-    case BerryType.NICLE:
-  return (pokemon: Pokemon) => {
-    const hpRatioReq = new NumberHolder(0.25);
-    applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
-    return pokemon.getHpRatio() < hpRatioReq.value;
-  };
+    case BerryType.NANAB:
+      return (pokemon: Pokemon) => {
+        const hpRatioReq = new NumberHolder(0.25);
+        applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
+        return pokemon.getHpRatio() < hpRatioReq.value;
+      };
 
     // 🧩 혼합맛 열매 (성격별 회복량 달라짐)
     case BerryType.FIGY:
     case BerryType.WIKI:
     case BerryType.MAGO:
     case BerryType.AGUAV:
-    case BerryType.LAPAPA:
+    case BerryType.IAPAPA:
       // ✅ 체력 절반 이하일 때 먹도록 설정
       return (pokemon: Pokemon) => pokemon.getHpRatio() <= 0.5;
     case BerryType.POMEG:
-case BerryType.KELPSY:
-case BerryType.QUALOT:
-case BerryType.HONDEW:
-case BerryType.GREPA:
-case BerryType.TAMATO:
-  // ✅ 배틀 시작 직후 바로 발동시키는 즉시형 열매
-  return (_p: Pokemon) => true;
-   case BerryType.CHERI:
-case BerryType.CHESTO:
-case BerryType.PECHA:
-case BerryType.RAWST:
-case BerryType.ASPEAR:
-case BerryType.ORAN:
-case BerryType.PERSIM:
-case BerryType.WEPEAR:
-case BerryType.BELUE:
-case BerryType.CORNN:
-case BerryType.MAGOST:
-case BerryType.RABUTA:
-case BerryType.NOMEL:
-case BerryType.SPELON:
-case BerryType.PAMTRE:
-case BerryType.WATMEL:
-case BerryType.DURIN:
-case BerryType.PINAP: {
-  // ✅ "이 predicate가 검사 중인 열매" 기준으로 맵핑
-  const mappedType = TYPE_PRIORITY_TYPE_MAP[berryType];
+    case BerryType.KELPSY:
+    case BerryType.QUALOT:
+    case BerryType.HONDEW:
+    case BerryType.GREPA:
+    case BerryType.TAMATO:
+      // ✅ 배틀 시작 직후 바로 발동시키는 즉시형 열매
+      return (_p: Pokemon) => true;
+    case BerryType.CHERI:
+    case BerryType.CHESTO:
+    case BerryType.PECHA:
+    case BerryType.RAWST:
+    case BerryType.ASPEAR:
+    case BerryType.ORAN:
+    case BerryType.PERSIM:
+    case BerryType.WEPEAR:
+    case BerryType.BELUE:
+    case BerryType.CORNN:
+    case BerryType.MAGOST:
+    case BerryType.RABUTA:
+    case BerryType.NOMEL:
+    case BerryType.SPELON:
+    case BerryType.PAMTRE:
+    case BerryType.WATMEL:
+    case BerryType.DURIN:
+    case BerryType.PINAP: {
+      // ✅ "이 predicate가 검사 중인 열매" 기준으로 맵핑
+      const mappedType = TYPE_PRIORITY_TYPE_MAP[berryType];
 
-  return (pokemon: Pokemon) => {
-    const cmd = globalScene.currentBattle.turnCommands[pokemon.getBattlerIndex()];
-    if (!cmd || cmd.command !== Command.FIGHT || !cmd.move) return false;
+      return (pokemon: Pokemon) => {
+        const cmd = globalScene.currentBattle.turnCommands[pokemon.getBattlerIndex()];
+        if (!cmd || cmd.command !== Command.FIGHT || !cmd.move) {
+          return false;
+        }
 
-    const move = allMoves[cmd.move.move];
-    if (!move) return false;
+        const move = allMoves[cmd.move.move];
+        if (!move) {
+          return false;
+        }
 
-    const ok = move.type === mappedType;
+        const ok = move.type === mappedType;
 
-    return ok;
-  };
-}
+        return ok;
+      };
+    }
+
+    case BerryType.RAZZ:
+      return (pokemon: Pokemon) => {
+        const hpRatioReq = new NumberHolder(0.25);
+        applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
+
+        return pokemon.getHpRatio() < hpRatioReq.value;
+      };
+
+    case BerryType.BLUK:
+      // 배틀 시작 직후 바로 먹음
+      return (_pokemon: Pokemon) => true;
 
     case BerryType.LANSAT:
       return (pokemon: Pokemon) => {
@@ -183,46 +206,52 @@ case BerryType.PINAP: {
         applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
         return !!pokemon.getMoveset().find(m => !m.getPpRatio());
       };
-   case BerryType.JABOCA:
-case BerryType.ROWAP:
-case BerryType.KEE:
-case BerryType.MARANGA:
-  return (pokemon: Pokemon) => {
-    const td: any = pokemon.turnData as any;
-    return td?.reactiveBerryForceType === berryType;
-  };
+    case BerryType.JABOCA:
+    case BerryType.ROWAP:
+    case BerryType.KEE:
+    case BerryType.MARANGA:
+      return (pokemon: Pokemon) => {
+        const td: any = pokemon.turnData as any;
+        return td?.reactiveBerryForceType === berryType;
+      };
 
-   case BerryType.OCCA:
-case BerryType.PASSHO:
-case BerryType.WACAN:
-case BerryType.RINDO:
-case BerryType.YACHE:
-case BerryType.CHOPLE:
-case BerryType.KEBIA:
-case BerryType.SHUCA:
-case BerryType.COBA:
-case BerryType.PAYAPA:
-case BerryType.TANGA:
-case BerryType.CHARTI:
-case BerryType.KASIB:
-case BerryType.HABAN:
-case BerryType.COLBUR:
-case BerryType.BABIRI:
-case BerryType.CHILAN:
-case BerryType.ROSELI:
+    case BerryType.OCCA:
+    case BerryType.PASSHO:
+    case BerryType.WACAN:
+    case BerryType.RINDO:
+    case BerryType.YACHE:
+    case BerryType.CHOPLE:
+    case BerryType.KEBIA:
+    case BerryType.SHUCA:
+    case BerryType.COBA:
+    case BerryType.PAYAPA:
+    case BerryType.TANGA:
+    case BerryType.CHARTI:
+    case BerryType.KASIB:
+    case BerryType.HABAN:
+    case BerryType.COLBUR:
+    case BerryType.BABIRI:
+    case BerryType.CHILAN:
+    case BerryType.ROSELI:
       return (pokemon: Pokemon) => {
         const firstAttack = pokemon.turnData.attacksReceived[0];
-        if (!firstAttack) return false;
+        if (!firstAttack) {
+          return false;
+        }
 
         let moveType: PokemonType | null = null;
         if (firstAttack.move && typeof firstAttack.move === "object" && "type" in firstAttack.move) {
           moveType = (firstAttack.move as Move).type;
         } else if (firstAttack.moveId !== undefined) {
           const moveData = globalScene.moveDex?.[firstAttack.moveId];
-          if (moveData && moveData.type) moveType = moveData.type;
+          if (moveData && moveData.type) {
+            moveType = moveData.type;
+          }
         }
 
-        if (moveType === null) return false;
+        if (moveType === null) {
+          return false;
+        }
 
         const resistType = berryResistTypeMap[berryType];
 
@@ -231,8 +260,8 @@ case BerryType.ROSELI:
         }
 
         return (
-          moveType === resistType &&
-          [HitResult.SUPER_EFFECTIVE, HitResult.EXTREMELY_EFFECTIVE].includes(firstAttack.result)
+          moveType === resistType
+          && [HitResult.SUPER_EFFECTIVE, HitResult.EXTREMELY_EFFECTIVE].includes(firstAttack.result)
         );
       };
 
@@ -253,7 +282,7 @@ export function getBerryEffectFunc(berryType: BerryType): BerryEffectFunc {
         applyAbAttrs("DoubleBerryEffectAbAttr", { pokemon: consumer, effectValue: hpHealed });
         globalScene.phaseManager.unshiftNew(
           "PokemonHealPhase",
-          consumer.getBattlerIndex(),
+          consumer.getPhaseKey(),
           hpHealed.value,
           i18next.t("battle:hpHealBerry", {
             pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
@@ -294,7 +323,7 @@ export function getBerryEffectFunc(berryType: BerryType): BerryEffectFunc {
       }
 
       case BerryType.MICLE:
-      case BerryType.NICLE: {
+      case BerryType.NANAB: {
         const stat: BattleStat = berryType === BerryType.MICLE ? Stat.ACC : Stat.EVA;
         const statStages = new NumberHolder(1);
         applyAbAttrs("DoubleBerryEffectAbAttr", { pokemon: consumer, effectValue: statStages });
@@ -313,22 +342,22 @@ export function getBerryEffectFunc(berryType: BerryType): BerryEffectFunc {
       case BerryType.WIKI:
       case BerryType.MAGO:
       case BerryType.AGUAV:
-      case BerryType.LAPAPA: {
+      case BerryType.IAPAPA: {
         const berryStatMap: Record<BerryType, Stat> = {
           [BerryType.FIGY]: Stat.ATK,
           [BerryType.WIKI]: Stat.SPATK,
           [BerryType.MAGO]: Stat.SPD,
           [BerryType.AGUAV]: Stat.SPDEF,
-          [BerryType.LAPAPA]: Stat.DEF,
+          [BerryType.IAPAPA]: Stat.DEF,
         };
         const targetStat = berryStatMap[berryType];
         const mult = getNatureStatMultiplier(consumer.nature, targetStat);
-        let ratio = mult > 1 ? 0.5 : mult < 1 ? 0.25 : 0.33;
+        const ratio = mult > 1 ? 0.5 : mult < 1 ? 0.25 : 0.33;
         const hpHealed = new NumberHolder(toDmgValue(consumer.getMaxHp() * ratio));
         applyAbAttrs("DoubleBerryEffectAbAttr", { pokemon: consumer, effectValue: hpHealed });
         globalScene.phaseManager.unshiftNew(
           "PokemonHealPhase",
-          consumer.getBattlerIndex(),
+          consumer.getPhaseKey(),
           hpHealed.value,
           i18next.t("battle:hpHealBerry", {
             pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
@@ -339,6 +368,31 @@ export function getBerryEffectFunc(berryType: BerryType): BerryEffectFunc {
         break;
       }
 
+      case BerryType.RAZZ: {
+        consumer.battleData.razzCritBoost = true;
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battle:razzBerryActivated", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
+            berryName: getBerryName(berryType),
+          }),
+        );
+
+        break;
+      }
+
+      case BerryType.BLUK: {
+        consumer.battleData.blukNoCrit = true;
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battle:blukBerryActivated", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
+            berryName: getBerryName(berryType),
+          }),
+        );
+
+        break;
+      }
       case BerryType.KELPSY:
       case BerryType.QUALOT:
       case BerryType.HONDEW:
@@ -390,155 +444,165 @@ export function getBerryEffectFunc(berryType: BerryType): BerryEffectFunc {
         break;
       }
       case BerryType.CUSTAP:
-  return (pokemon: Pokemon) => {
-    const hpRatioReq = new NumberHolder(0.25);
-    applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
+        return (pokemon: Pokemon) => {
+          const hpRatioReq = new NumberHolder(0.25);
+          applyAbAttrs("ReduceBerryUseThresholdAbAttr", { pokemon, hpRatioReq });
 
-    if (pokemon.getHpRatio() >= hpRatioReq.value) return false;
+          if (pokemon.getHpRatio() >= hpRatioReq.value) {
+            return false;
+          }
 
-    const cmd = globalScene.currentBattle.turnCommands[pokemon.getBattlerIndex()];
-    if (!cmd || cmd.command !== Command.FIGHT) return false;
+          const cmd = globalScene.currentBattle.turnCommands[pokemon.getBattlerIndex()];
+          if (!cmd || cmd.command !== Command.FIGHT) {
+            return false;
+          }
 
-    return true;
-  };
+          return true;
+        };
 
-     // 🧩 타입 선공 열매(18종 + BELUE)
-case BerryType.CHERI:
-case BerryType.CHESTO:
-case BerryType.PECHA:
-case BerryType.RAWST:
-case BerryType.ASPEAR:
-case BerryType.ORAN:
-case BerryType.PERSIM:
-case BerryType.WEPEAR:
-case BerryType.BELUE:
-case BerryType.CORNN:
-case BerryType.MAGOST:
-case BerryType.RABUTA:
-case BerryType.NOMEL:
-case BerryType.SPELON:
-case BerryType.PAMTRE:
-case BerryType.WATMEL:
-case BerryType.DURIN:
-case BerryType.PINAP: {
-  // 🔹 열매 ↔ 타입 매핑
-  const typeMap: Record<number, PokemonType> = {
-    [BerryType.CHERI]: PokemonType.ELECTRIC,
-    [BerryType.CHESTO]: PokemonType.FLYING,
-    [BerryType.PECHA]: PokemonType.POISON,
-    [BerryType.RAWST]: PokemonType.WATER,
-    [BerryType.ASPEAR]: PokemonType.ICE,
-    [BerryType.ORAN]: PokemonType.NORMAL,
-    [BerryType.PERSIM]: PokemonType.PSYCHIC,
-    [BerryType.WEPEAR]: PokemonType.GRASS,
-    [BerryType.BELUE]: PokemonType.FAIRY,
-    [BerryType.CORNN]: PokemonType.BUG,
-    [BerryType.MAGOST]: PokemonType.GHOST,
-    [BerryType.RABUTA]: PokemonType.DRAGON,
-    [BerryType.NOMEL]: PokemonType.GROUND,
-    [BerryType.SPELON]: PokemonType.FIRE,
-    [BerryType.PAMTRE]: PokemonType.DARK,
-    [BerryType.WATMEL]: PokemonType.FIGHTING,
-    [BerryType.DURIN]: PokemonType.STEEL,
-    [BerryType.PINAP]: PokemonType.ROCK,
-  };
+      // 🧩 타입 선공 열매(18종 + BELUE)
+      case BerryType.CHERI:
+      case BerryType.CHESTO:
+      case BerryType.PECHA:
+      case BerryType.RAWST:
+      case BerryType.ASPEAR:
+      case BerryType.ORAN:
+      case BerryType.PERSIM:
+      case BerryType.WEPEAR:
+      case BerryType.BELUE:
+      case BerryType.CORNN:
+      case BerryType.MAGOST:
+      case BerryType.RABUTA:
+      case BerryType.NOMEL:
+      case BerryType.SPELON:
+      case BerryType.PAMTRE:
+      case BerryType.WATMEL:
+      case BerryType.DURIN:
+      case BerryType.PINAP: {
+        // 🔹 열매 ↔ 타입 매핑
+        const typeMap: Record<number, PokemonType> = {
+          [BerryType.CHERI]: PokemonType.ELECTRIC,
+          [BerryType.CHESTO]: PokemonType.FLYING,
+          [BerryType.PECHA]: PokemonType.POISON,
+          [BerryType.RAWST]: PokemonType.WATER,
+          [BerryType.ASPEAR]: PokemonType.ICE,
+          [BerryType.ORAN]: PokemonType.NORMAL,
+          [BerryType.PERSIM]: PokemonType.PSYCHIC,
+          [BerryType.WEPEAR]: PokemonType.GRASS,
+          [BerryType.BELUE]: PokemonType.FAIRY,
+          [BerryType.CORNN]: PokemonType.BUG,
+          [BerryType.MAGOST]: PokemonType.GHOST,
+          [BerryType.RABUTA]: PokemonType.DRAGON,
+          [BerryType.NOMEL]: PokemonType.GROUND,
+          [BerryType.SPELON]: PokemonType.FIRE,
+          [BerryType.PAMTRE]: PokemonType.DARK,
+          [BerryType.WATMEL]: PokemonType.FIGHTING,
+          [BerryType.DURIN]: PokemonType.STEEL,
+          [BerryType.PINAP]: PokemonType.ROCK,
+        };
 
-  // ✅ “먹는 베리”는 파라미터 berryType 그 자체
-  const mappedType = typeMap[berryType];
-  if (mappedType == null) break;
+        // ✅ “먹는 베리”는 파라미터 berryType 그 자체
+        const mappedType = typeMap[berryType];
+        if (mappedType == null) {
+          break;
+        }
 
-  // ✅ 어떤 기술로 발동했는지는 너의 예약값을 쓰는 게 제일 안전
-  const td: any = consumer.turnData as any;
-  const moveId = td?.priorityBerryReservedMoveId;
-  const moveData = moveId ? allMoves?.[moveId] : undefined;
-  const moveType = moveData?.type;
+        // ✅ 어떤 기술로 발동했는지는 너의 예약값을 쓰는 게 제일 안전
+        const td: any = consumer.turnData as any;
+        const moveId = td?.priorityBerryReservedMoveId;
+        const moveData = moveId ? allMoves?.[moveId] : undefined;
+        const moveType = moveData?.type;
 
-  // (선택) moveType이 실제 타입(특성으로 변경된 타입)까지 반영해야 하면
-  // 너가 getPriority에서 계산한 actualType을 td에 저장해두고 그걸 쓰는 게 제일 정확함.
+        // (선택) moveType이 실제 타입(특성으로 변경된 타입)까지 반영해야 하면
+        // 너가 getPriority에서 계산한 actualType을 td에 저장해두고 그걸 쓰는 게 제일 정확함.
 
-  if (moveType != null && moveType === mappedType) {
-    // ✅ 메시지만 (소모는 이미 tryUseBerry -> berry.apply로 끝났음)
-    globalScene.phaseManager.queueMessage(
-      i18next.t("battle:berryActivatedPriorityType", {
-        pokemonName: getPokemonNameWithAffix(consumer),
-        typeName: i18next.t(`pokemonInfo:type.${PokemonType[moveType].toLowerCase()}`),
-        berryName: getBerryName(berryType),
-      }),
-    );
-  }
+        if (moveType != null && moveType === mappedType) {
+          // ✅ 메시지만 (소모는 이미 tryUseBerry -> berry.apply로 끝났음)
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battle:berryActivatedPriorityType", {
+              pokemonName: getPokemonNameWithAffix(consumer),
+              typeName: i18next.t(`pokemonInfo:type.${PokemonType[moveType].toLowerCase()}`),
+              berryName: getBerryName(berryType),
+            }),
+          );
+        }
 
-  break;
-}
+        break;
+      }
 
-case BerryType.JABOCA:
-case BerryType.ROWAP: {
-  const td: any = consumer.turnData as any;
-  const atkIdx: number | undefined = td?.reactiveBerryAttackerIndex;
-  if (atkIdx == null) break;
+      case BerryType.JABOCA:
+      case BerryType.ROWAP: {
+        const td: any = consumer.turnData as any;
+        const atkIdx: number | undefined = td?.reactiveBerryAttackerIndex;
+        if (atkIdx == null) {
+          break;
+        }
 
-  // ✅ battlerIndex -> Pokemon 얻기 (네 엔진에 맞는 걸 택1)
-  const attacker =
-    (globalScene.getPokemonByBattlerIndex?.(atkIdx) as Pokemon | undefined) ??
-    (globalScene.getPlayerField?.().find((p: any) => p?.getBattlerIndex?.() === atkIdx) as Pokemon | undefined) ??
-    (globalScene.getEnemyField?.().find((p: any) => p?.getBattlerIndex?.() === atkIdx) as Pokemon | undefined);
+        // ✅ battlerIndex -> Pokemon 얻기 (네 엔진에 맞는 걸 택1)
+        const attacker =
+          (globalScene.getPokemonByBattlerIndex?.(atkIdx) as Pokemon | undefined)
+          ?? (globalScene.getPlayerField?.().find((p: any) => p?.getBattlerIndex?.() === atkIdx) as Pokemon | undefined)
+          ?? (globalScene.getEnemyField?.().find((p: any) => p?.getBattlerIndex?.() === atkIdx) as Pokemon | undefined);
 
-  if (!attacker) break;
+        if (!attacker) {
+          break;
+        }
 
-  const dmg = Math.max(Math.floor(attacker.getMaxHp() / 8), 1);
-  attacker.damageAndUpdate(dmg, { result: HitResult.INDIRECT });
+        const dmg = Math.max(Math.floor(attacker.getMaxHp() / 8), 1);
+        attacker.damageAndUpdate(dmg, { result: HitResult.INDIRECT });
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battle:berryReactiveDamage", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
-      targetNameWithAffix: getPokemonNameWithAffix(attacker),
-      berryName: getBerryName(berryType),
-    }),
-  );
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battle:berryReactiveDamage", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
+            targetNameWithAffix: getPokemonNameWithAffix(attacker),
+            berryName: getBerryName(berryType),
+          }),
+        );
 
-  break;
-}
+        break;
+      }
 
-case BerryType.KEE:
-case BerryType.MARANGA: {
-  const stat: BattleStat = berryType === BerryType.KEE ? Stat.DEF : Stat.SPDEF;
-  const stages = new NumberHolder(1);
-  applyAbAttrs("DoubleBerryEffectAbAttr", { pokemon: consumer, effectValue: stages });
+      case BerryType.KEE:
+      case BerryType.MARANGA: {
+        const stat: BattleStat = berryType === BerryType.KEE ? Stat.DEF : Stat.SPDEF;
+        const stages = new NumberHolder(1);
+        applyAbAttrs("DoubleBerryEffectAbAttr", { pokemon: consumer, effectValue: stages });
 
-  globalScene.phaseManager.unshiftNew(
-  "StatStageChangePhase",
-  consumer.getBattlerIndex(),
-  true,
-  [stat],
-  stages.value,
-);
+        globalScene.phaseManager.unshiftNew(
+          "StatStageChangePhase",
+          consumer.getBattlerIndex(),
+          true,
+          [stat],
+          stages.value,
+        );
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battle:berryReactiveStatUp", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
-      berryName: getBerryName(berryType),
-    }),
-  );
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battle:berryReactiveStatUp", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(consumer),
+            berryName: getBerryName(berryType),
+          }),
+        );
 
-  break;
-}
-case BerryType.CUSTAP: {
-  const td: any = consumer.turnData as any;
-  td.custapBypassSpeedThisTurn = true;
+        break;
+      }
+      case BerryType.CUSTAP: {
+        const td: any = consumer.turnData as any;
+        td.custapBypassSpeedThisTurn = true;
 
-  // (선택) 표시 메시지
-  globalScene.phaseManager.queueMessage(
-    i18next.t("modifier:bypassSpeedChanceApply", {
-      pokemonName: getPokemonNameWithAffix(consumer),
-      itemName: i18next.t("berry:custap.name"), // 너의 키에 맞게 조정
-    }),
-  );
-  break;
-}
+        // (선택) 표시 메시지
+        globalScene.phaseManager.queueMessage(
+          i18next.t("modifier:bypassSpeedChanceApply", {
+            pokemonName: getPokemonNameWithAffix(consumer),
+            itemName: i18next.t("berry:custap.name"), // 너의 키에 맞게 조정
+          }),
+        );
+        break;
+      }
 
       case BerryType.LEPPA: {
         const ppRestoreMove =
-          consumer.getMoveset().find(m => m.ppUsed === m.getMovePp()) ??
-          consumer.getMoveset().find(m => m.ppUsed < m.getMovePp());
+          consumer.getMoveset().find(m => m.ppUsed === m.getMovePp())
+          ?? consumer.getMoveset().find(m => m.ppUsed < m.getMovePp());
         if (ppRestoreMove) {
           ppRestoreMove.ppUsed = Math.max(ppRestoreMove.ppUsed - 10, 0);
           globalScene.phaseManager.queueMessage(

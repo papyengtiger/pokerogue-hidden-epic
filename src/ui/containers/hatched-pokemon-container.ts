@@ -3,6 +3,7 @@ import type { EggHatchData } from "#data/egg-hatch-data";
 import { Gender } from "#data/gender";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { DexAttr } from "#enums/dex-attr";
+import { MarkId } from "#enums/mark-id";
 import { getVariantTint } from "#sprites/variant";
 import type { PokemonIconAnimHelper } from "#ui/pokemon-icon-anim-helper";
 import { PokemonIconAnimMode } from "#ui/pokemon-icon-anim-helper";
@@ -19,7 +20,7 @@ export class HatchedPokemonContainer extends Phaser.GameObjects.Container {
   public hiddenAbilityIcon: Phaser.GameObjects.Image;
   public pokeballIcon: Phaser.GameObjects.Image;
   public eggMoveIcon: Phaser.GameObjects.Image;
-
+  public markIcon: Phaser.GameObjects.Image;
   /**
    * @param x x position
    * @param y y position
@@ -74,6 +75,13 @@ export class HatchedPokemonContainer extends Phaser.GameObjects.Container {
     eggMoveIcon.setScale(0.5);
     this.eggMoveIcon = eggMoveIcon;
     this.add(this.eggMoveIcon);
+
+    const markIcon = globalScene.add.image(0, offset, "icon_mark");
+    markIcon.setOrigin(0, 0);
+    markIcon.setScale(0.5);
+
+    this.markIcon = markIcon;
+    this.add(this.markIcon);
   }
 
   /**
@@ -110,6 +118,7 @@ export class HatchedPokemonContainer extends Phaser.GameObjects.Container {
     this.hiddenAbilityIcon.setVisible(displayPokemon.abilityIndex === 2);
     this.pokeballIcon.setVisible(!caughtAttr || newForm);
 
+    this.markIcon.setVisible(displayPokemon.mark !== MarkId.NONE);
     // add animation to the Pokemon sprite for new unlocks (new catch, new shiny or new form)
     if (!caughtAttr || newShinyOrVariant || newForm) {
       iconAnimHandler.addOrUpdate(this.icon, PokemonIconAnimMode.PASSIVE);

@@ -45,6 +45,7 @@
  */
 
 import { applyAbAttrs, applyOnGainAbAttrs, applyOnLoseAbAttrs } from "#abilities/apply-ab-attrs";
+import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
 import type { BattlerTag } from "#app/data/battler-tags";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
@@ -77,7 +78,6 @@ import type { Mutable } from "#types/type-helpers";
 import { BooleanHolder, type NumberHolder, toDmgValue } from "#utils/common";
 import { inSpeedOrder } from "#utils/speed-order-generator";
 import i18next from "i18next";
-import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
 import { RoomServiceModifier } from "../modifier/modifier";
 
 /** Interface containing the serializable fields of ArenaTagData. */
@@ -207,7 +207,7 @@ export abstract class ArenaTag implements BaseArenaTag {
    * @param _source - The `Pokemon` having added the tag
    */
   public onOverlap(_source?: Pokemon): void {}
-  
+
   /**
    * Reduce this {@linkcode ArenaTag}'s duration and apply any end-of-turn effects
    * Will ignore durations of all tags with durations `<=0`.
@@ -425,6 +425,42 @@ class AuroraVeilTag extends WeakenMoveScreenTag {
   }
 }
 
+class MarineBarrierTag extends WeakenMoveScreenTag {
+  public readonly tagType = ArenaTagType.MARINE_BARRIER;
+
+  protected override get weakenedCategories(): [MoveCategory.PHYSICAL, MoveCategory.SPECIAL] {
+    return [MoveCategory.PHYSICAL, MoveCategory.SPECIAL];
+  }
+
+  constructor(turnCount: number, sourceId: number | undefined, side: ArenaTagSide) {
+    super(turnCount, MoveId.MARINE_BARRIER, sourceId, side);
+  }
+
+  override apply(attacker: Pokemon, moveCategory: MoveCategory, damageMultiplier: NumberHolder): boolean {
+    if (!this.weakenedCategories.includes(moveCategory)) {
+      return false;
+    }
+
+    const bypassed = new BooleanHolder(false);
+    applyAbAttrs("InfiltratorAbAttr", { pokemon: attacker, bypassed });
+
+    if (bypassed.value) {
+      return false;
+    }
+
+    damageMultiplier.value *= 0.75;
+    return true;
+  }
+
+  protected override get onAddMessageKey(): string {
+    return "arenaTag:marineBarrierOnAdd" + this.i18nSideKey;
+  }
+
+  protected override get onRemoveMessageKey(): string {
+    return "arenaTag:marineBarrierOnRemove" + this.i18nSideKey;
+  }
+}
+
 class SandBarrierTag extends WeakenMoveScreenTag {
   public readonly tagType = ArenaTagType.SAND_BARRIER;
   protected override get weakenedCategories(): [MoveCategory.PHYSICAL, MoveCategory.SPECIAL] {
@@ -460,7 +496,6 @@ class FloraVeilTag extends WeakenMoveScreenTag {
     return "arenaTag:floraVeilOnRemove" + this.i18nSideKey;
   }
 }
-
 
 type ProtectConditionFunc = (moveId: MoveId | undefined) => boolean;
 
@@ -530,8 +565,8 @@ export abstract class ConditionalProtectTag extends ArenaTag {
       return false;
     }
     console.debug(
-  `[ProtectDebug] tag=${ArenaTagType[this.tagType]} defender=${defender.name} moveId=${moveId} move=${allMoves?.[moveId]?.name} cat=${allMoves?.[moveId]?.category}`
-);
+      `[ProtectDebug] tag=${ArenaTagType[this.tagType]} defender=${defender.name} moveId=${moveId} move=${allMoves?.[moveId]?.name} cat=${allMoves?.[moveId]?.category}`,
+    );
 
     if (moveId == null) {
       return false;
@@ -621,7 +656,7 @@ class WideGuardTag extends ConditionalProtectTag {
  * @param moveId {@linkcode MoveId} The move to check against this condition.
  * @returns `true` if the incoming move is not a Status move.
  */
-const MatBlockConditionFunc: ProtectConditionFunc = (moveId) => {
+const MatBlockConditionFunc: ProtectConditionFunc = moveId => {
   const move = moveId != null ? allMoves?.[moveId] : undefined;
   return !!move && move.category !== MoveCategory.STATUS;
 };
@@ -1296,29 +1331,25 @@ export class TrickRoomTag extends RoomArenaTag {
    * turn order should be reversed.
    */
   override onAdd(): void {
-  super.onAdd?.();
+    super.onAdd?.();
 
-  for (const pokemon of globalScene.getField(true)) {
-    if (!pokemon?.isActive?.()) {
-      continue;
+    for (const pokemon of globalScene.getField(true)) {
+      if (!pokemon?.isActive?.()) {
+        continue;
+      }
+
+      const roomServices = globalScene
+        .getModifiers(RoomServiceModifier, pokemon.isPlayer())
+        .filter(mod => mod instanceof RoomServiceModifier && mod.pokemonId === pokemon.id) as RoomServiceModifier[];
+
+      for (const mod of roomServices) {
+        mod.apply(pokemon);
+      }
+
+      globalScene.updateModifiers(pokemon.isPlayer());
+      pokemon.updateInfo();
     }
-
-    const roomServices = globalScene
-      .getModifiers(RoomServiceModifier, pokemon.isPlayer())
-      .filter(
-        mod =>
-          mod instanceof RoomServiceModifier &&
-          mod.pokemonId === pokemon.id,
-      ) as RoomServiceModifier[];
-
-    for (const mod of roomServices) {
-      mod.apply(pokemon);
-    }
-
-    globalScene.updateModifiers(pokemon.isPlayer());
-    pokemon.updateInfo();
   }
-}
 }
 
 export class MagicRoomTag extends RoomArenaTag {
@@ -1337,8 +1368,8 @@ export class MagicRoomTag extends RoomArenaTag {
   }
 
   override apply(..._args: unknown[]): void {
-  // 매 턴(혹은 태그 적용 타이밍)에 불리는 파이프라인이 있다면 로그 확인용
-  console.log("[MagicRoomTag.apply] active");
+    // 매 턴(혹은 태그 적용 타이밍)에 불리는 파이프라인이 있다면 로그 확인용
+    console.log("[MagicRoomTag.apply] active");
   }
 }
 
@@ -1455,6 +1486,87 @@ class TailwindTag extends SerializableArenaTag {
   }
 
   // TODO: Have the `apply` method double speed
+}
+
+/**
+ * 아군의 스피드를 2배로 만들고,
+ * 상대 진영의 스피드를 절반으로 만드는 장벽 효과.
+ */
+class RiptideTag extends SerializableArenaTag {
+  public readonly tagType = ArenaTagType.RIPTIDE;
+
+  constructor(turnCount: number, sourceId: number | undefined, side: ArenaTagSide) {
+    super(turnCount, MoveId.RIPTIDE, sourceId, side);
+  }
+
+  protected override get onAddMessageKey(): string {
+    return "arenaTag:riptideOnAdd" + this.i18nSideKey;
+  }
+
+  protected override get onRemoveMessageKey(): string {
+    return "arenaTag:riptideOnRemove" + this.i18nSideKey;
+  }
+
+  override onAdd(quiet = false): void {
+    super.onAdd(quiet);
+
+    const source = this.getSourcePokemon();
+
+    if (source == null) {
+      return;
+    }
+
+    /*
+     * 순풍과 같은 아군 대상 특성 연동
+     */
+    for (const pokemon of source.getAlliesGenerator()) {
+      if (pokemon.hasAbility(AbilityId.WIND_POWER) && !pokemon.getTag(BattlerTagType.CHARGED)) {
+        pokemon.addTag(BattlerTagType.CHARGED);
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("abilityTriggers:windPowerCharged", {
+            pokemonName: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+          }),
+        );
+      }
+
+      if (pokemon.hasAbility(AbilityId.WIND_RIDER)) {
+        globalScene.phaseManager.queueAbilityDisplay(pokemon, false, true);
+
+        globalScene.phaseManager.unshiftNew(
+          "StatStageChangePhase",
+          pokemon.getBattlerIndex(),
+          true,
+          [Stat.ATK],
+          1,
+          true,
+        );
+
+        globalScene.phaseManager.queueAbilityDisplay(pokemon, false, false);
+      }
+    }
+  }
+
+  /**
+   * 스피드 계산 시 적용하는 배율.
+   *
+   * 태그가 설치된 진영:
+   *   스피드 2배
+   *
+   * 반대 진영:
+   *   스피드 0.5배
+   */
+  override apply(pokemon: Pokemon, speedMultiplier: NumberHolder): boolean {
+    const affectedSide =
+      this.side === ArenaTagSide.BOTH
+      || (this.side === ArenaTagSide.PLAYER && pokemon.isPlayer())
+      || (this.side === ArenaTagSide.ENEMY && !pokemon.isPlayer());
+
+    speedMultiplier.value *= affectedSide ? 2 : 0.5;
+
+    return true;
+  }
 }
 
 /**
@@ -1941,12 +2053,16 @@ export function getArenaTag(
       return new LightScreenTag(turnCount, sourceId, side);
     case ArenaTagType.AURORA_VEIL:
       return new AuroraVeilTag(turnCount, sourceId, side);
+    case ArenaTagType.MARINE_BARRIER:
+      return new MarineBarrierTag(turnCount, sourceId, side);
     case ArenaTagType.SAND_BARRIER:
       return new SandBarrierTag(turnCount, sourceId, side);
     case ArenaTagType.FLORA_VEIL:
       return new FloraVeilTag(turnCount, sourceId, side);
     case ArenaTagType.TAILWIND:
       return new TailwindTag(turnCount, sourceId, side);
+    case ArenaTagType.RIPTIDE:
+      return new RiptideTag(turnCount, sourceId, side);
     case ArenaTagType.HAPPY_HOUR:
       return new HappyHourTag(turnCount, sourceId, side);
     case ArenaTagType.SAFEGUARD:
@@ -2008,9 +2124,11 @@ export type ArenaTagTypeMap = {
   [ArenaTagType.REFLECT]: ReflectTag;
   [ArenaTagType.LIGHT_SCREEN]: LightScreenTag;
   [ArenaTagType.AURORA_VEIL]: AuroraVeilTag;
+  [ArenaTagType.MARINE_BARRIER]: MarineBarrierTag;
   [ArenaTagType.SAND_BARRIER]: SandBarrierTag;
   [ArenaTagType.FLORA_VEIL]: FloraVeilTag;
   [ArenaTagType.TAILWIND]: TailwindTag;
+  [ArenaTagType.RIPTIDE]: RiptideTag;
   [ArenaTagType.HAPPY_HOUR]: HappyHourTag;
   [ArenaTagType.SAFEGUARD]: SafeguardTag;
   [ArenaTagType.IMPRISON]: ImprisonTag;

@@ -4,4 +4,6 @@ export enum ModifierPoolType {
   TRAINER,
   ENEMY_BUFF,
   DAILY_STARTER,
+  WEEKLY_STARTER,
+  MONTHLY_STARTER,
 }

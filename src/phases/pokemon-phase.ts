@@ -16,8 +16,8 @@ export abstract class PokemonPhase extends FieldPhase {
     super();
 
     battlerIndex =
-      battlerIndex ??
-      globalScene
+      battlerIndex
+      ?? globalScene
         .getField()
         .find(p => p?.isActive())
         ?.getBattlerIndex();
@@ -33,9 +33,46 @@ export abstract class PokemonPhase extends FieldPhase {
   }
 
   getPokemon(): Pokemon {
+    // Pokémon ID가 직접 전달된 경우
     if (this.battlerIndex > BattlerIndex.ENEMY_2) {
-      return globalScene.getPokemonById(this.battlerIndex)!; //TODO: is this bang correct?
+      return globalScene.getPokemonById(this.battlerIndex)!;
     }
-    return globalScene.getField()[this.battlerIndex]!; //TODO: is this bang correct?
+
+    const field = globalScene.getField();
+
+    // 기존 방식
+    const directPokemon = field[this.battlerIndex];
+    if (directPokemon) {
+      return directPokemon;
+    }
+
+    // ✅ 소굴 / 복원전 등에서 field 배열 위치와 battlerIndex가
+    // 일치하지 않는 경우 실제 battlerIndex로 재탐색
+    const matchedPokemon = field.find(p => p?.getBattlerIndex?.() === this.battlerIndex);
+
+    if (matchedPokemon) {
+      console.debug("[POKEMON_PHASE_BATTLER_FALLBACK]", {
+        battlerIndex: this.battlerIndex,
+        pokemonId: matchedPokemon.id,
+        pokemonName: matchedPokemon.name,
+      });
+
+      return matchedPokemon;
+    }
+
+    console.error("[POKEMON_PHASE_POKEMON_NOT_FOUND]", {
+      battlerIndex: this.battlerIndex,
+      field: field.map(p =>
+        p
+          ? {
+              id: p.id,
+              name: p.name,
+              battlerIndex: p.getBattlerIndex?.(),
+            }
+          : null,
+      ),
+    });
+
+    return undefined!;
   }
 }

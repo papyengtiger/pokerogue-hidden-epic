@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "yache-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 16,
+				"h": 42
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 13,
+						"w": 14,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 14,
+						"h": 19
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 13,
+						"w": 14,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 22,
+						"w": 14,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1ee39598b3390c063ef5900f57fa2624:5518aa0db60980108436de8b2a881f34:da5cd86993918941789bf943e1022160$"
+	}
+}

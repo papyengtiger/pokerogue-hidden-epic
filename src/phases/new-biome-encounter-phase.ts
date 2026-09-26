@@ -6,7 +6,11 @@ import { NextEncounterPhase } from "#phases/next-encounter-phase";
 export class NewBiomeEncounterPhase extends NextEncounterPhase {
   public readonly phaseName = "NewBiomeEncounterPhase";
   doEncounter(): void {
-    globalScene.playBgm(undefined, true);
+    if (this.tryStartMysteryTimeCountdown(() => this.doEncounter())) {
+      return;
+    }
+
+    this.playEncounterBgm();
 
     // Reset all battle and wave data, perform form changes, etc.
     // We do this because new biomes are considered "arena transitions" akin to MEs and trainer battles

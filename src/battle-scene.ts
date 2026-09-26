@@ -18,6 +18,7 @@ import Overrides from "#app/overrides";
 import type { Phase } from "#app/phase";
 import { PhaseManager } from "#app/phase-manager";
 import { FieldSpritePipeline } from "#app/pipelines/field-sprite";
+import { GrayscalePostFX } from "#app/pipelines/grayscale";
 import { InvertPostFX } from "#app/pipelines/invert";
 import { SpritePipeline } from "#app/pipelines/sprite";
 import { SceneBase } from "#app/scene-base";
@@ -30,8 +31,12 @@ import { initCommonAnims, initMoveAnim, loadCommonAnimAssets, loadMoveAnimAssets
 import { allMoves, allSpecies, biomeDepths, modifierTypes } from "#data/data-lists";
 import { battleSpecDialogue } from "#data/dialogue";
 import type { SpeciesFormChangeTrigger } from "#data/form-change-triggers";
-import { SpeciesFormChangeManualTrigger, SpeciesFormChangeTimeOfDayTrigger, SpeciesFormChangeMoveLearnedTrigger, SpeciesFormChangeZMoveKnownTrigger } from "#data/form-change-triggers";
+import { SpeciesFormChangeManualTrigger, SpeciesFormChangeTimeOfDayTrigger } from "#data/form-change-triggers";
 import { Gender } from "#data/gender";
+import { kecleonShopManager } from "#data/kecleon-shop/kecleon-shop-manager";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
+import type { MysteryMonsterSpecies } from "#data/mystery-monster-species";
+import { mysteryTimeManager } from "#data/mystery-time/mystery-time-manager";
 import type { SpeciesFormChange } from "#data/pokemon-forms";
 import { pokemonFormChanges } from "#data/pokemon-forms";
 import type { PokemonSpecies, PokemonSpeciesFilter } from "#data/pokemon-species";
@@ -44,6 +49,7 @@ import { BiomeId } from "#enums/biome-id";
 import { EaseType } from "#enums/ease-type";
 import { ExpGainsSpeed } from "#enums/exp-gains-speed";
 import { ExpNotification } from "#enums/exp-notification";
+import { FieldPosition } from "#enums/field-position";
 import { FormChangeItem } from "#enums/form-change-item";
 import { GameModes } from "#enums/game-modes";
 import { ModifierPoolType } from "#enums/modifier-pool-type";
@@ -69,11 +75,12 @@ import { NewArenaEvent } from "#events/battle-scene";
 import { Arena, ArenaBase } from "#field/arena";
 import { DamageNumberHandler } from "#field/damage-number-handler";
 import type { Pokemon } from "#field/pokemon";
-import { EnemyPokemon, PlayerPokemon, PracticeDummyEnemy } from "#field/pokemon";
+import { EnemyPokemon, MysteryMonster, PlayerPokemon, PracticeDummyEnemy } from "#field/pokemon";
 import { PokemonSpriteSparkleHandler } from "#field/pokemon-sprite-sparkle-handler";
 import { Trainer } from "#field/trainer";
 import type { Modifier, ModifierPredicate, TurnHeldItemTransferModifier } from "#modifiers/modifier";
 import {
+  AtkStatModifier,
   ConsumableModifier,
   ConsumablePokemonModifier,
   DoubleBattleChanceBoosterModifier,
@@ -83,17 +90,16 @@ import {
   HealingBoosterModifier,
   ModifierBar,
   PersistentModifier,
+  PokemonDefensiveStatModifier,
   PokemonExpBoosterModifier,
   PokemonFormChangeItemModifier,
   PokemonHeldItemModifier,
   PokemonHpRestoreModifier,
   PokemonIncrementingStatModifier,
   RememberMoveModifier,
-  StackingPowerBoosterModifier,
-  PokemonDefensiveStatModifier,
-  SpeedStatModifier,
   SpAtkStatModifier,
-  AtkStatModifier,
+  SpeedStatModifier,
+  StackingPowerBoosterModifier,
 } from "#modifiers/modifier";
 import {
   getDefaultModifierTypeForTier,
@@ -107,7 +113,6 @@ import {
 import { MysteryEncounter } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterSaveData } from "#mystery-encounters/mystery-encounter-save-data";
 import { allMysteryEncounters, mysteryEncountersByBiome } from "#mystery-encounters/mystery-encounters";
-import type { MovePhase } from "#phases/move-phase";
 import { expSpriteKeys } from "#sprites/sprite-keys";
 import { hasExpSprite } from "#sprites/sprite-utils";
 import type { Variant } from "#sprites/variant";
@@ -117,6 +122,7 @@ import { achvs, ModifierAchv, MoneyAchv } from "#system/achv";
 import { GameData } from "#system/game-data";
 import { initGameSpeed } from "#system/game-speed";
 import type { PokemonData } from "#system/pokemon-data";
+import { questManager } from "#system/quest-manager";
 import { MusicPreference } from "#system/settings";
 import type { TrainerData } from "#system/trainer-data";
 import type { Voucher } from "#system/voucher";
@@ -124,6 +130,7 @@ import { vouchers } from "#system/voucher";
 import { trainerConfigs } from "#trainers/trainer-config";
 import type { HeldModifierConfig } from "#types/held-modifier-config";
 import type { Localizable } from "#types/locales";
+import type { ModifierTypeFunc } from "#types/modifier-types";
 import { AbilityBar } from "#ui/ability-bar";
 import { ArenaFlyout } from "#ui/arena-flyout";
 import { CandyBar } from "#ui/candy-bar";
@@ -154,8 +161,6 @@ import i18next from "i18next";
 import Phaser from "phaser";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
 import type UIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin";
-import { FieldPosition } from "#enums/field-position";
-import type { ModifierTypeFunc } from "#types/modifier-types";
 
 const DEBUG_RNG = false;
 
@@ -397,29 +402,29 @@ export class BattleScene extends SceneBase {
   }
 
   create() {
-  this.scene.remove(LoadingScene.KEY);
-  initGameSpeed.apply(this);
-  this.inputController = new InputsController();
-  this.uiInputs = new UiInputs(this.inputController);
+    this.scene.remove(LoadingScene.KEY);
+    initGameSpeed.apply(this);
+    this.inputController = new InputsController();
+    this.uiInputs = new UiInputs(this.inputController);
 
-  this.gameData = new GameData();
+    this.gameData = new GameData();
 
-  addUiThemeOverrides();
+    addUiThemeOverrides();
 
-  this.load.setBaseURL();
+    this.load.setBaseURL();
 
-  this.spritePipeline = new SpritePipeline(this.game);
-  (this.renderer as Phaser.Renderer.WebGL.WebGLRenderer).pipelines.add("Sprite", this.spritePipeline);
+    this.spritePipeline = new SpritePipeline(this.game);
+    (this.renderer as Phaser.Renderer.WebGL.WebGLRenderer).pipelines.add("Sprite", this.spritePipeline);
 
-  this.fieldSpritePipeline = new FieldSpritePipeline(this.game);
-  (this.renderer as Phaser.Renderer.WebGL.WebGLRenderer).pipelines.add("FieldSprite", this.fieldSpritePipeline);
+    this.fieldSpritePipeline = new FieldSpritePipeline(this.game);
+    (this.renderer as Phaser.Renderer.WebGL.WebGLRenderer).pipelines.add("FieldSprite", this.fieldSpritePipeline);
 
-  this.launchBattle();
+    this.launchBattle();
 
-  // ✅ 콘솔 디버깅용 전역 노출
-  (globalThis as any).globalScene = this;
-  (globalThis as any).phaserGame = this.game; // (옵션) 있으면 더 편함
-}
+    // ✅ 콘솔 디버깅용 전역 노출
+    (globalThis as any).globalScene = this;
+    (globalThis as any).phaserGame = this.game; // (옵션) 있으면 더 편함
+  }
 
   update() {
     this.ui?.update();
@@ -551,14 +556,14 @@ export class BattleScene extends SceneBase {
     this.fieldUI.add(this.moneyText);
 
     this.scoreText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
-this.scoreText.setName("text-score");
-this.scoreText.setOrigin(1, 0.5);
-this.fieldUI.add(this.scoreText);
+    this.scoreText.setName("text-score");
+    this.scoreText.setOrigin(1, 0.5);
+    this.fieldUI.add(this.scoreText);
 
-this.roguePointText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
-this.roguePointText.setName("text-log-points");
-this.roguePointText.setOrigin(1, 0.5);
-this.fieldUI.add(this.roguePointText);
+    this.roguePointText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
+    this.roguePointText.setName("text-log-points");
+    this.roguePointText.setOrigin(1, 0.5);
+    this.fieldUI.add(this.roguePointText);
 
     this.luckText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
     this.luckText.setName("text-luck");
@@ -661,38 +666,38 @@ this.fieldUI.add(this.roguePointText);
   }
 
   initSession(): void {
-  if (this.sessionPlayTime === null) {
-    this.sessionPlayTime = 0;
-  }
-  if (this.lastSavePlayTime === null) {
-    this.lastSavePlayTime = 0;
-  }
+    if (this.sessionPlayTime === null) {
+      this.sessionPlayTime = 0;
+    }
+    if (this.lastSavePlayTime === null) {
+      this.lastSavePlayTime = 0;
+    }
 
-  if (this.playTimeTimer) {
-    this.playTimeTimer.destroy();
+    if (this.playTimeTimer) {
+      this.playTimeTimer.destroy();
+    }
+
+    this.playTimeTimer = this.time.addEvent({
+      delay: fixedInt(1000),
+      repeat: -1,
+      callback: () => {
+        if (this.gameData) {
+          this.gameData.gameStats.playTime++;
+        }
+        if (this.sessionPlayTime !== null) {
+          this.sessionPlayTime++;
+        }
+        if (this.lastSavePlayTime !== null) {
+          this.lastSavePlayTime++;
+        }
+      },
+    });
+
+    this.updateBiomeWaveText();
+    this.updateMoneyText();
+    this.updateScoreText();
+    this.updateroguePointText();
   }
-
-  this.playTimeTimer = this.time.addEvent({
-    delay: fixedInt(1000),
-    repeat: -1,
-    callback: () => {
-      if (this.gameData) {
-        this.gameData.gameStats.playTime++;
-      }
-      if (this.sessionPlayTime !== null) {
-        this.sessionPlayTime++;
-      }
-      if (this.lastSavePlayTime !== null) {
-        this.lastSavePlayTime++;
-      }
-    },
-  });
-
-  this.updateBiomeWaveText();
-  this.updateMoneyText();
-  this.updateScoreText();
-  this.updateroguePointText();
-}
 
   async initExpSprites(): Promise<void> {
     if (expSpriteKeys.size > 0) {
@@ -787,71 +792,90 @@ this.fieldUI.add(this.roguePointText);
   }
 
   public refreshActiveFieldPositions(): void {
-  const double = this.currentBattle?.double;
-  if (!double) return;
+    const double = this.currentBattle?.double;
+    if (!double) {
+      return;
+    }
 
-  // 플레이어 필드: party[0]=왼쪽, party[1]=오른쪽
-  const pParty = this.getPlayerParty();
-  const p0 = pParty[0];
-  const p1 = pParty[1];
+    // 플레이어 필드: party[0]=왼쪽, party[1]=오른쪽
+    const pParty = this.getPlayerParty();
+    const p0 = pParty[0];
+    const p1 = pParty[1];
 
-  if (p0?.isOnField?.() && p1?.isOnField?.()) {
-    p0.setFieldPosition(FieldPosition.LEFT, 0);
-    p1.setFieldPosition(FieldPosition.RIGHT, 0);
-    // setFieldPosition이 좌표까지 갱신하면 여기서 끝
-    p0.playAnim?.();
-    p1.playAnim?.();
-    p0.showInfo?.();
-    p1.showInfo?.();
+    if (p0?.isOnField?.() && p1?.isOnField?.()) {
+      p0.setFieldPosition(FieldPosition.LEFT, 0);
+      p1.setFieldPosition(FieldPosition.RIGHT, 0);
+      // setFieldPosition이 좌표까지 갱신하면 여기서 끝
+      p0.playAnim?.();
+      p1.playAnim?.();
+      p0.showInfo?.();
+      p1.showInfo?.();
+    }
+
+    // 적 필드도 동일하게 (enemy party[0]=왼쪽, [1]=오른쪽)
+    const eParty = this.getEnemyParty();
+    const e0 = eParty[0];
+    const e1 = eParty[1];
+
+    if (e0?.isOnField?.() && e1?.isOnField?.()) {
+      e0.setFieldPosition(FieldPosition.LEFT, 0);
+      e1.setFieldPosition(FieldPosition.RIGHT, 0);
+      e0.playAnim?.();
+      e1.playAnim?.();
+      e0.showInfo?.();
+      e1.showInfo?.();
+    }
+
+    this.updateFieldScale?.();
   }
-
-  // 적 필드도 동일하게 (enemy party[0]=왼쪽, [1]=오른쪽)
-  const eParty = this.getEnemyParty();
-  const e0 = eParty[0];
-  const e1 = eParty[1];
-
-  if (e0?.isOnField?.() && e1?.isOnField?.()) {
-    e0.setFieldPosition(FieldPosition.LEFT, 0);
-    e1.setFieldPosition(FieldPosition.RIGHT, 0);
-    e0.playAnim?.();
-    e1.playAnim?.();
-    e0.showInfo?.();
-    e1.showInfo?.();
-  }
-
-  this.updateFieldScale?.();
-}
 
   public getEnemyParty(): EnemyPokemon[] {
     return this.currentBattle?.enemyParty ?? [];
   }
 
   public getPracticeDummy(): PracticeDummyEnemy | null {
-  return (this.currentBattle as any)?.practiceDummy ?? null;
-}
-
-public refreshPracticeDummy(): void {
-  const dummy = this.getPracticeDummy();
-  if (!dummy) return;
-
-  if (dummy.hp <= 0) {
-    dummy.hp = dummy.maxHp;
-
-    dummy.doSetStatus?.(StatusEffect.NONE);
-    dummy.status = null;
-
-    dummy.resetTurnData?.();
-    dummy.resetSummonData?.();
+    return (this.currentBattle as any)?.practiceDummy ?? null;
   }
 
-  dummy.setVisible(true);
-  dummy.setAlpha(1);
+  public refreshPracticeDummy(): void {
+    const dummy = this.getPracticeDummy();
+    if (!dummy) {
+      return;
+    }
 
-  dummy.showInfo?.();
-  dummy.updateInfo?.();
-  dummy.updateHpBar?.();
-}
+    if (dummy.hp <= 0) {
+      dummy.hp = dummy.maxHp;
 
+      dummy.doSetStatus?.(StatusEffect.NONE);
+      dummy.status = null;
+
+      dummy.resetTurnData?.();
+      dummy.resetSummonData?.();
+
+      // ✅ 연습 인형 플래그 복구
+      (dummy as any).isPracticeDummy = true;
+
+      // battle 쪽 참조도 유지
+      const battle = this.currentBattle as any;
+      if (battle?.isPracticeBattle) {
+        battle.practiceDummy = dummy;
+      }
+
+      console.log("[PRACTICE_DUMMY_REFRESH]", {
+        name: dummy.getName?.(),
+        hp: dummy.hp,
+        maxHp: dummy.maxHp,
+        isPracticeDummy: (dummy as any).isPracticeDummy,
+      });
+    }
+
+    dummy.setVisible(true);
+    dummy.setAlpha(1);
+
+    dummy.showInfo?.();
+    dummy.updateInfo?.();
+    dummy.updateHpBar?.();
+  }
   /**
    * @returns The first {@linkcode EnemyPokemon} that is {@linkcode getEnemyField | on the field}
    * and {@linkcode EnemyPokemon.isActive | is active}
@@ -860,15 +884,13 @@ public refreshPracticeDummy(): void {
    * @param includeSwitching Whether a pokemon that is currently switching out is valid, default `true`
    */
   public getEnemyPokemon(includeSwitching = true): EnemyPokemon | undefined {
-  if ((this.currentBattle as any)?.isPracticeBattle) {
-    const dummy = (this.currentBattle as any).practiceDummy as EnemyPokemon | undefined;
-    return dummy && dummy.isActive?.() ? dummy : undefined;
-  }
+    if ((this.currentBattle as any)?.isPracticeBattle) {
+      const dummy = (this.currentBattle as any).practiceDummy as EnemyPokemon | undefined;
+      return dummy && dummy.isActive?.() ? dummy : undefined;
+    }
 
-  return this.getEnemyField().find(
-    p => p.isActive() && (includeSwitching || p.switchOutStatus === false)
-  );
-}
+    return this.getEnemyField().find(p => p.isActive() && (includeSwitching || p.switchOutStatus === false));
+  }
 
   /**
    * Returns an array of EnemyPokemon of length 1 or 2 depending on if in a double battle or not.
@@ -876,14 +898,29 @@ public refreshPracticeDummy(): void {
    * @returns array of {@linkcode EnemyPokemon}
    */
   public getEnemyField(): EnemyPokemon[] {
-  if ((this.currentBattle as any)?.isPracticeBattle) {
-    const dummy = (this.currentBattle as any).practiceDummy as EnemyPokemon | undefined;
-    return dummy ? [dummy] : [];
-  }
+    if ((this.currentBattle as any)?.isPracticeBattle) {
+      const battle = this.currentBattle as any;
 
-  const party = this.getEnemyParty();
-  return party.slice(0, Math.min(party.length, this.currentBattle?.double ? 2 : 1));
-}
+      return [battle.practiceDummy, battle.practiceDummy2].filter(Boolean) as EnemyPokemon[];
+    }
+
+    const party = this.getEnemyParty();
+
+    // ✅ 몬스터소굴에서는 실제 Phaser field에 올라온 적을
+    // 현재 전투 필드의 적으로 취급한다.
+    if (monsterHouseManager.isActive()) {
+      const actualFieldEnemies = party.filter(
+        pokemon => this.field?.getIndex(pokemon) >= 0 && !pokemon.switchOutStatus,
+      );
+
+      if (actualFieldEnemies.length > 0) {
+        return actualFieldEnemies.slice(0, this.currentBattle?.double ? 2 : 1);
+      }
+    }
+
+    // 기존 일반 전투 동작
+    return party.slice(0, Math.min(party.length, this.currentBattle?.double ? 2 : 1));
+  }
 
   /**
    * Returns an array of Pokemon on both sides of the battle - player first, then enemy.
@@ -919,231 +956,163 @@ public refreshPracticeDummy(): void {
     return isEnemy ? this.enemyModifierBar : this.modifierBar;
   }
 
-  public givePracticeRentalModifier(
-  pokemon: Pokemon,
-  modifierTypeFunc: ModifierTypeFunc,
-  stackCount = 1,
-): void {
-  const modifierType = getModifierType(modifierTypeFunc);
+  public givePracticeRentalModifier(pokemon: Pokemon, modifierTypeFunc: ModifierTypeFunc, stackCount = 1): void {
+    const modifierType = getModifierType(modifierTypeFunc);
 
-  // 지닌도구 타입만 허용
-  if (!(modifierType instanceof PokemonHeldItemModifierType)) {
-    console.warn(
-      "[PRACTICE_RENTAL_INVALID]",
-      modifierType?.id,
-    );
-    return;
-  }
-
-  // 실제 Modifier 생성
-  const modifier = modifierType.newModifier(
-  pokemon.id,
-  stackCount,
-) as PokemonHeldItemModifier;
-
-modifier.pokemonId = pokemon.id;
-modifier.isPracticeRental = true;
-
-  // 적용
-  this.modifiers.push(modifier);
-
-  // UI 갱신
-  this.updateModifiers(true);
-
-  console.log(
-    "[PRACTICE_RENTAL_GRANTED]",
-    pokemon.name,
-    modifier.type?.id,
-    stackCount,
-  );
-}
-
-public applyPracticeStackGrowth(
-  pokemon: Pokemon,
-): void {
-  if (!(this.currentBattle as any)?.isPracticeBattle) {
-    return;
-  }
-
-  if (!pokemon?.isPlayer?.()) {
-    return;
-  }
-
-  const result =
-  (globalScene as any).practiceTurnResult;
-
-if (!result) {
-  return;
-}
-
-result.playerDamageFactors ??= [];
-
-const arr = result.playerDamageFactors;
-
-  const incStack = (
-    mod: any,
-    label: string,
-  ) => {
-    if (!mod) return;
-
-    const max =
-      mod.getMaxHeldItemCount?.(pokemon)
-      ?? mod.getMaxHeldItemCount?.()
-      ?? 1;
-
-    const before =
-      mod.stackCount
-      ?? mod.getStackCount?.()
-      ?? 1;
-
-    if (before >= max) {
+    // 지닌도구 타입만 허용
+    if (!(modifierType instanceof PokemonHeldItemModifierType)) {
+      console.warn("[PRACTICE_RENTAL_INVALID]", modifierType?.id);
       return;
     }
 
-    if (
-      typeof mod.incrementStackCount
-      === "function"
-    ) {
-      mod.incrementStackCount();
-    } else {
-      mod.stackCount = before + 1;
+    // 실제 Modifier 생성
+    const modifier = modifierType.newModifier(pokemon.id, stackCount) as PokemonHeldItemModifier;
+
+    modifier.pokemonId = pokemon.id;
+    modifier.isPracticeRental = true;
+
+    // 적용
+    this.modifiers.push(modifier);
+
+    // UI 갱신
+    this.updateModifiers(true);
+
+    console.log("[PRACTICE_RENTAL_GRANTED]", pokemon.name, modifier.type?.id, stackCount);
+  }
+
+  public applyPracticeStackGrowth(pokemon: Pokemon): void {
+    if (!(this.currentBattle as any)?.isPracticeBattle) {
+      return;
     }
 
-    const after =
-      mod.stackCount
-      ?? mod.getStackCount?.()
-      ?? before + 1;
+    if (!pokemon?.isPlayer?.()) {
+      return;
+    }
 
-    arr.push(
-      `${label} 스택 ${before}→${after}`,
-    );
+    const result = (globalScene as any).practiceTurnResult;
 
-    console.log(
-      "[PRACTICE_STACK_GROWTH]",
-      {
+    if (!result) {
+      return;
+    }
+
+    result.playerDamageFactors ??= [];
+
+    const arr = result.playerDamageFactors;
+
+    const incStack = (mod: any, label: string) => {
+      if (!mod) {
+        return;
+      }
+
+      const max = mod.getMaxHeldItemCount?.(pokemon) ?? mod.getMaxHeldItemCount?.() ?? 1;
+
+      const before = mod.stackCount ?? mod.getStackCount?.() ?? 1;
+
+      if (before >= max) {
+        return;
+      }
+
+      if (typeof mod.incrementStackCount === "function") {
+        mod.incrementStackCount();
+      } else {
+        mod.stackCount = before + 1;
+      }
+
+      const after = mod.stackCount ?? mod.getStackCount?.() ?? before + 1;
+
+      arr.push(`${label} 스택 ${before}→${after}`);
+
+      console.log("[PRACTICE_STACK_GROWTH]", {
         pokemon: pokemon.name,
         label,
         before,
         after,
         max,
-      },
+      });
+    };
+
+    const held = pokemon.getHeldItems();
+
+    incStack(
+      held.find(m => m instanceof StackingPowerBoosterModifier),
+      "누적위력",
     );
-  };
 
-  const held = pokemon.getHeldItems();
+    incStack(
+      held.find(m => m instanceof PokemonDefensiveStatModifier),
+      "돌격조끼",
+    );
 
-  incStack(
-    held.find(
-      m =>
-        m instanceof
-        StackingPowerBoosterModifier,
-    ),
-    "누적위력",
-  );
+    incStack(
+      held.find(m => m instanceof SpeedStatModifier),
+      "구애스카프",
+    );
 
-  incStack(
-    held.find(
-      m =>
-        m instanceof
-        PokemonDefensiveStatModifier,
-    ),
-    "돌격조끼",
-  );
+    incStack(
+      held.find(m => m instanceof SpAtkStatModifier),
+      "구애안경",
+    );
 
-  incStack(
-    held.find(
-      m =>
-        m instanceof
-        SpeedStatModifier,
-    ),
-    "구애스카프",
-  );
+    incStack(
+      held.find(m => m instanceof AtkStatModifier),
+      "구애머리띠",
+    );
 
-  incStack(
-    held.find(
-      m =>
-        m instanceof
-        SpAtkStatModifier,
-    ),
-    "구애안경",
-  );
+    this.updateModifiers(pokemon.isPlayer(), true);
 
-  incStack(
-    held.find(
-      m =>
-        m instanceof
-        AtkStatModifier,
-    ),
-    "구애머리띠",
-  );
-
-  this.updateModifiers(
-    pokemon.isPlayer(),
-    true,
-  );
-
-  pokemon.updateInfo?.();
-}
-
-public givePracticeRentalModifierType(
-  pokemon: Pokemon,
-  modifierType: PokemonHeldItemModifierType,
-  stackCount = 1,
-): void {
-  if (!pokemon || typeof pokemon.id !== "number") {
-    console.warn("[PRACTICE_RENTAL_INVALID_POKEMON]", pokemon);
-    return;
+    pokemon.updateInfo?.();
   }
 
-  const modifier = modifierType.newModifier(
-  pokemon.id,
-  stackCount,
-) as PokemonHeldItemModifier;
+  public givePracticeRentalModifierType(
+    pokemon: Pokemon,
+    modifierType: PokemonHeldItemModifierType,
+    stackCount = 1,
+  ): void {
+    if (!pokemon || typeof pokemon.id !== "number") {
+      console.warn("[PRACTICE_RENTAL_INVALID_POKEMON]", pokemon);
+      return;
+    }
 
-modifier.pokemonId = pokemon.id;
-modifier.isPracticeRental = true;
+    const modifier = modifierType.newModifier(pokemon.id, stackCount) as PokemonHeldItemModifier;
 
-  // 대타출동 인형은 enemy side라 enemyModifiers에 넣어야 함
-  if ((pokemon as any).isPracticeDummy) {
-  modifier.isPracticeRental = true;
+    modifier.pokemonId = pokemon.id;
+    modifier.isPracticeRental = true;
 
-  // 실제 전투 계산용
-  this.enemyModifiers.push(modifier);
+    // 대타출동 인형은 enemy side라 enemyModifiers에 넣어야 함
+    if ((pokemon as any).isPracticeDummy) {
+      modifier.isPracticeRental = true;
 
-  // 연습모드 전용 추적용
-  (this as any).practiceRentalModifiers ??= [];
-  (this as any).practiceRentalModifiers.push(modifier);
+      // 실제 전투 계산용
+      this.enemyModifiers.push(modifier);
 
-  console.log("[PRACTICE_RENTAL_DUMMY_DIRECT_ADDED]", {
-    pokemon: pokemon.name,
-    pokemonId: pokemon.id,
-    modifier: modifier.type?.id,
-    count: (this as any).practiceRentalModifiers.length,
-    enemyCount: this.enemyModifiers.length,
-  });
+      // 연습모드 전용 추적용
+      (this as any).practiceRentalModifiers ??= [];
+      (this as any).practiceRentalModifiers.push(modifier);
 
-  // 중요
-  this.updateModifiers(false, true);
+      console.log("[PRACTICE_RENTAL_DUMMY_DIRECT_ADDED]", {
+        pokemon: pokemon.name,
+        pokemonId: pokemon.id,
+        modifier: modifier.type?.id,
+        count: (this as any).practiceRentalModifiers.length,
+        enemyCount: this.enemyModifiers.length,
+      });
 
-  return;
-}
+      // 중요
+      this.updateModifiers(false, true);
 
-  // 일반 플레이어 포켓몬
-  const added = this.addModifier(
-    modifier,
-    false,
-    false,
-    false,
-    true,
-  );
+      return;
+    }
 
-  console.log("[PRACTICE_RENTAL_PLAYER_ADDED]", {
-    pokemon: pokemon.name,
-    pokemonId: pokemon.id,
-    modifier: modifier.type?.id,
-    added,
-  });
-}
+    // 일반 플레이어 포켓몬
+    const added = this.addModifier(modifier, false, false, false, true);
+
+    console.log("[PRACTICE_RENTAL_PLAYER_ADDED]", {
+      pokemon: pokemon.name,
+      pokemonId: pokemon.id,
+      modifier: modifier.type?.id,
+      added,
+    });
+  }
 
   // store info toggles to be accessible by the ui
   addInfoToggle(...infoToggles: InfoToggle[]): void {
@@ -1196,28 +1165,28 @@ modifier.isPracticeRental = true;
       dataSource,
     );
 
-   // ✅ 여기서 "dataSource -> runtime pokemon" 복원 (init 전에!)
-  if (dataSource) {
-    const ds: any = dataSource;
+    // ✅ 여기서 "dataSource -> runtime pokemon" 복원 (init 전에!)
+    if (dataSource) {
+      const ds: any = dataSource;
 
-    // PokemonData든 Pokemon이든 둘 다 커버
-    const usedTMs   = (ds.usedTMs   ?? ds.data?.usedTMs)   ?? [];
-    const usedTRs   = (ds.usedTRs   ?? ds.data?.usedTRs)   ?? [];
-    const usedZMoves= (ds.usedZMoves?? ds.data?.usedZMoves)?? [];
+      // PokemonData든 Pokemon이든 둘 다 커버
+      const usedTMs = ds.usedTMs ?? ds.data?.usedTMs ?? [];
+      const usedTRs = ds.usedTRs ?? ds.data?.usedTRs ?? [];
+      const usedZMoves = ds.usedZMoves ?? ds.data?.usedZMoves ?? [];
 
-    // ✅ 참조 공유 방지(중요): clone
-    pokemon.usedTMs = [...usedTMs];
-    pokemon.usedTRs = [...usedTRs];
-    pokemon.usedZMoves = [...usedZMoves];
+      // ✅ 참조 공유 방지(중요): clone
+      pokemon.usedTMs = [...usedTMs];
+      pokemon.usedTRs = [...usedTRs];
+      pokemon.usedZMoves = [...usedZMoves];
 
-    // (선택) 프로젝트에서 pokemon.data를 실제로 쓰는 구조면 같이 맞춰주기
-    const anyP: any = pokemon as any;
-    if (anyP.data) {
-      anyP.data.usedTMs = [...pokemon.usedTMs];
-      anyP.data.usedTRs = [...pokemon.usedTRs];
-      anyP.data.usedZMoves = [...pokemon.usedZMoves];
+      // (선택) 프로젝트에서 pokemon.data를 실제로 쓰는 구조면 같이 맞춰주기
+      const anyP: any = pokemon as any;
+      if (anyP.data) {
+        anyP.data.usedTMs = [...pokemon.usedTMs];
+        anyP.data.usedTRs = [...pokemon.usedTRs];
+        anyP.data.usedZMoves = [...pokemon.usedZMoves];
+      }
     }
-  }
 
     if (postProcess) {
       postProcess(pokemon);
@@ -1249,13 +1218,38 @@ modifier.isPracticeRental = true;
   }
 
   addPracticeDummyEnemy(): PracticeDummyEnemy {
-  const dummy = new PracticeDummyEnemy(220, 75);
+    const dummy = new PracticeDummyEnemy(220, 75);
 
-  this.add.existing(dummy);
-  this.field.add(dummy);
+    this.add.existing(dummy);
+    this.field.add(dummy);
 
-  return dummy;
-}
+    return dummy;
+  }
+
+  addMysteryMonster(
+    mysterySpecies: MysteryMonsterSpecies,
+    level: number,
+    trainerSlot: TrainerSlot,
+    boss = false,
+    dataSource?: PokemonData,
+  ): MysteryMonster {
+    const monster = new MysteryMonster(mysterySpecies, level, trainerSlot, boss, dataSource);
+
+    monster.init();
+
+    console.log("[MYSTERY_MONSTER_SPAWN]", {
+      name: monster.name,
+      level: monster.level,
+      mysterySpeciesId: mysterySpecies.id,
+      spriteKey: mysterySpecies.spriteKey,
+      types: monster.getTypes(),
+      ability: monster.getAbility()?.name,
+      stats: monster.stats,
+      loaded: !!dataSource,
+    });
+
+    return monster;
+  }
 
   addEnemyPokemon(
     species: PokemonSpecies,
@@ -1276,30 +1270,32 @@ modifier.isPracticeRental = true;
     }
 
     const pokemon = new EnemyPokemon(species, level, trainerSlot, boss, shinyLock, dataSource);
-function watchHp(p: any, label: string) {
-  let _hp = p.hp;
+    function watchHp(p: any, label: string) {
+      let _hp = p.hp;
 
-  Object.defineProperty(p, "hp", {
-    get() { return _hp; },
-    set(v: number) {
-      if (v !== _hp) {
-        const max = p.getMaxHp?.() ?? p.getStat?.(0) ?? "?";
-        console.log(`[HP_SET][${label}] ${p.getName?.() ?? "??"} ${_hp} -> ${v} (max=${max})`);
-        console.trace(`[HP_SET_TRACE][${label}]`);
-      }
-      _hp = v;
-    },
-    configurable: true,
-  });
-}
+      Object.defineProperty(p, "hp", {
+        get() {
+          return _hp;
+        },
+        set(v: number) {
+          if (v !== _hp) {
+            const max = p.getMaxHp?.() ?? p.getStat?.(0) ?? "?";
+            console.log(`[HP_SET][${label}] ${p.getName?.() ?? "??"} ${_hp} -> ${v} (max=${max})`);
+            console.trace(`[HP_SET_TRACE][${label}]`);
+          }
+          _hp = v;
+        },
+        configurable: true,
+      });
+    }
 
-// ✅ “무조건” 여기서 감시 시작 (원인 추적 끝날 때까지)
-watchHp(pokemon as any, "ENEMY_SPAWN");
+    // ✅ “무조건” 여기서 감시 시작 (원인 추적 끝날 때까지)
+    watchHp(pokemon as any, "ENEMY_SPAWN");
 
-// 기존 로직
-if (Overrides.ENEMY_FUSION_OVERRIDE) {
-  pokemon.generateFusionSpecies();
-}
+    // 기존 로직
+    if (Overrides.ENEMY_FUSION_OVERRIDE) {
+      pokemon.generateFusionSpecies();
+    }
 
     if (boss && !dataSource) {
       const secondaryIvs = getIvsFromId(randSeedInt(4294967296));
@@ -1340,8 +1336,8 @@ if (Overrides.ENEMY_FUSION_OVERRIDE) {
     }
 
     pokemon.init();
-(pokemon as any).debugHp?.("AFTER_ENEMY_INIT");
-return pokemon;
+    (pokemon as any).debugHp?.("AFTER_ENEMY_INIT");
+    return pokemon;
   }
 
   /**
@@ -1508,11 +1504,7 @@ return pokemon;
 
     this.lockModifierTiers = false;
 
-    this.pokeballCounts = Object.fromEntries(
-      getEnumValues(PokeballType)
-        .filter(p => p <= PokeballType.MASTER_BALL)
-        .map(t => [t, 0]),
-    );
+    this.pokeballCounts = Object.fromEntries(getEnumValues(PokeballType).map(t => [t, 0]));
     this.pokeballCounts[PokeballType.POKEBALL] += 5;
     if (Overrides.POKEBALL_OVERRIDE.active) {
       this.pokeballCounts = Overrides.POKEBALL_OVERRIDE.pokeballs;
@@ -1552,19 +1544,26 @@ return pokemon;
     this.moneyText.setVisible(false);
 
     this.updateScoreText();
-this.scoreText.setVisible(false);
+    this.scoreText.setVisible(false);
 
-this.updateroguePointText();
-this.roguePointText.setVisible(false);
+    this.updateroguePointText();
+    this.roguePointText.setVisible(false);
 
-[this.luckLabelText, this.luckText].forEach(t => {
-  t.setVisible(false);
-});
+    [this.luckLabelText, this.luckText].forEach(t => {
+      t.setVisible(false);
+    });
 
-    this.newArena(
-  Overrides.STARTING_BIOME_OVERRIDE
-    || this.gameMode.getStartingBiome()
-);
+    const startingBiome = Overrides.STARTING_BIOME_OVERRIDE ?? this.gameMode.getStartingBiome();
+
+    console.log("[RESET_STARTING_BIOME]", {
+      override: Overrides.STARTING_BIOME_OVERRIDE,
+      gameModeBiome: this.gameMode.getStartingBiome(),
+      startingBiome,
+      biomeName: BiomeId[startingBiome],
+      biomeNameType: typeof BiomeId[startingBiome],
+    });
+
+    this.newArena(startingBiome);
 
     this.field.setVisible(true);
 
@@ -1638,11 +1637,23 @@ this.roguePointText.setVisible(false);
 
   isNewBiome(currentBattle = this.currentBattle) {
     const isWaveIndexMultipleOfTen = !(currentBattle.waveIndex % 10);
+
     const isEndlessOrDaily = this.gameMode.hasShortBiomes || this.gameMode.isDaily;
+
     const isEndlessFifthWave = this.gameMode.hasShortBiomes && currentBattle.waveIndex % 5 === 0;
+
     const isWaveIndexMultipleOfFiftyMinusOne = currentBattle.waveIndex % 50 === 49;
+
+    const isWeeklyOrMonthlyFinalApproach =
+      (this.gameMode.modeId === GameModes.WEEKLY || this.gameMode.modeId === GameModes.MONTHLY)
+      && this.gameMode.isWaveFinal(currentBattle.waveIndex + 1);
+
     const isNewBiome =
-      isWaveIndexMultipleOfTen || isEndlessFifthWave || (isEndlessOrDaily && isWaveIndexMultipleOfFiftyMinusOne);
+      isWaveIndexMultipleOfTen
+      || isEndlessFifthWave
+      || (isEndlessOrDaily && isWaveIndexMultipleOfFiftyMinusOne)
+      || isWeeklyOrMonthlyFinalApproach;
+
     return isNewBiome;
   }
 
@@ -1653,11 +1664,24 @@ this.roguePointText.setVisible(false);
     double?: boolean,
     mysteryEncounterType?: MysteryEncounterType,
   ): Battle {
-    const _startingWave = Overrides.STARTING_WAVE_OVERRIDE || startingWave;
+    const _startingWave = startingWave.toString();
     const newWaveIndex = waveIndex || (this.currentBattle?.waveIndex || _startingWave - 1) + 1;
+
     let newDouble: boolean | undefined;
     let newBattleType: BattleType;
     let newTrainer: Trainer | undefined;
+
+    // ★ 여기
+    const catchQuest = questManager
+      .getQuests()
+      .find(
+        quest =>
+          quest.accepted
+          && !quest.completed
+          && quest.objectiveType === "CATCH_POKEMON"
+          && quest.targetSpeciesId !== undefined
+          && quest.targetCatchWave === newWaveIndex,
+      );
 
     let battleConfig: FixedBattleConfig | null = null;
 
@@ -1677,51 +1701,113 @@ this.roguePointText.setVisible(false);
         this.field.add(newTrainer);
       }
     } else {
-      if (
-        !this.gameMode.hasTrainers ||
-        Overrides.BATTLE_TYPE_OVERRIDE === BattleType.WILD ||
-        (Overrides.DISABLE_STANDARD_TRAINERS_OVERRIDE && trainerData == null)
+      const trainerRescueQuest = questManager.getActiveTrainerRescueQuest(newWaveIndex);
+
+      const weeklyGymWaves = [10, 30, 50, 70, 90, 110, 130, 149];
+
+      const isWeeklyGymWave = this.gameMode.modeId === GameModes.WEEKLY && weeklyGymWaves.includes(newWaveIndex);
+
+      // ★ 1순위: 구조 의뢰
+      // hasTrainers 여부와 관계없이 강제 트레이너 등장
+      if (trainerRescueQuest) {
+        newBattleType = BattleType.TRAINER;
+
+        console.log("[QUEST_RESCUE_WAVE_OVERRIDE]", {
+          questId: trainerRescueQuest.id,
+          wave: newWaveIndex,
+          targetTrainerType: trainerRescueQuest.targetTrainerType,
+          targetTrainerName: TrainerType[trainerRescueQuest.targetTrainerType!],
+          mode: GameModes[this.gameMode.modeId],
+          hasTrainers: this.gameMode.hasTrainers,
+        });
+      }
+
+      // ★ 2순위: 포획 의뢰
+      else if (catchQuest) {
+        newBattleType = BattleType.WILD;
+        newDouble = false;
+
+        console.log("[QUEST_CATCH_WAVE_OVERRIDE]", {
+          questId: catchQuest.id,
+          wave: newWaveIndex,
+          targetSpeciesId: catchQuest.targetSpeciesId,
+          forcedWild: true,
+          forcedSingle: true,
+        });
+      }
+
+      // 주간 관장
+      else if (isWeeklyGymWave) {
+        newBattleType = BattleType.TRAINER;
+      }
+
+      // 일반적으로 트레이너가 없는 모드
+      else if (
+        !this.gameMode.hasTrainers
+        || Overrides.BATTLE_TYPE_OVERRIDE === BattleType.WILD
+        || (Overrides.DISABLE_STANDARD_TRAINERS_OVERRIDE && trainerData == null)
       ) {
         newBattleType = BattleType.WILD;
-      } else {
+      }
+
+      // 일반 트레이너 판정
+      else {
         newBattleType =
-          Overrides.BATTLE_TYPE_OVERRIDE ??
-          battleType ??
-          (this.gameMode.isWaveTrainer(newWaveIndex, this.arena) ? BattleType.TRAINER : BattleType.WILD);
+          Overrides.BATTLE_TYPE_OVERRIDE
+          ?? battleType
+          ?? (this.gameMode.isWaveTrainer(newWaveIndex, this.arena) ? BattleType.TRAINER : BattleType.WILD);
       }
 
       if (newBattleType === BattleType.TRAINER) {
-        const trainerType =
-          Overrides.RANDOM_TRAINER_OVERRIDE?.trainerType ?? this.arena.randomTrainerType(newWaveIndex);
+        let trainerType = Overrides.RANDOM_TRAINER_OVERRIDE?.trainerType ?? this.arena.randomTrainerType(newWaveIndex);
+
+        if (trainerRescueQuest?.targetTrainerType !== undefined) {
+          trainerType = trainerRescueQuest.targetTrainerType;
+
+          console.log("[QUEST_RESCUE_TRAINER_SPAWN]", {
+            questId: trainerRescueQuest.id,
+            wave: newWaveIndex,
+            trainerType,
+            trainerTypeName: TrainerType[trainerType],
+          });
+        }
+
         let doubleTrainer = false;
+
         if (trainerConfigs[trainerType].doubleOnly) {
           doubleTrainer = true;
         } else if (trainerConfigs[trainerType].hasDouble) {
           doubleTrainer =
-            Overrides.RANDOM_TRAINER_OVERRIDE?.alwaysDouble ||
-            !randSeedInt(this.getDoubleBattleChance(newWaveIndex, playerField));
-          // Add a check that special trainers can't be double except for tate and liza - they should use the normal double chance
+            Overrides.RANDOM_TRAINER_OVERRIDE?.alwaysDouble
+            || !randSeedInt(this.getDoubleBattleChance(newWaveIndex, playerField));
+
           if (
-            trainerConfigs[trainerType].trainerTypeDouble &&
-            ![TrainerType.TATE, TrainerType.LIZA].includes(trainerType)
+            trainerConfigs[trainerType].trainerTypeDouble
+            && ![TrainerType.TATE, TrainerType.LIZA].includes(trainerType)
           ) {
             doubleTrainer = false;
           }
         }
-        const variant = doubleTrainer
-          ? TrainerVariant.DOUBLE
-          : randSeedInt(2)
-            ? TrainerVariant.FEMALE
-            : TrainerVariant.DEFAULT;
+
+        const variant =
+          trainerRescueQuest?.targetTrainerVariant !== undefined
+            ? trainerRescueQuest.targetTrainerVariant
+            : doubleTrainer
+              ? TrainerVariant.DOUBLE
+              : randSeedInt(2)
+                ? TrainerVariant.FEMALE
+                : TrainerVariant.DEFAULT;
+
         newTrainer = trainerData !== undefined ? trainerData.toTrainer() : new Trainer(trainerType, variant);
+
         this.field.add(newTrainer);
       }
 
       // Check for mystery encounter
       // Can only occur in place of a standard (non-boss) wild battle, waves 10-180
       if (
-        !Overrides.BATTLE_TYPE_OVERRIDE &&
-        (this.isWaveMysteryEncounter(newBattleType, newWaveIndex) || newBattleType === BattleType.MYSTERY_ENCOUNTER)
+        !Overrides.BATTLE_TYPE_OVERRIDE
+        && (this.isWaveMysteryEncounter(newBattleType, newWaveIndex) || newBattleType === BattleType.MYSTERY_ENCOUNTER)
       ) {
         newBattleType = BattleType.MYSTERY_ENCOUNTER;
         // Reset to base spawn weight
@@ -1730,13 +1816,20 @@ this.roguePointText.setVisible(false);
     }
 
     if (double === undefined && newWaveIndex > 1) {
-      if (newBattleType === BattleType.WILD && !this.gameMode.isWaveFinal(newWaveIndex)) {
+      if (catchQuest || kecleonShopManager.isTheftChaseWave(newWaveIndex)) {
+        // 포획 의뢰 / 캘리몬 추격전은 항상 싱글
+        newDouble = false;
+      } else if (newBattleType === BattleType.WILD && !this.gameMode.isWaveFinal(newWaveIndex)) {
         newDouble = !randSeedInt(this.getDoubleBattleChance(newWaveIndex, playerField));
       } else if (newBattleType === BattleType.TRAINER) {
         newDouble = newTrainer?.variant === TrainerVariant.DOUBLE;
       }
     } else if (!battleConfig) {
       newDouble = !!double;
+    }
+
+    if (kecleonShopManager.isTheftChaseWave(newWaveIndex)) {
+      newDouble = false;
     }
 
     // Disable double battles on Endless/Endless Spliced Wave 50x boss battles (Introduced 1.2.0)
@@ -1811,9 +1904,9 @@ this.roguePointText.setVisible(false);
       const isNewBiome = this.isNewBiome(lastBattle);
       /** Whether to reset and recall pokemon */
       const resetArenaState =
-        isNewBiome ||
-        [BattleType.TRAINER, BattleType.MYSTERY_ENCOUNTER].includes(this.currentBattle.battleType) ||
-        this.currentBattle.battleSpec === BattleSpec.FINAL_BOSS;
+        isNewBiome
+        || [BattleType.TRAINER, BattleType.MYSTERY_ENCOUNTER].includes(this.currentBattle.battleType)
+        || this.currentBattle.battleSpec === BattleSpec.FINAL_BOSS;
 
       for (const enemyPokemon of this.getEnemyParty()) {
         enemyPokemon.destroy();
@@ -1840,8 +1933,8 @@ this.roguePointText.setVisible(false);
           pokemon.resetTera();
           applyAbAttrs("PostBattleInitAbAttr", { pokemon });
           if (
-            pokemon.hasSpecies(SpeciesId.TERAPAGOS) ||
-            (this.gameMode.isClassic && this.currentBattle.waveIndex > 180 && this.currentBattle.waveIndex <= 190)
+            pokemon.hasSpecies(SpeciesId.TERAPAGOS)
+            || (this.gameMode.isClassic && this.currentBattle.waveIndex > 180 && this.currentBattle.waveIndex <= 190)
           ) {
             this.arena.playerTerasUsed = 0;
           }
@@ -1869,13 +1962,31 @@ this.roguePointText.setVisible(false);
     }
 
     return this.currentBattle;
-    console.log("[NEW_BATTLE] phase queue after newBattle", 
-  (this.phaseManager as any).phaseQueue?.map((p: any) => p.phaseName ?? p.constructor?.name)
-);
+    console.log(
+      "[NEW_BATTLE] phase queue after newBattle",
+      (this.phaseManager as any).phaseQueue?.map((p: any) => p.phaseName ?? p.constructor?.name),
+    );
   }
 
   newArena(biome: BiomeId, playerFaints = 0): Arena {
-    this.arena = new Arena(biome, playerFaints);
+    console.log("[NEW_ARENA_INPUT]", {
+      biome,
+      biomeType: typeof biome,
+      biomeEnumValue: BiomeId[biome],
+      biomeEnumValueType: typeof BiomeId[biome],
+    });
+
+    const fallbackBiome = Overrides.STARTING_BIOME_OVERRIDE ?? this.gameMode.getStartingBiome();
+
+    const safeBiome = typeof biome === "number" && typeof BiomeId[biome] === "string" ? biome : fallbackBiome;
+
+    console.log("[NEW_ARENA_SAFE]", {
+      original: biome,
+      safeBiome,
+      safeBiomeName: BiomeId[safeBiome],
+    });
+
+    this.arena = new Arena(safeBiome, playerFaints);
     this.eventTarget.dispatchEvent(new NewArenaEvent());
 
     this.arenaBg.pipelineData = {
@@ -1886,43 +1997,38 @@ this.roguePointText.setVisible(false);
   }
 
   updateFieldScale(): Promise<void> {
-  return new Promise(resolve => {
+    return new Promise(resolve => {
+      if ((this.currentBattle as any)?.isPracticeBattle) {
+        const playerField = this.getPlayerField();
+        const dummy = this.getPracticeDummy();
 
-    if ((this.currentBattle as any)?.isPracticeBattle) {
-      const playerField = this.getPlayerField();
-      const dummy = this.getPracticeDummy();
+        const fieldObjects = [...playerField, ...(dummy ? [dummy as any] : [])];
 
-      const fieldObjects = [
-        ...playerField,
-        ...(dummy ? [dummy as any] : [])
-      ];
+        const highestScale = fieldObjects
+          .map(p => p.getSpriteScale())
+          .reduce((max: number, scale: number) => Math.max(max, scale), 0);
 
-      const highestScale = fieldObjects
-        .map(p => p.getSpriteScale())
-        .reduce((max: number, scale: number) => Math.max(max, scale), 0);
+        const fieldScale = Math.floor(Math.pow(1 / highestScale, 0.7) * 40) / 40;
 
+        this.setFieldScale(fieldScale).then(() => resolve());
+        return;
+      }
+
+      // 기존 로직
       const fieldScale =
-        Math.floor(Math.pow(1 / highestScale, 0.7) * 40) / 40;
+        Math.floor(
+          Math.pow(
+            1
+              / this.getField(true)
+                .map(p => p.getSpriteScale())
+                .reduce((highestScale: number, scale: number) => Math.max(scale, highestScale), 0),
+            0.7,
+          ) * 40,
+        ) / 40;
 
       this.setFieldScale(fieldScale).then(() => resolve());
-      return;
-    }
-
-    // 기존 로직
-    const fieldScale =
-      Math.floor(
-        Math.pow(
-          1 /
-            this.getField(true)
-              .map(p => p.getSpriteScale())
-              .reduce((highestScale: number, scale: number) => Math.max(scale, highestScale), 0),
-          0.7,
-        ) * 40,
-      ) / 40;
-
-    this.setFieldScale(fieldScale).then(() => resolve());
-  });
-}
+    });
+  }
 
   setFieldScale(scale: number, instant = false): Promise<void> {
     return new Promise(resolve => {
@@ -1938,7 +2044,7 @@ this.roguePointText.setVisible(false);
 
       this.tweens.add({
         targets: this.field,
-        scale: scale,
+        scale,
         x: (defaultWidth - scaledWidth) / 2,
         y: defaultHeight - scaledHeight,
         duration: !instant ? fixedInt(Math.abs(this.field.scale - scale) * 200) : 0,
@@ -2034,6 +2140,7 @@ this.roguePointText.setVisible(false);
       case SpeciesId.GOURGEIST:
       case SpeciesId.ORICORIO:
       case SpeciesId.MAGEARNA:
+        return randSeedInt(2);
       case SpeciesId.ZARUDE:
       case SpeciesId.SQUAWKABILLY:
       case SpeciesId.PALDEA_TAUROS:
@@ -2055,18 +2162,11 @@ this.roguePointText.setVisible(false);
         return randSeedInt(8);
       case SpeciesId.EEVEE:
         if (
-          this.currentBattle?.battleType === BattleType.TRAINER &&
-          this.currentBattle?.waveIndex < 30 &&
-          !isEggPhase
+          this.currentBattle?.battleType === BattleType.TRAINER
+          && this.currentBattle?.waveIndex < 30
+          && !isEggPhase
         ) {
           return 0; // No Partner Eevee for Wave 12 Preschoolers
-        }
-        return randSeedInt(2);
-      case SpeciesId.FROAKIE:
-      case SpeciesId.FROGADIER:
-      case SpeciesId.GRENINJA:
-        if (this.currentBattle?.battleType === BattleType.TRAINER && !isEggPhase) {
-          return 0; // Don't give trainers Battle Bond Greninja, Froakie or Frogadier
         }
         return randSeedInt(2);
       case SpeciesId.URSHIFU:
@@ -2148,8 +2248,6 @@ this.roguePointText.setVisible(false);
     return ret;
   }
 
-  
-
   getEncounterBossSegments(waveIndex: number, level: number, species?: PokemonSpecies, forceBoss = false): number {
     if (Overrides.ENEMY_HEALTH_SEGMENTS_OVERRIDE > 1) {
       return Overrides.ENEMY_HEALTH_SEGMENTS_OVERRIDE;
@@ -2169,9 +2267,9 @@ this.roguePointText.setVisible(false);
     } else {
       this.executeWithSeedOffset(() => {
         isBoss =
-          waveIndex % 10 === 0 ||
-          (this.gameMode.hasRandomBosses &&
-            randSeedInt(100) < Math.min(Math.max(Math.ceil((waveIndex - 250) / 50), 0) * 2, 30));
+          waveIndex % 10 === 0
+          || (this.gameMode.hasRandomBosses
+            && randSeedInt(100) < Math.min(Math.max(Math.ceil((waveIndex - 250) / 50), 0) * 2, 30));
       }, waveIndex << 2);
     }
     if (!isBoss) {
@@ -2183,10 +2281,8 @@ this.roguePointText.setVisible(false);
     if (level >= 100) {
       ret++;
     }
-    if (species) {
-      if (species.baseTotal >= 670) {
-        ret++;
-      }
+    if (species && species.baseTotal >= 670) {
+      ret++;
     }
     ret += Math.floor(waveIndex / 250);
 
@@ -2292,8 +2388,8 @@ this.roguePointText.setVisible(false);
   ): Phaser.GameObjects.Sprite {
     sprite.setPipeline(this.spritePipeline, {
       tone: [0.0, 0.0, 0.0, 0.0],
-      hasShadow: hasShadow,
-      ignoreOverride: ignoreOverride,
+      hasShadow,
+      ignoreOverride,
       teraColor: pokemon ? getTypeRgb(pokemon.getTeraType()) : undefined,
       isTerastallized: pokemon ? pokemon.isTerastallized : false,
     });
@@ -2314,7 +2410,7 @@ this.roguePointText.setVisible(false);
         targets: this.fieldOverlay,
         alpha: 0.5,
         ease: "Sine.easeOut",
-        duration: duration,
+        duration,
         onComplete: () => resolve(),
       });
     });
@@ -2325,7 +2421,7 @@ this.roguePointText.setVisible(false);
       this.tweens.add({
         targets: this.fieldOverlay,
         alpha: 0,
-        duration: duration,
+        duration,
         ease: "Cubic.easeIn",
         onComplete: () => resolve(),
       });
@@ -2359,7 +2455,7 @@ this.roguePointText.setVisible(false);
       this.tweens.add({
         targets: this.shopOverlay,
         alpha: 0,
-        duration: duration,
+        duration,
         ease: "Cubic.easeIn",
         onComplete: () => resolve(),
       });
@@ -2418,10 +2514,10 @@ this.roguePointText.setVisible(false);
   }
 
   updateroguePointText(): void {
-  const roguePoints = this.gameData?.roguePoints ?? 0;
-  this.roguePointText.setText(`RP: ${roguePoints}`);
-  this.roguePointText.setVisible(true);
-}
+    const roguePoints = this.gameData?.roguePoints ?? 0;
+    this.roguePointText.setText(`RP: ${roguePoints}`);
+    this.roguePointText.setVisible(true);
+  }
 
   /**
    * Displays the current luck value.
@@ -2442,7 +2538,7 @@ this.roguePointText.setVisible(false);
     this.luckLabelText.setX(this.scaledCanvas.width - 2 - (this.luckText.displayWidth + 2));
     this.tweens.add({
       targets: labels,
-      duration: duration,
+      duration,
       alpha: 1,
       onComplete: () => {
         for (const label of labels) {
@@ -2459,7 +2555,7 @@ this.roguePointText.setVisible(false);
     const labels = [this.luckLabelText, this.luckText];
     this.tweens.add({
       targets: labels,
-      duration: duration,
+      duration,
       alpha: 0,
       onComplete: () => {
         for (const label of labels) {
@@ -2470,49 +2566,49 @@ this.roguePointText.setVisible(false);
   }
 
   updateUIPositions(): void {
-  const enemyModifierCount = this.enemyModifiers.filter(m => m.isIconVisible()).length;
-  const biomeWaveTextHeight = this.biomeWaveText.getBottomLeft().y - this.biomeWaveText.getTopLeft().y;
+    const enemyModifierCount = this.enemyModifiers.filter(m => m.isIconVisible()).length;
+    const biomeWaveTextHeight = this.biomeWaveText.getBottomLeft().y - this.biomeWaveText.getTopLeft().y;
 
-  this.biomeWaveText.setY(
-    -this.scaledCanvas.height +
-      (enemyModifierCount ? (enemyModifierCount <= 12 ? 15 : 24) : 0) +
-      biomeWaveTextHeight / 2,
-  );
+    this.biomeWaveText.setY(
+      -this.scaledCanvas.height
+        + (enemyModifierCount ? (enemyModifierCount <= 12 ? 15 : 24) : 0)
+        + biomeWaveTextHeight / 2,
+    );
 
-  this.moneyText.setY(this.biomeWaveText.y + 10);
-  this.scoreText.setY(this.moneyText.y + 10);
-  this.roguePointText.setY((this.scoreText.visible ? this.scoreText : this.moneyText).y + 10);
+    this.moneyText.setY(this.biomeWaveText.y + 10);
+    this.scoreText.setY(this.moneyText.y + 10);
+    this.roguePointText.setY((this.scoreText.visible ? this.scoreText : this.moneyText).y + 10);
 
-  const bottomInfoText = this.roguePointText.visible
-    ? this.roguePointText
-    : this.scoreText.visible
-      ? this.scoreText
-      : this.moneyText;
+    const bottomInfoText = this.roguePointText.visible
+      ? this.roguePointText
+      : this.scoreText.visible
+        ? this.scoreText
+        : this.moneyText;
 
-  [this.luckLabelText, this.luckText].forEach(l => l.setY(bottomInfoText.y + 10));
+    [this.luckLabelText, this.luckText].forEach(l => l.setY(bottomInfoText.y + 10));
 
-  const offsetY = bottomInfoText.y + 15;
+    const offsetY = bottomInfoText.y + 15;
 
-  this.partyExpBar.setY(offsetY);
-  this.candyBar.setY(offsetY + 15);
-  this.ui?.achvBar.setY(this.scaledCanvas.height + offsetY);
-}
+    this.partyExpBar.setY(offsetY);
+    this.candyBar.setY(offsetY + 15);
+    this.ui?.achvBar.setY(this.scaledCanvas.height + offsetY);
+  }
 
   /**
    * Pushes all {@linkcode Phaser.GameObjects.Text} objects in the top right to the bottom of the canvas
    */
   sendTextToBack(): void {
-  this.fieldUI.sendToBack(this.biomeWaveText);
-  this.fieldUI.sendToBack(this.moneyText);
-  this.fieldUI.sendToBack(this.scoreText);
-  this.fieldUI.sendToBack(this.roguePointText);
-}
+    this.fieldUI.sendToBack(this.biomeWaveText);
+    this.fieldUI.sendToBack(this.moneyText);
+    this.fieldUI.sendToBack(this.scoreText);
+    this.fieldUI.sendToBack(this.roguePointText);
+  }
 
   addFaintedEnemyScore(enemy: EnemyPokemon): void {
     let scoreIncrease =
-      enemy.getSpeciesForm().getBaseExp() *
-      (enemy.level / this.getMaxExpLevel()) *
-      ((enemy.ivs.reduce((iv: number, total: number) => (total += iv), 0) / 93) * 0.2 + 0.8);
+      enemy.getSpeciesForm().getBaseExp()
+      * (enemy.level / this.getMaxExpLevel())
+      * ((enemy.ivs.reduce((iv: number, total: number) => (total += iv), 0) / 93) * 0.2 + 0.8);
     this.findModifiers(m => m instanceof PokemonHeldItemModifier && m.pokemonId === enemy.id, false).map(
       m => (scoreIncrease *= (m as PokemonHeldItemModifier).getScoreMultiplier()),
     );
@@ -2524,6 +2620,7 @@ this.roguePointText.setVisible(false);
 
   getMaxExpLevel(ignoreLevelCap = false): number {
     const capOverride = Overrides.LEVEL_CAP_OVERRIDE ?? 0;
+
     if (capOverride > 0) {
       return capOverride;
     }
@@ -2533,9 +2630,21 @@ this.roguePointText.setVisible(false);
     }
 
     const waveIndex = Math.ceil((this.currentBattle?.waveIndex || 1) / 10) * 10;
+
     const difficultyWaveIndex = this.gameMode.getWaveForDifficulty(waveIndex);
+
     const baseLevel = (1 + difficultyWaveIndex / 2 + Math.pow(difficultyWaveIndex / 25, 2)) * 1.2;
-    return Math.ceil(baseLevel / 2) * 2 + 2;
+
+    let modeLevelOffset = 0;
+
+    switch (this.gameMode.modeId) {
+      case GameModes.WEEKLY:
+      case GameModes.MONTHLY:
+        modeLevelOffset = this.gameMode.getStartingLevel();
+        break;
+    }
+
+    return Math.ceil(baseLevel / 2) * 2 + 2 + modeLevelOffset;
   }
 
   randomSpecies(
@@ -2545,9 +2654,35 @@ this.roguePointText.setVisible(false);
     speciesFilter?: PokemonSpeciesFilter,
     filterAllEvolutions?: boolean,
   ): PokemonSpecies {
+    const catchQuest = questManager
+      .getQuests()
+      .find(
+        quest =>
+          quest.accepted
+          && !quest.completed
+          && quest.objectiveType === "CATCH_POKEMON"
+          && quest.targetSpeciesId !== undefined
+          && quest.targetCatchWave === waveIndex,
+      );
+
+    if (catchQuest?.targetSpeciesId !== undefined) {
+      const targetSpecies = getPokemonSpecies(catchQuest.targetSpeciesId);
+
+      console.log("[QUEST_CATCH_SPECIES_OVERRIDE]", {
+        questId: catchQuest.id,
+        wave: waveIndex,
+        targetSpeciesId: catchQuest.targetSpeciesId,
+        targetSpeciesName: targetSpecies.name,
+      });
+
+      return targetSpecies;
+    }
+
+    // 기존 코드
     if (fromArenaPool) {
       return this.arena.randomSpecies(waveIndex, level, undefined, getPartyLuckValue(this.party));
     }
+
     const filteredSpecies = speciesFilter
       ? [
           ...new Set(
@@ -2560,60 +2695,96 @@ this.roguePointText.setVisible(false);
                     s = getPokemonSpecies(pokemonPrevolutions[s.speciesId]);
                   }
                 }
+
                 return s;
               }),
           ),
         ]
       : allSpecies.filter(s => s.isCatchable());
-    // TODO: should this use `randSeedItem`?
+
     return filteredSpecies[randSeedInt(filteredSpecies.length)];
   }
 
   generateRandomBiome(waveIndex: number): BiomeId {
-  const relWave = waveIndex % 250;
+    const relWave = waveIndex % 250;
 
-  const biomes = getEnumValues(BiomeId).filter(b =>
-    b !== BiomeId.TOWN
-    && b !== BiomeId.END
-    && b !== BiomeId.TUTORIAL_ROOM
-    && biomeDepths[b] !== undefined
-  );
-
-  const maxDepth = biomeDepths[BiomeId.END][0] - 2;
-
-  const depthWeights = new Array(maxDepth + 1)
-    .fill(null)
-    .map((_, i: number) =>
-      ((1 - Math.min(Math.abs(i / (maxDepth - 1) - relWave / 250) + 0.25, 1)) / 0.75) * 250
+    const biomes = getEnumValues(BiomeId).filter(
+      b => b !== BiomeId.TOWN && b !== BiomeId.END && b !== BiomeId.TUTORIAL_ROOM && biomeDepths[b] !== undefined,
     );
 
-  const biomeThresholds: number[] = [];
-  let totalWeight = 0;
+    const maxDepth = biomeDepths[BiomeId.END][0] - 2;
 
-  for (const biome of biomes) {
-    totalWeight += Math.ceil(depthWeights[biomeDepths[biome][0] - 1] / biomeDepths[biome][1]);
-    biomeThresholds.push(totalWeight);
-  }
+    const depthWeights = new Array(maxDepth + 1)
+      .fill(null)
+      .map((_, i: number) => ((1 - Math.min(Math.abs(i / (maxDepth - 1) - relWave / 250) + 0.25, 1)) / 0.75) * 250);
 
-  const randInt = randSeedInt(totalWeight);
+    const biomeThresholds: number[] = [];
+    let totalWeight = 0;
 
-  for (let i = 0; i < biomes.length; i++) {
-    if (randInt < biomeThresholds[i]) {
-      return biomes[i];
+    for (const biome of biomes) {
+      totalWeight += Math.ceil(depthWeights[biomeDepths[biome][0] - 1] / biomeDepths[biome][1]);
+      biomeThresholds.push(totalWeight);
     }
-  }
 
-  return biomes[randSeedInt(biomes.length)];
-}
+    const randInt = randSeedInt(totalWeight);
+
+    for (let i = 0; i < biomes.length; i++) {
+      if (randInt < biomeThresholds[i]) {
+        return biomes[i];
+      }
+    }
+
+    return biomes[randSeedInt(biomes.length)];
+  }
 
   isBgmPlaying(): boolean {
     return this.bgm?.isPlaying ?? false;
   }
 
   playBgm(bgmName?: string, fadeOut?: boolean): void {
+    const requestedBgm = bgmName;
+
     if (bgmName === undefined) {
-      bgmName = this.currentBattle?.getBgmOverride() || this.arena?.bgm;
+      const wave = this.currentBattle?.waveIndex;
+
+      const mysteryTimeActive =
+        wave != null && mysteryTimeManager.isActive() && mysteryTimeManager.isMysteryTimeWave(wave);
+
+      /*
+       * 먼저 현재 실제 적 파티를 보고
+       * 전투 전용 BGM을 구한다.
+       *
+       * Demonstery가 실제 생성되어 있다면
+       * battle.ts가 battle_weird_monster를 반환한다.
+       */
+      const overrideBgm = this.currentBattle?.getBgmOverride();
+
+      if (mysteryTimeActive && overrideBgm === "battle_weird_monster") {
+        // Demonstery 실제 등장
+        bgmName = "battle_weird_monster";
+      } else if (mysteryTimeActive && mysteryTimeManager.isBossAwakened()) {
+        /*
+         * 특수 Mysterian 격파 후부터
+         * Demonstery가 실제 등장하기 전까지
+         * 계속 유지.
+         */
+        bgmName = "something_is_comming!";
+      } else if (mysteryTimeActive) {
+        // 일반 미스터리타임
+        bgmName = overrideBgm || "mystery_time";
+      } else {
+        bgmName = overrideBgm || this.arena?.bgm;
+      }
     }
+
+    console.log("[BGM_REQUEST]", {
+      wave: this.currentBattle?.waveIndex,
+      requestedBgm,
+      resolvedBgm: bgmName,
+      currentBgm: this.bgm?.key,
+      monsterHouse: monsterHouseManager.isActive(),
+      fadeOut,
+    });
 
     bgmName = timedEventManager.getEventBgmReplacement(bgmName);
 
@@ -3034,6 +3205,77 @@ this.roguePointText.setVisible(false);
     return 0;
   }
 
+  toggleMysteryTimeGrayscale(enabled: boolean): void {
+    const terrainSprites: Phaser.GameObjects.Sprite[] = [
+      // 바이옴 뒤쪽 배경
+      this.arenaBg,
+      this.arenaBgTransition,
+
+      // 플레이어측 지형
+      this.arenaPlayer?.base,
+      ...(this.arenaPlayer?.props ?? []),
+
+      // 바이옴 전환용 플레이어 지형
+      this.arenaPlayerTransition?.base,
+      ...(this.arenaPlayerTransition?.props ?? []),
+
+      // 적측 지형
+      this.arenaEnemy?.base,
+      ...(this.arenaEnemy?.props ?? []),
+
+      // 다음 웨이브 적측 지형
+      this.arenaNextEnemy?.base,
+      ...(this.arenaNextEnemy?.props ?? []),
+    ].filter((sprite): sprite is Phaser.GameObjects.Sprite => !!sprite);
+
+    for (const sprite of terrainSprites) {
+      if (enabled) {
+        // 중복 방지
+        sprite.removePostPipeline("GrayscalePostFX");
+
+        sprite.setPostPipeline(GrayscalePostFX);
+      } else {
+        sprite.removePostPipeline("GrayscalePostFX");
+      }
+    }
+
+    console.log(enabled ? "[MYSTERY_TIME_TERRAIN_GRAYSCALE_ON]" : "[MYSTERY_TIME_TERRAIN_GRAYSCALE_OFF]", {
+      wave: this.currentBattle?.waveIndex,
+      targets: terrainSprites.length,
+    });
+  }
+
+  public restoreMysteryTimePresentation(): void {
+    const wave = this.currentBattle?.waveIndex;
+
+    if (wave == null) {
+      return;
+    }
+
+    const shouldRestore = mysteryTimeManager.isActive() && mysteryTimeManager.isMysteryTimeWave(wave);
+
+    if (!shouldRestore) {
+      return;
+    }
+
+    console.log("[MYSTERY_TIME_PRESENTATION_RESTORE]", {
+      wave,
+      startWave: mysteryTimeManager.getStartWave(),
+      endWave: mysteryTimeManager.getEndWave(),
+      bossAwakened: mysteryTimeManager.isBossAwakened(),
+      bossBattle: mysteryTimeManager.shouldSpawnBoss(wave),
+    });
+
+    // 바이옴 지형 흑백 복원
+    this.toggleMysteryTimeGrayscale(true);
+
+    /*
+     * BGM 상태는 직접 곡을 고르지 않고
+     * playBgm() → getBgmOverride() 흐름에 맡긴다.
+     */
+    this.playBgm(undefined, true);
+  }
+
   toggleInvert(invert: boolean): void {
     if (invert) {
       this.cameras.main.setPostPipeline(InvertPostFX);
@@ -3043,220 +3285,245 @@ this.roguePointText.setVisible(false);
   }
 
   addMoney(amount: number): void {
-  if ((this.currentBattle as any)?.isPracticeBattle) {
-    const result = (globalScene as any).practiceTurnResult;
+    if ((this.currentBattle as any)?.isPracticeBattle) {
+      const result = (globalScene as any).practiceTurnResult;
 
-    if (result) {
-      result.moneyGained += amount;
-      result.moneyFactors ??= [];
-      result.moneyFactors.push(`골드 +${amount}`);
+      if (result) {
+        const safeNumber = (value: any, fallback = 0): number => {
+          const n = Number(value);
+          return Number.isFinite(n) ? n : fallback;
+        };
+
+        const safeAmount = safeNumber(amount, 0);
+
+        result.moneyGained = safeNumber(result.moneyGained, 0);
+
+        result.moneyFactors ??= [];
+
+        result.moneyGained += safeAmount;
+
+        if (safeAmount !== 0) {
+          result.moneyFactors.push(`골드 +${safeAmount}`);
+        }
+      }
+
+      if (!this.gameData.practiceDummyConfig?.rewardFlags?.money) {
+        return;
+      }
     }
 
-    if (!this.gameData.practiceDummyConfig?.rewardFlags?.money) {
-      return;
-    }
+    this.money = Math.min(this.money + amount, Number.MAX_SAFE_INTEGER);
+    this.updateMoneyText();
+    this.animateMoneyChanged(true);
+    this.validateAchvs(MoneyAchv);
   }
 
-  this.money = Math.min(this.money + amount, Number.MAX_SAFE_INTEGER);
-  this.updateMoneyText();
-  this.animateMoneyChanged(true);
-  this.validateAchvs(MoneyAchv);
-}
-
   getWaveMoneyAmount(moneyMultiplier: number): number {
-    const waveIndex = this.currentBattle.waveIndex;
+    const waveIndex = this.currentBattle?.waveIndex ?? 1;
     const waveSetIndex = Math.ceil(waveIndex / 10) - 1;
+
     const moneyValue =
-      Math.pow((waveSetIndex + 1 + (0.75 + (((waveIndex - 1) % 10) + 1) / 10)) * 100, 1 + 0.005 * waveSetIndex) *
-      moneyMultiplier;
+      Math.pow((waveSetIndex + 1 + (0.75 + (((waveIndex - 1) % 10) + 1) / 10)) * 100, 1 + 0.005 * waveSetIndex)
+      * moneyMultiplier;
+
     return Math.floor(moneyValue / 10) * 10;
   }
 
   addModifier(
-  modifier: Modifier | null,
-  ignoreUpdate?: boolean,
-  playSound?: boolean,
-  virtual?: boolean,
-  instant?: boolean,
-  cost?: number,
-): boolean {
-  if (!modifier || !modifier.type) {
-    return false;
-  }
+    modifier: Modifier | null,
+    ignoreUpdate?: boolean,
+    playSound?: boolean,
+    virtual?: boolean,
+    instant?: boolean,
+    cost?: number,
+  ): boolean {
+    if (!modifier || !modifier.type) {
+      return false;
+    }
 
-  let success = false;
-  const soundName = modifier.type.soundName;
-  this.validateAchvs(ModifierAchv, modifier);
-  const modifiersToRemove: PersistentModifier[] = [];
+    let success = false;
+    const soundName = modifier.type.soundName;
+    this.validateAchvs(ModifierAchv, modifier);
+    const modifiersToRemove: PersistentModifier[] = [];
 
-  if (modifier instanceof PersistentModifier) {
-    if ((modifier as PersistentModifier).add(this.modifiers, !!virtual)) {
-      success = true; // ← 이 줄 추가
+    if (modifier instanceof PersistentModifier) {
+      if ((modifier as PersistentModifier).add(this.modifiers, !!virtual)) {
+        success = true; // ← 이 줄 추가
 
-      if (modifier instanceof PokemonFormChangeItemModifier) {
-        const pokemon = this.getPokemonById(modifier.pokemonId);
-        if (pokemon) {
-          success = modifier.apply(pokemon, true);
+        if (modifier instanceof PokemonFormChangeItemModifier) {
+          const pokemon = this.getPokemonById(modifier.pokemonId);
+          if (pokemon) {
+            success = modifier.apply(pokemon, true);
+          }
         }
+
+        if (playSound && !this.sound.get(soundName)) {
+          this.playSound(soundName);
+        }
+      } else if (!virtual) {
+        const defaultModifierType = getDefaultModifierTypeForTier(modifier.type.tier);
+        this.phaseManager.queueMessage(
+          i18next.t("battle:itemStackFull", {
+            fullItemName: modifier.type.name,
+            itemName: defaultModifierType.name,
+          }),
+          undefined,
+          false,
+          3000,
+        );
+        return this.addModifier(defaultModifierType.newModifier(), ignoreUpdate, playSound, false, instant);
       }
 
+      for (const rm of modifiersToRemove) {
+        this.removeModifier(rm);
+      }
+
+      if (!ignoreUpdate && !virtual) {
+        this.updateModifiers(true, instant);
+      }
+    } else if (modifier instanceof ConsumableModifier) {
       if (playSound && !this.sound.get(soundName)) {
         this.playSound(soundName);
       }
-    } else if (!virtual) {
-      const defaultModifierType = getDefaultModifierTypeForTier(modifier.type.tier);
-      this.phaseManager.queueMessage(
-        i18next.t("battle:itemStackFull", {
-          fullItemName: modifier.type.name,
-          itemName: defaultModifierType.name,
-        }),
-        undefined,
-        false,
-        3000,
-      );
-      return this.addModifier(defaultModifierType.newModifier(), ignoreUpdate, playSound, false, instant);
-    }
 
-    for (const rm of modifiersToRemove) {
-      this.removeModifier(rm);
-    }
+      if (modifier instanceof ConsumablePokemonModifier) {
+        for (const p in this.party) {
+          const pokemon = this.party[p];
 
-    if (!ignoreUpdate && !virtual) {
-      this.updateModifiers(true, instant);
-    }
-  } else if (modifier instanceof ConsumableModifier) {
-    if (playSound && !this.sound.get(soundName)) {
-      this.playSound(soundName);
-    }
-
-    if (modifier instanceof ConsumablePokemonModifier) {
-      for (const p in this.party) {
-        const pokemon = this.party[p];
-
-        const args: unknown[] = [];
-        if (modifier instanceof PokemonHpRestoreModifier) {
-          if (!(modifier as PokemonHpRestoreModifier).fainted) {
-            const hpRestoreMultiplier = new NumberHolder(1);
-            this.applyModifiers(HealingBoosterModifier, true, hpRestoreMultiplier);
-            args.push(hpRestoreMultiplier.value);
-          } else {
-            args.push(1);
+          const args: unknown[] = [];
+          if (modifier instanceof PokemonHpRestoreModifier) {
+            if (!(modifier as PokemonHpRestoreModifier).fainted) {
+              const hpRestoreMultiplier = new NumberHolder(1);
+              this.applyModifiers(HealingBoosterModifier, true, hpRestoreMultiplier);
+              args.push(hpRestoreMultiplier.value);
+            } else {
+              args.push(1);
+            }
+          } else if (modifier instanceof FusePokemonModifier) {
+            args.push(this.getPokemonById(modifier.fusePokemonId) as PlayerPokemon);
+          } else if (modifier instanceof RememberMoveModifier && cost != null) {
+            args.push(cost);
           }
-        } else if (modifier instanceof FusePokemonModifier) {
-          args.push(this.getPokemonById(modifier.fusePokemonId) as PlayerPokemon);
-        } else if (modifier instanceof RememberMoveModifier && cost != null) {
-          args.push(cost);
+
+          if (modifier.shouldApply(pokemon, ...args)) {
+            const result = modifier.apply(pokemon, ...args);
+            success ||= result;
+          }
         }
 
-        if (modifier.shouldApply(pokemon, ...args)) {
-          const result = modifier.apply(pokemon, ...args);
+        this.party.forEach(p => {
+          p.updateInfo(instant);
+        });
+      } else {
+        const args = [this];
+        if (modifier.shouldApply(...args)) {
+          const result = modifier.apply(...args);
           success ||= result;
         }
       }
-
-      this.party.forEach(p => {
-        p.updateInfo(instant);
-      });
-    } else {
-      const args = [this];
-      if (modifier.shouldApply(...args)) {
-        const result = modifier.apply(...args);
-        success ||= result;
-      }
     }
-  }
 
-  return success;
-}
+    return success;
+  }
 
   addModifierToSide(
-  modifier: Modifier | null,
-  enemy = false,
-  ignoreUpdate?: boolean,
-  playSound?: boolean,
-  virtual?: boolean,
-  instant?: boolean,
-  cost?: number,
-): boolean {
-  if (!modifier || !modifier.type) return false;
+    modifier: Modifier | null,
+    enemy = false,
+    ignoreUpdate?: boolean,
+    playSound?: boolean,
+    virtual?: boolean,
+    instant?: boolean,
+    cost?: number,
+  ): boolean {
+    if (!modifier || !modifier.type) {
+      return false;
+    }
 
-  let success = false;
-  const soundName = modifier.type.soundName;
+    let success = false;
+    const soundName = modifier.type.soundName;
 
-  this.validateAchvs(ModifierAchv, modifier);
+    this.validateAchvs(ModifierAchv, modifier);
 
-  const pool = enemy ? this.enemyModifiers : this.modifiers;
-  const modifiersToRemove: PersistentModifier[] = [];
+    const pool = enemy ? this.enemyModifiers : this.modifiers;
+    const modifiersToRemove: PersistentModifier[] = [];
 
-  if (modifier instanceof PersistentModifier) {
-    if ((modifier as PersistentModifier).add(pool, !!virtual)) {
-      if (modifier instanceof PokemonFormChangeItemModifier) {
-        const pokemon = this.getPokemonById(modifier.pokemonId);
-        if (pokemon) {
-          success = modifier.apply(pokemon, true);
+    if (modifier instanceof PersistentModifier) {
+      if ((modifier as PersistentModifier).add(pool, !!virtual)) {
+        if (modifier instanceof PokemonFormChangeItemModifier) {
+          const pokemon = this.getPokemonById(modifier.pokemonId);
+          if (pokemon) {
+            success = modifier.apply(pokemon, true);
+          }
         }
+        if (playSound && !this.sound.get(soundName)) {
+          this.playSound(soundName);
+        }
+      } else if (!virtual) {
+        const defaultModifierType = getDefaultModifierTypeForTier(modifier.type.tier);
+        this.phaseManager.queueMessage(
+          i18next.t("battle:itemStackFull", {
+            fullItemName: modifier.type.name,
+            itemName: defaultModifierType.name,
+          }),
+          undefined,
+          false,
+          3000,
+        );
+        return this.addModifierToSide(
+          defaultModifierType.newModifier(),
+          enemy,
+          ignoreUpdate,
+          playSound,
+          false,
+          instant,
+          cost,
+        );
       }
-      if (playSound && !this.sound.get(soundName)) {
-        this.playSound(soundName);
+
+      for (const rm of modifiersToRemove) {
+        this.removeModifier(rm, enemy); // ✅ 여기 enemy 유지
       }
-    } else if (!virtual) {
-      const defaultModifierType = getDefaultModifierTypeForTier(modifier.type.tier);
-      this.phaseManager.queueMessage(
-        i18next.t("battle:itemStackFull", {
-          fullItemName: modifier.type.name,
-          itemName: defaultModifierType.name,
-        }),
-        undefined,
-        false,
-        3000,
-      );
-      return this.addModifierToSide(defaultModifierType.newModifier(), enemy, ignoreUpdate, playSound, false, instant, cost);
+
+      if (!ignoreUpdate && !virtual) {
+        this.updateModifiers(true, instant);
+      }
+      return true;
     }
 
-    for (const rm of modifiersToRemove) {
-      this.removeModifier(rm, enemy); // ✅ 여기 enemy 유지
-    }
-
-    if (!ignoreUpdate && !virtual) {
-      this.updateModifiers(true, instant);
-    }
-    return true;
+    // ConsumableModifier는 “적 풀” 개념이 애매해서(파티 전체 적용 등),
+    // TRICK 교환 대상은 PersistentModifier(지닌도구)만 다루는게 안전.
+    // 필요하면 여기까지도 enemy 분기 확장 가능.
+    return this.addModifier(modifier, ignoreUpdate, playSound, virtual, instant, cost);
   }
 
-  // ConsumableModifier는 “적 풀” 개념이 애매해서(파티 전체 적용 등),
-  // TRICK 교환 대상은 PersistentModifier(지닌도구)만 다루는게 안전.
-  // 필요하면 여기까지도 enemy 분기 확장 가능.
-  return this.addModifier(modifier, ignoreUpdate, playSound, virtual, instant, cost);
-}
-
   addEnemyModifier(modifier?: PersistentModifier, ignoreUpdate?: boolean, instant?: boolean): Promise<void> {
-  return new Promise(resolve => {
-    if (!modifier) {
-      // ✅ null/undefined면 그냥 아무 것도 안 하고 종료
-      return resolve();
-    }
+    return new Promise(resolve => {
+      if (!modifier) {
+        // ✅ null/undefined면 그냥 아무 것도 안 하고 종료
+        return resolve();
+      }
 
-    const modifiersToRemove: PersistentModifier[] = [];
-    if (modifier.add(this.enemyModifiers, false)) {
-      if (modifier instanceof PokemonFormChangeItemModifier) {
-        const pokemon = this.getPokemonById(modifier.pokemonId);
-        if (pokemon) {
-          modifier.apply(pokemon, true);
+      const modifiersToRemove: PersistentModifier[] = [];
+      if (modifier.add(this.enemyModifiers, false)) {
+        if (modifier instanceof PokemonFormChangeItemModifier) {
+          const pokemon = this.getPokemonById(modifier.pokemonId);
+          if (pokemon) {
+            modifier.apply(pokemon, true);
+          }
+        }
+        for (const rm of modifiersToRemove) {
+          this.removeModifier(rm, true);
         }
       }
-      for (const rm of modifiersToRemove) {
-        this.removeModifier(rm, true);
-      }
-    }
 
-    if (!ignoreUpdate) {
-      this.updateModifiers(false, instant);
-      resolve();
-    } else {
-      resolve();
-    }
-  });
-}
+      if (!ignoreUpdate) {
+        this.updateModifiers(false, instant);
+        resolve();
+      } else {
+        resolve();
+      }
+    });
+  }
 
   /**
    * Try to transfer a held item to another pokemon.
@@ -3348,159 +3615,184 @@ this.roguePointText.setVisible(false);
     return false;
   }
 
-//트릭&바꿔치기 로직//
+  //트릭&바꿔치기 로직//
   trySwapHeldItemModifiers(
-  aItem: PokemonHeldItemModifier,
-  aTarget: Pokemon,
-  bItem: PokemonHeldItemModifier,
-  bTarget: Pokemon,
-  playSound: boolean,
-  transferQuantity = 1,
-  instant?: boolean,
-  ignoreUpdate?: boolean,
-  itemLost = true,
-): boolean {
-  const aSource = aItem.pokemonId ? aItem.getPokemon() : null;
-  const bSource = bItem.pokemonId ? bItem.getPokemon() : null;
+    aItem: PokemonHeldItemModifier,
+    aTarget: Pokemon,
+    bItem: PokemonHeldItemModifier,
+    bTarget: Pokemon,
+    playSound: boolean,
+    transferQuantity = 1,
+    instant?: boolean,
+    ignoreUpdate?: boolean,
+    itemLost = true,
+  ): boolean {
+    const aSource = aItem.pokemonId ? aItem.getPokemon() : null;
+    const bSource = bItem.pokemonId ? bItem.getPokemon() : null;
 
-  // 1) 양방향 BlockItemTheftAbAttr 체크 (진영 다르면 "강탈 방지" 적용)
-  const cancelledA = new BooleanHolder(false);
-  const cancelledB = new BooleanHolder(false);
+    // 1) 양방향 BlockItemTheftAbAttr 체크 (진영 다르면 "강탈 방지" 적용)
+    const cancelledA = new BooleanHolder(false);
+    const cancelledB = new BooleanHolder(false);
 
-  if (aSource && aSource.isPlayer() !== aTarget.isPlayer()) {
-    applyAbAttrs("BlockItemTheftAbAttr", { pokemon: aSource, cancelled: cancelledA });
-  }
-  if (bSource && bSource.isPlayer() !== bTarget.isPlayer()) {
-    applyAbAttrs("BlockItemTheftAbAttr", { pokemon: bSource, cancelled: cancelledB });
-  }
-  if (cancelledA.value || cancelledB.value) return false;
+    if (aSource && aSource.isPlayer() !== aTarget.isPlayer()) {
+      applyAbAttrs("BlockItemTheftAbAttr", { pokemon: aSource, cancelled: cancelledA });
+    }
+    if (bSource && bSource.isPlayer() !== bTarget.isPlayer()) {
+      applyAbAttrs("BlockItemTheftAbAttr", { pokemon: bSource, cancelled: cancelledB });
+    }
+    if (cancelledA.value || cancelledB.value) {
+      return false;
+    }
 
-  // 2) 수용 가능(스택/최대치) 사전 체크
-  const canReceive = (incoming: PokemonHeldItemModifier, receiver: Pokemon): boolean => {
-    const poolType = receiver.isPlayer()
-      ? ModifierPoolType.PLAYER
-      : receiver.hasTrainer()
-        ? ModifierPoolType.TRAINER
-        : ModifierPoolType.WILD;
+    // 2) 수용 가능(스택/최대치) 사전 체크
+    const canReceive = (incoming: PokemonHeldItemModifier, receiver: Pokemon): boolean => {
+      const poolType = receiver.isPlayer()
+        ? ModifierPoolType.PLAYER
+        : receiver.hasTrainer()
+          ? ModifierPoolType.TRAINER
+          : ModifierPoolType.WILD;
 
-    const matching = this.findModifier(
-      m => m instanceof PokemonHeldItemModifier
-        && (m as PokemonHeldItemModifier).matchType(incoming)
-        && (m as PokemonHeldItemModifier).pokemonId === receiver.id,
-      receiver.isPlayer(),
-    ) as PokemonHeldItemModifier;
+      const matching = this.findModifier(
+        m =>
+          m instanceof PokemonHeldItemModifier
+          && (m as PokemonHeldItemModifier).matchType(incoming)
+          && (m as PokemonHeldItemModifier).pokemonId === receiver.id,
+        receiver.isPlayer(),
+      ) as PokemonHeldItemModifier;
 
-    if (!matching) return true;
+      if (!matching) {
+        return true;
+      }
 
-    const max = matching.getMaxStackCount();
-    if (matching.stackCount >= max) return false;
+      const max = matching.getMaxStackCount();
+      if (matching.stackCount >= max) {
+        return false;
+      }
 
-    // 실제로 트릭은 1개씩 교환하지만, 안전하게 계산
-    const countTaken = Math.min(transferQuantity, incoming.stackCount, max - matching.stackCount);
-    return countTaken > 0;
-  };
+      // 실제로 트릭은 1개씩 교환하지만, 안전하게 계산
+      const countTaken = Math.min(transferQuantity, incoming.stackCount, max - matching.stackCount);
+      return countTaken > 0;
+    };
 
-  if (!canReceive(aItem, aTarget)) return false;
-  if (!canReceive(bItem, bTarget)) return false;
+    if (!canReceive(aItem, aTarget)) {
+      return false;
+    }
+    if (!canReceive(bItem, bTarget)) {
+      return false;
+    }
 
-  // 3) 여기부터 "원자적" 실행: 둘 다 옮길 수 있을 때만 진행
-  //    - clone 생성
-  const aNew = aItem.clone() as PokemonHeldItemModifier;
-  aNew.pokemonId = aTarget.id;
+    // 3) 여기부터 "원자적" 실행: 둘 다 옮길 수 있을 때만 진행
+    //    - clone 생성
+    const aNew = aItem.clone() as PokemonHeldItemModifier;
+    aNew.pokemonId = aTarget.id;
 
-  const bNew = bItem.clone() as PokemonHeldItemModifier;
-  bNew.pokemonId = bTarget.id;
+    const bNew = bItem.clone() as PokemonHeldItemModifier;
+    bNew.pokemonId = bTarget.id;
 
-  // 4) 스택 계산(tryTransfer 로직을 그대로 복제)
-  const calcTake = (
-    itemModifier: PokemonHeldItemModifier,
-    newItem: PokemonHeldItemModifier,
-    receiver: Pokemon,
-  ): { removeOld: boolean; matchingModifier?: PokemonHeldItemModifier } | null => {
-    const matching = this.findModifier(
-      m => m instanceof PokemonHeldItemModifier
-        && (m as PokemonHeldItemModifier).matchType(itemModifier)
-        && (m as PokemonHeldItemModifier).pokemonId === receiver.id,
-      receiver.isPlayer(),
-    ) as PokemonHeldItemModifier;
+    // 4) 스택 계산(tryTransfer 로직을 그대로 복제)
+    const calcTake = (
+      itemModifier: PokemonHeldItemModifier,
+      newItem: PokemonHeldItemModifier,
+      receiver: Pokemon,
+    ): { removeOld: boolean; matchingModifier?: PokemonHeldItemModifier } | null => {
+      const matching = this.findModifier(
+        m =>
+          m instanceof PokemonHeldItemModifier
+          && (m as PokemonHeldItemModifier).matchType(itemModifier)
+          && (m as PokemonHeldItemModifier).pokemonId === receiver.id,
+        receiver.isPlayer(),
+      ) as PokemonHeldItemModifier;
 
-    if (matching) {
-      const maxStackCount = matching.getMaxStackCount();
-      if (matching.stackCount >= maxStackCount) return null;
+      if (matching) {
+        const maxStackCount = matching.getMaxStackCount();
+        if (matching.stackCount >= maxStackCount) {
+          return null;
+        }
 
-      const countTaken = Math.min(
-        transferQuantity,
-        itemModifier.stackCount,
-        maxStackCount - matching.stackCount,
-      );
-      if (countTaken <= 0) return null;
+        const countTaken = Math.min(transferQuantity, itemModifier.stackCount, maxStackCount - matching.stackCount);
+        if (countTaken <= 0) {
+          return null;
+        }
 
-      itemModifier.stackCount -= countTaken;
-      newItem.stackCount = matching.stackCount + countTaken;
-      return { removeOld: itemModifier.stackCount === 0, matchingModifier: matching };
-    } else {
+        itemModifier.stackCount -= countTaken;
+        newItem.stackCount = matching.stackCount + countTaken;
+        return { removeOld: itemModifier.stackCount === 0, matchingModifier: matching };
+      }
       const countTaken = Math.min(transferQuantity, itemModifier.stackCount);
-      if (countTaken <= 0) return null;
+      if (countTaken <= 0) {
+        return null;
+      }
 
       itemModifier.stackCount -= countTaken;
       newItem.stackCount = countTaken;
       return { removeOld: itemModifier.stackCount === 0 };
-    }
-  };
-
-  const aCalc = calcTake(aItem, aNew, aTarget);
-  if (!aCalc) return false;
-  const bCalc = calcTake(bItem, bNew, bTarget);
-  if (!bCalc) return false;
-
-  const removeOldA = aCalc.removeOld;
-  const removeOldB = bCalc.removeOld;
-
-  // 5) 원본 제거 (둘 다 제거가 가능해야 함)
-  const removedA = !removeOldA || !aSource || this.removeModifier(aItem, aSource.isEnemy());
-  if (!removedA) return false;
-
-  const removedB = !removeOldB || !bSource || this.removeModifier(bItem, bSource.isEnemy());
-  if (!removedB) return false;
-
-  // 6) 받는 쪽에서 matchingModifier가 있으면 기존 제거 후 새로 붙이기 (tryTransfer와 동일)
-  const addTo = (
-    receiver: Pokemon,
-    newItem: PokemonHeldItemModifier,
-    matchingModifier?: PokemonHeldItemModifier,
-    source?: Pokemon | null,
-  ): boolean => {
-    const doAdd = () => {
-      if (!matchingModifier || this.removeModifier(matchingModifier, receiver.isEnemy())) {
-        if (receiver.isPlayer()) {
-          this.addModifier(newItem, ignoreUpdate, playSound, false, instant);
-        } else {
-          this.addEnemyModifier(newItem, ignoreUpdate, instant);
-        }
-        if (source && itemLost) {
-          applyAbAttrs("PostItemLostAbAttr", { pokemon: source });
-        }
-        return true;
-      }
-      return false;
     };
 
-    // 원본 함수와 동일: 진영 바뀌고 ignoreUpdate 아니면 updateModifiers 후 add
-    if (source && source.isPlayer() !== receiver.isPlayer() && !ignoreUpdate) {
-      this.updateModifiers(source.isPlayer(), instant);
-      return doAdd();
+    const aCalc = calcTake(aItem, aNew, aTarget);
+    if (!aCalc) {
+      return false;
     }
-    return doAdd();
-  };
+    const bCalc = calcTake(bItem, bNew, bTarget);
+    if (!bCalc) {
+      return false;
+    }
 
-  const okA = addTo(aTarget, aNew, aCalc.matchingModifier, aSource);
-  if (!okA) return false;
+    const removeOldA = aCalc.removeOld;
+    const removeOldB = bCalc.removeOld;
 
-  const okB = addTo(bTarget, bNew, bCalc.matchingModifier, bSource);
-  if (!okB) return false;
+    // 5) 원본 제거 (둘 다 제거가 가능해야 함)
+    const removedA = !removeOldA || !aSource || this.removeModifier(aItem, aSource.isEnemy());
+    if (!removedA) {
+      return false;
+    }
 
-  return true;
-}
+    const removedB = !removeOldB || !bSource || this.removeModifier(bItem, bSource.isEnemy());
+    if (!removedB) {
+      return false;
+    }
+
+    // 6) 받는 쪽에서 matchingModifier가 있으면 기존 제거 후 새로 붙이기 (tryTransfer와 동일)
+    const addTo = (
+      receiver: Pokemon,
+      newItem: PokemonHeldItemModifier,
+      matchingModifier?: PokemonHeldItemModifier,
+      source?: Pokemon | null,
+    ): boolean => {
+      const doAdd = () => {
+        if (!matchingModifier || this.removeModifier(matchingModifier, receiver.isEnemy())) {
+          if (receiver.isPlayer()) {
+            this.addModifier(newItem, ignoreUpdate, playSound, false, instant);
+          } else {
+            this.addEnemyModifier(newItem, ignoreUpdate, instant);
+          }
+          if (source && itemLost) {
+            applyAbAttrs("PostItemLostAbAttr", { pokemon: source });
+          }
+          return true;
+        }
+        return false;
+      };
+
+      // 원본 함수와 동일: 진영 바뀌고 ignoreUpdate 아니면 updateModifiers 후 add
+      if (source && source.isPlayer() !== receiver.isPlayer() && !ignoreUpdate) {
+        this.updateModifiers(source.isPlayer(), instant);
+        return doAdd();
+      }
+      return doAdd();
+    };
+
+    const okA = addTo(aTarget, aNew, aCalc.matchingModifier, aSource);
+    if (!okA) {
+      return false;
+    }
+
+    const okB = addTo(bTarget, bNew, bCalc.matchingModifier, bSource);
+    if (!okB) {
+      return false;
+    }
+
+    return true;
+  }
 
   /**
    * Attempt to discard one or more copies of a held item.
@@ -3606,8 +3898,8 @@ this.roguePointText.setVisible(false);
           }
         } else {
           const isBoss =
-            enemyPokemon.isBoss() ||
-            (this.currentBattle.battleType === BattleType.TRAINER && !!this.currentBattle.trainer?.config.isBoss);
+            enemyPokemon.isBoss()
+            || (this.currentBattle.battleType === BattleType.TRAINER && !!this.currentBattle.trainer?.config.isBoss);
           let upgradeChance = 32;
           if (isBoss) {
             upgradeChance /= 2;
@@ -3672,24 +3964,24 @@ this.roguePointText.setVisible(false);
 
   // TODO: Document this
   async updateModifiers(player = true, instant?: boolean): Promise<void> {
-  const modifiers = player ? this.modifiers : (this.enemyModifiers as PersistentModifier[]);
+    const modifiers = player ? this.modifiers : (this.enemyModifiers as PersistentModifier[]);
     for (let m = 0; m < modifiers.length; m++) {
       const modifier = modifiers[m];
       if (
-  modifier instanceof PokemonHeldItemModifier
-  && !(modifier as any).isPracticeRental
-  && !this.getPokemonById((modifier as PokemonHeldItemModifier).pokemonId)
-) {
-  modifiers.splice(m--, 1);
-}
+        modifier instanceof PokemonHeldItemModifier
+        && !(modifier as any).isPracticeRental
+        && !this.getPokemonById((modifier as PokemonHeldItemModifier).pokemonId)
+      ) {
+        modifiers.splice(m--, 1);
+      }
       if (
-  modifier instanceof PokemonHeldItemModifier
-  && !(modifier as any).isPracticeRental
-  && modifier.getSpecies() != null
-  && !this.getPokemonById(modifier.pokemonId)?.hasSpecies(modifier.getSpecies()!)
-) {
-  modifiers.splice(m--, 1);
-}
+        modifier instanceof PokemonHeldItemModifier
+        && !(modifier as any).isPracticeRental
+        && modifier.getSpecies() != null
+        && !this.getPokemonById(modifier.pokemonId)?.hasSpecies(modifier.getSpecies()!)
+      ) {
+        modifiers.splice(m--, 1);
+      }
     }
     for (const modifier of modifiers) {
       if (modifier instanceof PersistentModifier) {
@@ -3705,7 +3997,7 @@ this.roguePointText.setVisible(false);
     }
 
     // ✅ 여기 핵심: 파티 스탯/UI 갱신이 끝날 때까지 기다림
-  await this.updatePartyForModifiers(player ? this.getPlayerParty() : this.getEnemyParty(), instant);
+    await this.updatePartyForModifiers(player ? this.getPlayerParty() : this.getEnemyParty(), instant);
     (player ? this.modifierBar : this.enemyModifierBar).updateModifiers(modifiers);
     if (!player) {
       this.updateUIPositions();
@@ -3714,22 +4006,26 @@ this.roguePointText.setVisible(false);
 
   private partyUpdateToken = 0;
 
-updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
-  const token = ++this.partyUpdateToken;
+  updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
+    const token = ++this.partyUpdateToken;
 
-  return Promise.allSettled(
-    party.map(async p => {
-      // ✅ 이미 더 최신 updatePartyForModifiers가 시작됐으면 이 작업은 폐기
-      if (token !== this.partyUpdateToken) return;
+    return Promise.allSettled(
+      party.map(async p => {
+        // ✅ 이미 더 최신 updatePartyForModifiers가 시작됐으면 이 작업은 폐기
+        if (token !== this.partyUpdateToken) {
+          return;
+        }
 
-      p.calculateStats();
+        p.calculateStats();
 
-      if (token !== this.partyUpdateToken) return;
+        if (token !== this.partyUpdateToken) {
+          return;
+        }
 
-      await p.updateInfo(instant);
-    }),
-  ).then(() => {});
-}
+        await p.updateInfo(instant);
+      }),
+    ).then(() => {});
+  }
 
   hasModifier(modifier: PersistentModifier, enemy = false): boolean {
     const modifiers = !enemy ? this.modifiers : this.enemyModifiers;
@@ -3810,7 +4106,7 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
     this.executeWithSeedOffset(
       () => {
         const shuffleModifiers = mods => {
-          if (mods.length < 1) {
+          if (mods.length === 0) {
             return mods;
           }
           const rand = randSeedInt(mods.length);
@@ -3832,79 +4128,75 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
    * @returns the list of all modifiers that matched `modifierType` and were applied.
    */
   applyModifiers<T extends PersistentModifier>(
-  modifierType: Constructor<T>,
-  player = true,
-  ...args: Parameters<T["apply"]>
-): T[] {
-  const modifiers = (player ? this.modifiers : this.enemyModifiers).filter((m): m is T => {
-    if (!(m instanceof modifierType)) return false;
+    modifierType: Constructor<T>,
+    player = true,
+    ...args: Parameters<T["apply"]>
+  ): T[] {
+    const modifiers = (player ? this.modifiers : this.enemyModifiers).filter((m): m is T => {
+      if (!(m instanceof modifierType)) {
+        return false;
+      }
 
-    // ✅ 1) held item이면 "베이스 shouldApply"를 무조건 먼저 태움 (KLUTZ 등 공통 통제)
-    if (m instanceof PokemonHeldItemModifier) {
-      const baseOk = PokemonHeldItemModifier.prototype.shouldApply.call(m, ...(args as any[]));
-      if (!baseOk) return false;
-    }
+      // ✅ 1) held item이면 "베이스 shouldApply"를 무조건 먼저 태움 (KLUTZ 등 공통 통제)
+      if (m instanceof PokemonHeldItemModifier) {
+        const baseOk = PokemonHeldItemModifier.prototype.shouldApply.call(m, ...(args as any[]));
+        if (!baseOk) {
+          return false;
+        }
+      }
 
-    // ✅ 2) 그 다음 기존(오버라이드된) shouldApply도 체크해서 개별 조건은 유지
-    return m.shouldApply(...(args as any[]));
-  });
+      // ✅ 2) 그 다음 기존(오버라이드된) shouldApply도 체크해서 개별 조건은 유지
+      return m.shouldApply(...(args as any[]));
+    });
 
-  return this.applyModifiersInternal(modifiers, player, args);
-}
+    return this.applyModifiersInternal(modifiers, player, args);
+  }
 
   applyModifiersInternal<T extends PersistentModifier>(
-  modifiers: T[],
-  player: boolean,
-  args: Parameters<T["apply"]>,
-): T[] {
-  const appliedModifiers: T[] = [];
+    modifiers: T[],
+    player: boolean,
+    args: Parameters<T["apply"]>,
+  ): T[] {
+    const appliedModifiers: T[] = [];
 
-  for (const modifier of modifiers) {
-    if (typeof (modifier as any)?.apply !== "function") {
-      console.error("[BAD_MODIFIER] no apply():", modifier, "ctor=", (modifier as any)?.constructor?.name);
-      continue;
-    }
+    for (const modifier of modifiers) {
+      if (typeof (modifier as any)?.apply !== "function") {
+        console.error("[BAD_MODIFIER] no apply():", modifier, "ctor=", (modifier as any)?.constructor?.name);
+        continue;
+      }
 
-    const beforeArgs = args.map(arg =>
-      arg instanceof NumberHolder ? arg.value : undefined,
-    );
+      const beforeArgs = args.map(arg => (arg instanceof NumberHolder ? arg.value : undefined));
 
-    const applied = (modifier as any).apply(...args);
+      const applied = (modifier as any).apply(...args);
 
-    if (applied) {
-      console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
-      appliedModifiers.push(modifier);
+      if (applied) {
+        console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
+        appliedModifiers.push(modifier);
 
-      if ((this.currentBattle as any)?.isPracticeBattle) {
-        const result = (this as any).practiceTurnResult;
+        if ((this.currentBattle as any)?.isPracticeBattle) {
+          const result = (this as any).practiceTurnResult;
 
-        const changed = args.some((arg, i) =>
-          arg instanceof NumberHolder &&
-          beforeArgs[i] !== arg.value,
-        );
+          const changed = args.some((arg, i) => arg instanceof NumberHolder && beforeArgs[i] !== arg.value);
 
-        if (changed && result) {
-          const name =
-            (modifier as any).getPracticeLogName?.()
-            ?? modifier.type?.name
-            ?? modifier.constructor.name;
+          if (changed && result) {
+            const name = (modifier as any).getPracticeLogName?.() ?? modifier.type?.name ?? modifier.constructor.name;
 
-          const text = `${name} 적용`;
+            const text = `${name} 적용`;
 
-          if (player) {
-            result.playerDamageFactors ??= [];
-            result.playerDamageFactors.push(text);
-          } else {
-            result.enemyDamageFactors ??= [];
-            result.enemyDamageFactors.push(text);
+            if (player) {
+              result.playerDamageFactors ??= [];
+              result.playerDamageFactors.push(text);
+            } else {
+              result.enemyDamageFactors ??= [];
+              result.enemyDamageFactors.push(text);
+            }
           }
         }
       }
     }
-  }
 
-  return appliedModifiers;
-}
+    return appliedModifiers;
+  }
 
   /**
    * Apply the first modifier that matches `modifierType`
@@ -3914,30 +4206,34 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
    * @returns the first modifier that matches `modifierType` and was applied; return `null` if none matched
    */
   applyModifier<T extends PersistentModifier>(
-  modifierType: Constructor<T>,
-  player = true,
-  ...args: Parameters<T["apply"]>
-): T | null {
-  const modifiers = (player ? this.modifiers : this.enemyModifiers).filter((m): m is T => {
-    if (!(m instanceof modifierType)) return false;
+    modifierType: Constructor<T>,
+    player = true,
+    ...args: Parameters<T["apply"]>
+  ): T | null {
+    const modifiers = (player ? this.modifiers : this.enemyModifiers).filter((m): m is T => {
+      if (!(m instanceof modifierType)) {
+        return false;
+      }
 
-    if (m instanceof PokemonHeldItemModifier) {
-      const baseOk = PokemonHeldItemModifier.prototype.shouldApply.call(m, ...(args as any[]));
-      if (!baseOk) return false;
+      if (m instanceof PokemonHeldItemModifier) {
+        const baseOk = PokemonHeldItemModifier.prototype.shouldApply.call(m, ...(args as any[]));
+        if (!baseOk) {
+          return false;
+        }
+      }
+
+      return m.shouldApply(...(args as any[]));
+    });
+
+    for (const modifier of modifiers) {
+      if (modifier.apply(...args)) {
+        console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
+        return modifier;
+      }
     }
 
-    return m.shouldApply(...(args as any[]));
-  });
-
-  for (const modifier of modifiers) {
-    if (modifier.apply(...args)) {
-      console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
-      return modifier;
-    }
+    return null;
   }
-
-  return null;
-}
 
   triggerPokemonFormChange(
     pokemon: Pokemon,
@@ -4014,26 +4310,26 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
   }
 
   validateAchv(achv: Achv, args?: unknown[]): boolean {
-  if (
-    (!this.gameData.achvUnlocks.hasOwnProperty(achv.id) || Overrides.ACHIEVEMENTS_REUNLOCK_OVERRIDE) &&
-    achv.validate(args)
-  ) {
-    this.gameData.achvUnlocks[achv.id] = Date.now();
+    if (
+      (!this.gameData.achvUnlocks.hasOwnProperty(achv.id) || Overrides.ACHIEVEMENTS_REUNLOCK_OVERRIDE)
+      && achv.validate(args)
+    ) {
+      this.gameData.achvUnlocks[achv.id] = Date.now();
 
-    // ⭐ 여기 추가
-    this.gameData.addRoguePoints(achv.score);
+      // ⭐ 여기 추가
+      this.gameData.addRoguePoints(achv.score);
 
-    this.ui.achvBar.showAchv(achv);
-    this.ui.showText(`+${achv.score} RP`);
+      this.ui.achvBar.showAchv(achv);
+      this.ui.showText(`+${achv.score} RP`);
 
-    if (vouchers.hasOwnProperty(achv.id)) {
-      this.validateVoucher(vouchers[achv.id]);
+      if (vouchers.hasOwnProperty(achv.id)) {
+        this.validateVoucher(vouchers[achv.id]);
+      }
+      return true;
     }
-    return true;
-  }
 
-  return false;
-}
+    return false;
+  }
 
   validateVoucher(voucher: Voucher, args?: unknown[]): boolean {
     if (!this.gameData.voucherUnlocks.hasOwnProperty(voucher.id) && voucher.validate(args)) {
@@ -4155,32 +4451,24 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
       expValue = Math.floor((expValue * this.currentBattle.waveIndex) / 5 + 1);
     }
 
-    if (
-  (globalScene.currentBattle as any)?.isPracticeBattle
-) {
-  const result =
-    (globalScene as any).practiceTurnResult;
+    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+      const result = (globalScene as any).practiceTurnResult;
 
-  if (result) {
-    result.expGained += expValue;
+      if (result) {
+        result.expGained += expValue;
 
-    result.expFactors ??= [];
+        result.expFactors ??= [];
 
-    result.expFactors.push(
-      `기본 경험치 +${expValue}`,
-    );
+        result.expFactors.push(`기본 경험치 +${expValue}`);
 
-    console.log(
-      "[PRACTICE_EXP]",
-      expValue,
-    );
-  }
-}
+        console.log("[PRACTICE_EXP]", expValue);
+      }
+    }
 
     if (participantIds.size > 0) {
       if (
-        this.currentBattle.battleType === BattleType.TRAINER ||
-        this.currentBattle.mysteryEncounter?.encounterMode === MysteryEncounterMode.TRAINER_BATTLE
+        this.currentBattle.battleType === BattleType.TRAINER
+        || this.currentBattle.mysteryEncounter?.encounterMode === MysteryEncounterMode.TRAINER_BATTLE
       ) {
         expValue = Math.floor(expValue * 1.5);
       } else if (this.currentBattle.isBattleMysteryEncounter() && this.currentBattle.mysteryEncounter) {
@@ -4201,8 +4489,8 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
           // 2. StackingPowerBoosterModifier 처리
           const powerBoosterModifier = partyMember.getHeldItems().find(m => m instanceof StackingPowerBoosterModifier);
           if (
-            powerBoosterModifier &&
-            powerBoosterModifier.getStackCount() < powerBoosterModifier.getMaxHeldItemCount()
+            powerBoosterModifier
+            && powerBoosterModifier.getStackCount() < powerBoosterModifier.getMaxHeldItemCount()
           ) {
             // 스택 수 증가
             powerBoosterModifier.incrementStackCount();
@@ -4256,8 +4544,8 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
           // 구애안경
           const specialGlassesModifier = partyMember.getHeldItems().find(m => m instanceof SpAtkStatModifier);
           if (
-            specialGlassesModifier &&
-            specialGlassesModifier.stackCount < specialGlassesModifier.getMaxHeldItemCount()
+            specialGlassesModifier
+            && specialGlassesModifier.stackCount < specialGlassesModifier.getMaxHeldItemCount()
           ) {
             specialGlassesModifier.stackCount++;
             console.log(`Special attack stat modifier stack increased to ${specialGlassesModifier.stackCount}`);
@@ -4293,8 +4581,26 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
         if (Overrides.XP_MULTIPLIER_OVERRIDE !== null) {
           expMultiplier = Overrides.XP_MULTIPLIER_OVERRIDE;
         }
-        const pokemonExp = new NumberHolder(expValue * expMultiplier);
+        const beforeExp = Math.floor(expValue * expMultiplier);
+
+        const pokemonExp = new NumberHolder(beforeExp);
         this.applyModifiers(PokemonExpBoosterModifier, true, partyMember, pokemonExp);
+
+        const finalExp = Math.floor(pokemonExp.value);
+
+        if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+          const result = (globalScene as any).practiceTurnResult;
+          if (result) {
+            result.expGained += finalExp;
+            result.expFactors ??= [];
+
+            result.expFactors.push(
+              `${partyMember.getNameToRender?.() ?? partyMember.name} 경험치 ${beforeExp}→${finalExp}`,
+            );
+          }
+        }
+
+        partyMemberExp.push(finalExp);
         partyMemberExp.push(Math.floor(pokemonExp.value));
       }
 
@@ -4349,12 +4655,12 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
   isMysteryEncounterValidForWave(battleType: BattleType, waveIndex: number): boolean {
     const [lowestMysteryEncounterWave, highestMysteryEncounterWave] = this.gameMode.getMysteryEncounterLegalWaves();
     return (
-      this.gameMode.hasMysteryEncounters &&
-      battleType === BattleType.WILD &&
-      !this.gameMode.isBoss(waveIndex) &&
-      waveIndex % 10 !== 1 &&
-      waveIndex < highestMysteryEncounterWave &&
-      waveIndex > lowestMysteryEncounterWave
+      this.gameMode.hasMysteryEncounters
+      && battleType === BattleType.WILD
+      && !this.gameMode.isBoss(waveIndex)
+      && waveIndex % 10 !== 1
+      && waveIndex < highestMysteryEncounterWave
+      && waveIndex > lowestMysteryEncounterWave
     );
   }
 
@@ -4376,12 +4682,12 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
       // Reduces occurrence of runs with total encounters significantly different from AVERAGE_ENCOUNTERS_PER_RUN_TARGET
       // Favored rate changes can never exceed 50%. So if base rate is 15/256 and favored rate would add 200/256, result will be (15 + 128)/256
       const expectedEncountersByFloor =
-        (AVERAGE_ENCOUNTERS_PER_RUN_TARGET / (highestMysteryEncounterWave - lowestMysteryEncounterWave)) *
-        (waveIndex - lowestMysteryEncounterWave);
+        (AVERAGE_ENCOUNTERS_PER_RUN_TARGET / (highestMysteryEncounterWave - lowestMysteryEncounterWave))
+        * (waveIndex - lowestMysteryEncounterWave);
       const currentRunDiffFromAvg = expectedEncountersByFloor - encounteredEvents.length;
       const favoredEncounterRate =
-        sessionEncounterRate +
-        Math.min(currentRunDiffFromAvg * ANTI_VARIANCE_WEIGHT_MODIFIER, MYSTERY_ENCOUNTER_SPAWN_MAX_WEIGHT / 2);
+        sessionEncounterRate
+        + Math.min(currentRunDiffFromAvg * ANTI_VARIANCE_WEIGHT_MODIFIER, MYSTERY_ENCOUNTER_SPAWN_MAX_WEIGHT / 2);
 
       const successRate = Overrides.MYSTERY_ENCOUNTER_RATE_OVERRIDE ?? favoredEncounterRate;
 
@@ -4431,9 +4737,9 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
 
     // Check for queued encounters first
     if (
-      !encounter &&
-      this.mysteryEncounterSaveData?.queuedEncounters &&
-      this.mysteryEncounterSaveData.queuedEncounters.length > 0
+      !encounter
+      && this.mysteryEncounterSaveData?.queuedEncounters
+      && this.mysteryEncounterSaveData.queuedEncounters.length > 0
     ) {
       let i = 0;
       while (i < this.mysteryEncounterSaveData.queuedEncounters.length && !!encounter) {
@@ -4465,9 +4771,9 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
     // biome-ignore format: biome sucks at formatting this line
     for (const seenEncounterData of this.mysteryEncounterSaveData.encounteredEvents) {
       if (seenEncounterData.tier === MysteryEncounterTier.COMMON) {
-        tierWeights[0] = tierWeights[0] - 6;
+        tierWeights[0] -= 6;
       } else if (seenEncounterData.tier === MysteryEncounterTier.GREAT) {
-        tierWeights[1] = tierWeights[1] - 4;
+        tierWeights[1] -= 4;
       }
     }
 
@@ -4513,9 +4819,9 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
           }
           const disallowedGameModes = encounterCandidate.disallowedGameModes;
           if (
-            disallowedGameModes &&
-            disallowedGameModes.length > 0 &&
-            disallowedGameModes.includes(this.gameMode.modeId)
+            disallowedGameModes
+            && disallowedGameModes.length > 0
+            && disallowedGameModes.includes(this.gameMode.modeId)
           ) {
             return false;
           }
@@ -4529,11 +4835,11 @@ updatePartyForModifiers(party: Pokemon[], instant?: boolean): Promise<void> {
             return false;
           }
           return !(
-            this.mysteryEncounterSaveData.encounteredEvents.length > 0 &&
-            encounterCandidate.maxAllowedEncounters &&
-            encounterCandidate.maxAllowedEncounters > 0 &&
-            this.mysteryEncounterSaveData.encounteredEvents.filter(e => e.type === encounterType).length >=
-              encounterCandidate.maxAllowedEncounters
+            this.mysteryEncounterSaveData.encounteredEvents.length > 0
+            && encounterCandidate.maxAllowedEncounters
+            && encounterCandidate.maxAllowedEncounters > 0
+            && this.mysteryEncounterSaveData.encounteredEvents.filter(e => e.type === encounterType).length
+              >= encounterCandidate.maxAllowedEncounters
           );
         })
         .map(m => allMysteryEncounters[m]);

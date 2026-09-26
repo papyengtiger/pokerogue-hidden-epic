@@ -1,7 +1,7 @@
 import { globalScene } from "#app/global-scene";
 import { allAbilities } from "#data/data-lists";
+import type { AbilityId } from "#enums/ability-id";
 import { Button } from "#enums/buttons";
-import { AbilityId } from "#enums/ability-id";
 import { TextStyle } from "#enums/text-style";
 import { UiMode } from "#enums/ui-mode";
 import { addTextObject } from "#ui/text";
@@ -11,6 +11,7 @@ import { addWindow } from "#ui/ui-theme";
 type PracticeAbilityTarget = "ability" | "passive";
 
 type PracticeAbilityFormConfig = {
+  dummyKey?: "dummy1" | "dummy2";
   target?: PracticeAbilityTarget;
   title?: string;
   buttonActions?: Array<(...args: any[]) => void>;
@@ -28,6 +29,8 @@ export class PracticeAbilityFormUiHandler extends UiHandler {
   private target: PracticeAbilityTarget = "ability";
   private buttonActions?: Array<(...args: any[]) => void>;
 
+  private dummyKey: "dummy1" | "dummy2" = "dummy1";
+
   constructor() {
     super(UiMode.PRACTICE_ABILITY_FORM);
   }
@@ -40,14 +43,7 @@ export class PracticeAbilityFormUiHandler extends UiHandler {
     this.container.setVisible(false);
 
     const bg = globalScene.add
-      .rectangle(
-        0,
-        0,
-        globalScene.scaledCanvas.width,
-        globalScene.scaledCanvas.height,
-        0x000000,
-        0.65,
-      )
+      .rectangle(0, 0, globalScene.scaledCanvas.width, globalScene.scaledCanvas.height, 0x000000, 0.65)
       .setOrigin(0);
 
     const window = addWindow(58, 48, 204, 74);
@@ -63,12 +59,7 @@ export class PracticeAbilityFormUiHandler extends UiHandler {
     this.abilityValueText = addTextObject(180, 79, "", TextStyle.WINDOW);
     this.abilityValueText.setOrigin(0.5, 0);
 
-    this.helpText = addTextObject(
-      160,
-      104,
-      "←→ 변경  Z 저장  X 취소",
-      TextStyle.WINDOW,
-    );
+    this.helpText = addTextObject(160, 104, "←→ 변경  Z 저장  X 취소", TextStyle.WINDOW);
     this.helpText.setOrigin(0.5, 0);
 
     this.container.add([
@@ -90,20 +81,23 @@ export class PracticeAbilityFormUiHandler extends UiHandler {
 
     const config = args?.[0] as PracticeAbilityFormConfig | undefined;
 
+    this.dummyKey = config?.dummyKey ?? "dummy1";
+
     this.target = config?.target ?? "ability";
     this.buttonActions = config?.buttonActions;
 
-    this.titleText.setText(
-      config?.title ??
-        (this.target === "passive"
-          ? "패시브를 선택하시오"
-          : "특성을 선택하시오"),
-    );
+    this.titleText.setText(config?.title ?? (this.target === "passive" ? "패시브를 선택하시오" : "특성을 선택하시오"));
+
+    const rootCfg = (globalScene.gameData.practiceDummyConfig ??= {});
+    rootCfg.dummy1 ??= {};
+    rootCfg.dummy2 ??= {};
+
+    const dummyCfg = rootCfg[this.dummyKey];
 
     const savedAbilityId =
       this.target === "passive"
-        ? globalScene.gameData.practiceDummyConfig?.passiveAbilityId
-        : globalScene.gameData.practiceDummyConfig?.abilityId;
+        ? (dummyCfg?.passiveAbilityId ?? rootCfg.passiveAbilityId)
+        : (dummyCfg?.abilityId ?? rootCfg.abilityId);
 
     this.abilityIndex = this.findAbilityIndex(savedAbilityId);
 
@@ -155,32 +149,39 @@ export class PracticeAbilityFormUiHandler extends UiHandler {
   }
 
   private saveAbility(): void {
-  const ability = allAbilities[this.abilityIndex];
+    const ability = allAbilities[this.abilityIndex];
 
-  if (!ability) {
-    this.getUi().playError();
-    return;
-  }
+    if (!ability) {
+      this.getUi().playError();
+      return;
+    }
 
-  if (this.buttonActions?.[0]) {
-    this.buttonActions[0](ability.id);
+    if (this.buttonActions?.[0]) {
+      this.buttonActions[0](ability.id);
+      globalScene.gameData.saveSystem();
+
+      this.getUi().playSelect();
+      this.getUi().revertMode();
+      return;
+    }
+
+    const rootCfg = (globalScene.gameData.practiceDummyConfig ??= {});
+    rootCfg.dummy1 ??= {};
+    rootCfg.dummy2 ??= {};
+
+    const dummyCfg = (rootCfg[this.dummyKey] ??= {});
+
+    if (this.target === "passive") {
+      dummyCfg.passiveAbilityId = ability.id;
+    } else {
+      dummyCfg.abilityId = ability.id;
+    }
+
+    globalScene.gameData.saveSystem();
+
     this.getUi().playSelect();
-    return;
+    this.getUi().revertMode();
   }
-
-  globalScene.gameData.practiceDummyConfig ??= {};
-
-  if (this.target === "passive") {
-    globalScene.gameData.practiceDummyConfig.passiveAbilityId = ability.id;
-  } else {
-    globalScene.gameData.practiceDummyConfig.abilityId = ability.id;
-  }
-
-  globalScene.gameData.saveSystem();
-
-  this.getUi().playSelect();
-  this.getUi().revertMode();
-}
 
   private cancel(): void {
     this.buttonActions?.[1]?.();

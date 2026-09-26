@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "starf-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 19
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 15,
+						"w": 18,
+						"h": 17
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 17
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 15,
+						"w": 18,
+						"h": 17
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 18,
+						"h": 17
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4350ffdc40834e897d47b1ae43830cf1:3b69f155215c1dae58c7f2d8ccd51a97:5c93e932fb487a51c4ee7ce22d2d51ad$"
+	}
+}

@@ -1,16 +1,43 @@
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import {
+  AbilityGuardItemModifier,
+  BerryModifier,
+  ContactDamageModifier,
+  ContactHeldItemTransferChanceModifier,
+  DamageMoneyRewardModifier,
+  EnemyAttackStatusEffectChanceModifier,
+  EnemyEndureChanceModifier,
+  FlinchChanceModifier,
+  HitHealModifier,
+  IgnoreMoveEffectsItemModifier,
+  MaxMultiHitModifier,
+  MissEffectModifier,
+  PokemonHeldItemModifier,
+  PokemonMultiHitModifier,
+  SoundBasedMoveSpecialAttackBoostModifier,
+  SpeciesStatBoosterModifier,
+  StackingRiskyPowerBoosterModifier,
+  TypeImmunityModifier,
+  TypeSpecificMoveBoosterModifier,
+  UrshifuGloveAbilityBypassModifier,
+} from "#app/modifier/modifier";
 import type { Phase } from "#app/phase";
 import { ConditionalProtectTag } from "#data/arena-tag";
+import { isGMaxMove, isMaxMove } from "#data/balance/trs";
+import { isExclusiveZCrystal, zmovesSpecies } from "#data/balance/zmoves";
 import { MoveAnim } from "#data/battle-anims";
 import { DamageProtectedTag, ProtectedTag, SemiInvulnerableTag, SubstituteTag, TypeBoostTag } from "#data/battler-tags";
 import { SpeciesFormChangePostMoveTrigger } from "#data/form-change-triggers";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import type { TypeDamageMultiplier } from "#data/type";
 import { ArenaTagSide } from "#enums/arena-tag-side";
+import { ArenaTagType } from "#enums/arena-tag-type";
 import { BattlerIndex } from "#enums/battler-index";
 import { BattlerTagLapseType } from "#enums/battler-tag-lapse-type";
 import { BattlerTagType } from "#enums/battler-tag-type";
+import { BerryType } from "#enums/berry-type";
 import { HitCheckResult } from "#enums/hit-check-result";
 import { HitResult } from "#enums/hit-result";
 import { MoveCategory } from "#enums/move-category";
@@ -20,57 +47,23 @@ import { MoveId } from "#enums/move-id";
 import { MoveResult } from "#enums/move-result";
 import { MoveTarget } from "#enums/move-target";
 import { isReflected, MoveUseMode } from "#enums/move-use-mode";
+import { MultiHitType } from "#enums/multi-hit-type";
 import { PokemonType } from "#enums/pokemon-type";
+import { Stat } from "#enums/stat";
+import { BerryUsedEvent } from "#events/battle-scene";
 import type { Pokemon } from "#field/pokemon";
-import {
-  ContactHeldItemTransferChanceModifier,
-  EnemyAttackStatusEffectChanceModifier,
-  FlinchChanceModifier,
-  HitHealModifier,
-  IgnoreMoveEffectsItemModifier,
-  MaxMultiHitModifier,
-  ContactDamageModifier,
-  TypeImmunityModifier,
-  PokemonMultiHitModifier,
-  SoundBasedMoveSpecialAttackBoostModifier,
-  MissEffectModifier,
-  DamageMoneyRewardModifier,
-  EnemyEndureChanceModifier,
-  AbilityGuardItemModifier,
-  BerryModifier,
-  UrshifuGloveAbilityBypassModifier,
-  SpeciesStatBoosterModifier,
-  PokemonHeldItemModifier,
-  TypeSpecificMoveBoosterModifier,
-  StackingRiskyPowerBoosterModifier,
-} from "#app/modifier/modifier";
 import { applyFilteredMoveAttrs, applyMoveAttrs } from "#moves/apply-attrs";
 import type { Move, MoveAttr } from "#moves/move";
 import { getMoveTargets, isFieldTargeted } from "#moves/move-utils";
 import { PokemonMove } from "#moves/pokemon-move";
+import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import { PokemonPhase } from "#phases/pokemon-phase";
 import { DamageAchv } from "#system/achv";
 import type { DamageResult } from "#types/damage-result";
 import type { TurnMove } from "#types/turn-move";
 import type { nil } from "#utils/common";
-import { BooleanHolder, NumberHolder, toDmgValue } from "#utils/common";
+import { BooleanHolder, NumberHolder } from "#utils/common";
 import i18next from "i18next";
-import {
-  BATTLE_STATS,
-  type BattleStat,
-  type EffectiveStat,
-  getStatKey,
-  Stat,
-} from "#enums/stat";
-import { StatStageChangePhase } from "#app/phases/stat-stage-change-phase";
-import { MultiHitType } from "#enums/multi-hit-type";
-import { areAllies, canSpeciesTera, willTerastallize } from "#utils/pokemon-utils";
-import { applyFlingExtraEffect } from "#moves/fling-effect-utils";
-import { BerryType } from "#enums/berry-type";
-import { PokemonTurnData } from "#data/pokemon-data";
-import { BerryUsedEvent } from "#events/battle-scene";
-import { ArenaTagType } from "#enums/arena-tag-type";
-import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 
 export type HitCheckEntry = [HitCheckResult, TypeDamageMultiplier];
 
@@ -82,6 +75,8 @@ export class MoveEffectPhase extends PokemonPhase {
 
   /** The result of the hit check against each target */
   private hitChecks: HitCheckEntry[];
+
+  private monsterHouseSpreadTargets: Pokemon[] | null = null;
 
   /**
    * Log to be entered into the user's move history once the move result is resolved.
@@ -106,31 +101,152 @@ export class MoveEffectPhase extends PokemonPhase {
    * @param useMode - The {@linkcode MoveUseMode} corresponding to how this move was used.
    */
   constructor(
-  battlerIndex: BattlerIndex,
-  targets: BattlerIndex[] | any,
-  move: Move,
-  reflected = false,
-  virtual = false
-) {
-  super(battlerIndex);
-  this.move = move;
-  this.reflected = reflected;
-  this.virtual = virtual;
+    battlerIndex: BattlerIndex,
+    targets: BattlerIndex[] | any,
+    move: Move,
+    useMode: MoveUseMode = MoveUseMode.NORMAL,
+    reflected = false,
+    virtual = false,
+  ) {
+    super(battlerIndex);
 
-  // targets 방어
-  if (!Array.isArray(targets)) {
-    console.warn("MoveEffectPhase constructor - invalid targets, resetting to []:", targets);
-    this.targets = [];
-  } else {
-    if (targets.includes(battlerIndex) && this.move.moveTarget === MoveTarget.ALL_NEAR_OTHERS) {
-      const i = targets.indexOf(battlerIndex);
-      targets.splice(i, 1);
+    this.move = move;
+    this.useMode = useMode;
+    this.reflected = reflected;
+    this.virtual = virtual;
+
+    if (!Array.isArray(targets)) {
+      console.warn("MoveEffectPhase constructor - invalid targets, resetting to []:", targets);
+      this.targets = [];
+    } else {
+      if (targets.includes(battlerIndex) && this.move.moveTarget === MoveTarget.ALL_NEAR_OTHERS) {
+        const i = targets.indexOf(battlerIndex);
+        targets.splice(i, 1);
+      }
+      this.targets = targets;
     }
-    this.targets = targets;
+
+    this.hitChecks = new Array(this.targets.length).fill([HitCheckResult.PENDING, 0]);
   }
 
-  this.hitChecks = Array(this.targets.length).fill([HitCheckResult.PENDING, 0]);
-}
+  private isMonsterHouseSpreadTarget(target: Pokemon): boolean {
+    return this.monsterHouseSpreadTargets?.some(pokemon => pokemon.id === target.id) ?? false;
+  }
+
+  private getMonsterHouseSpreadTargets(user: Pokemon): Pokemon[] | null {
+    // 이미 선정했다면 같은 대상을 그대로 사용
+    if (this.monsterHouseSpreadTargets !== null) {
+      return this.monsterHouseSpreadTargets;
+    }
+
+    if (!monsterHouseManager.isActive() || !user.isPlayer()) {
+      return null;
+    }
+
+    let ratio: number | null = null;
+
+    const moveId = this.move.id;
+
+    // Z기술
+    const isZMove = Object.prototype.hasOwnProperty.call(zmovesSpecies, moveId);
+
+    const isExclusiveZMove = isZMove && isExclusiveZCrystal(moveId);
+
+    // 다이맥스 / 거다이맥스 기술
+    const isAnyMaxMove = isMaxMove(moveId);
+    const isExclusiveGMaxMove = isAnyMaxMove && isGMaxMove(moveId);
+
+    // 전용 Z / 전용 거다이맥스 → 75%
+    if (isExclusiveZMove || isExclusiveGMaxMove) {
+      ratio = 0.75;
+    }
+    // 일반 Z / 일반 다이맥스 → 50%
+    else if (isZMove || isAnyMaxMove) {
+      ratio = 0.5;
+    }
+    // 그 외 기존 광역기
+    else {
+      switch (this.move.moveTarget) {
+        case MoveTarget.ALL_ENEMIES:
+        case MoveTarget.ALL_NEAR_ENEMIES:
+          ratio = 0.5;
+          break;
+
+        case MoveTarget.ALL_OTHERS:
+        case MoveTarget.ALL_NEAR_OTHERS:
+          ratio = 0.75;
+          break;
+
+        default:
+          return null;
+      }
+    }
+
+    const enemyParty = globalScene.getEnemyParty?.() ?? globalScene.currentBattle.enemyParty ?? [];
+
+    const bossIndex = monsterHouseManager.getBossIndex();
+
+    const bossReleased = monsterHouseManager.isBossReleased();
+
+    const eligible = enemyParty.filter(pokemon => {
+      if (!pokemon || pokemon.isFainted()) {
+        return false;
+      }
+
+      if (!bossReleased && monsterHouseManager.isBossPokemon(pokemon)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (eligible.length === 0) {
+      this.monsterHouseSpreadTargets = [];
+      return this.monsterHouseSpreadTargets;
+    }
+
+    // 실제 필드에 있는 적은 반드시 포함
+    const activeEnemy = eligible.find(pokemon => pokemon.isActive(true));
+
+    const targetCount = eligible.length <= 3 ? eligible.length : Math.max(3, Math.ceil(eligible.length * ratio));
+
+    const reserves = eligible.filter(pokemon => pokemon !== activeEnemy);
+
+    // 전투 Seed를 사용하는 Fisher-Yates 셔플
+    for (let i = reserves.length - 1; i > 0; i--) {
+      const j = user.randBattleSeedInt(i + 1);
+
+      [reserves[i], reserves[j]] = [reserves[j], reserves[i]];
+    }
+
+    const selected: Pokemon[] = [];
+
+    if (activeEnemy) {
+      selected.push(activeEnemy);
+    }
+
+    const remainingSlots = targetCount - selected.length;
+
+    if (remainingSlots > 0) {
+      selected.push(...reserves.slice(0, remainingSlots));
+    }
+
+    this.monsterHouseSpreadTargets = selected;
+
+    console.log("[MONSTER_HOUSE_SPREAD_TARGETS]", {
+      move: this.move.id,
+      ratio,
+      eligible: eligible.length,
+      selected: selected.length,
+      targets: selected.map(pokemon => ({
+        id: pokemon.id,
+        name: pokemon.name,
+        active: pokemon.isActive(true),
+      })),
+    });
+
+    return this.monsterHouseSpreadTargets;
+  }
 
   /**
    * Compute targets and the results of hit checks of the invoked move against all targets,
@@ -146,200 +262,207 @@ export class MoveEffectPhase extends PokemonPhase {
    * @see {@linkcode hitCheck}
    */
   private conductHitChecks(user: Pokemon, fieldMove: boolean): Pokemon[] {
-  if (!this.moveHistoryEntry) {
-    this.moveHistoryEntry = { result: MoveResult.FAIL } as any;
-  }
-  let anySuccess = false;
-  let allMiss = true;
-
-  let targets = this.getTargets();
-
-  // ✅ Dragon Darts: 히트마다 타겟을 1명으로 다시 고정하고 hitChecks 길이 동기화
-  if (this.move?.id === MoveId.DRAGON_DARTS && !fieldMove) {
-    const chosen = this.pickDragonDartsTarget(user);
-    targets = chosen ? [chosen] : [];
-    this.targets = targets.map(t => t.getBattlerIndex()); // 내부 battlerIndex 타겟도 동기화
-    this.hitChecks = Array(targets.length).fill([HitCheckResult.PENDING, 0]); // ✅ 길이 동기화
-  }
-  console.log("[DD][conductHitChecks] hitCount/hitsLeft=", user.turnData.hitCount, user.turnData.hitsLeft, "targets=", targets.map(t=>t.name));
-
-  for (const [i, target] of targets.entries()) {
-
-  // ✅ 0) 타겟이 “회피반사 아이템(= SpeciesStatBoosterModifier 기반 옵션)”을 갖고 있는지
-  const evMods = globalScene
-  .getModifiers(SpeciesStatBoosterModifier)
-  .filter(m => m.pokemonId === target.id) as SpeciesStatBoosterModifier[];
-
-// ✅ ODD_JAR만
-const hasOddJar = evMods.some(m =>
-  (m as any).getKey?.() === "ODD_JAR"
-);
-
-const hasEvasionItem = hasOddJar;
-
-  // ✅ 1) MISS 대비: "맞았다고 가정한" 프리뷰 데미지 계산 (회피 아이템 있을 때만)
-  let previewDamage = 0;
-  if (hasOddJar && this.move && this.move.category !== MoveCategory.STATUS) {
-    try {
-      const preview = target.getAttackDamage({
-        source: user,
-        move: this.move,
-        simulated: true,           // ✅ 프리뷰(부작용 최소)
-        ignoreAbility: false,
-        ignoreSourceAbility: false,
-        ignoreAllyAbility: false,
-        ignoreSourceAllyAbility: false,
-        isCritical: false,
-      });
-
-      previewDamage = preview?.damage ?? 0;
-      (target as any)._evasionReflectPreviewDamage = previewDamage;
-    } catch (e) {
-      console.error("[EVASION_REFLECT] preview damage calc failed", e);
-      previewDamage = 0;
-      delete (target as any)._evasionReflectPreviewDamage;
+    if (!this.moveHistoryEntry) {
+      this.moveHistoryEntry = { result: MoveResult.FAIL } as any;
     }
-  }
+    let anySuccess = false;
+    let allMiss = true;
 
-  const hitCheck = this.hitCheck(target);
+    const monsterHouseTargets = this.getMonsterHouseSpreadTargets(user);
 
-if ((globalScene.currentBattle as any)?.isPracticeBattle) {
-  const practiceResult = (globalScene as any).practiceTurnResult;
+    let targets = monsterHouseTargets ?? this.getTargets();
 
-  if (practiceResult) {
-    const accuracyFactors: string[] = [];
-
-    if (hitCheck[0] === HitCheckResult.MISS) {
-      accuracyFactors.push("빗나감");
-
-      if (user.isPlayer?.()) {
-        practiceResult.playerMissCount++;
-      } else {
-        practiceResult.enemyMissCount++;
-      }
+    // ✅ Dragon Darts: 히트마다 타겟을 1명으로 다시 고정하고 hitChecks 길이 동기화
+    if (this.move?.id === MoveId.DRAGON_DARTS && !fieldMove) {
+      const chosen = this.pickDragonDartsTarget(user);
+      targets = chosen ? [chosen] : [];
+      this.targets = targets.map(t => t.getBattlerIndex()); // 내부 battlerIndex 타겟도 동기화
+      this.hitChecks = new Array(targets.length).fill([HitCheckResult.PENDING, 0]); // ✅ 길이 동기화
     }
+    console.log(
+      "[DD][conductHitChecks] hitCount/hitsLeft=",
+      user.turnData.hitCount,
+      user.turnData.hitsLeft,
+      "targets=",
+      targets.map(t => t.name),
+    );
 
-    if (hitCheck[0] === HitCheckResult.NO_EFFECT) {
-      accuracyFactors.push("효과 없음");
-    }
+    for (const [i, target] of targets.entries()) {
+      // ✅ 0) 타겟이 “회피반사 아이템(= SpeciesStatBoosterModifier 기반 옵션)”을 갖고 있는지
+      const evMods = globalScene
+        .getModifiers(SpeciesStatBoosterModifier)
+        .filter(m => m.pokemonId === target.id) as SpeciesStatBoosterModifier[];
 
-    if (hitCheck[0] === HitCheckResult.PROTECTED) {
-      accuracyFactors.push("방어됨");
-    }
+      // ✅ ODD_JAR만
+      const hasOddJar = evMods.some(m => (m as any).getKey?.() === "ODD_JAR");
 
-    if (hitCheck[0] === HitCheckResult.REFLECTED) {
-      accuracyFactors.push("반사됨");
-    }
+      const hasEvasionItem = hasOddJar;
 
-    if (accuracyFactors.length) {
-      if (user.isPlayer?.()) {
-        practiceResult.playerAccuracyFactors ??= [];
-        practiceResult.playerAccuracyFactors.push(...accuracyFactors);
-      } else {
-        practiceResult.enemyAccuracyFactors ??= [];
-        practiceResult.enemyAccuracyFactors.push(...accuracyFactors);
-      }
-    }
-  }
-}
-
-  // ✅ 2) MISS면 반사: "프리뷰 데미지의 1/2"를 공격자에게 간접 데미지로
-  if (hitCheck[0] === HitCheckResult.MISS && hasEvasionItem) {
-    const stored = (target as any)._evasionReflectPreviewDamage ?? previewDamage;
-
-    if (typeof stored === "number" && stored > 0) {
-      const reflect = Math.max(1, Math.floor(stored / 2));
-
-      // ✅ 메시지는 먼저 큐에 넣고
-      globalScene.phaseManager.queueMessage(
-        i18next.t("moveTriggers:evasionReflect", {
-          pokemonName: getPokemonNameWithAffix(target),
-          attackerName: getPokemonNameWithAffix(user),
-        }),
-      );
-
-      // ✅ 안전하게 데미지 적용
-      // - damageAndUpdate가 가끔 "기절/컨텍스트 없음"에서 예외를 던질 수 있어 fallback 처리
-      try {
-        // 기절이 날 정도면 damageAndUpdate가 더 위험한 경우가 많아서 우선 damage() 시도
-        if (user.hp <= reflect && typeof (user as any).damage === "function") {
-          (user as any).damage(reflect, { result: HitResult.INDIRECT });
-        } else {
-          user.damageAndUpdate(reflect, { result: HitResult.INDIRECT });
-        }
-      } catch (e) {
-        console.error("[EVASION_REFLECT] damageAndUpdate crashed; fallback to damage()", e);
+      // ✅ 1) MISS 대비: "맞았다고 가정한" 프리뷰 데미지 계산 (회피 아이템 있을 때만)
+      let previewDamage = 0;
+      if (hasOddJar && this.move && this.move.category !== MoveCategory.STATUS) {
         try {
-          if (typeof (user as any).damage === "function") {
-            (user as any).damage(reflect, { result: HitResult.INDIRECT });
-          } else {
-            // 최후 fallback: 그래도 죽지 않게만(테스트용)
-            user.hp = Math.max(0, user.hp - reflect);
-          }
-        } catch (e2) {
-          console.error("[EVASION_REFLECT] fallback damage() also failed", e2);
+          const preview = target.getAttackDamage({
+            source: user,
+            move: this.move,
+            simulated: true, // ✅ 프리뷰(부작용 최소)
+            ignoreAbility: false,
+            ignoreSourceAbility: false,
+            ignoreAllyAbility: false,
+            ignoreSourceAllyAbility: false,
+            isCritical: false,
+          });
+
+          previewDamage = preview?.damage ?? 0;
+          (target as any)._evasionReflectPreviewDamage = previewDamage;
+        } catch (e) {
+          console.error("[EVASION_REFLECT] preview damage calc failed", e);
+          previewDamage = 0;
+          delete (target as any)._evasionReflectPreviewDamage;
         }
       }
 
-      // 통계 누적이 필요하면
-      user.turnData.damageTaken += reflect;
+      const hitCheck = this.hitCheck(target);
+
+      if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+        const practiceResult = (globalScene as any).practiceTurnResult;
+
+        if (practiceResult) {
+          const accuracyFactors: string[] = [];
+
+          if (hitCheck[0] === HitCheckResult.MISS) {
+            accuracyFactors.push("빗나감");
+
+            if (user.isPlayer?.()) {
+              practiceResult.playerMissCount++;
+            } else {
+              practiceResult.enemyMissCount++;
+            }
+          }
+
+          if (hitCheck[0] === HitCheckResult.NO_EFFECT) {
+            accuracyFactors.push("효과 없음");
+          }
+
+          if (hitCheck[0] === HitCheckResult.PROTECTED) {
+            accuracyFactors.push("방어됨");
+          }
+
+          if (hitCheck[0] === HitCheckResult.REFLECTED) {
+            accuracyFactors.push("반사됨");
+          }
+
+          if (accuracyFactors.length > 0) {
+            if (user.isPlayer?.()) {
+              practiceResult.playerAccuracyFactors ??= [];
+              practiceResult.playerAccuracyFactors.push(...accuracyFactors);
+            } else {
+              practiceResult.enemyAccuracyFactors ??= [];
+              practiceResult.enemyAccuracyFactors.push(...accuracyFactors);
+            }
+          }
+        }
+      }
+
+      // ✅ 2) MISS면 반사: "프리뷰 데미지의 1/2"를 공격자에게 간접 데미지로
+      if (hitCheck[0] === HitCheckResult.MISS && hasEvasionItem) {
+        const stored = (target as any)._evasionReflectPreviewDamage ?? previewDamage;
+
+        if (typeof stored === "number" && stored > 0) {
+          const reflect = Math.max(1, Math.floor(stored / 2));
+
+          // ✅ 메시지는 먼저 큐에 넣고
+          globalScene.phaseManager.queueMessage(
+            i18next.t("moveTriggers:evasionReflect", {
+              pokemonName: getPokemonNameWithAffix(target),
+              attackerName: getPokemonNameWithAffix(user),
+            }),
+          );
+
+          // ✅ 안전하게 데미지 적용
+          // - damageAndUpdate가 가끔 "기절/컨텍스트 없음"에서 예외를 던질 수 있어 fallback 처리
+          try {
+            // 기절이 날 정도면 damageAndUpdate가 더 위험한 경우가 많아서 우선 damage() 시도
+            if (user.hp <= reflect && typeof (user as any).damage === "function") {
+              (user as any).damage(reflect, { result: HitResult.INDIRECT });
+            } else {
+              user.damageAndUpdate(reflect, { result: HitResult.INDIRECT });
+            }
+          } catch (e) {
+            console.error("[EVASION_REFLECT] damageAndUpdate crashed; fallback to damage()", e);
+            try {
+              if (typeof (user as any).damage === "function") {
+                (user as any).damage(reflect, { result: HitResult.INDIRECT });
+              } else {
+                // 최후 fallback: 그래도 죽지 않게만(테스트용)
+                user.hp = Math.max(0, user.hp - reflect);
+              }
+            } catch (e2) {
+              console.error("[EVASION_REFLECT] fallback damage() also failed", e2);
+            }
+          }
+
+          // 통계 누적이 필요하면
+          user.turnData.damageTaken += reflect;
+        }
+
+        delete (target as any)._evasionReflectPreviewDamage;
+      }
+
+      // (기존 로직 그대로)
+      if (fieldMove && hitCheck[0] === HitCheckResult.REFLECTED) {
+        targets = [target];
+        this.hitChecks = [hitCheck];
+        break;
+      }
+
+      if (hitCheck[0] === HitCheckResult.HIT) {
+        anySuccess = true;
+      } else {
+        allMiss ||= hitCheck[0] === HitCheckResult.MISS;
+      }
+      this.hitChecks[i] = hitCheck;
     }
 
-    delete (target as any)._evasionReflectPreviewDamage;
-  }
+    if (anySuccess) {
+      this.moveHistoryEntry.result = MoveResult.SUCCESS;
 
-  // (기존 로직 그대로)
-  if (fieldMove && hitCheck[0] === HitCheckResult.REFLECTED) {
-    targets = [target];
-    this.hitChecks = [hitCheck];
-    break;
-  }
+      if (globalScene.arena.ignoreAbilities) {
+        for (const target of targets) {
+          // 1) target이 가진 AbilityGuard(들) 중에서
+          const guards = target
+            .getHeldItems()
+            .filter(it => it instanceof AbilityGuardItemModifier) as AbilityGuardItemModifier[];
 
-  if (hitCheck[0] === HitCheckResult.HIT) {
-    anySuccess = true;
-  } else {
-    allMiss ||= hitCheck[0] === HitCheckResult.MISS;
-  }
-  this.hitChecks[i] = hitCheck;
-}
+          if (guards.length === 0) {
+            continue;
+          }
 
-  if (anySuccess) {
-    this.moveHistoryEntry.result = MoveResult.SUCCESS;
+          // 2) "공통 정책 통과"하는 가드가 하나라도 있으면 발동
+          const hasActiveGuard = guards.some(g => g.shouldApply(target, target, false /* simulated */));
 
-    if (globalScene.arena.ignoreAbilities) {
-  for (const target of targets) {
-    // 1) target이 가진 AbilityGuard(들) 중에서
-    const guards = target.getHeldItems().filter(
-      it => it instanceof AbilityGuardItemModifier
-    ) as AbilityGuardItemModifier[];
+          console.log(`[DEBUG] ${target.name} AbilityGuard check`, {
+            ignoreAbilities: globalScene.arena.ignoreAbilities,
+            guardCount: guards.length,
+            hasActiveGuard,
+            magicRoom: globalScene.arena.hasTag(ArenaTagType.MAGIC_ROOM),
+          });
 
-    if (!guards.length) continue;
-
-    // 2) "공통 정책 통과"하는 가드가 하나라도 있으면 발동
-    const hasActiveGuard = guards.some(g => g.shouldApply(target, target, false /* simulated */));
-
-    console.log(`[DEBUG] ${target.name} AbilityGuard check`, {
-      ignoreAbilities: globalScene.arena.ignoreAbilities,
-      guardCount: guards.length,
-      hasActiveGuard,
-      magicRoom: globalScene.arena.hasTag(ArenaTagType.MAGIC_ROOM),
-    });
-
-    if (hasActiveGuard) {
-      console.debug(`[DEBUG] ${target.name}의 AbilityGuard(유효) 발동 → ignoreAbilities 해제`);
-      globalScene.arena.setIgnoreAbilities(false, user.getBattlerIndex());
-      break;
+          if (hasActiveGuard) {
+            console.debug(`[DEBUG] ${target.name}의 AbilityGuard(유효) 발동 → ignoreAbilities 해제`);
+            globalScene.arena.setIgnoreAbilities(false, user.getBattlerIndex());
+            break;
+          }
+        }
+      }
+    } else {
+      user.turnData.hitCount = 1;
+      user.turnData.hitsLeft = 1;
+      this.moveHistoryEntry.result = allMiss ? MoveResult.MISS : MoveResult.FAIL;
     }
-  }
-}
-  } else {
-    user.turnData.hitCount = 1;
-    user.turnData.hitsLeft = 1;
-    this.moveHistoryEntry.result = allMiss ? MoveResult.MISS : MoveResult.FAIL;
-  }
 
-  return targets;
-}
+    return targets;
+  }
 
   /**
    * Queue the phaes that should occur when the target reflects the move back to the user
@@ -374,246 +497,282 @@ if ((globalScene.currentBattle as any)?.isPracticeBattle) {
     );
   }
 
-private applyToTargets(user: Pokemon, targets: Pokemon[]): void {
-  let firstHit = true;
+  private applyToTargets(user: Pokemon, targets: Pokemon[]): void {
+    let firstHit = true;
 
-  for (const [i, target] of targets.entries()) {
-    const [hitCheckResult, effectiveness] = this.hitChecks[i];
+    for (const [i, target] of targets.entries()) {
+      const [hitCheckResult, effectiveness] = this.hitChecks[i];
 
-    switch (hitCheckResult) {
-      case HitCheckResult.HIT: {
-  this.applyMoveEffects(target, effectiveness, firstHit);
+      switch (hitCheckResult) {
+        case HitCheckResult.HIT: {
+          this.applyMoveEffects(target, effectiveness, firstHit);
 
-  // ✅ FLING 후처리: 맞았으면 아이템 소모
-  if (this.move.id === MoveId.FLING) {
+          // ✅ FLING 후처리: 맞았으면 아이템 소모
+          if (this.move.id === MoveId.FLING) {
+            const td: any = user.turnData;
+            const flingItem = td?.flingItem as PokemonHeldItemModifier | undefined;
+
+            if (flingItem) {
+              user.loseHeldItem(flingItem, true);
+            }
+
+            td.flingItem = undefined;
+            td.flingPower = 0;
+            td.flingItemSelectedThisTurn = false;
+            delete td._flingPending;
+            td._flingCancelled = false;
+            td._flingSelecting = false;
+          }
+
+          firstHit = false;
+          if (isFieldTargeted(this.move)) {
+            return;
+          }
+          break;
+        }
+
+        case HitCheckResult.NO_EFFECT:
+          globalScene.phaseManager.queueMessage(
+            i18next.t(this.move.id === MoveId.SHEER_COLD ? "battle:hitResultImmune" : "battle:hitResultNoEffect", {
+              pokemonName: getPokemonNameWithAffix(target),
+            }),
+          );
+        // fallthrough
+        case HitCheckResult.NO_EFFECT_NO_MESSAGE:
+        case HitCheckResult.PROTECTED:
+        case HitCheckResult.TARGET_NOT_ON_FIELD:
+          applyMoveAttrs("NoEffectAttr", user, target, this.move);
+          break;
+
+        case HitCheckResult.MISS:
+          globalScene.phaseManager.queueMessage(
+            i18next.t("battle:attackMissed", { pokemonNameWithAffix: getPokemonNameWithAffix(target) }),
+          );
+          applyMoveAttrs("MissEffectAttr", user, target, this.move);
+
+          // ✅ MissEffectModifier (허탕보험)
+          // ✅ MissEffectModifier (허탕보험)
+          for (const modifier of globalScene.getModifiers(MissEffectModifier, user.isPlayer())) {
+            if (modifier instanceof MissEffectModifier && modifier.pokemonId === user.id) {
+              const success = modifier.apply(user, this.move);
+
+              if (success) {
+                globalScene.updateModifiers(user.isPlayer());
+                user.updateInfo();
+              }
+            }
+          }
+          break;
+
+        case HitCheckResult.REFLECTED:
+          this.queueReflectedMove(user, target);
+          break;
+
+        case HitCheckResult.PENDING:
+        case HitCheckResult.ERROR:
+          throw new Error("Unexpected hit check result");
+      }
+    }
+  }
+
+  private getOpposingActiveBattlers(user: Pokemon): Pokemon[] {
+    const list = user.isPlayer()
+      ? (globalScene.getEnemyParty?.() ?? globalScene.currentBattle.enemyParty ?? [])
+      : (globalScene.getPlayerParty?.() ?? globalScene.currentBattle.playerParty ?? []);
+
+    return (list ?? []).filter(p => p?.isActive?.(true) && !p.isFainted());
+  }
+
+  private canBeDragonDartsTarget(user: Pokemon, target: Pokemon): boolean {
+    const move = this.move;
+    if (!move) {
+      return false;
+    }
+
+    const fieldTargeted = isFieldTargeted(move);
+    if (fieldTargeted) {
+      return true;
+    }
+
+    // 1) 필드에 없으면 제외
+    if (!target.isActive(true)) {
+      return false;
+    }
+
+    // 2) 더블에서 커맨더로 인해 무조건 MISS 처리되는 케이스 제외
+    if (
+      globalScene.currentBattle.double
+      && target.getAlly()?.getTag(BattlerTagType.COMMANDED)?.getSourcePokemon() === target
+    ) {
+      return false;
+    }
+
+    // 3) 반무적(공중날기/다이브/디그/고스트다이브 등) 제외
+    const bypassAccAndInvuln = this.checkBypassAccAndInvuln(target);
+    const semiInvulnerableTag = target.getTag(SemiInvulnerableTag);
+    if (semiInvulnerableTag && !bypassAccAndInvuln && !this.checkBypassSemiInvuln(semiInvulnerableTag)) {
+      return false;
+    }
+
+    // 4) 보호류 제외
+    if (this.protectedCheck(user, target)) {
+      return false;
+    }
+
+    // 5) 완전 무효(타입/특성/기타 면역) 제외
+    const cancelNoEffectMessage = new BooleanHolder(false);
+    const eff = target.getMoveEffectiveness(user, move, false, false, cancelNoEffectMessage);
+    if (eff === 0) {
+      return false;
+    }
+
+    // ✅ 여기까지면 “그 턴에 맞을 수는 있는 대상”
+    return true;
+  }
+
+  private pickDragonDartsTarget(user: Pokemon): Pokemon | null {
     const td: any = user.turnData;
-    const flingItem = td?.flingItem as PokemonHeldItemModifier | undefined;
+    const currentHit = user.turnData.hitCount - user.turnData.hitsLeft + 1;
 
-    if (flingItem) {
-      user.loseHeldItem(flingItem, true);
+    const candidates = this.getOpposingActiveBattlers(user);
+    if (candidates.length === 0) {
+      return null;
     }
 
-    td.flingItem = undefined;
-    td.flingPower = 0;
-    td.flingItemSelectedThisTurn = false;
-    delete td._flingPending;
-    td._flingCancelled = false;
-    td._flingSelecting = false;
-  }
+    const canHitThisTurn = (t: Pokemon) => this.canBeDragonDartsTarget(user, t);
 
-  firstHit = false;
-  if (isFieldTargeted(this.move)) return;
-  break;
-}
-
-      case HitCheckResult.NO_EFFECT:
-        globalScene.phaseManager.queueMessage(
-          i18next.t(
-            this.move.id === MoveId.SHEER_COLD ? "battle:hitResultImmune" : "battle:hitResultNoEffect",
-            { pokemonName: getPokemonNameWithAffix(target) },
-          ),
-        );
-      // fallthrough
-      case HitCheckResult.NO_EFFECT_NO_MESSAGE:
-      case HitCheckResult.PROTECTED:
-      case HitCheckResult.TARGET_NOT_ON_FIELD:
-        applyMoveAttrs("NoEffectAttr", user, target, this.move);
-        break;
-
-      case HitCheckResult.MISS:
-        globalScene.phaseManager.queueMessage(
-          i18next.t("battle:attackMissed", { pokemonNameWithAffix: getPokemonNameWithAffix(target) }),
-        );
-        applyMoveAttrs("MissEffectAttr", user, target, this.move);
-
-        // ✅ MissEffectModifier (허탕보험)
-        // ✅ MissEffectModifier (허탕보험)
-for (const modifier of globalScene.getModifiers(
-  MissEffectModifier,
-  user.isPlayer(),
-)) {
-  if (
-    modifier instanceof MissEffectModifier &&
-    modifier.pokemonId === user.id
-  ) {
-    const success = modifier.apply(user, this.move);
-
-    if (success) {
-      globalScene.updateModifiers(user.isPlayer());
-      user.updateInfo();
+    const valid = candidates.filter(canHitThisTurn);
+    if (valid.length === 0) {
+      return null;
     }
-  }
-}
-        break;
 
-      case HitCheckResult.REFLECTED:
-        this.queueReflectedMove(user, target);
-        break;
+    const firstIdx: number | undefined = td.dragonDartsFirstTargetIndex;
 
-      case HitCheckResult.PENDING:
-      case HitCheckResult.ERROR:
-        throw new Error("Unexpected hit check result");
+    // ✅ 2타 이후: 다른 쪽이 유효하면 무조건 다른 쪽 우선
+    if (currentHit >= 2 && firstIdx != null && candidates.length >= 2) {
+      const other = valid.find(p => p.getBattlerIndex() !== firstIdx);
+
+      if (other) {
+        if (currentHit === user.turnData.hitCount) {
+          delete td.dragonDartsFirstTargetIndex;
+        }
+        return other;
+      }
+
+      // 다른 쪽이 무효/방어/반무적이면 같은 쪽 2타 허용
+      const same = valid.find(p => p.getBattlerIndex() === firstIdx) ?? valid[0];
+
+      if (currentHit === user.turnData.hitCount) {
+        delete td.dragonDartsFirstTargetIndex;
+      }
+
+      return same;
     }
-  }
-}
 
-private getOpposingActiveBattlers(user: Pokemon): Pokemon[] {
-  const list = user.isPlayer()
-    ? (globalScene.getEnemyParty?.() ?? globalScene.currentBattle.enemyParty ?? [])
-    : (globalScene.getPlayerParty?.() ?? globalScene.currentBattle.playerParty ?? []);
+    // ✅ 1타: 선택된 대상이 유효하면 그 대상 우선, 아니면 유효 후보 첫 번째
+    const preferred = this.getFirstTarget();
+    const preferredOk = preferred && valid.some(p => p.id === preferred.id) ? preferred : null;
 
-  return (list ?? []).filter(p => p?.isActive?.(true) && !p.isFainted());
-}
+    const chosen = preferredOk ?? valid[0];
 
-private canBeDragonDartsTarget(user: Pokemon, target: Pokemon): boolean {
-  const move = this.move;
-  if (!move) return false;
-
-  const fieldTargeted = isFieldTargeted(move);
-  if (fieldTargeted) return true;
-
-  // 1) 필드에 없으면 제외
-  if (!target.isActive(true)) return false;
-
-  // 2) 더블에서 커맨더로 인해 무조건 MISS 처리되는 케이스 제외
-  if (
-    globalScene.currentBattle.double &&
-    target.getAlly()?.getTag(BattlerTagType.COMMANDED)?.getSourcePokemon() === target
-  ) {
-    return false;
-  }
-
-  // 3) 반무적(공중날기/다이브/디그/고스트다이브 등) 제외
-  const bypassAccAndInvuln = this.checkBypassAccAndInvuln(target);
-  const semiInvulnerableTag = target.getTag(SemiInvulnerableTag);
-  if (semiInvulnerableTag && !bypassAccAndInvuln && !this.checkBypassSemiInvuln(semiInvulnerableTag)) {
-    return false;
-  }
-
-  // 4) 보호류 제외
-  if (this.protectedCheck(user, target)) return false;
-
-  // 5) 완전 무효(타입/특성/기타 면역) 제외
-  const cancelNoEffectMessage = new BooleanHolder(false);
-  const eff = target.getMoveEffectiveness(user, move, false, false, cancelNoEffectMessage);
-  if (eff === 0) return false;
-
-  // ✅ 여기까지면 “그 턴에 맞을 수는 있는 대상”
-  return true;
-}
-
-private pickDragonDartsTarget(user: Pokemon): Pokemon | null {
-  const td: any = user.turnData;
-  const currentHit = user.turnData.hitCount - user.turnData.hitsLeft + 1;
-
-  const candidates = this.getOpposingActiveBattlers(user);
-  if (!candidates.length) return null;
-
-  // ✅ 본가식: "그 턴에 맞을 수 없는 상태(보호/반무적/무효/필드이탈 등)"는 후보에서 제외
-  const canHitThisTurn = (t: Pokemon) => this.canBeDragonDartsTarget(user, t);
-
-  const firstIdx: number | undefined = td.dragonDartsFirstTargetIndex;
-
-  const preferred = this.getFirstTarget();
-  const preferredOk = preferred && candidates.some(p => p.id === preferred.id) ? preferred : null;
-
-  let want: Pokemon | null = preferredOk;
-
-  // 2타: 1타와 다른 대상 우선 (단, "맞을 수 있는 대상" 우선으로 찾는 게 더 자연스러움)
-  if (currentHit >= 2 && candidates.length >= 2) {
-    if (firstIdx != null) {
-      want = candidates.find(p => p.getBattlerIndex() !== firstIdx && canHitThisTurn(p)) ?? null;
-    } else if (preferredOk) {
-      want = candidates.find(p => p.id !== preferredOk.id && canHitThisTurn(p)) ?? null;
+    if (currentHit === 1 && chosen) {
+      td.dragonDartsFirstTargetIndex = chosen.getBattlerIndex();
     }
+
+    return chosen;
   }
-
-  // ✅ 선택: want가 유효하면 want, 아니면 유효 후보 중 첫 번째
-  const chosen =
-    (want && canHitThisTurn(want)) ? want :
-    (candidates.find(c => canHitThisTurn(c)) ?? null);
-
-  // 1타 저장
-  if (currentHit === 1 && chosen) td.dragonDartsFirstTargetIndex = chosen.getBattlerIndex();
-  // 마지막 히트 끝나면 정리
-  if (currentHit === user.turnData.hitCount) delete td.dragonDartsFirstTargetIndex;
-
-  return chosen;
-}
 
   public override start(): void {
-  super.start();
+    super.start();
 
-  const user = this.getUserPokemon();
-  if (!user) {
-    this.end();
-    return;
-  }
-  
-  const move = this.move;
-  const battleTurn = globalScene.currentBattle.turn;
-  const td: any = user.turnData;
-
-  // ✅ Dragon Darts: 한 "사용"당 최대 2번만 처리하도록 가드
-  if (move?.id === MoveId.DRAGON_DARTS) {
-    // 이번 턴/이번 사용에서 카운터 초기화
-    // (hitsLeft가 리셋돼도 ddShotsDone으로 막아버림)
-    if (td.ddTurn !== battleTurn || td.ddMoveId !== MoveId.DRAGON_DARTS) {
-      td.ddTurn = battleTurn;
-      td.ddMoveId = MoveId.DRAGON_DARTS;
-      td.ddShotsDone = 0;
-    }
-
-    // 이미 2발 처리했으면: 추가로 큐잉된 MoveEffectPhase는 그냥 종료
-    if (td.ddShotsDone >= 2) {
-      console.warn("[DD] extra MoveEffectPhase ignored", {
-        hitCount: td.hitCount, hitsLeft: td.hitsLeft, shotsDone: td.ddShotsDone,
-      });
+    const user = this.getUserPokemon();
+    if (!user) {
       this.end();
       return;
     }
 
-    td.ddShotsDone++;
-  
-  // (선택) 여기서도 hitsLeft를 강제로 맞춰주면 더 안정적입니다
-    // td.hitCount = 2;
-    // td.hitsLeft = 2 - (td.ddShotsDone - 1);
-  }
+    const move = this.move;
+    const battleTurn = globalScene.currentBattle.turn;
+    const td: any = user.turnData;
 
-  const fieldMove = isFieldTargeted(this.move);
+    // ✅ Dragon Darts: 한 "사용"당 최대 2번만 처리하도록 가드
+    if (move?.id === MoveId.DRAGON_DARTS) {
+      // 이번 턴/이번 사용에서 카운터 초기화
+      // (hitsLeft가 리셋돼도 ddShotsDone으로 막아버림)
+      if (td.ddTurn !== battleTurn || td.ddMoveId !== MoveId.DRAGON_DARTS) {
+        td.ddTurn = battleTurn;
+        td.ddMoveId = MoveId.DRAGON_DARTS;
+        td.ddShotsDone = 0;
+      }
 
-  // ✅ moveHistoryEntry 방어
-  if (!this.moveHistoryEntry) {
-    this.moveHistoryEntry = { result: MoveResult.FAIL } as any;
-  }
+      // 이미 2발 처리했으면: 추가로 큐잉된 MoveEffectPhase는 그냥 종료
+      if (td.ddShotsDone >= 2) {
+        console.warn("[DD] extra MoveEffectPhase ignored", {
+          hitCount: td.hitCount,
+          hitsLeft: td.hitsLeft,
+          shotsDone: td.ddShotsDone,
+        });
+        this.end();
+        return;
+      }
 
-  // ✅ Dragon Darts 멀티히트 보정 (hitCount/hitsLeft가 0/-1로 들어오는 케이스 대응)
-  if (this.move?.id === MoveId.DRAGON_DARTS) {
-    if (!user.turnData.hitCount || user.turnData.hitCount <= 0) user.turnData.hitCount = 2;
-    if (!user.turnData.hitsLeft || user.turnData.hitsLeft <= 0) user.turnData.hitsLeft = user.turnData.hitCount;
-  }
+      td.ddShotsDone++;
 
-  // ✅ Dragon Darts: 이번 히트 대상 1명으로 강제 (hitChecks 만들기 전에!)
-  if (this.move?.id === MoveId.DRAGON_DARTS && !fieldMove) {
-    const chosen = this.pickDragonDartsTarget(user);
-    this.targets = chosen ? [chosen.getBattlerIndex()] : [];
-    this.hitChecks = Array(this.targets.length).fill([HitCheckResult.PENDING, 0] as any);
-  }
+      // (선택) 여기서도 hitsLeft를 강제로 맞춰주면 더 안정적입니다
+      // td.hitCount = 2;
+      // td.hitsLeft = 2 - (td.ddShotsDone - 1);
+    }
 
-  console.log("[MEP] start begin", {
-    move: this.move?.id,
-    targets: this.targets,
-    hitCount: user.turnData?.hitCount,
-    hitsLeft: user.turnData?.hitsLeft,
-    fieldMove,
-  });
+    const fieldMove = isFieldTargeted(this.move);
 
-  const resolvedTargets = this.conductHitChecks(user, fieldMove);
+    const isMonsterHouseSpread =
+      monsterHouseManager.isActive()
+      && user.isPlayer()
+      && (this.move.moveTarget === MoveTarget.ALL_ENEMIES
+        || this.move.moveTarget === MoveTarget.ALL_NEAR_ENEMIES
+        || this.move.moveTarget === MoveTarget.ALL_OTHERS
+        || this.move.moveTarget === MoveTarget.ALL_NEAR_OTHERS);
 
-  if (!resolvedTargets.length) {
-    this.end();
-    return;
-  }
+    if (isMonsterHouseSpread && !monsterHouseManager.isSpreadAttackResolving()) {
+      monsterHouseManager.beginSpreadAttack();
+    }
+
+    // ✅ moveHistoryEntry 방어
+    if (!this.moveHistoryEntry) {
+      this.moveHistoryEntry = { result: MoveResult.FAIL } as any;
+    }
+
+    // ✅ Dragon Darts 멀티히트 보정 (hitCount/hitsLeft가 0/-1로 들어오는 케이스 대응)
+    if (this.move?.id === MoveId.DRAGON_DARTS) {
+      if (!user.turnData.hitCount || user.turnData.hitCount <= 0) {
+        user.turnData.hitCount = 2;
+      }
+      if (!user.turnData.hitsLeft || user.turnData.hitsLeft <= 0) {
+        user.turnData.hitsLeft = user.turnData.hitCount;
+      }
+    }
+
+    // ✅ Dragon Darts: 이번 히트 대상 1명으로 강제 (hitChecks 만들기 전에!)
+    if (this.move?.id === MoveId.DRAGON_DARTS && !fieldMove) {
+      const chosen = this.pickDragonDartsTarget(user);
+      this.targets = chosen ? [chosen.getBattlerIndex()] : [];
+      this.hitChecks = new Array(this.targets.length).fill([HitCheckResult.PENDING, 0] as any);
+    }
+
+    console.log("[MEP] start begin", {
+      move: this.move?.id,
+      targets: this.targets,
+      hitCount: user.turnData?.hitCount,
+      hitsLeft: user.turnData?.hitsLeft,
+      fieldMove,
+    });
+
+    const resolvedTargets = this.conductHitChecks(user, fieldMove);
+
+    if (resolvedTargets.length === 0) {
+      this.end();
+      return;
+    }
 
     /** If an enemy used this move, set this as last enemy that used move or ability */
     if (!user.isPlayer()) {
@@ -622,19 +781,19 @@ private pickDragonDartsTarget(user: Pokemon): Pokemon | null {
       globalScene.currentBattle.lastPlayerInvolved = this.fieldIndex;
     }
 
-// ✅ move 유효성 체크 (가장 위에서!)
-if (!move || typeof (move as any).getAttrs !== "function") {
-  console.warn("[MoveEffectPhase.start] move is undefined/invalid", {
-    move,
-    fieldIndex: this.fieldIndex,
-    useMode: this.useMode,
-    userId: user.id,
-    lastMove: user.getLastXMoves?.(1)?.[0],
-    turnMove: (user as any)?.turnData?.move,
-  });
-  this.end();
-  return;
-}
+    // ✅ move 유효성 체크 (가장 위에서!)
+    if (!move || typeof (move as any).getAttrs !== "function") {
+      console.warn("[MoveEffectPhase.start] move is undefined/invalid", {
+        move,
+        fieldIndex: this.fieldIndex,
+        useMode: this.useMode,
+        userId: user.id,
+        lastMove: user.getLastXMoves?.(1)?.[0],
+        turnMove: (user as any)?.turnData?.move,
+      });
+      this.end();
+      return;
+    }
 
     /**
      * Does an effect from this move override other effects on this turn?
@@ -671,59 +830,60 @@ if (!move || typeof (move as any).getAttrs !== "function") {
      * effects of the move itself, Parental Bond, and Multi-Lens to do so.
      */
     if (user.turnData.hitsLeft === -1) {
-  const hitCount = new NumberHolder(1);
+      const hitCount = new NumberHolder(1);
 
-  // ✅ Dragon Darts 특례: 타겟 모드에 따라 hitCount를 고정한다
-  if (move.id === MoveId.DRAGON_DARTS) {
-    const foes: Pokemon[] = user.isPlayer()
-      ? (globalScene.currentBattle.enemyParty ?? []).filter(p => p?.isActive?.(true) && !p.isFainted())
-      : (globalScene.currentBattle.playerParty ?? []).filter(p => p?.isActive?.(true) && !p.isFainted());
+      // ✅ Dragon Darts 특례: 타겟 모드에 따라 hitCount를 고정한다
+      if (move.id === MoveId.DRAGON_DARTS) {
+        const foes: Pokemon[] = user.isPlayer()
+          ? (globalScene.currentBattle.enemyParty ?? []).filter(p => p?.isActive?.(true) && !p.isFainted())
+          : (globalScene.currentBattle.playerParty ?? []).filter(p => p?.isActive?.(true) && !p.isFainted());
 
-    const valid = foes.filter(t => {
-      const cancel = new BooleanHolder(false);
-      return t.getMoveEffectiveness(user, move, false, false, cancel) !== 0;
-    });
+        const valid = foes.filter(t => {
+          const cancel = new BooleanHolder(false);
+          return t.getMoveEffectiveness(user, move, false, false, cancel) !== 0;
+        });
 
-    // 더블 + 유효 2명 이상이면: “광역(타겟2명)”이므로 hitCount는 1만
-    // 아니면: 단일이므로 2발
-    hitCount.value = (globalScene.currentBattle.double && valid.length >= 2) ? 1 : 2;
+        // 더블 + 유효 2명 이상이면: “광역(타겟2명)”이므로 hitCount는 1만
+        // 아니면: 단일이므로 2발
+        hitCount.value = globalScene.currentBattle.double && valid.length >= 2 ? 1 : 2;
 
-    user.turnData.hitCount = hitCount.value;
-    user.turnData.hitsLeft = hitCount.value;
-    return; // ✅ 아래 일반 멀티히트/부모사랑/멀티렌즈 로직이 끼지 않게 여기서 끊는 게 핵심
-  }
+        user.turnData.hitCount = hitCount.value;
+        user.turnData.hitsLeft = hitCount.value;
+        return; // ✅ 아래 일반 멀티히트/부모사랑/멀티렌즈 로직이 끼지 않게 여기서 끊는 게 핵심
+      }
 
-  // 1️⃣ MultiHitAttr 적용 (랜덤 타수 결정)
-  applyMoveAttrs("MultiHitAttr", user, this.getFirstTarget() ?? null, move, hitCount);
+      // 1️⃣ MultiHitAttr 적용 (랜덤 타수 결정)
+      applyMoveAttrs("MultiHitAttr", user, this.getFirstTarget() ?? null, move, hitCount);
 
-  // 2️⃣ Parental Bond 적용
-  applyAbAttrs("AddSecondStrikeAbAttr", { pokemon: user, move, hitCount });
+      // 2️⃣ Parental Bond 적용
+      applyAbAttrs("AddSecondStrikeAbAttr", { pokemon: user, move, hitCount });
 
-  // 3️⃣ MaxMultiHitModifier / Loaded Dice 여부 먼저 확인
-  const loadedDice = globalScene.getModifiers(MaxMultiHitModifier)
-    .find(mod => mod.pokemonId === user.id);
+      // 3️⃣ MaxMultiHitModifier / Loaded Dice 여부 먼저 확인
+      const loadedDice = globalScene.getModifiers(MaxMultiHitModifier).find(mod => mod.pokemonId === user.id);
 
-  if (loadedDice) {
-    // 속임수주사위 → MultiHitAttr 최대치로 강제
-    const multiHitAttr = move.getAttrs("MultiHitAttr")[0];
-    if (multiHitAttr) {
-      // getMaxHitCount() 메서드가 있으면 그걸 쓰고, 아니면 직접 계산
-      const maxHits = multiHitAttr.getMaxHitCount
-        ? multiHitAttr.getMaxHitCount()
-        : (multiHitAttr.getMultiHitType() === MultiHitType._2_TO_5 ? 5 : hitCount.value);
+      if (loadedDice) {
+        // 속임수주사위 → MultiHitAttr 최대치로 강제
+        const multiHitAttr = move.getAttrs("MultiHitAttr")[0];
+        if (multiHitAttr) {
+          // getMaxHitCount() 메서드가 있으면 그걸 쓰고, 아니면 직접 계산
+          const maxHits = multiHitAttr.getMaxHitCount
+            ? multiHitAttr.getMaxHitCount()
+            : multiHitAttr.getMultiHitType() === MultiHitType._2_TO_5
+              ? 5
+              : hitCount.value;
 
-      console.debug(`[DEBUG] Loaded Dice 발동: 랜덤타격 → ${maxHits}회로 고정`);
-      hitCount.value = maxHits;
+          console.debug(`[DEBUG] Loaded Dice 발동: 랜덤타격 → ${maxHits}회로 고정`);
+          hitCount.value = maxHits;
+        }
+      } else {
+        // 4️⃣ Loaded Dice 없을 때만 MultiHitModifier 적용
+        globalScene.applyModifiers(PokemonMultiHitModifier, user.isPlayer(), user, move.id, hitCount);
+      }
+
+      // 5️⃣ 최종 타격 횟수 확정
+      user.turnData.hitCount = hitCount.value;
+      user.turnData.hitsLeft = hitCount.value;
     }
-  } else {
-    // 4️⃣ Loaded Dice 없을 때만 MultiHitModifier 적용
-    globalScene.applyModifiers(PokemonMultiHitModifier, user.isPlayer(), user, move.id, hitCount);
-  }
-
-  // 5️⃣ 최종 타격 횟수 확정
-  user.turnData.hitCount = hitCount.value;
-  user.turnData.hitsLeft = hitCount.value;
-}
 
     this.moveHistoryEntry = {
       move: this.move.id,
@@ -732,145 +892,160 @@ if (!move || typeof (move as any).getAttrs !== "function") {
       useMode: this.useMode,
     };
 
-// ✅ Dragon Darts: hit-by-hit 단일 타겟팅을 먼저 확정
-if (move.id === MoveId.DRAGON_DARTS && !fieldMove) {
-  const chosen = this.pickDragonDartsTarget(user); // (아래에 함수 예시)
-  this.targets = chosen ? [chosen.getBattlerIndex()] : [];
-}
+    // ✅ Dragon Darts: hit-by-hit 단일 타겟팅을 먼저 확정
+    if (move.id === MoveId.DRAGON_DARTS && !fieldMove) {
+      const chosen = this.pickDragonDartsTarget(user); // (아래에 함수 예시)
+      this.targets = chosen ? [chosen.getBattlerIndex()] : [];
+    }
 
-// 이제 “현재 this.targets” 기준으로 hitCheck를 다시 만든다
-const targets = this.conductHitChecks(user, fieldMove);
+    // 이제 “현재 this.targets” 기준으로 hitCheck를 다시 만든다
+    const targets = this.conductHitChecks(user, fieldMove);
 
     this.firstHit = user.turnData.hitCount === user.turnData.hitsLeft;
     this.lastHit = user.turnData.hitsLeft === 1 || !targets.some(t => t.isActive(true));
 
     // Play the animation if the move was successful against any of its targets or it has a POST_TARGET effect (like self destruct)
     // ✅ 먼저 move 유효성 체크
-if (!move || typeof move.getAttrs !== "function") {
-  console.warn("[MoveEffectPhase.start] move is invalid or missing getAttrs, skipping phase", move);
-  this.end();
-  return;
-}
+    if (!move || typeof move.getAttrs !== "function") {
+      console.warn("[MoveEffectPhase.start] move is invalid or missing getAttrs, skipping phase", move);
+      this.end();
+      return;
+    }
 
-if (
-  this.moveHistoryEntry.result === MoveResult.SUCCESS ||
-  (Array.isArray(move.getAttrs("MoveEffectAttr")) &&
-   move.getAttrs("MoveEffectAttr").some(attr => attr.trigger === MoveEffectTrigger.POST_TARGET))
-) {
-// ✅ 주얼 메시지: 실제 기술 실행 직전에만 출력
-if (this.firstHit && this.move.category !== MoveCategory.STATUS) {
-  const moveType = user.getMoveType(this.move, true);
+    if (
+      this.moveHistoryEntry.result === MoveResult.SUCCESS
+      || (Array.isArray(move.getAttrs("MoveEffectAttr"))
+        && move.getAttrs("MoveEffectAttr").some(attr => attr.trigger === MoveEffectTrigger.POST_TARGET))
+    ) {
+      // ✅ 주얼 메시지: 실제 기술 실행 직전에만 출력
+      if (this.firstHit && this.move.category !== MoveCategory.STATUS) {
+        const moveType = user.getMoveType(this.move, true);
 
-  const booster = globalScene
-    .getModifiers(TypeSpecificMoveBoosterModifier, user.isPlayer())
-    .find(mod =>
-      mod.pokemonId === user.id &&
-      mod.moveType === moveType
-    ) as TypeSpecificMoveBoosterModifier | undefined;
+        const booster = globalScene
+          .getModifiers(TypeSpecificMoveBoosterModifier, user.isPlayer())
+          .find(mod => mod.pokemonId === user.id && mod.moveType === moveType) as
+          | TypeSpecificMoveBoosterModifier
+          | undefined;
 
-  const hasHitTarget = this.hitChecks.some(
-    ([result]) => result === HitCheckResult.HIT,
-  );
+        const hasHitTarget = this.hitChecks.some(([result]) => result === HitCheckResult.HIT);
 
-  if (
-    booster &&
-    hasHitTarget &&
-    !(user.turnData as any).typeSpecificMoveBoosterMessageShown
-  ) {
-    (user.turnData as any).typeSpecificMoveBoosterMessageShown = true;
+        if (booster && hasHitTarget && !(user.turnData as any).typeSpecificMoveBoosterMessageShown) {
+          (user.turnData as any).typeSpecificMoveBoosterMessageShown = true;
 
-    globalScene.phaseManager.queueMessage(
-      i18next.t("modifier:typeSpecificMoveBoostApply", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(user),
-        itemName: booster.type.name,
-      }),
-    );
-  }
-}
+          globalScene.phaseManager.queueMessage(
+            i18next.t("modifier:typeSpecificMoveBoostApply", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(user),
+              itemName: booster.type.name,
+            }),
+          );
+        }
+      }
 
-  const firstTarget = this.getFirstTarget();
-  const currentMove = move; // ✅ move를 안전하게 캡처
+      const firstTarget = this.getFirstTarget();
+      const currentMove = move; // ✅ move를 안전하게 캡처
 
-  new MoveAnim(
-    currentMove.id as Moves,
-    user,
-    firstTarget?.getBattlerIndex() ?? BattlerIndex.ATTACKER,
-    // Field moves and some moves used in mystery encounters should be played even on an empty field
-    fieldMove || (globalScene.currentBattle?.mysteryEncounter?.hasBattleAnimationsWithoutTargets ?? false),
-  ).play(
-    currentMove.hitsSubstitute(user, firstTarget),
-    () => this.postAnimCallback(user, targets, currentMove) // ✅ 캡처한 move 전달
-  );
+      new MoveAnim(
+        currentMove.id as Moves,
+        user,
+        firstTarget?.getBattlerIndex() ?? BattlerIndex.ATTACKER,
+        // Field moves and some moves used in mystery encounters should be played even on an empty field
+        fieldMove || (globalScene.currentBattle?.mysteryEncounter?.hasBattleAnimationsWithoutTargets ?? false),
+      ).play(
+        currentMove.hitsSubstitute(user, firstTarget),
+        () => this.postAnimCallback(user, targets, currentMove), // ✅ 캡처한 move 전달
+      );
 
-  return;
-}
+      return;
+    }
 
-// move 유효하지만 조건에 해당하지 않으면 그냥 후처리 콜백 호출
-this.postAnimCallback(user, targets, move);
+    // move 유효하지만 조건에 해당하지 않으면 그냥 후처리 콜백 호출
+    this.postAnimCallback(user, targets, move);
   }
 
   /**
    * Callback to be called after the move animation is played
    */
   private postAnimCallback(user: Pokemon, targets: Pokemon[]) {
-  // (기존) 히스토리 푸시
-  if (this.firstHit && this.useMode !== MoveUseMode.DELAYED_ATTACK) {
-    user.pushMoveHistory(this.moveHistoryEntry);
-    applyAbAttrs("ExecutedMoveAbAttr", { pokemon: user });
-  }
+    // (기존) 히스토리 푸시
+    if (this.firstHit && this.useMode !== MoveUseMode.DELAYED_ATTACK) {
+      user.pushMoveHistory(this.moveHistoryEntry);
+      applyAbAttrs("ExecutedMoveAbAttr", { pokemon: user });
+    }
 
-  try {
-    this.applyToTargets(user, targets);
-  } catch (e: any) {
-    console.warn("[MoveEffectPhase] crashed:", e);
-    console.warn(e?.stack);
-    this.end();
-    return;
-  }
+    try {
+      this.applyToTargets(user, targets);
+    } catch (e: any) {
+      console.warn("[MoveEffectPhase] crashed:", e);
+      console.warn(e?.stack);
+      this.end();
+      return;
+    }
 
-  // ✅ (중요) 멀티히트 이어가기 - 드래곤애로는 타겟을 매번 재선정해야 함
-  if (this.move.id === MoveId.DRAGON_DARTS) {
-    const hitsLeft = user.turnData?.hitsLeft ?? 0;
+    // ✅ (중요) 멀티히트 이어가기 - 드래곤애로는 타겟을 매번 재선정해야 함
+    if (this.move.id === MoveId.DRAGON_DARTS) {
+      const hitsLeft = user.turnData?.hitsLeft ?? 0;
 
-    // hitsLeft가 1이면 "다음 타(2타)가 남아있음"인 엔진이 많음
-    // 지금 로그에서도 KO 직후 hitsLeft=1이었음.
-    if (hitsLeft > 0) {
-      const enemies = user.isPlayer()
-        ? globalScene.getEnemyField?.(true) ?? globalScene.getEnemyParty?.() ?? globalScene.currentBattle.enemyParty ?? []
-        : globalScene.getPlayerField?.(true) ?? globalScene.getPlayerParty?.() ?? globalScene.currentBattle.playerParty ?? [];
+      // hitsLeft가 1이면 "다음 타(2타)가 남아있음"인 엔진이 많음
+      // 지금 로그에서도 KO 직후 hitsLeft=1이었음.
+      if (hitsLeft > 0) {
+        const enemies = user.isPlayer()
+          ? (globalScene.getEnemyField?.(true)
+            ?? globalScene.getEnemyParty?.()
+            ?? globalScene.currentBattle.enemyParty
+            ?? [])
+          : (globalScene.getPlayerField?.(true)
+            ?? globalScene.getPlayerParty?.()
+            ?? globalScene.currentBattle.playerParty
+            ?? []);
 
-      const hasAlive = enemies.some(p => p?.isActive?.(true) && !p.isFainted?.());
+        const hasAlive = enemies.some(p => p?.isActive?.(true) && !p.isFainted?.());
 
-      if (hasAlive) {
-        // 다음 히트용 MoveEffectPhase를 즉시 이어서 실행
-        globalScene.phaseManager.unshiftNew(
-          "MoveEffectPhase",
-          user.getBattlerIndex(),
-          this.targets,      // start()에서 pickDragonDartsTarget로 다시 1명으로 고정할 거라 아무거나 가능
-          this.move,
-          this.reflected,
-          this.virtual
-        );
+        if (hasAlive) {
+          // 다음 히트용 MoveEffectPhase를 즉시 이어서 실행
+          globalScene.phaseManager.unshiftNew(
+            "MoveEffectPhase",
+            user.getBattlerIndex(),
+            this.targets,
+            this.move,
+            this.useMode,
+            this.reflected,
+            this.virtual,
+          );
 
-        this.end();
-        return;
+          this.end();
+          return;
+        }
       }
     }
-  }
 
-  // (기존) 스텔라 타입 처리 등
-  const moveType = user.getMoveType(this.move, true);
-  if (this.move.category !== MoveCategory.STATUS && !user.stellarTypesBoosted.includes(moveType)) {
-    user.stellarTypesBoosted.push(moveType);
-  }
+    // (기존) 스텔라 타입 처리 등
+    const moveType = user.getMoveType(this.move, true);
+    if (this.move.category !== MoveCategory.STATUS && !user.stellarTypesBoosted.includes(moveType)) {
+      user.stellarTypesBoosted.push(moveType);
+    }
 
-  if (this.lastHit) {
-    this.triggerMoveEffects(MoveEffectTrigger.POST_TARGET, user, null);
-  }
+    if (this.lastHit) {
+      this.triggerMoveEffects(MoveEffectTrigger.POST_TARGET, user, null);
+    }
 
-  this.updateSubstitutes();
-  this.end();
-}
+    this.updateSubstitutes();
+
+    // 몬스터소굴 광역 공격의 모든 대상 적용이 끝났으면
+    // 기절 처리 이후 실행될 마무리 Phase를 예약
+    if (monsterHouseManager.isActive() && monsterHouseManager.isSpreadAttackResolving() && this.lastHit) {
+      const alreadyQueued = globalScene.phaseManager.hasPhaseOfType("MonsterHouseSpreadEndPhase");
+
+      if (!alreadyQueued) {
+        globalScene.phaseManager.pushNew("MonsterHouseSpreadEndPhase");
+
+        console.log("[MONSTER_HOUSE_SPREAD_END_QUEUED]", {
+          move: this.move.id,
+          remaining: monsterHouseManager.getRemainingEnemies(),
+        });
+      }
+    }
+    this.end();
+  }
 
   public override end(): void {
     const user = this.getUserPokemon();
@@ -916,234 +1091,277 @@ this.postAnimCallback(user, targets, move);
    * @param wasCritical - `true` if the move was a critical hit
    */
   protected applyOnGetHitAbEffects(
-  user: Pokemon,
-  target: Pokemon,
-  hitResult: HitResult,
-  damage: number,
-  wasCritical = false,
-): void {
-  const move = this.move;
+    user: Pokemon,
+    target: Pokemon,
+    hitResult: HitResult,
+    damage: number,
+    wasCritical = false,
+  ): void {
+    const move = this.move;
 
-  // ✅ 접촉 여부(“판정”)는 항상 계산
-  const isContact =
-    !!move && move.doesFlagEffectApply({ flag: MoveFlags.MAKES_CONTACT, user, target });
+    // ✅ 접촉 여부(“판정”)는 항상 계산
+    const isContact = !!move && move.doesFlagEffectApply({ flag: MoveFlags.MAKES_CONTACT, user, target });
 
-  /**
-   * ✅ “접촉 반응”만 억제하는 플래그
-   * - 미라/정전기/불꽃몸/거친피부/철가시/울퉁불퉁멧 같은 것들만 막고 싶을 때 사용
-   * - (네 목표) 방어/판별 상태일 때 보이지않는주먹 발동 + 접촉반응만 무시
-   */
-  let suppressContactReactions = false;
+    /**
+     * ✅ “접촉 반응”만 억제하는 플래그
+     * - 미라/정전기/불꽃몸/거친피부/철가시/울퉁불퉁멧 같은 것들만 막고 싶을 때 사용
+     * - (네 목표) 방어/판별 상태일 때 보이지않는주먹 발동 + 접촉반응만 무시
+     */
+    let suppressContactReactions = false;
 
-  if (isContact) {
-    // 1) 우라오스 글러브(혹은 보호패드류)로 “항상” 접촉반응 무시하고 싶다면
-    const glove = user.getHeldItems().find(
-      (i): i is UrshifuGloveAbilityBypassModifier => i instanceof UrshifuGloveAbilityBypassModifier,
-    );
-    const gloveActive = glove?.shouldIgnoreContactPenalty(user) ?? false;
+    if (isContact) {
+      // 1) 우라오스 글러브(혹은 보호패드류)로 “항상” 접촉반응 무시하고 싶다면
+      const glove = user
+        .getHeldItems()
+        .find((i): i is UrshifuGloveAbilityBypassModifier => i instanceof UrshifuGloveAbilityBypassModifier);
+      const gloveActive = glove?.shouldIgnoreContactPenalty(user) ?? false;
 
-    // 2) 또는 “전투태세/보이지않는주먹 발동 조건”일 때만 선택적으로 무시하고 싶다면
-    const unseenForceActive =
-      /* 예: target이 Protect/Detect 류 태그/상태일 때 && 네 전투태세 발동 조건일 때 */ false;
+      // 2) 또는 “전투태세/보이지않는주먹 발동 조건”일 때만 선택적으로 무시하고 싶다면
+      const unseenForceActive = /* 예: target이 Protect/Detect 류 태그/상태일 때 && 네 전투태세 발동 조건일 때 */ false;
 
-    suppressContactReactions = gloveActive || unseenForceActive;
-  }
-
-  // ✅ 1) 방어측 "특성 반응" (미라 같은 게 여기서 발동)
-  if (!target.isFainted() || target.canApplyAbility()) {
-    const params = {
-      pokemon: target,
-      opponent: user,
-      move,
-      hitResult,
-      damage,
-      isContact,
-      suppressContactReactions, // ✅ 핵심: PostDefend 쪽이 이걸 보고 canApply에서 차단
-    };
-
-    applyAbAttrs("PostDefendAbAttr", params);
-
-    // ✅ 2) 접촉 페널티(아이템/상태이상 등)도 같은 플래그로 차단
-    if (isContact && !suppressContactReactions) {
-  const holderIsPlayer = target.isPlayer();
-
-  const rockyHelmet = globalScene
-    .getModifiers(ContactDamageModifier, holderIsPlayer)
-    .find(mod => mod.pokemonId === target.id);
-
-  if (rockyHelmet) {
-    const recoil = Math.max(Math.floor(user.getMaxHp() / 6), 1);
-
-    user.damageAndUpdate(recoil, HitResult.INDIRECT);
-
-    globalScene.phaseManager.queueMessage(
-      i18next.t("modifier:contactDamageApplied", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(user),
-        itemName: "울퉁불퉁멧",
-      }),
-    );
-  }
-
-  // TODO: 거친피부/철가시/불꽃몸/정전기 등
-}
-  }
-
-  // ✅ 반응형 베리(자보/애터/악키/타라프) - 피격 즉시 발동
-  do {
-    if (!move) break;
-
-    const td: any = target.turnData as any;
-
-    // ✅ 피해를 실제로 받았을 때만
-    if (!(damage > 0)) break;
-
-    // (옵션) 대타 맞았으면 발동안
-    if (move.hitsSubstitute?.(user, target)) break;
-
-    // (옵션) 기절했으면 발동안
-    if (target.isFainted?.()) break;
-
-    // 4) 베리 모디파이어들(소모 안 된 것만)
-    const berryMods = globalScene
-      .getModifiers(BerryModifier, target.isPlayer())
-      .filter(m => m instanceof BerryModifier && m.pokemonId === target.id && !m.consumed) as BerryModifier[];
-
-    if (!berryMods.length) break;
-
-    // ✅ cat 정규화
-    const rawCat =
-      (move as any).getCategory?.(user, target) ??
-      (move as any).getMoveCategory?.(user, target) ??
-      move.category;
-
-    const cat = typeof rawCat === "string" ? (MoveCategory as any)[rawCat] : rawCat;
-
-    const isPhys = cat === MoveCategory.PHYSICAL;
-    const isSpec = cat === MoveCategory.SPECIAL;
-
-    // ✅ 턴당 1회(카테고리별) 락: bit1=물리, bit2=특수
-    td.reactiveBerryUsedMask ??= 0;
-    if (isPhys && (td.reactiveBerryUsedMask & 1)) break;
-    if (isSpec && (td.reactiveBerryUsedMask & 2)) break;
-
-    // ✅ 이번 피격에서 발동할 “목록” (최대 2개: 반사딜 + 랭업)
-    const triggers: BerryModifier[] = [];
-
-    if (isPhys) {
-      const jaboca = berryMods.find(m => m.berryType === BerryType.JABOCA);
-      const kee    = berryMods.find(m => m.berryType === BerryType.KEE);
-      if (jaboca) triggers.push(jaboca);
-      if (kee)    triggers.push(kee);
-    } else if (isSpec) {
-      const rowap   = berryMods.find(m => m.berryType === BerryType.ROWAP);
-      const maranga = berryMods.find(m => m.berryType === BerryType.MARANGA);
-      if (rowap)   triggers.push(rowap);
-      if (maranga) triggers.push(maranga);
-    } else {
-      break;
+      suppressContactReactions = gloveActive || unseenForceActive;
     }
 
-    if (!triggers.length) break;
+    // ✅ 1) 방어측 "특성 반응" (미라 같은 게 여기서 발동)
+    if (!target.isFainted() || target.canApplyAbility()) {
+      const params = {
+        pokemon: target,
+        opponent: user,
+        move,
+        hitResult,
+        damage,
+        isContact,
+        suppressContactReactions, // ✅ 핵심: PostDefend 쪽이 이걸 보고 canApply에서 차단
+      };
 
-    const attackerIdx = user.getBattlerIndex();
+      applyAbAttrs("PostDefendAbAttr", params);
 
-    for (const chosen of triggers) {
-      td.reactiveBerryForceType = chosen.berryType;
+      // ✅ 2) 접촉 페널티(아이템/상태이상 등)도 같은 플래그로 차단
+      if (isContact && !suppressContactReactions) {
+        const holderIsPlayer = target.isPlayer();
 
-      if (chosen.berryType === BerryType.JABOCA || chosen.berryType === BerryType.ROWAP) {
-        td.reactiveBerryAttackerIndex = attackerIdx;
+        const rockyHelmet = globalScene
+          .getModifiers(ContactDamageModifier, holderIsPlayer)
+          .find(mod => mod.pokemonId === target.id);
+
+        if (rockyHelmet) {
+          const recoil = Math.max(Math.floor(user.getMaxHp() / 6), 1);
+
+          user.damageAndUpdate(recoil, HitResult.INDIRECT);
+
+          globalScene.phaseManager.queueMessage(
+            i18next.t("modifier:contactDamageApplied", {
+              pokemonNameWithAffix: getPokemonNameWithAffix(user),
+              itemName: "울퉁불퉁멧",
+            }),
+          );
+        }
+
+        // TODO: 거친피부/철가시/불꽃몸/정전기 등
+      }
+    }
+
+    // ✅ 반응형 베리(자보/애터/악키/타라프) - 피격 즉시 발동
+    do {
+      if (!move) {
+        break;
+      }
+
+      const td: any = target.turnData as any;
+
+      // ✅ 피해를 실제로 받았을 때만
+      if (!(damage > 0)) {
+        break;
+      }
+
+      // (옵션) 대타 맞았으면 발동안
+      if (move.hitsSubstitute?.(user, target)) {
+        break;
+      }
+
+      // (옵션) 기절했으면 발동안
+      if (target.isFainted?.()) {
+        break;
+      }
+
+      // 4) 베리 모디파이어들(소모 안 된 것만)
+      const berryMods = globalScene
+        .getModifiers(BerryModifier, target.isPlayer())
+        .filter(m => m instanceof BerryModifier && m.pokemonId === target.id && !m.consumed) as BerryModifier[];
+
+      if (berryMods.length === 0) {
+        break;
+      }
+
+      // ✅ cat 정규화
+      const rawCat =
+        (move as any).getCategory?.(user, target) ?? (move as any).getMoveCategory?.(user, target) ?? move.category;
+
+      const cat = typeof rawCat === "string" ? (MoveCategory as any)[rawCat] : rawCat;
+
+      const isPhys = cat === MoveCategory.PHYSICAL;
+      const isSpec = cat === MoveCategory.SPECIAL;
+
+      // ✅ 턴당 1회(카테고리별) 락: bit1=물리, bit2=특수
+      td.reactiveBerryUsedMask ??= 0;
+      if (isPhys && td.reactiveBerryUsedMask & 1) {
+        break;
+      }
+      if (isSpec && td.reactiveBerryUsedMask & 2) {
+        break;
+      }
+
+      // ✅ 이번 피격에서 발동할 “목록” (최대 2개: 반사딜 + 랭업)
+      const triggers: BerryModifier[] = [];
+
+      if (isPhys) {
+        const jaboca = berryMods.find(m => m.berryType === BerryType.JABOCA);
+        const kee = berryMods.find(m => m.berryType === BerryType.KEE);
+        if (jaboca) {
+          triggers.push(jaboca);
+        }
+        if (kee) {
+          triggers.push(kee);
+        }
+      } else if (isSpec) {
+        const rowap = berryMods.find(m => m.berryType === BerryType.ROWAP);
+        const maranga = berryMods.find(m => m.berryType === BerryType.MARANGA);
+        if (rowap) {
+          triggers.push(rowap);
+        }
+        if (maranga) {
+          triggers.push(maranga);
+        }
       } else {
-        delete td.reactiveBerryAttackerIndex;
+        break;
       }
 
-      chosen.apply(target);
+      if (triggers.length === 0) {
+        break;
+      }
 
+      const attackerIdx = user.getBattlerIndex();
+
+      for (const chosen of triggers) {
+        // ✅ 바들바들향로·긴장감 등으로 베리 사용이 막혔으면 발동하지 않음
+        if (typeof (chosen as any).shouldApply === "function" && !(chosen as any).shouldApply(target)) {
+          continue;
+        }
+
+        td.reactiveBerryForceType = chosen.berryType;
+
+        if (chosen.berryType === BerryType.JABOCA || chosen.berryType === BerryType.ROWAP) {
+          td.reactiveBerryAttackerIndex = attackerIdx;
+        } else {
+          delete td.reactiveBerryAttackerIndex;
+        }
+
+        const applied = chosen.apply(target);
+
+        delete td.reactiveBerryForceType;
+
+        // ✅ 실제 발동에 실패했으면 사용·소모 후처리도 하지 않음
+        if (applied === false) {
+          delete td.reactiveBerryAttackerIndex;
+          continue;
+        }
+
+        if (chosen.consumed) {
+          chosen.consumed = false;
+          target.loseHeldItem(chosen);
+        }
+
+        globalScene.eventTarget.dispatchEvent(new BerryUsedEvent(chosen));
+        globalScene.updateModifiers(target.isPlayer());
+        applyAbAttrs("HealFromBerryUseAbAttr", { pokemon: target });
+      }
+
+      if (isPhys) {
+        td.reactiveBerryUsedMask |= 1;
+      }
+      if (isSpec) {
+        td.reactiveBerryUsedMask |= 2;
+      }
+
+      delete td.reactiveBerryAttackerIndex;
       delete td.reactiveBerryForceType;
+    } while (false);
 
-      if (chosen.consumed) {
-        chosen.consumed = false;
-        target.loseHeldItem(chosen);
+    // TypeImmunityModifier 제거 및 풍선 처리
+    if (damage > 0) {
+      const balloonMods = [
+        ...globalScene.getModifiers(TypeImmunityModifier, true),
+        ...globalScene.getModifiers(TypeImmunityModifier, false),
+        ...((globalScene.currentBattle as any)?.isPracticeBattle
+          ? ((globalScene as any).practiceRentalModifiers ?? []).filter((m: any) => m instanceof TypeImmunityModifier)
+          : []),
+      ].filter(
+        mod =>
+          mod.pokemonId === target.id
+          && ((mod as any).sourceItem?.name === "air_balloon"
+            || (mod as any).type?.id === "AIR_BALLOON"
+            || (mod as any).type?.name === "풍선"
+            || (mod as any).name === "air_balloon"),
+      ) as TypeImmunityModifier[];
+
+      if (balloonMods.length > 0) {
+        for (const mod of balloonMods) {
+          globalScene.removeModifier(mod);
+        }
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("modifier:balloonPopped", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(target),
+            itemName: balloonMods[0].type?.name ?? "풍선",
+          }),
+        );
+
+        const heldBalloon = target
+          .getHeldItems?.()
+          .find(
+            i =>
+              i === balloonMods[0]
+              || (i as any).sourceItem?.name === "air_balloon"
+              || (i as any).type?.id === "AIR_BALLOON"
+              || (i as any).type?.name === "풍선",
+          );
+
+        if (heldBalloon) {
+          target.loseHeldItem(heldBalloon);
+        }
+
+        globalScene.updateModifiers(true);
+        globalScene.updateModifiers(false);
+        console.log("[BALLOON_AFTER_POP]", {
+          target: target.name,
+          heldItems: target.getHeldItems?.().map(i => ({
+            ctor: i.constructor?.name,
+            pokemonId: (i as any).pokemonId,
+            sourceItemName: (i as any).sourceItem?.name,
+            typeId: (i as any).type?.id,
+            typeName: (i as any).type?.name,
+            name: (i as any).name,
+          })),
+          playerTypeImmunity: globalScene
+            .getModifiers(TypeImmunityModifier, true)
+            .filter(m => m.pokemonId === target.id),
+          enemyTypeImmunity: globalScene
+            .getModifiers(TypeImmunityModifier, false)
+            .filter(m => m.pokemonId === target.id),
+        });
+        target.turnData.moveEffectiveness = null;
       }
-      globalScene.eventTarget.dispatchEvent(new BerryUsedEvent(chosen));
-      globalScene.updateModifiers(target.isPlayer());
-      applyAbAttrs("HealFromBerryUseAbAttr", { pokemon: target });
     }
 
-    if (isPhys) td.reactiveBerryUsedMask |= 1;
-    if (isSpec) td.reactiveBerryUsedMask |= 2;
-
-    delete td.reactiveBerryAttackerIndex;
-    delete td.reactiveBerryForceType;
-  } while (false);
-
-  // TypeImmunityModifier 제거 및 풍선 처리
-if (damage > 0) {
-  const balloonMods = [
-    ...globalScene.getModifiers(TypeImmunityModifier, true),
-    ...globalScene.getModifiers(TypeImmunityModifier, false),
-  ].filter(
-    mod =>
-      mod.pokemonId === target.id &&
-      (
-        (mod as any).sourceItem?.name === "air_balloon" ||
-        (mod as any).type?.id === "AIR_BALLOON" ||
-        (mod as any).type?.name === "풍선"
-      ),
-  ) as TypeImmunityModifier[];
-
-  if (balloonMods.length > 0) {
-    for (const mod of balloonMods) {
-      globalScene.removeModifier(mod);
+    // 🔹 치명타 특성 효과 처리
+    if (wasCritical) {
+      const critParams = { pokemon: target, opponent: user, move, hitResult, damage: 0 };
+      applyAbAttrs("PostReceiveCritStatStageChangeAbAttr", critParams);
     }
 
-    globalScene.phaseManager.queueMessage(
-      i18next.t("modifier:balloonPopped", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(target),
-        itemName: balloonMods[0].type?.name ?? "풍선",
-      }),
-    );
-
-    const heldBalloon = target.getHeldItems?.().find(i =>
-      i === balloonMods[0] ||
-      (i as any).sourceItem?.name === "air_balloon" ||
-      (i as any).type?.id === "AIR_BALLOON" ||
-      (i as any).type?.name === "풍선"
-    );
-
-    if (heldBalloon) {
-      target.loseHeldItem(heldBalloon);
-    }
-
-    globalScene.updateModifiers(true);
-    globalScene.updateModifiers(false);
-console.log("[BALLOON_AFTER_POP]", {
-  target: target.name,
-  heldItems: target.getHeldItems?.().map(i => ({
-    ctor: i.constructor?.name,
-    pokemonId: (i as any).pokemonId,
-    sourceItemName: (i as any).sourceItem?.name,
-    typeId: (i as any).type?.id,
-    typeName: (i as any).type?.name,
-    name: (i as any).name,
-  })),
-  playerTypeImmunity: globalScene.getModifiers(TypeImmunityModifier, true)
-    .filter(m => m.pokemonId === target.id),
-  enemyTypeImmunity: globalScene.getModifiers(TypeImmunityModifier, false)
-    .filter(m => m.pokemonId === target.id),
-});
-    target.turnData.moveEffectiveness = null;
+    // 🔹 AFTER_HIT 태그 소멸
+    target.lapseTags(BattlerTagLapseType.AFTER_HIT);
   }
-}
-
-  // 🔹 치명타 특성 효과 처리
-  if (wasCritical) {
-    const critParams = { pokemon: target, opponent: user, move, hitResult, damage: 0 };
-    applyAbAttrs("PostReceiveCritStatStageChangeAbAttr", critParams);
-  }
-
-  // 🔹 AFTER_HIT 태그 소멸
-  target.lapseTags(BattlerTagLapseType.AFTER_HIT);
-}
 
   /**
    * Handles checking for and applying Flinches
@@ -1156,7 +1374,11 @@ console.log("[BALLOON_AFTER_POP]", {
       return;
     }
 
-    if (dealsDamage && !target.hasAbilityWithAttr("IgnoreMoveEffectsAbAttr") && !this.move.hitsSubstitute(user, target)) {
+    if (
+      dealsDamage
+      && !target.hasAbilityWithAttr("IgnoreMoveEffectsAbAttr")
+      && !this.move.hitsSubstitute(user, target)
+    ) {
       // 플린치 여부 변수
       const flinched = new BooleanHolder(false);
 
@@ -1169,9 +1391,9 @@ console.log("[BALLOON_AFTER_POP]", {
         .find(mod => mod.pokemonId === target.id);
 
       const hasCovertCloak =
-        !!existingCovertCloak ||
-        (target.isPlayer() &&
-          (globalScene.applyModifier(IgnoreMoveEffectsItemModifier, target.player, target) as CovertCloak | null));
+        !!existingCovertCloak
+        || (target.isPlayer()
+          && (globalScene.applyModifier(IgnoreMoveEffectsItemModifier, target.player, target) as CovertCloak | null));
 
       // ❌ 추가효과 무효 아이템이 적용되어 있으면 플린치 차단
       if (hasCovertCloak) {
@@ -1258,15 +1480,18 @@ console.log("[BALLOON_AFTER_POP]", {
 
     const fieldTargeted = isFieldTargeted(move);
 
-    if (!target.isActive(true) && !fieldTargeted) {
+    const isMonsterHouseVirtualTarget =
+      monsterHouseManager.isActive() && user.isPlayer() && this.isMonsterHouseSpreadTarget(target);
+
+    if (!target.isActive(true) && !fieldTargeted && !isMonsterHouseVirtualTarget) {
       return [HitCheckResult.TARGET_NOT_ON_FIELD, 0];
     }
 
     // Commander causes moves used against the target to miss
     if (
-      !fieldTargeted &&
-      globalScene.currentBattle.double &&
-      target.getAlly()?.getTag(BattlerTagType.COMMANDED)?.getSourcePokemon() === target
+      !fieldTargeted
+      && globalScene.currentBattle.double
+      && target.getAlly()?.getTag(BattlerTagType.COMMANDED)?.getSourcePokemon() === target
     ) {
       return [HitCheckResult.MISS, 0];
     }
@@ -1311,16 +1536,17 @@ console.log("[BALLOON_AFTER_POP]", {
 
     // Strikes after the first in a multi-strike move are guaranteed to hit,
     // unless the move is flagged to check all hits and the user does not have Skill Link.
-    if (user.turnData.hitsLeft < user.turnData.hitCount) {
-      if (!move.hasFlag(MoveFlags.CHECK_ALL_HITS) || user.hasAbilityWithAttr("MaxMultiHitAbAttr")) {
-        return [HitCheckResult.HIT, effectiveness];
-      }
+    if (
+      user.turnData.hitsLeft < user.turnData.hitCount
+      && (!move.hasFlag(MoveFlags.CHECK_ALL_HITS) || user.hasAbilityWithAttr("MaxMultiHitAbAttr"))
+    ) {
+      return [HitCheckResult.HIT, effectiveness];
     }
 
     const bypassAccuracy =
-      bypassAccAndInvuln ||
-      target.getTag(BattlerTagType.ALWAYS_GET_HIT) ||
-      (target.getTag(BattlerTagType.TELEKINESIS) && !this.move.hasAttr("OneHitKOAttr"));
+      bypassAccAndInvuln
+      || target.getTag(BattlerTagType.ALWAYS_GET_HIT)
+      || (target.getTag(BattlerTagType.TELEKINESIS) && !this.move.hasAttr("OneHitKOAttr"));
 
     if (moveAccuracy === -1 || bypassAccuracy) {
       return [HitCheckResult.HIT, effectiveness];
@@ -1354,40 +1580,40 @@ console.log("[BALLOON_AFTER_POP]", {
    * @see {@linkcode hitCheck}
    */
   public checkBypassAccAndInvuln(target: Pokemon) {
-  const user = this.getUserPokemon();
-  if (!user) {
-    return false;
-  }
+    const user = this.getUserPokemon();
+    if (!user) {
+      return false;
+    }
 
-  // ✅ ME FIRST(선취)로 "이번에 복사해서 쓰는 기술"이면 명중/반무적 판정 우회
-  // - meFirstNoAccuracyCheck: 네가 만든 플래그
-  // - meFirstCopiedMove: "어떤 move.id에만 적용"을 더 안전하게 걸고 싶을 때
-  if (
-    user.turnData?.meFirstNoAccuracyCheck &&
-    (user.turnData?.meFirstCopiedMove == null || user.turnData.meFirstCopiedMove === this.move.id)
-  ) {
-    return true;
-  }
+    // ✅ ME FIRST(선취)로 "이번에 복사해서 쓰는 기술"이면 명중/반무적 판정 우회
+    // - meFirstNoAccuracyCheck: 네가 만든 플래그
+    // - meFirstCopiedMove: "어떤 move.id에만 적용"을 더 안전하게 걸고 싶을 때
+    if (
+      user.turnData?.meFirstNoAccuracyCheck
+      && (user.turnData?.meFirstCopiedMove == null || user.turnData.meFirstCopiedMove === this.move.id)
+    ) {
+      return true;
+    }
 
-  if (user.hasAbilityWithAttr("AlwaysHitAbAttr") || target.hasAbilityWithAttr("AlwaysHitAbAttr")) {
-    return true;
-  }
-  if (this.move.hasAttr("ToxicAccuracyAttr") && user.isOfType(PokemonType.POISON)) {
-    return true;
-  }
-  // TODO: Fix lock on / mind reader check.
-  if (
-    user.getTag(BattlerTagType.IGNORE_ACCURACY) &&
-    (user.getLastXMoves().find(() => true)?.targets || []).indexOf(target.getBattlerIndex()) !== -1
-  ) {
-    return true;
-  }
-  if (isFieldTargeted(this.move)) {
-    return true;
-  }
+    if (user.hasAbilityWithAttr("AlwaysHitAbAttr") || target.hasAbilityWithAttr("AlwaysHitAbAttr")) {
+      return true;
+    }
+    if (this.move.hasAttr("ToxicAccuracyAttr") && user.isOfType(PokemonType.POISON)) {
+      return true;
+    }
+    // TODO: Fix lock on / mind reader check.
+    if (
+      user.getTag(BattlerTagType.IGNORE_ACCURACY)
+      && (user.getLastXMoves().find(() => true)?.targets || []).indexOf(target.getBattlerIndex()) !== -1
+    ) {
+      return true;
+    }
+    if (isFieldTargeted(this.move)) {
+      return true;
+    }
 
-  return false; // (원래 코드가 여기 return이 없으면 꼭 넣어줘)
-}
+    return false; // (원래 코드가 여기 return이 없으면 꼭 넣어줘)
+  }
 
   /**
    * Check whether the move is able to ignore the given `semiInvulnerableTag`
@@ -1418,22 +1644,22 @@ console.log("[BALLOON_AFTER_POP]", {
    * - Targeted by this phase's invoked move
    */
   public getTargets(): Pokemon[] {
-  // targets가 배열인지 체크
-  if (!Array.isArray(this.targets)) {
-    console.warn("MoveEffectPhase.getTargets() - this.targets is invalid:", this.targets);
-    this.targets = [];
-  }
+    // targets가 배열인지 체크
+    if (!Array.isArray(this.targets)) {
+      console.warn("MoveEffectPhase.getTargets() - this.targets is invalid:", this.targets);
+      this.targets = [];
+    }
 
-  // globalScene.getField(true) 체크
-  const field = globalScene.getField?.(true);
-  if (!Array.isArray(field)) {
-    console.warn("MoveEffectPhase.getTargets() - globalScene.getField(true) returned invalid:", field);
-    return [];
-  }
+    // globalScene.getField(true) 체크
+    const field = globalScene.getField?.(true);
+    if (!Array.isArray(field)) {
+      console.warn("MoveEffectPhase.getTargets() - globalScene.getField(true) returned invalid:", field);
+      return [];
+    }
 
-  // 안전하게 필터링
-  return field.filter(p => this.targets.includes(p.getBattlerIndex()));
-}
+    // 안전하게 필터링
+    return field.filter(p => this.targets.includes(p.getBattlerIndex()));
+  }
 
   /** @returns The first active, non-fainted target of this phase's invoked move. */
   public getFirstTarget(): Pokemon | undefined {
@@ -1574,6 +1800,11 @@ console.log("[BALLOON_AFTER_POP]", {
     target: Pokemon,
     effectiveness: TypeDamageMultiplier,
   ): [result: HitResult, critical: boolean, damage: number] {
+    console.log("[APPLY_MOVE_DAMAGE_ENTER]", {
+      move: this.move?.id,
+      user: user.getName?.(),
+      target: target.getName?.(),
+    });
     const isCritical = target.getCriticalHitResult(user, this.move);
 
     /*
@@ -1582,7 +1813,11 @@ console.log("[BALLOON_AFTER_POP]", {
      */
     applyMoveAttrs("StatChangeBeforeDmgCalcAttr", user, target, this.move);
 
-    const { result, damage: dmg, roguePointGain } = target.getAttackDamage({
+    const {
+      result,
+      damage: dmg,
+      roguePointGain,
+    } = target.getAttackDamage({
       source: user,
       move: this.move,
       ignoreAbility: false,
@@ -1619,30 +1854,34 @@ console.log("[BALLOON_AFTER_POP]", {
     }
 
     const damage = isBlockedBySubstitute
-  ? 0
-  : target.damageAndUpdate(dmg, {
-      result: result as DamageResult,
-      ignoreFaintPhase: true,
-      ignoreSegments: isOneHitKo,
-      isCritical,
-      source: user,
-      move: this.move,
-      moveType: user.getMoveType(this.move),
-      movePower: dmg,
-      roguePointGain: roguePointGain ?? 0, // ✅ 추가
+      ? 0
+      : target.damageAndUpdate(dmg, {
+          result: result as DamageResult,
+          ignoreFaintPhase: true,
+          ignoreSegments: isOneHitKo,
+          isCritical,
+          source: user,
+          move: this.move,
+          moveType: user.getMoveType(this.move),
+          movePower: dmg,
+          roguePointGain: roguePointGain ?? 0, // ✅ 추가
+        });
+
+    console.log("[AFTER_DAMAGE_AND_UPDATE]", {
+      dmg,
+      damage,
+      user: user.getName?.(),
+      target: target.getName?.(),
+      held: user.getHeldItems?.().map(i => i.constructor.name),
     });
 
     if (damage > 0) {
-  const riskyMod = globalScene
-    .getModifiers(StackingRiskyPowerBoosterModifier, user.isPlayer())
-    .find(mod => mod.pokemonId === user.id);
+      const riskyMod = globalScene
+        .getModifiers(StackingRiskyPowerBoosterModifier, user.isPlayer())
+        .find(mod => mod.pokemonId === user.id);
 
-  riskyMod?.applyHpLossIfNeeded(
-    user,
-    this.move.id,
-    globalScene.currentBattle.turn,
-  );
-}
+      riskyMod?.applyHpLossIfNeeded(user, this.move.id, globalScene.currentBattle.turn);
+    }
 
     if (isCritical) {
       globalScene.phaseManager.queueMessage(i18next.t("battle:hitResultCriticalHit"));
@@ -1650,6 +1889,10 @@ console.log("[BALLOON_AFTER_POP]", {
 
     if (damage <= 0) {
       return [result, isCritical, damage];
+    }
+
+    if (user.isPlayer() && target.isEnemy()) {
+      globalScene.applyModifiers(DamageMoneyRewardModifier, true, user, new NumberHolder(damage));
     }
 
     if (user.isPlayer()) {
@@ -1674,9 +1917,7 @@ console.log("[BALLOON_AFTER_POP]", {
       sourceBattlerIndex: user.getBattlerIndex(),
     });
 
-    if (user.isPlayer() && target.isEnemy()) {
-      globalScene.applyModifiers(DamageMoneyRewardModifier, true, user, new NumberHolder(damage));
-    }
+    const battle = globalScene.currentBattle as any;
 
     return [result, isCritical, damage];
   }
@@ -1687,15 +1928,32 @@ console.log("[BALLOON_AFTER_POP]", {
    * @param target - The {@linkcode Pokemon} that fainted
    */
   protected onFaintTarget(user: Pokemon, target: Pokemon): void {
-    globalScene.phaseManager.queueFaintPhase(target.getBattlerIndex(), false, user);
+    const isMonsterHouseVirtualTarget =
+      monsterHouseManager.isActive() && user.isPlayer() && target.isEnemy() && !target.isOnField();
+
+    if (isMonsterHouseVirtualTarget) {
+      /*
+       * 실제 배틀 슬롯이 없는 몬스터소굴 예비 개체.
+       * BattlerIndex 기반 FaintPhase를 사용하지 않는다.
+       */
+      globalScene.phaseManager.pushNew("MonsterHouseVirtualFaintPhase", target.id);
+
+      console.log("[MONSTER_HOUSE_VIRTUAL_FAINT_QUEUED]", {
+        pokemon: target.name,
+        pokemonId: target.id,
+        hp: target.hp,
+      });
+    } else {
+      /*
+       * 실제 필드에 나와 있는 포켓몬은
+       * 기존 FaintPhase를 그대로 사용.
+       */
+      globalScene.phaseManager.queueFaintPhase(target.getBattlerIndex(), false, user);
+    }
 
     target.destroySubstitute();
     target.lapseTag(BattlerTagType.COMMANDED);
 
-    // Force `lastHit` to be true if this is a multi hit move with hits left
-    // `hitsLeft` must be left as-is in order for the message displaying the number of hits
-    // to display the proper number.
-    // Note: When Dragon Darts' smart targeting is implemented, this logic may need to be adjusted.
     if (!this.lastHit && user.turnData.hitsLeft > 1) {
       this.lastHit = true;
     }
@@ -1771,125 +2029,129 @@ console.log("[BALLOON_AFTER_POP]", {
    * @param wasCritical - `true` if the move was a critical hit
    */
   protected applyOnTargetEffects(
-  user: Pokemon,
-  target: Pokemon,
-  hitResult: HitResult,
-  firstTarget: boolean,
-  damage: number,
-  wasCritical = false,
-): void {
-  console.debug("[applyOnTargetEffects] 호출됨", {
-    user: user.name,
-    target: target.name,
-    hitResult,
-    damage,
-    move: this.move.id,
-    moveClass: this.move.constructor.name,
-    isAttackMove: this.move.is("AttackMove"),
-  });
-  /** Does {@linkcode hitResult} indicate that damage was dealt to the target? */
-  const dealsDamage = [
-    HitResult.EFFECTIVE,
-    HitResult.SUPER_EFFECTIVE,
-    HitResult.NOT_VERY_EFFECTIVE,
-    HitResult.ONE_HIT_KO,
-    HitResult.EXTREMELY_EFFECTIVE,
-    HitResult.MOSTLY_INEFFECTIVE
-  ].includes(hitResult);
+    user: Pokemon,
+    target: Pokemon,
+    hitResult: HitResult,
+    firstTarget: boolean,
+    damage: number,
+    wasCritical = false,
+  ): void {
+    console.debug("[applyOnTargetEffects] 호출됨", {
+      user: user.name,
+      target: target.name,
+      hitResult,
+      damage,
+      move: this.move.id,
+      moveClass: this.move.constructor.name,
+      isAttackMove: this.move.is("AttackMove"),
+    });
+    /** Does {@linkcode hitResult} indicate that damage was dealt to the target? */
+    const dealsDamage = [
+      HitResult.EFFECTIVE,
+      HitResult.SUPER_EFFECTIVE,
+      HitResult.NOT_VERY_EFFECTIVE,
+      HitResult.ONE_HIT_KO,
+      HitResult.EXTREMELY_EFFECTIVE,
+      HitResult.MOSTLY_INEFFECTIVE,
+    ].includes(hitResult);
 
-  // 기존 효과 처리
-  this.triggerMoveEffects(MoveEffectTrigger.POST_APPLY, user, target, firstTarget, false);
-  this.applyHeldItemFlinchCheck(user, target, dealsDamage);
-  this.applyOnGetHitAbEffects(user, target, hitResult, damage, wasCritical);
-  applyAbAttrs("PostAttackAbAttr", {
-    pokemon: user,
-    opponent: target,
-    move: this.move,
-    hitResult,
-    damage: damage,
-  });
+    // 기존 효과 처리
+    this.triggerMoveEffects(MoveEffectTrigger.POST_APPLY, user, target, firstTarget, false);
+    this.applyHeldItemFlinchCheck(user, target, dealsDamage);
+    this.applyOnGetHitAbEffects(user, target, hitResult, damage, wasCritical);
+    applyAbAttrs("PostAttackAbAttr", {
+      pokemon: user,
+      opponent: target,
+      move: this.move,
+      hitResult,
+      damage,
+    });
 
-{
-  const pendingBooster = (user.turnData as any)
-    .pendingTypeSpecificMoveBooster as TypeSpecificMoveBoosterModifier | undefined;
+    {
+      const pendingBooster = (user.turnData as any).pendingTypeSpecificMoveBooster as
+        | TypeSpecificMoveBoosterModifier
+        | undefined;
 
-  const successHit =
-    hitResult !== HitResult.MISS &&
-    hitResult !== HitResult.NO_EFFECT &&
-    hitResult !== HitResult.NO_EFFECT_NO_MESSAGE &&
-    hitResult !== (HitResult as any).FAIL;
+      const successHit =
+        hitResult !== HitResult.MISS
+        && hitResult !== HitResult.NO_EFFECT
+        && hitResult !== HitResult.NO_EFFECT_NO_MESSAGE
+        && hitResult !== (HitResult as any).FAIL;
 
-  if (pendingBooster && successHit && damage > 0) {
-  recordRecycleSnapshot(user, pendingBooster, { args: [] });
+      if (pendingBooster && successHit && damage > 0) {
+        recordRecycleSnapshot(user, pendingBooster, { args: [] });
 
-  if (pendingBooster.stackCount > 1) {
-    pendingBooster.stackCount--;
-  } else {
-    user.loseHeldItem(pendingBooster);
-  }
+        if (pendingBooster.stackCount > 1) {
+          pendingBooster.stackCount--;
+        } else {
+          user.loseHeldItem(pendingBooster);
+        }
 
-  delete (user.turnData as any).pendingTypeSpecificMoveBooster;
+        delete (user.turnData as any).pendingTypeSpecificMoveBooster;
 
-  globalScene.updateModifiers(user.isPlayer());
-  user.updateInfo();
-  }
-}
-
- // ✅ TRICK: 선택한 아이템을 실제로 교환
-if (this.move.id === MoveId.TRICK && !this.move.hitsSubstitute(user, target)) {
-  const td: any = user.turnData;
-
-  // 턴당 1회만
-  if (!td._trickSwapped && td.trickItemSelectedThisTurn) {
-    const success =
-      hitResult !== HitResult.MISS &&
-      hitResult !== HitResult.NO_EFFECT &&
-      hitResult !== (HitResult as any).FAIL; // FAIL이 없을 수도 있어서 안전 처리
-
-    if (success) {
-      td._trickSwapped = true;
-
-      const give = user.tempSummonData?.trickGiveItem;
-      const take = user.tempSummonData?.trickTakeItem;
-
-      if (give && take) {
-        // 1) 원래 자리에서 제거
-        globalScene.removeModifier(give, false); // player side (user 쪽)
-        globalScene.removeModifier(take, true);  // enemy side (target 쪽)
-
-        // 2) 반대편으로 "복제"해서 붙이기 (pokemonId 반드시 바꿔야 함!)
-        const giveToEnemy = (give as any).clone?.() ?? give;
-        (giveToEnemy as any).pokemonId = target.id;
-
-        const takeToPlayer = (take as any).clone?.() ?? take;
-        (takeToPlayer as any).pokemonId = user.id;
-
-        // 3) 추가
-        globalScene.addModifier(takeToPlayer as any, /*ignoreUpdate*/ true, /*playSound*/ false, /*virtual*/ false, /*instant*/ true);
-        globalScene.addEnemyModifier(giveToEnemy as any, /*ignoreUpdate*/ true, /*instant*/ true);
-
-        // 4) 양쪽 갱신 (한 번만)
-        globalScene.updateModifiers(true, true);
-        globalScene.updateModifiers(false, true);
-
-        // 5) 정리
-        user.tempSummonData.trickGiveItem = undefined;
-        user.tempSummonData.trickTakeItem = undefined;
-        user.tempSummonData.trickTargetBattlerIndex = undefined;
-
-        td.trickItemSelectedThisTurn = false;
+        globalScene.updateModifiers(user.isPlayer());
+        user.updateInfo();
       }
     }
-  }
-}
 
-  // ✅ 소리 기반 기술일 때 특수공격력 상승 처리
-  const existingPhase = globalScene.phaseManager.hasPhaseOfType(
-    p => p instanceof MoveEffectPhase && p.battlerIndex === this.battlerIndex,
-  );
+    // ✅ TRICK: 선택한 아이템을 실제로 교환
+    if (this.move.id === MoveId.TRICK && !this.move.hitsSubstitute(user, target)) {
+      const td: any = user.turnData;
 
-  if (!(existingPhase instanceof MoveEffectPhase)) {
-    if (this.move.hasFlag(MoveFlags.SOUND_BASED)) {
+      // 턴당 1회만
+      if (!td._trickSwapped && td.trickItemSelectedThisTurn) {
+        const success =
+          hitResult !== HitResult.MISS && hitResult !== HitResult.NO_EFFECT && hitResult !== (HitResult as any).FAIL; // FAIL이 없을 수도 있어서 안전 처리
+
+        if (success) {
+          td._trickSwapped = true;
+
+          const give = user.tempSummonData?.trickGiveItem;
+          const take = user.tempSummonData?.trickTakeItem;
+
+          if (give && take) {
+            // 1) 원래 자리에서 제거
+            globalScene.removeModifier(give, false); // player side (user 쪽)
+            globalScene.removeModifier(take, true); // enemy side (target 쪽)
+
+            // 2) 반대편으로 "복제"해서 붙이기 (pokemonId 반드시 바꿔야 함!)
+            const giveToEnemy = (give as any).clone?.() ?? give;
+            (giveToEnemy as any).pokemonId = target.id;
+
+            const takeToPlayer = (take as any).clone?.() ?? take;
+            (takeToPlayer as any).pokemonId = user.id;
+
+            // 3) 추가
+            globalScene.addModifier(
+              takeToPlayer as any,
+              /*ignoreUpdate*/ true,
+              /*playSound*/ false,
+              /*virtual*/ false,
+              /*instant*/ true,
+            );
+            globalScene.addEnemyModifier(giveToEnemy as any, /*ignoreUpdate*/ true, /*instant*/ true);
+
+            // 4) 양쪽 갱신 (한 번만)
+            globalScene.updateModifiers(true, true);
+            globalScene.updateModifiers(false, true);
+
+            // 5) 정리
+            user.tempSummonData.trickGiveItem = undefined;
+            user.tempSummonData.trickTakeItem = undefined;
+            user.tempSummonData.trickTargetBattlerIndex = undefined;
+
+            td.trickItemSelectedThisTurn = false;
+          }
+        }
+      }
+    }
+
+    // ✅ 소리 기반 기술일 때 특수공격력 상승 처리
+    const existingPhase = globalScene.phaseManager.hasPhaseOfType(
+      p => p instanceof MoveEffectPhase && p.battlerIndex === this.battlerIndex,
+    );
+
+    if (!(existingPhase instanceof MoveEffectPhase) && this.move.hasFlag(MoveFlags.SOUND_BASED)) {
       user.currentMove = this.move;
 
       const modifiers = globalScene.getModifiers(SoundBasedMoveSpecialAttackBoostModifier);
@@ -1902,9 +2164,7 @@ if (this.move.id === MoveId.TRICK && !this.move.hitsSubstitute(user, target)) {
 
             if (success) {
               // 특수공격력 상승 적용
-              globalScene.phaseManager.unshiftPhase(
-                new MoveEffectPhase(user.getBattlerIndex(), true, [Stat.SPATK], 1),
-              );
+              globalScene.phaseManager.unshiftPhase(new MoveEffectPhase(user.getBattlerIndex(), true, [Stat.SPATK], 1));
 
               // 아이템 소모
               user.loseHeldItem(modifier);
@@ -1914,59 +2174,53 @@ if (this.move.id === MoveId.TRICK && !this.move.hitsSubstitute(user, target)) {
         }
       }
     }
-  }
 
-  // ✅ SpeciesStatBoosterModifier: 명중 시 확정 독/맹독 (악독한사슬)
-{
-  const successHit =
-    hitResult !== HitResult.MISS &&
-    hitResult !== HitResult.NO_EFFECT &&
-    hitResult !== (HitResult as any).FAIL;
+    // ✅ SpeciesStatBoosterModifier: 명중 시 확정 독/맹독 (악독한사슬)
+    {
+      const successHit =
+        hitResult !== HitResult.MISS && hitResult !== HitResult.NO_EFFECT && hitResult !== (HitResult as any).FAIL;
 
-  const hitSub = this.move.hitsSubstitute?.(user, target) ?? false;
+      const hitSub = this.move.hitsSubstitute?.(user, target) ?? false;
 
-  if (successHit && !hitSub && this.move.is("AttackMove")) {
-    const attackerHeldMods = globalScene.findModifiers(
-      m => m instanceof PokemonHeldItemModifier && m.pokemonId === user.id,
-    );
+      if (successHit && !hitSub && this.move.is("AttackMove")) {
+        const attackerHeldMods = globalScene.findModifiers(
+          m => m instanceof PokemonHeldItemModifier && m.pokemonId === user.id,
+        );
 
-    const sbMods = attackerHeldMods.filter(
-  m => m instanceof SpeciesStatBoosterModifier,
-) as any[];
+        const sbMods = attackerHeldMods.filter(m => m instanceof SpeciesStatBoosterModifier) as any[];
 
-for (const m of sbMods) {
-  // ✅ 인스턴스 key 말고 "타입의 pregen args"에서 key를 뽑기
-  const typeObj: any = m.type;
-  const typeKey =
-    typeObj?.key
-    ?? typeObj?.getPregenArgs?.()?.[0]
-    ?? typeObj?.id; // 마지막 보험
-console.log("[MCHAIN][CALL_PRE]", {
-  typeKey,
-  hasFn: typeof (m as any).applyGuaranteedPoisonOnHit,
-  user: user?.name,
-  target: target?.name,
-});
+        for (const m of sbMods) {
+          // ✅ 인스턴스 key 말고 "타입의 pregen args"에서 key를 뽑기
+          const typeObj: any = m.type;
+          const typeKey = typeObj?.key ?? typeObj?.getPregenArgs?.()?.[0] ?? typeObj?.id; // 마지막 보험
+          console.log("[MCHAIN][CALL_PRE]", {
+            typeKey,
+            hasFn: typeof (m as any).applyGuaranteedPoisonOnHit,
+            user: user?.name,
+            target: target?.name,
+          });
 
-(m as any).applyGuaranteedPoisonOnHit?.(user, target, false);
+          (m as any).applyGuaranteedPoisonOnHit?.(user, target, false);
 
-  if (typeKey !== "MALIGNANT_CHAINS") continue;
+          if (typeKey !== "MALIGNANT_CHAINS") {
+            continue;
+          }
 
-  m.applyGuaranteedPoisonOnHit?.(user, target, false);
-  break;
-}
-  }
-}
+          m.applyGuaranteedPoisonOnHit?.(user, target, false);
+          break;
+        }
+      }
+    }
 
-  // ✅ 적 포켓몬만 EnemyAttackStatusEffectChanceModifier 적용
-  if (!user.isPlayer() && this.move.is("AttackMove")) {
-    globalScene.applyShuffledModifiers(EnemyAttackStatusEffectChanceModifier, false, target);
-  }
+    // ✅ 적 포켓몬만 EnemyAttackStatusEffectChanceModifier 적용
+    if (!user.isPlayer() && this.move.is("AttackMove")) {
+      globalScene.applyShuffledModifiers(EnemyAttackStatusEffectChanceModifier, false, target);
+    }
 
-  // Apply Grip Claw's chance to steal an item from the target
+    // Apply Grip Claw's chance to steal an item from the target
     if (this.move.is("AttackMove")) {
       console.debug("[applyOnTargetEffects] ContactHeldItemTransferChanceModifier 적용 시도");
-globalScene.applyModifiers(ContactHeldItemTransferChanceModifier, this.player, user, target);
+      globalScene.applyModifiers(ContactHeldItemTransferChanceModifier, this.player, user, target);
     }
   }
 }

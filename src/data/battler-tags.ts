@@ -50,6 +50,7 @@
  */
 
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
+import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
 import Overrides from "#app/overrides";
@@ -77,7 +78,6 @@ import { StatusEffect } from "#enums/status-effect";
 import { WeatherType } from "#enums/weather-type";
 import type { Pokemon } from "#field/pokemon";
 import { applyMoveAttrs } from "#moves/apply-attrs";
-import { invalidEncoreMoves } from "#moves/invalid-moves";
 import type { Move } from "#moves/move";
 import type { MoveEffectPhase } from "#phases/move-effect-phase";
 import type { MovePhase } from "#phases/move-phase";
@@ -92,7 +92,6 @@ import type {
   EndureTagType,
   HighestStatBoostTagType,
   MoveRestrictionBattlerTagType,
-  ProtectionBattlerTagType,
   RemovedTypeTagType,
   SemiInvulnerableTagType,
   TrappingBattlerTagType,
@@ -103,12 +102,13 @@ import { coerceArray } from "#utils/array";
 import { BooleanHolder, getFrameMs, NumberHolder, toDmgValue } from "#utils/common";
 import { toCamelCase } from "#utils/strings";
 import i18next from "i18next";
-import { MentalHerbModifier, GenericZMoveAccessModifier, ExclusiveZMoveAccessModifier, PokemonMultiHitModifier, SpeciesStatBoosterModifier } from "../modifier/modifier";
-import type { MovePhaseTimingModifier } from "#enums/move-phase-timing-modifier";
-import { MovePhaseTimingModifier } from "#enums/move-phase-timing-modifier";
-import { BattlerIndex } from "#enums/battler-index";
-import { areAllies, canSpeciesTera, willTerastallize } from "#utils/pokemon-utils";
-import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
+import {
+  ExclusiveZMoveAccessModifier,
+  GenericZMoveAccessModifier,
+  MentalHerbModifier,
+  PokemonMultiHitModifier,
+  SpeciesStatBoosterModifier,
+} from "../modifier/modifier";
 
 /** Interface containing the serializable fields of `BattlerTag` */
 interface BaseBattlerTag {
@@ -378,26 +378,22 @@ export class BideTag extends SerializableBattlerTag {
   public damage = 0;
   public lastAttackerId: number | null = null;
 
-  private processedTurn: number = -1;
-  private processedCount: number = 0;
+  private processedTurn = -1;
+  private processedCount = 0;
   private seenKeysByTurn: Map<number, Set<string>> = new Map();
 
   constructor(sourceMove?: MoveId, sourceId?: number) {
     super(
       BattlerTagType.BIDE,
-      [
-        BattlerTagLapseType.PRE_MOVE,
-        BattlerTagLapseType.AFTER_HIT,
-        BattlerTagLapseType.TURN_END,
-      ],
+      [BattlerTagLapseType.PRE_MOVE, BattlerTagLapseType.AFTER_HIT, BattlerTagLapseType.TURN_END],
       2,
       sourceMove ?? MoveId.BIDE,
-      sourceId
+      sourceId,
     );
   }
 
   public override loadTag<const T extends this>(
-    source: BattlerTag & Pick<T, "tagType" | "damage" | "lastAttackerIndex">
+    source: BattlerTag & Pick<T, "tagType" | "damage" | "lastAttackerIndex">,
   ): void {
     super.loadTag(source);
     this.damage = (source as any).damage ?? 0;
@@ -409,7 +405,7 @@ export class BideTag extends SerializableBattlerTag {
 
     // ✅ 지금 겪는 undefined 문제 “즉시” 차단
     if (this.turnCount == null) {
-      console.log(`[BIDE][ADD] turnCount was nullish -> force 2`);
+      console.log("[BIDE][ADD] turnCount was nullish -> force 2");
       this.turnCount = 2;
     }
 
@@ -423,27 +419,27 @@ export class BideTag extends SerializableBattlerTag {
     );
 
     console.log(
-      `[BIDE][ADD]`,
+      "[BIDE][ADD]",
       `turn=${globalScene.currentBattle.turn}`,
       `turnCount=${this.turnCount}`,
-      `owner=${pokemon.getName()}`
+      `owner=${pokemon.getName()}`,
     );
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     console.log(
-      `[BIDE][LAPSE]`,
+      "[BIDE][LAPSE]",
       `pokemon=${pokemon.getName()}`,
       `type=${BattlerTagLapseType[lapseType]}`,
       `turn=${globalScene.currentBattle.turn}`,
       `turnCount(before)=${this.turnCount}`,
       `damage=${this.damage}`,
-      `lastAttacker=${this.lastAttackerIndex}`
+      `lastAttacker=${this.lastAttackerIndex}`,
     );
 
     if (lapseType === BattlerTagLapseType.PRE_MOVE) {
       const phase: any = globalScene.phaseManager.getCurrentPhase?.();
-      console.log(`[BIDE][PRE_MOVE] cancel`, `phase=${phase?.phaseName}`);
+      console.log("[BIDE][PRE_MOVE] cancel", `phase=${phase?.phaseName}`);
       phase?.cancel?.();
 
       globalScene.phaseManager.queueMessage(
@@ -456,60 +452,58 @@ export class BideTag extends SerializableBattlerTag {
     }
 
     if (lapseType === BattlerTagLapseType.AFTER_HIT) {
-  const curTurn = globalScene.currentBattle.turn;
-  const attacks = pokemon.turnData.attacksReceived ?? [];
+      const curTurn = globalScene.currentBattle.turn;
+      const attacks = pokemon.turnData.attacksReceived ?? [];
 
-  // ✅ 턴이 바뀌면 processedCount 초기화
-  if (this.processedTurn !== curTurn) {
-    this.processedTurn = curTurn;
-    this.processedCount = 0;
-  }
+      // ✅ 턴이 바뀌면 processedCount 초기화
+      if (this.processedTurn !== curTurn) {
+        this.processedTurn = curTurn;
+        this.processedCount = 0;
+      }
 
-  // ✅ "이번 AFTER_HIT 호출에서만" 중복 제거 (턴 누적은 정상 유지)
-  const seenThisCall = new Set<string>();
+      // ✅ "이번 AFTER_HIT 호출에서만" 중복 제거 (턴 누적은 정상 유지)
+      const seenThisCall = new Set<string>();
 
-  for (let i = this.processedCount; i < attacks.length; i++) {
-    const atk: any = attacks[i];
-    const dmg = atk?.damage ?? 0;
-    if (dmg <= 0) continue;
+      for (let i = this.processedCount; i < attacks.length; i++) {
+        const atk: any = attacks[i];
+        const dmg = atk?.damage ?? 0;
+        if (dmg <= 0) {
+          continue;
+        }
 
-    // 같은 턴의 같은 히트가 2번 들어오는 것만 제거
-    const key = `${atk?.sourceId ?? "?"}|${atk?.move ?? "?"}|${dmg}|${atk?.result ?? "?"}`;
+        // 같은 턴의 같은 히트가 2번 들어오는 것만 제거
+        const key = `${atk?.sourceId ?? "?"}|${atk?.move ?? "?"}|${dmg}|${atk?.result ?? "?"}`;
 
-    if (seenThisCall.has(key)) {
-      console.log(`[BIDE][AFTER_HIT] dup skip`, `turn=${curTurn}`, `key=${key}`, `idx=${i}`);
-      continue;
+        if (seenThisCall.has(key)) {
+          console.log("[BIDE][AFTER_HIT] dup skip", `turn=${curTurn}`, `key=${key}`, `idx=${i}`);
+          continue;
+        }
+        seenThisCall.add(key);
+
+        this.damage += dmg;
+        this.lastAttackerId = atk?.sourceId ?? this.lastAttackerId;
+
+        console.log(
+          "[BIDE][AFTER_HIT] accumulate",
+          `turn=${curTurn}`,
+          `idx=${i}`,
+          `+${dmg}`,
+          `total=${this.damage}`,
+          `attackerId=${this.lastAttackerId}`,
+        );
+      }
+
+      this.processedCount = attacks.length;
+      return true;
     }
-    seenThisCall.add(key);
-
-    this.damage += dmg;
-    this.lastAttackerId = atk?.sourceId ?? this.lastAttackerId;
-
-    console.log(
-      `[BIDE][AFTER_HIT] accumulate`,
-      `turn=${curTurn}`,
-      `idx=${i}`,
-      `+${dmg}`,
-      `total=${this.damage}`,
-      `attackerId=${this.lastAttackerId}`
-    );
-  }
-
-  this.processedCount = attacks.length;
-  return true;
-}
 
     if (lapseType === BattlerTagLapseType.TURN_END) {
       const keep = super.lapse(pokemon, lapseType);
 
-      console.log(
-        `[BIDE][TURN_END]`,
-        `turnCount(after)=${this.turnCount}`,
-        `keep=${keep}`
-      );
+      console.log("[BIDE][TURN_END]", `turnCount(after)=${this.turnCount}`, `keep=${keep}`);
 
       if (!keep) {
-        console.log(`[BIDE][RELEASE_TRIGGER]`);
+        console.log("[BIDE][RELEASE_TRIGGER]");
         this.release(pokemon);
         return false;
       }
@@ -521,93 +515,103 @@ export class BideTag extends SerializableBattlerTag {
   }
 
   private release(pokemon: Pokemon) {
-  console.log(`[BIDE][RELEASE] start`, `damage=${this.damage}`, `lastAttackerId=${this.lastAttackerId}`);
+    console.log("[BIDE][RELEASE] start", `damage=${this.damage}`, `lastAttackerId=${this.lastAttackerId}`);
 
-  if (this.damage <= 0 || this.lastAttackerId == null) return;
-
-  const target = globalScene.getPokemonById(this.lastAttackerId);
-  if (!target || target.isFainted()) return;
-  if (target.isOnField && !target.isOnField()) return;
-
-  const base = toDmgValue(this.damage * 2);
-
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battlerTags:bideRelease", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    }),
-  );
-
-  // -------------------------
-  // ✅ 1) "반격 타수"와 "추가타 배율" 계산
-  // -------------------------
-  // strikeMultipliers[0] = 1 (첫타 100%), 이후는 추가타 배율들
-  const strikeMultipliers: number[] = [1];
-
-  // (A) 부자유친: 반격에만 2타째 추가
-  //  - 당신 엔진에서 Parental Bond의 2타 배율이 무엇인지(0.25/0.5)는 여기 상수로 맞추거나,
-  //    ability attr에서 읽어올 수 있으면 그걸 사용하세요.
-  const hasParentalBond = pokemon.hasAbilityWithAttr?.("AddSecondStrikeAbAttr");
-  if (hasParentalBond) {
-    const PB_SECOND_MULT = 0.5; // ✅ 엔진 설정값에 맞춰 조정(본가 SM계열은 보통 0.25)
-    strikeMultipliers.push(PB_SECOND_MULT);
-  }
-
-  // (B) 멀티렌즈(PokemonMultiHitModifier): 반격에만 추가타/배율 적용
-  //  - 보통 이 modifier는 hitCount와 multiplier를 건드리므로, "반격용 가짜 hitCount"를 만들어 계산만 빼옵니다.
-  const hitCount = new NumberHolder(1);
-  const lensMultiplier = new NumberHolder(1);
-
-  // PokemonMultiHitModifier가 hitCount를 늘려주는 구조라면, 아래처럼 호출
-  globalScene.applyModifiers(
-    PokemonMultiHitModifier,
-    pokemon.isPlayer(),
-    pokemon,
-    MoveId.BIDE,      // ✅ "반격"이 BIDE로 취급되게(아이템 판정용)
-    hitCount,
-    lensMultiplier
-  );
-
-  // hitCount가 1보다 커졌다면, "추가타"를 더 넣어줌
-  // - 여기서는 단순히 "추가된 타수만큼" 같은 배율(lensMultiplier)을 넣는 방식
-  // - 만약 멀티렌즈가 타수별 배율이 다르다면, modifier 설계에 맞춰 분기해 주세요.
-  if (hitCount.value > 1) {
-    const extraHits = hitCount.value - 1;
-    for (let i = 0; i < extraHits; i++) {
-      strikeMultipliers.push(lensMultiplier.value);
+    if (this.damage <= 0 || this.lastAttackerId == null) {
+      return;
     }
+
+    const target = globalScene.getPokemonById(this.lastAttackerId);
+    if (!target || target.isFainted()) {
+      return;
+    }
+    if (target.isOnField && !target.isOnField()) {
+      return;
+    }
+
+    const base = toDmgValue(this.damage * 2);
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:bideRelease", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+
+    // -------------------------
+    // ✅ 1) "반격 타수"와 "추가타 배율" 계산
+    // -------------------------
+    // strikeMultipliers[0] = 1 (첫타 100%), 이후는 추가타 배율들
+    const strikeMultipliers: number[] = [1];
+
+    // (A) 부자유친: 반격에만 2타째 추가
+    //  - 당신 엔진에서 Parental Bond의 2타 배율이 무엇인지(0.25/0.5)는 여기 상수로 맞추거나,
+    //    ability attr에서 읽어올 수 있으면 그걸 사용하세요.
+    const hasParentalBond = pokemon.hasAbilityWithAttr?.("AddSecondStrikeAbAttr");
+    if (hasParentalBond) {
+      const PB_SECOND_MULT = 0.5; // ✅ 엔진 설정값에 맞춰 조정(본가 SM계열은 보통 0.25)
+      strikeMultipliers.push(PB_SECOND_MULT);
+    }
+
+    // (B) 멀티렌즈(PokemonMultiHitModifier): 반격에만 추가타/배율 적용
+    //  - 보통 이 modifier는 hitCount와 multiplier를 건드리므로, "반격용 가짜 hitCount"를 만들어 계산만 빼옵니다.
+    const hitCount = new NumberHolder(1);
+    const lensMultiplier = new NumberHolder(1);
+
+    // PokemonMultiHitModifier가 hitCount를 늘려주는 구조라면, 아래처럼 호출
+    globalScene.applyModifiers(
+      PokemonMultiHitModifier,
+      pokemon.isPlayer(),
+      pokemon,
+      MoveId.BIDE, // ✅ "반격"이 BIDE로 취급되게(아이템 판정용)
+      hitCount,
+      lensMultiplier,
+    );
+
+    // hitCount가 1보다 커졌다면, "추가타"를 더 넣어줌
+    // - 여기서는 단순히 "추가된 타수만큼" 같은 배율(lensMultiplier)을 넣는 방식
+    // - 만약 멀티렌즈가 타수별 배율이 다르다면, modifier 설계에 맞춰 분기해 주세요.
+    if (hitCount.value > 1) {
+      const extraHits = hitCount.value - 1;
+      for (let i = 0; i < extraHits; i++) {
+        strikeMultipliers.push(lensMultiplier.value);
+      }
+    }
+
+    console.log("[BIDE][RELEASE] strikePlan", strikeMultipliers);
+
+    // -------------------------
+    // ✅ 2) 계획대로 여러 번 나눠서 반격
+    // -------------------------
+    for (let i = 0; i < strikeMultipliers.length; i++) {
+      const mult = strikeMultipliers[i];
+      const dmg = toDmgValue(base * mult);
+
+      console.log(`[BIDE][RELEASE] hit#${i + 1}`, `mult=${mult}`, `dmg=${dmg}`);
+
+      target.damageAndUpdate(dmg, {
+        source: pokemon,
+        result: HitResult.EFFECTIVE,
+        ignoreSegments: true,
+        // move를 넣고 싶으면:
+        // move: allMoves[MoveId.BIDE],
+        // moveType: PokemonType.NORMAL,
+      });
+
+      if (target.isFainted()) {
+        break; // ✅ 중간에 기절하면 추가타 중단
+      }
+    }
+
+    pokemon.clearStatus();
   }
-
-  console.log(`[BIDE][RELEASE] strikePlan`, strikeMultipliers);
-
-  // -------------------------
-  // ✅ 2) 계획대로 여러 번 나눠서 반격
-  // -------------------------
-  for (let i = 0; i < strikeMultipliers.length; i++) {
-    const mult = strikeMultipliers[i];
-    const dmg = toDmgValue(base * mult);
-
-    console.log(`[BIDE][RELEASE] hit#${i+1}`, `mult=${mult}`, `dmg=${dmg}`);
-
-    target.damageAndUpdate(dmg, {
-      source: pokemon,
-      result: HitResult.EFFECTIVE,
-      ignoreSegments: true,
-      // move를 넣고 싶으면:
-      // move: allMoves[MoveId.BIDE],
-      // moveType: PokemonType.NORMAL,
-    });
-
-    if (target.isFainted()) break; // ✅ 중간에 기절하면 추가타 중단
-  }
-
-  pokemon.clearStatus();
-}
 
   private getBattlerByIndex(index: number): Pokemon | undefined {
     const playerField = globalScene.getPlayerField() as (Pokemon | undefined)[];
     const enemyField = globalScene.getEnemyField() as (Pokemon | undefined)[];
 
-    if (index < playerField.length) return playerField[index];
+    if (index < playerField.length) {
+      return playerField[index];
+    }
     const enemyIndex = index - playerField.length;
     return enemyField[enemyIndex];
   }
@@ -633,36 +637,36 @@ export class DisabledTag extends MoveRestrictionBattlerTag {
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-  return pokemon.canAddTag?.(BattlerTagType.DISABLED) ?? true;
-}
+    return pokemon.canAddTag?.(BattlerTagType.DISABLED) ?? true;
+  }
 
   override onAdd(pokemon: Pokemon): void {
-  super.onAdd(pokemon);
+    super.onAdd(pokemon);
 
-  if (!pokemon.getTag(BattlerTagType.DISABLED)) {
-    return;
-  }
-
-  console.log("DisabledTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
-
-  const mentalHerb = pokemon.getHeldItems?.().find(
-    item => item instanceof MentalHerbModifier,
-  ) as MentalHerbModifier | undefined;
-
-  if (mentalHerb) {
-    const removed = mentalHerb.apply(pokemon);
-    if (removed) {
+    if (!pokemon.getTag(BattlerTagType.DISABLED)) {
       return;
     }
-  }
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battlerTags:disabledOnAdd", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-      moveName: allMoves[this.moveId].name,
-    }),
-  );
-}
+    console.log("DisabledTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+    const mentalHerb = pokemon.getHeldItems?.().find(item => item instanceof MentalHerbModifier) as
+      | MentalHerbModifier
+      | undefined;
+
+    if (mentalHerb) {
+      const removed = mentalHerb.apply(pokemon);
+      if (removed) {
+        return;
+      }
+    }
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:disabledOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+        moveName: allMoves[this.moveId].name,
+      }),
+    );
+  }
 
   override lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     const ret = super.lapse(pokemon, lapseType);
@@ -714,12 +718,7 @@ export class GorillaTacticsTag extends MoveRestrictionBattlerTag {
   }
 
   private resolveMoveId(move: any): MoveId {
-    return (
-      move?.moveId ??
-      move?.move ??
-      move?.id ??
-      move
-    ) as MoveId;
+    return (move?.moveId ?? move?.move ?? move?.id ?? move) as MoveId;
   }
 
   override canAdd(_pokemon: Pokemon): boolean {
@@ -733,8 +732,7 @@ export class GorillaTacticsTag extends MoveRestrictionBattlerTag {
 
     const lastMove = pokemon.getLastNonVirtualMove?.();
 
-    (this as Mutable<GorillaTacticsTag>).moveId =
-      lastMove?.move ?? MoveId.NONE;
+    (this as Mutable<GorillaTacticsTag>).moveId = lastMove?.move ?? MoveId.NONE;
 
     console.log("[GORILLA_TAG_ADD]", {
       pokemon: pokemon.name,
@@ -742,60 +740,46 @@ export class GorillaTacticsTag extends MoveRestrictionBattlerTag {
     });
   }
 
-  override isMoveRestricted(
-  move: MoveId | any,
-  _user?: Pokemon,
-): boolean {
-  const moveId = this.resolveMoveId(move);
+  override isMoveRestricted(move: MoveId | any, _user?: Pokemon): boolean {
+    const moveId = this.resolveMoveId(move);
 
-  console.log("[GORILLA_CHECK]", {
-    input: move,
-    resolved: moveId,
-    lockedMove: this.moveId,
-  });
-
-  if (
-    !moveId ||
-    moveId === MoveId.NONE ||
-    moveId === MoveId.STRUGGLE
-  ) {
-    return false;
-  }
-
-  if (this.moveId === MoveId.NONE) {
-    (this as Mutable<GorillaTacticsTag>).moveId = moveId;
-
-    console.log("[GORILLA_LOCKED]", {
-      moveId,
-      moveName: allMoves[moveId]?.name,
+    console.log("[GORILLA_CHECK]", {
+      input: move,
+      resolved: moveId,
+      lockedMove: this.moveId,
     });
 
-    return false;
+    if (!moveId || moveId === MoveId.NONE || moveId === MoveId.STRUGGLE) {
+      return false;
+    }
+
+    if (this.moveId === MoveId.NONE) {
+      (this as Mutable<GorillaTacticsTag>).moveId = moveId;
+
+      console.log("[GORILLA_LOCKED]", {
+        moveId,
+        moveName: allMoves[moveId]?.name,
+      });
+
+      return false;
+    }
+
+    const restricted = moveId !== this.moveId;
+
+    console.log("[GORILLA_RESTRICT_CHECK]", {
+      inputMove: moveId,
+      lockedMove: this.moveId,
+      restricted,
+    });
+
+    return restricted;
   }
 
-  const restricted =
-    moveId !== this.moveId;
-
-  console.log("[GORILLA_RESTRICT_CHECK]", {
-    inputMove: moveId,
-    lockedMove: this.moveId,
-    restricted,
-  });
-
-  return restricted;
-}
-
-  override isMoveTargetRestricted(
-    move: MoveId | any,
-    _user: Pokemon,
-    _target: Pokemon,
-  ): boolean {
+  override isMoveTargetRestricted(move: MoveId | any, _user: Pokemon, _target: Pokemon): boolean {
     return this.isMoveRestricted(move);
   }
 
-  public override loadTag(
-    source: BaseBattlerTag & Pick<GorillaTacticsTag, "tagType" | "moveId">,
-  ): void {
+  public override loadTag(source: BaseBattlerTag & Pick<GorillaTacticsTag, "tagType" | "moveId">): void {
     super.loadTag(source);
     (this as Mutable<GorillaTacticsTag>).moveId = source.moveId;
   }
@@ -1030,7 +1014,9 @@ export class FlinchedTag extends BattlerTag {
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     if (lapseType === BattlerTagLapseType.PRE_MOVE) {
       const currentPhase = globalScene.phaseManager.getCurrentPhase();
-      if (currentPhase.is("MovePhase")) currentPhase.cancel();
+      if (currentPhase.is("MovePhase")) {
+        currentPhase.cancel();
+      }
 
       globalScene.phaseManager.queueMessage(
         i18next.t("battlerTags:flinchedLapse", {
@@ -1069,21 +1055,22 @@ export class MeFirstInterruptedTag extends SerializableBattlerTag {
   }
 
   override lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-    if (lapseType !== BattlerTagLapseType.PRE_MOVE) return true;
+    if (lapseType !== BattlerTagLapseType.PRE_MOVE) {
+      return true;
+    }
 
     const phase = globalScene.phaseManager.getCurrentPhase();
-    if (!phase?.is?.("MovePhase")) return true;
+    if (!phase?.is?.("MovePhase")) {
+      return true;
+    }
 
     const mp = phase as any as MovePhase;
 
     // 엔진에 따라 mp.move가 PokemonMove일 가능성이 높음:
-    const moveId: MoveId | undefined =
-      (mp.move?.moveId ?? mp.move?.move ?? mp.move?.id) as any;
+    const moveId: MoveId | undefined = (mp.move?.moveId ?? mp.move?.move ?? mp.move?.id) as any;
 
     if (mp.pokemon?.id === pokemon.id && moveId === this.interruptedMove) {
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battle:attackFailed"),
-      );
+      globalScene.phaseManager.queueMessage(i18next.t("battle:attackFailed"));
 
       // 네 엔진에서 있는 걸로 골라 써
       mp.fail?.();
@@ -1136,8 +1123,9 @@ export class ConfusedTag extends SerializableBattlerTag {
 
   private sourceId?: number; // ✅ 누가 혼란을 걸었는지
 
-  constructor(turnCount: number, sourceMove: MoveId, sourceId?: number) { // ✅ 추가
-    super(BattlerTagType.CONFUSED, BattlerTagLapseType.CUSTOM, turnCount, sourceMove, sourceId, true);
+  constructor(turnCount: number, sourceMove: MoveId, sourceId?: number) {
+    super(BattlerTagType.CONFUSED, BattlerTagLapseType.CUSTOM, turnCount, sourceMove, sourceId, false);
+
     this.sourceId = sourceId;
   }
 
@@ -1156,7 +1144,7 @@ export class ConfusedTag extends SerializableBattlerTag {
   }
 
   onAdd(pokemon: Pokemon): void {
-  const src = this.sourceId != null ? globalScene.getPokemonById(this.sourceId) : null;
+    const src = this.sourceId != null ? globalScene.getPokemonById(this.sourceId) : null;
     super.onAdd(pokemon);
 
     globalScene.phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, CommonAnim.CONFUSION);
@@ -1215,69 +1203,64 @@ export class ConfusedTag extends SerializableBattlerTag {
     phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, CommonAnim.CONFUSION);
 
     // ✅ defender = 혼란 상태인 포켓몬(=자해할 수 있는 포켓몬)
-const defender = pokemon;
+    const defender = pokemon;
 
-// ✅ 독/맹독 여부
-const eff = (defender as any).status?.effect ?? (defender as any).statusEffect;
-const isPoisoned = eff === StatusEffect.POISON || eff === StatusEffect.TOXIC;
+    // ✅ 독/맹독 여부
+    const eff = (defender as any).status?.effect ?? (defender as any).statusEffect;
+    const isPoisoned = eff === StatusEffect.POISON || eff === StatusEffect.TOXIC;
 
-// ✅ 혼란을 건 포켓몬 찾기
-const source = this.sourceId != null ? globalScene.getPokemonById(this.sourceId) : null;
+    // ✅ 혼란을 건 포켓몬 찾기
+    const source = this.sourceId != null ? globalScene.getPokemonById(this.sourceId) : null;
 
-// ✅ source가 환상복슝 들고 있는지 체크
-let hasMythicalPecha = false;
-if (source) {
-  const srcMods = source.getHeldItems?.() ?? [];
-  hasMythicalPecha = srcMods.some(m =>
-    m instanceof SpeciesStatBoosterModifier &&
-    m.hasMatchingSpecies(source) &&
-    m.getKey?.() === "MYTHICAL_PECHA_BERRY"
-  );
-}
+    // ✅ source가 환상복슝 들고 있는지 체크
+    let hasMythicalPecha = false;
+    if (source) {
+      const srcMods = source.getHeldItems?.() ?? [];
+      hasMythicalPecha = srcMods.some(
+        m =>
+          m instanceof SpeciesStatBoosterModifier
+          && m.hasMatchingSpecies(source)
+          && m.getKey?.() === "MYTHICAL_PECHA_BERRY",
+      );
+    }
 
-// ✅ 조건이 만족될 때만 강화 적용
-const pechaBoostActive = isPoisoned && hasMythicalPecha;
+    // ✅ 조건이 만족될 때만 강화 적용
+    const pechaBoostActive = isPoisoned && hasMythicalPecha;
 
-// ✅ 자해 확률: (독/맹독 && 공격자 환상복슝) => 1/2, 아니면 1/3
-const denom = pechaBoostActive ? 2 : 3;
+    // ✅ 자해 확률: (독/맹독 && 공격자 환상복슝) => 1/2, 아니면 1/3
+    const denom = pechaBoostActive ? 2 : 3;
 
-const selfHit =
-  defender.randBattleSeedInt(denom) === 0 ||
-  Overrides.CONFUSION_ACTIVATION_OVERRIDE === true;
+    const selfHit = defender.randBattleSeedInt(denom) === 0 || Overrides.CONFUSION_ACTIVATION_OVERRIDE === true;
 
-if (selfHit) {
-  const atkCompare = defender.getCategoryCompareStat(Stat.ATK);
-  const spaCompare = defender.getCategoryCompareStat(Stat.SPATK);
+    if (selfHit) {
+      const atkCompare = defender.getCategoryCompareStat(Stat.ATK);
+      const spaCompare = defender.getCategoryCompareStat(Stat.SPATK);
 
-  const usePhysical = atkCompare >= spaCompare;
+      const usePhysical = atkCompare >= spaCompare;
 
-  const offenseStat = usePhysical
-    ? defender.getEffectiveStat(Stat.ATK)
-    : defender.getEffectiveStat(Stat.SPATK);
+      const offenseStat = usePhysical ? defender.getEffectiveStat(Stat.ATK) : defender.getEffectiveStat(Stat.SPATK);
 
-  const defenseStat = usePhysical
-    ? defender.getEffectiveStat(Stat.DEF)
-    : defender.getEffectiveStat(Stat.SPDEF);
+      const defenseStat = usePhysical ? defender.getEffectiveStat(Stat.DEF) : defender.getEffectiveStat(Stat.SPDEF);
 
-  let damage = toDmgValue(
-    ((((2 * defender.level) / 5 + 2) * 40 * offenseStat) / defenseStat / 50 + 2) *
-      (defender.randBattleSeedIntRange(85, 100) / 100),
-  );
+      let damage = toDmgValue(
+        ((((2 * defender.level) / 5 + 2) * 40 * offenseStat) / defenseStat / 50 + 2)
+          * (defender.randBattleSeedIntRange(85, 100) / 100),
+      );
 
-  // ✅ 자해 대미지: (독/맹독 && 공격자 환상복슝)일 때만 ×2
-  if (pechaBoostActive) {
-    const before = damage;
-    damage = toDmgValue(damage * 2);
-  }
+      // ✅ 자해 대미지: (독/맹독 && 공격자 환상복슝)일 때만 ×2
+      if (pechaBoostActive) {
+        const before = damage;
+        damage = toDmgValue(damage * 2);
+      }
 
-  phaseManager.queueMessage(i18next.t("battlerTags:confusedLapseHurtItself"));
-  defender.damageAndUpdate(damage, { result: HitResult.CONFUSION });
+      phaseManager.queueMessage(i18next.t("battlerTags:confusedLapseHurtItself"));
+      defender.damageAndUpdate(damage, { result: HitResult.CONFUSION });
 
-  const currentPhase = phaseManager.getCurrentPhase();
-  if (currentPhase.is("MovePhase") && currentPhase.pokemon === defender) {
-    currentPhase.cancel();
-  }
-}
+      const currentPhase = phaseManager.getCurrentPhase();
+      if (currentPhase.is("MovePhase") && currentPhase.pokemon === defender) {
+        currentPhase.cancel();
+      }
+    }
 
     return true;
   }
@@ -1357,47 +1340,47 @@ export class InfatuatedTag extends SerializableBattlerTag {
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-  if (!pokemon.canAddTag?.(BattlerTagType.INFATUATED)) {
-    return false;
+    if (!pokemon.canAddTag?.(BattlerTagType.INFATUATED)) {
+      return false;
+    }
+
+    const source = this.getSourcePokemon();
+
+    if (!source) {
+      console.warn(`Failed to get source Pokemon for InfatuatedTag canAdd; id: ${this.sourceId}`);
+      return false;
+    }
+
+    return pokemon.isOppositeGender(source);
   }
-
-  const source = this.getSourcePokemon();
-
-  if (!source) {
-    console.warn(`Failed to get source Pokemon for InfatuatedTag canAdd; id: ${this.sourceId}`);
-    return false;
-  }
-
-  return pokemon.isOppositeGender(source);
-}
 
   override onAdd(pokemon: Pokemon): void {
-  super.onAdd(pokemon);
+    super.onAdd(pokemon);
 
-  if (!pokemon.getTag(BattlerTagType.INFATUATED)) {
-    return;
-  }
-
-  console.log("InfatuatedTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
-
-  const mentalHerb = pokemon.getHeldItems?.().find(
-    item => item instanceof MentalHerbModifier,
-  ) as MentalHerbModifier | undefined;
-
-  if (mentalHerb) {
-    const removed = mentalHerb.apply(pokemon);
-    if (removed) {
+    if (!pokemon.getTag(BattlerTagType.INFATUATED)) {
       return;
     }
-  }
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battlerTags:infatuatedOnAdd", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-      sourcePokemonName: getPokemonNameWithAffix(this.getSourcePokemon()!),
-    }),
-  );
-}
+    console.log("InfatuatedTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+    const mentalHerb = pokemon.getHeldItems?.().find(item => item instanceof MentalHerbModifier) as
+      | MentalHerbModifier
+      | undefined;
+
+    if (mentalHerb) {
+      const removed = mentalHerb.apply(pokemon);
+      if (removed) {
+        return;
+      }
+    }
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:infatuatedOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+        sourcePokemonName: getPokemonNameWithAffix(this.getSourcePokemon()!),
+      }),
+    );
+  }
 
   override onOverlap(pokemon: Pokemon): void {
     super.onOverlap(pokemon);
@@ -1413,7 +1396,9 @@ export class InfatuatedTag extends SerializableBattlerTag {
     // 멘탈허브 처리 제거 (onAdd에서 이미 처리)
     const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
 
-    if (!ret) return false;
+    if (!ret) {
+      return false;
+    }
 
     const source = this.getSourcePokemon();
     if (!source) {
@@ -1501,7 +1486,7 @@ export class SeedTag extends SerializableBattlerTag {
     (this as Mutable<this>).sourceIndex = source.getBattlerIndex();
   }
 
-    lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+  lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
 
     if (!ret) {
@@ -1529,7 +1514,7 @@ export class SeedTag extends SerializableBattlerTag {
     const reverseDrain = pokemon.hasAbilityWithAttr("ReverseDrainAbAttr", false);
     globalScene.phaseManager.unshiftNew(
       "PokemonHealPhase",
-      source.getBattlerIndex(),
+      source.getPhaseKey(),
       reverseDrain ? -damage : damage,
       i18next.t(reverseDrain ? "battlerTags:seededLapseShed" : "battlerTags:seededLapse", {
         pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
@@ -1579,8 +1564,8 @@ export class PowderTag extends BattlerTag {
     const move = currentPhase.move.getMove();
     const weather = globalScene.arena.weather;
     if (
-      pokemon.getMoveType(move) !== PokemonType.FIRE ||
-      (weather?.weatherType === WeatherType.HEAVY_RAIN && !weather.isEffectSuppressed())
+      pokemon.getMoveType(move) !== PokemonType.FIRE
+      || (weather?.weatherType === WeatherType.HEAVY_RAIN && !weather.isEffectSuppressed())
     ) {
       return true;
     }
@@ -1612,7 +1597,7 @@ export class NightmareTag extends SerializableBattlerTag {
       BattlerTagLapseType.TURN_END,
       1,
       MoveId.NIGHTMARE,
-      sourceId   // ← 이게 핵심
+      sourceId, // ← 이게 핵심
     );
     this.sourceId = sourceId;
   }
@@ -1643,60 +1628,63 @@ export class NightmareTag extends SerializableBattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
-  if (!ret) return false;
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    if (!ret) {
+      return false;
+    }
 
-  const phaseManager = globalScene.phaseManager;
+    const phaseManager = globalScene.phaseManager;
 
-  phaseManager.queueMessage(
-    i18next.t("battlerTags:nightmareLapse", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    }),
-  );
-  phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, CommonAnim.CURSE);
+    phaseManager.queueMessage(
+      i18next.t("battlerTags:nightmareLapse", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+    phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, CommonAnim.CURSE);
 
-  // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 악몽 틱 무효
-  if (blocksNonDirectDamage(pokemon, false)) {
-    return true;
-  }
+    // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 악몽 틱 무효
+    if (blocksNonDirectDamage(pokemon, false)) {
+      return true;
+    }
 
-  const base = Math.max(Math.floor(pokemon.getMaxHp() / 4), 1);
+    const base = Math.max(Math.floor(pokemon.getMaxHp() / 4), 1);
 
-  // ✅ 악몽의심볼이면(=다크라이가 걸었고, 대상이 수면이면) 도트 2배
-  let dotMult = 1;
+    // ✅ 악몽의심볼이면(=다크라이가 걸었고, 대상이 수면이면) 도트 2배
+    let dotMult = 1;
 
-  const src =
-    this.sourceId != null ? (globalScene as any).getPokemonById?.(this.sourceId) : null;
+    const src = this.sourceId != null ? (globalScene as any).getPokemonById?.(this.sourceId) : null;
 
-  if (src) {
-    // (너 코드 스타일에 맞춰 최대한 안전하게)
-    const hasNightmareSymbol =
-      (src.getHeldItemModifiers?.() ?? []).some(m =>
-        m instanceof SpeciesStatBoosterModifier &&
-        // 키 접근은 프로젝트마다 다르니 안전하게 여러 후보를 허용
-        ((m.getKey?.() ?? (m as any).key ?? (m as any).type?.key ?? (m as any).type?.id) === "NIGHTMARE_SYMBOLE") &&
-        m.hasMatchingSpecies?.(src)
+    if (src) {
+      // (너 코드 스타일에 맞춰 최대한 안전하게)
+      const hasNightmareSymbol = (src.getHeldItemModifiers?.() ?? []).some(
+        m =>
+          m instanceof SpeciesStatBoosterModifier
+          && // 키 접근은 프로젝트마다 다르니 안전하게 여러 후보를 허용
+          (m.getKey?.() ?? (m as any).key ?? (m as any).type?.key ?? (m as any).type?.id) === "NIGHTMARE_SYMBOLE"
+          && m.hasMatchingSpecies?.(src),
       );
 
-    const eff = (pokemon as any)?.status?.effect ?? (pokemon as any)?.statusEffect;
-    const isSleeping = eff === StatusEffect.SLEEP || pokemon.hasAbility?.(AbilityId.COMATOSE);
+      const eff = (pokemon as any)?.status?.effect ?? (pokemon as any)?.statusEffect;
+      const isSleeping = eff === StatusEffect.SLEEP || pokemon.hasAbility?.(AbilityId.COMATOSE);
 
-    if (hasNightmareSymbol && isSleeping) dotMult = 2;
+      if (hasNightmareSymbol && isSleeping) {
+        dotMult = 2;
+      }
+    }
+
+    const dmg = Math.max(Math.floor(base * dotMult), 1);
+    pokemon.damageAndUpdate(toDmgValue(dmg), { result: HitResult.INDIRECT });
+
+    console.log("[NIGHTMARE_SYMBOLE][NIGHTMARE_TAG_DOT]", {
+      source: src?.name,
+      target: pokemon.name,
+      base,
+      dotMult,
+      dmg,
+    });
+
+    return true;
   }
-
-  const dmg = Math.max(Math.floor(base * dotMult), 1);
-  pokemon.damageAndUpdate(toDmgValue(dmg), { result: HitResult.INDIRECT });
-
-  console.log("[NIGHTMARE_SYMBOLE][NIGHTMARE_TAG_DOT]", {
-    source: src?.name,
-    target: pokemon.name,
-    base,
-    dotMult,
-    dmg,
-  });
-
-  return true;
-}
 
   getDescriptor(): string {
     return i18next.t("battlerTags:nightmareDesc");
@@ -1779,30 +1767,34 @@ export class EncoreTag extends MoveRestrictionBattlerTag {
   }
 
   canAdd(pokemon: Pokemon): boolean {
-  if (!pokemon.canAddTag?.(BattlerTagType.ENCORE)) {
-    return false;
-  }
-
-  const lastMoves = pokemon.getLastXMoves(1);
-  if (!lastMoves.length) return false;
-
-  const repeatableMove = lastMoves[0];
-  if (!repeatableMove.move || repeatableMove.virtual) return false;
-
-  switch (repeatableMove.move) {
-    case MoveId.MIMIC:
-    case MoveId.MIRROR_MOVE:
-    case MoveId.TRANSFORM:
-    case MoveId.STRUGGLE:
-    case MoveId.SKETCH:
-    case MoveId.SLEEP_TALK:
-    case MoveId.ENCORE:
+    if (!pokemon.canAddTag?.(BattlerTagType.ENCORE)) {
       return false;
-  }
+    }
 
-  this.moveId = repeatableMove.move;
-  return true;
-}
+    const lastMoves = pokemon.getLastXMoves(1);
+    if (lastMoves.length === 0) {
+      return false;
+    }
+
+    const repeatableMove = lastMoves[0];
+    if (!repeatableMove.move || repeatableMove.virtual) {
+      return false;
+    }
+
+    switch (repeatableMove.move) {
+      case MoveId.MIMIC:
+      case MoveId.MIRROR_MOVE:
+      case MoveId.TRANSFORM:
+      case MoveId.STRUGGLE:
+      case MoveId.SKETCH:
+      case MoveId.SLEEP_TALK:
+      case MoveId.ENCORE:
+        return false;
+    }
+
+    this.moveId = repeatableMove.move;
+    return true;
+  }
 
   override onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
@@ -1810,12 +1802,8 @@ export class EncoreTag extends MoveRestrictionBattlerTag {
 
     // ✅ 멘탈허브 보유 여부 확인
     const mentalHerb = globalScene
-  .getModifiers(MentalHerbModifier, pokemon.isPlayer())
-  .find(
-    mod =>
-      mod instanceof MentalHerbModifier &&
-      mod.pokemonId === pokemon.id,
-  ) as MentalHerbModifier | undefined;
+      .getModifiers(MentalHerbModifier, pokemon.isPlayer())
+      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
 
     if (mentalHerb) {
       console.log("Mental Herb detected - removing Encore immediately");
@@ -1946,7 +1934,7 @@ export class IngrainTag extends TrappedTag {
     if (ret) {
       globalScene.phaseManager.unshiftNew(
         "PokemonHealPhase",
-        pokemon.getBattlerIndex(),
+        pokemon.getPhaseKey(),
         toDmgValue(pokemon.getMaxHp() / 16),
         i18next.t("battlerTags:ingrainLapse", {
           pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
@@ -2019,7 +2007,7 @@ export class AquaRingTag extends SerializableBattlerTag {
     if (ret) {
       globalScene.phaseManager.unshiftNew(
         "PokemonHealPhase",
-        pokemon.getBattlerIndex(),
+        pokemon.getPhaseKey(),
         toDmgValue(pokemon.getMaxHp() / 16),
         i18next.t("battlerTags:aquaRingLapse", {
           moveName: this.getMoveName(),
@@ -2107,25 +2095,25 @@ export abstract class DamagingTrapTag extends TrappedTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = super.lapse(pokemon, lapseType);
+    const ret = super.lapse(pokemon, lapseType);
 
-  if (ret) {
-    const phaseManager = globalScene.phaseManager;
-    phaseManager.queueMessage(
-      i18next.t("battlerTags:damagingTrapLapse", {
-        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        moveName: this.getMoveName(),
-      }),
-    );
-    phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, this.#commonAnim);
+    if (ret) {
+      const phaseManager = globalScene.phaseManager;
+      phaseManager.queueMessage(
+        i18next.t("battlerTags:damagingTrapLapse", {
+          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+          moveName: this.getMoveName(),
+        }),
+      );
+      phaseManager.unshiftNew("CommonAnimPhase", pokemon.getBattlerIndex(), undefined, this.#commonAnim);
 
-    // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 트랩 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
+      // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 트랩 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
+      }
     }
-  }
 
-  return ret;
+    return ret;
   }
 }
 
@@ -2443,16 +2431,13 @@ export class ContactDamageProtectedTag extends ContactProtectedTag {
   }
 
   override onContact(attacker: Pokemon, user: Pokemon): void {
-  // ✅ 피해를 받는 쪽은 attacker (스파이키실드/니들가드 반사 데미지)
-  // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 반사 데미지 무효
-  if (blocksNonDirectDamage(attacker, false)) {
-    return;
-  }
+    // ✅ 피해를 받는 쪽은 attacker (스파이키실드/니들가드 반사 데미지)
+    // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 반사 데미지 무효
+    if (blocksNonDirectDamage(attacker, false)) {
+      return;
+    }
 
-  attacker.damageAndUpdate(
-    toDmgValue(attacker.getMaxHp() * (1 / this.#damageRatio)),
-    { result: HitResult.INDIRECT },
-  );
+    attacker.damageAndUpdate(toDmgValue(attacker.getMaxHp() * (1 / this.#damageRatio)), { result: HitResult.INDIRECT });
   }
 }
 
@@ -2574,51 +2559,44 @@ export class SturdyTag extends BattlerTag {
 export class PerishSongTag extends SerializableBattlerTag {
   public override readonly tagType = BattlerTagType.PERISH_SONG;
   constructor(turnCount: number) {
-    super(
-      BattlerTagType.PERISH_SONG,
-      BattlerTagLapseType.TURN_END,
-      turnCount,
-      MoveId.PERISH_SONG,
-      undefined,
-      true,
-    );
+    super(BattlerTagType.PERISH_SONG, BattlerTagLapseType.TURN_END, turnCount, MoveId.PERISH_SONG, undefined, true);
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-  if (!pokemon.canAddTag?.(BattlerTagType.PERISH_SONG)) {
-    return false;
-  }
+    if (!pokemon.canAddTag?.(BattlerTagType.PERISH_SONG)) {
+      return false;
+    }
 
-  return !pokemon.isBossImmune();
-}
+    return !pokemon.isBossImmune();
+  }
 
   override onAdd(pokemon: Pokemon): void {
-  super.onAdd(pokemon);
+    super.onAdd(pokemon);
 
-  if (!pokemon.getTag(BattlerTagType.PERISH_SONG)) {
-    return;
-  }
-
-  console.log("PerishSongTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
-
-  const mentalHerb = pokemon.getHeldItems?.().find(
-    item => item instanceof MentalHerbModifier,
-  ) as MentalHerbModifier | undefined;
-
-  if (mentalHerb) {
-    const removed = mentalHerb.apply(pokemon);
-    if (removed) {
+    if (!pokemon.getTag(BattlerTagType.PERISH_SONG)) {
       return;
     }
-  }
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battlerTags:perishSongOnAdd", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-      turnCount: this.turnCount,
-    }),
-  );
-}
+    console.log("PerishSongTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+    const mentalHerb = pokemon.getHeldItems?.().find(item => item instanceof MentalHerbModifier) as
+      | MentalHerbModifier
+      | undefined;
+
+    if (mentalHerb) {
+      const removed = mentalHerb.apply(pokemon);
+      if (removed) {
+        return;
+      }
+    }
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:perishSongOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+        turnCount: this.turnCount,
+      }),
+    );
+  }
 
   override lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     const ret = super.lapse(pokemon, lapseType);
@@ -2691,7 +2669,7 @@ export class ZCenterOfAttentionTag extends BattlerTag {
     const hasZAccess = genericMods.length > 0 || exclusiveMods.length > 0;
 
     if (!hasZAccess) {
-      console.log(`[CenterOfAttentionTag] Z링/파워링 없음 - 태그 추가 불가`);
+      console.log("[CenterOfAttentionTag] Z링/파워링 없음 - 태그 추가 불가");
       return false;
     }
 
@@ -2744,33 +2722,53 @@ export class UnburdenTag extends AbilityBattlerTag {
 
 export class TruantTag extends AbilityBattlerTag {
   public override readonly tagType = BattlerTagType.TRUANT;
+
   constructor() {
     super(BattlerTagType.TRUANT, AbilityId.TRUANT, BattlerTagLapseType.CUSTOM, 1);
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
     if (!pokemon.hasAbility(AbilityId.TRUANT)) {
-      // remove tag if mon lacks ability
       return super.lapse(pokemon, lapseType);
     }
 
     const lastMove = pokemon.getLastXMoves()[0];
 
     if (!lastMove || lastMove.move === MoveId.NONE) {
-      // Don't interrupt move if last move was `MoveId.NONE` OR no prior move was found
       return true;
     }
 
-    // Interrupt move usage in favor of slacking off
+    // 게으름 발동 → 이번 행동 취소
     const passive = pokemon.getAbility().id !== AbilityId.TRUANT;
-    (globalScene.phaseManager.getCurrentPhase() as MovePhase).cancel();
-    // TODO: Ability displays should be handled by the ability
+
+    const currentPhase = globalScene.phaseManager.getCurrentPhase();
+
+    if (currentPhase.is("MovePhase")) {
+      currentPhase.cancel();
+    }
+
     globalScene.phaseManager.queueAbilityDisplay(pokemon, passive, true);
+
     globalScene.phaseManager.queueMessage(
       i18next.t("battlerTags:truantLapse", {
         pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
       }),
     );
+
+    // ✅ 게으름을 피우는 동안 최대 HP의 1/3 회복 + 상태이상 치료
+    if (!pokemon.isFullHp() || pokemon.status) {
+      globalScene.phaseManager.unshiftNew(
+        "PokemonHealPhase",
+        pokemon.getPhaseKey(),
+        Math.max(1, Math.floor(pokemon.getMaxHp() / 3)),
+        null,
+        false, // showFullHpMessage
+        false, // skipAnim
+        false, // revive
+        true, // healStatus
+      );
+    }
+
     globalScene.phaseManager.queueAbilityDisplay(pokemon, passive, false);
 
     return true;
@@ -2930,7 +2928,7 @@ export class SkyDropLiftedTag extends SerializableBattlerTag {
       [BattlerTagLapseType.PRE_MOVE, BattlerTagLapseType.MOVE_EFFECT],
       turnCount,
       sourceMove,
-      sourceId
+      sourceId,
     );
   }
 
@@ -2955,7 +2953,7 @@ export class SkyDropLiftedTag extends SerializableBattlerTag {
       globalScene.phaseManager.queueMessage(
         i18next.t("battlerTags:immobilizedBySkyDrop", {
           pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        })
+        }),
       );
 
       return true;
@@ -2982,19 +2980,19 @@ export class EmbargoTag extends SerializableBattlerTag {
   override onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
     globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:embargoStart", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        })
-      );
+      i18next.t("battlerTags:embargoStart", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
   }
 
   override onRemove(pokemon: Pokemon): void {
     super.onRemove(pokemon);
     globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:embargoEnd", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        })
-      );
+      i18next.t("battlerTags:embargoEnd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
   }
 }
 
@@ -3299,36 +3297,34 @@ export class SaltCuredTag extends SerializableBattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
 
-  if (ret) {
-    globalScene.phaseManager.unshiftNew(
-      "CommonAnimPhase",
-      pokemon.getBattlerIndex(),
-      pokemon.getBattlerIndex(),
-      CommonAnim.SALT_CURE,
-    );
-
-    // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 소금절이 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      const pokemonSteelOrWater =
-        pokemon.isOfType(PokemonType.STEEL) || pokemon.isOfType(PokemonType.WATER);
-
-      pokemon.damageAndUpdate(
-        toDmgValue(pokemonSteelOrWater ? pokemon.getMaxHp() / 4 : pokemon.getMaxHp() / 8),
-        { result: HitResult.INDIRECT },
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE,
       );
 
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:saltCuredLapse", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-          moveName: this.getMoveName(),
-        }),
-      );
+      // ✅ 매직가드/새벽비드/스터디밀 등 “간접 데미지 면역”이면 소금절이 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        const pokemonSteelOrWater = pokemon.isOfType(PokemonType.STEEL) || pokemon.isOfType(PokemonType.WATER);
+
+        pokemon.damageAndUpdate(toDmgValue(pokemonSteelOrWater ? pokemon.getMaxHp() / 4 : pokemon.getMaxHp() / 8), {
+          result: HitResult.INDIRECT,
+        });
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:saltCuredLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+          }),
+        );
+      }
     }
-  }
 
-  return ret;
+    return ret;
   }
 }
 
@@ -3390,10 +3386,7 @@ export class RockCursedTag extends SerializableBattlerTag {
 
         // 바위 면역(0배)면 대미지/메시지 생략
         if (damageHpRatio > 0) {
-          pokemon.damageAndUpdate(
-            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
-            { result: HitResult.INDIRECT },
-          );
+          pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() * damageHpRatio), { result: HitResult.INDIRECT });
 
           globalScene.phaseManager.queueMessage(
             i18next.t("battlerTags:rockCursedLapse", {
@@ -3467,10 +3460,7 @@ export class ColdCursedTag extends SerializableBattlerTag {
 
         // 바위 면역(0배)면 대미지/메시지 생략
         if (damageHpRatio > 0) {
-          pokemon.damageAndUpdate(
-            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
-            { result: HitResult.INDIRECT },
-          );
+          pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() * damageHpRatio), { result: HitResult.INDIRECT });
 
           globalScene.phaseManager.queueMessage(
             i18next.t("battlerTags:iceCursedLapse", {
@@ -3544,10 +3534,7 @@ export class RustedCursedTag extends SerializableBattlerTag {
 
         // 바위 면역(0배)면 대미지/메시지 생략
         if (damageHpRatio > 0) {
-          pokemon.damageAndUpdate(
-            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
-            { result: HitResult.INDIRECT },
-          );
+          pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() * damageHpRatio), { result: HitResult.INDIRECT });
 
           globalScene.phaseManager.queueMessage(
             i18next.t("battlerTags:rustedCursedLapse", {
@@ -3621,10 +3608,7 @@ export class KnowledgeCursedTag extends SerializableBattlerTag {
 
         // 바위 면역(0배)면 대미지/메시지 생략
         if (damageHpRatio > 0) {
-          pokemon.damageAndUpdate(
-            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
-            { result: HitResult.INDIRECT },
-          );
+          pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() * damageHpRatio), { result: HitResult.INDIRECT });
 
           globalScene.phaseManager.queueMessage(
             i18next.t("battlerTags:knowledgeCursedLapse", {
@@ -3698,10 +3682,7 @@ export class DrownedCursedTag extends SerializableBattlerTag {
 
         // 바위 면역(0배)면 대미지/메시지 생략
         if (damageHpRatio > 0) {
-          pokemon.damageAndUpdate(
-            toDmgValue(pokemon.getMaxHp() * damageHpRatio),
-            { result: HitResult.INDIRECT },
-          );
+          pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() * damageHpRatio), { result: HitResult.INDIRECT });
 
           globalScene.phaseManager.queueMessage(
             i18next.t("battlerTags:drownedCursedLapse", {
@@ -3727,13 +3708,7 @@ export class BeastStackTag extends SerializableBattlerTag {
   public weightAdded = 100;
 
   constructor(sourceId: number) {
-    super(
-      BattlerTagType.BEAST_STACK,
-      BattlerTagLapseType.TURN_END,
-      1,
-      MoveId.BEAST_STACK,
-      sourceId,
-    );
+    super(BattlerTagType.BEAST_STACK, BattlerTagLapseType.TURN_END, 1, MoveId.BEAST_STACK, sourceId);
   }
 
   onAdd(pokemon: Pokemon): void {
@@ -3753,7 +3728,7 @@ export class BeastStackTag extends SerializableBattlerTag {
   }
 
   public override loadTag(
-    source: BaseBattlerTag & Pick<BeastStackTag, "tagType" | "stackTurnCount" | "weightAdded">
+    source: BaseBattlerTag & Pick<BeastStackTag, "tagType" | "stackTurnCount" | "weightAdded">,
   ): void {
     super.loadTag(source);
     this.stackTurnCount = source.stackTurnCount ?? 0;
@@ -3761,10 +3736,7 @@ export class BeastStackTag extends SerializableBattlerTag {
   }
 
   protected getDamageValue(pokemon: Pokemon): number {
-    return Math.max(
-      Math.floor((pokemon.getMaxHp() / 16) * this.stackTurnCount),
-      1,
-    );
+    return Math.max(Math.floor((pokemon.getMaxHp() / 16) * this.stackTurnCount), 1);
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
@@ -3782,20 +3754,11 @@ export class BeastStackTag extends SerializableBattlerTag {
       this.stackTurnCount += 1;
 
       // 매턴 스피드 하락
-      globalScene.phaseManager.unshiftNew(
-        "StatStageChangePhase",
-        pokemon.getBattlerIndex(),
-        false,
-        [Stat.SPD],
-        -1,
-      );
+      globalScene.phaseManager.unshiftNew("StatStageChangePhase", pokemon.getBattlerIndex(), false, [Stat.SPD], -1);
 
       // 간접 대미지 면역이면 도트만 무효
       if (!blocksNonDirectDamage(pokemon, false)) {
-        pokemon.damageAndUpdate(
-          this.getDamageValue(pokemon),
-          { result: HitResult.INDIRECT },
-        );
+        pokemon.damageAndUpdate(this.getDamageValue(pokemon), { result: HitResult.INDIRECT });
 
         globalScene.phaseManager.queueMessage(
           i18next.t("battlerTags:beastStackLapse", {
@@ -3841,28 +3804,28 @@ export class GMaxWildfireBurnTag extends BattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
-  if (ret) {
-    globalScene.phaseManager.unshiftNew(
-      "CommonAnimPhase",
-      pokemon.getBattlerIndex(),
-      pokemon.getBattlerIndex(),
-      CommonAnim.MAGMA_STORM,
-    );
-
-    // ✅ 간접 데미지 면역이면 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
-
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:gMaxWildfireBurnLapse", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-          moveName: this.getMoveName(),
-        }),
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.MAGMA_STORM,
       );
+
+      // ✅ 간접 데미지 면역이면 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:gMaxWildfireBurnLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+          }),
+        );
+      }
     }
-  }
-  return ret;
+    return ret;
   }
 }
 
@@ -3896,28 +3859,28 @@ export class GMaxVineLashTag extends BattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
-  if (ret) {
-    globalScene.phaseManager.unshiftNew(
-      "CommonAnimPhase",
-      pokemon.getBattlerIndex(),
-      pokemon.getBattlerIndex(),
-      CommonAnim.VINE_WHIP,
-    );
-
-    // ✅ 간접 데미지 면역이면 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
-
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:gMaxVineLashLapse", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-          moveName: this.getMoveName(),
-        }),
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.VINE_WHIP,
       );
+
+      // ✅ 간접 데미지 면역이면 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:gMaxVineLashLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+          }),
+        );
+      }
     }
-  }
-  return ret;
+    return ret;
   }
 }
 
@@ -3951,28 +3914,28 @@ export class GMaxCannonadeTag extends BattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
-  if (ret) {
-    globalScene.phaseManager.unshiftNew(
-      "CommonAnimPhase",
-      pokemon.getBattlerIndex(),
-      pokemon.getBattlerIndex(),
-      CommonAnim.HYDRO_PUMP,
-    );
-
-    // ✅ 간접 데미지 면역이면 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
-
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:gMaxCannonadeLapse", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-          moveName: this.getMoveName(),
-        }),
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.HYDRO_PUMP,
       );
+
+      // ✅ 간접 데미지 면역이면 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 8), { result: HitResult.INDIRECT });
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:gMaxCannonadeLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+          }),
+        );
+      }
     }
-  }
-  return ret;
+    return ret;
   }
 }
 
@@ -4007,28 +3970,28 @@ export class GMaxVolcalithTag extends BattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
-  if (ret) {
-    globalScene.phaseManager.unshiftNew(
-      "CommonAnimPhase",
-      pokemon.getBattlerIndex(),
-      pokemon.getBattlerIndex(),
-      CommonAnim.ROCK_SLIDE,
-    );
-
-    // ✅ 간접 데미지 면역이면 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 6), { result: HitResult.INDIRECT });
-
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:gMaxVolcalithLapse", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-          moveName: this.getMoveName(),
-        }),
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.ROCK_SLIDE,
       );
+
+      // ✅ 간접 데미지 면역이면 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 6), { result: HitResult.INDIRECT });
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:gMaxVolcalithLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+            moveName: this.getMoveName(),
+          }),
+        );
+      }
     }
-  }
-  return ret;
+    return ret;
   }
 }
 
@@ -4049,29 +4012,29 @@ export class CursedTag extends SerializableBattlerTag {
   }
 
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
-  const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
+    const ret = lapseType !== BattlerTagLapseType.CUSTOM || super.lapse(pokemon, lapseType);
 
-  if (ret) {
-    globalScene.phaseManager.unshiftNew(
-      "CommonAnimPhase",
-      pokemon.getBattlerIndex(),
-      pokemon.getBattlerIndex(),
-      CommonAnim.SALT_CURE,
-    );
-
-    // ✅ 간접 데미지 면역(매직가드/스터디밀/새벽비드 등)이면 저주 틱 무효
-    if (!blocksNonDirectDamage(pokemon, false)) {
-      pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 4), { result: HitResult.INDIRECT });
-
-      globalScene.phaseManager.queueMessage(
-        i18next.t("battlerTags:cursedLapse", {
-          pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-        }),
+    if (ret) {
+      globalScene.phaseManager.unshiftNew(
+        "CommonAnimPhase",
+        pokemon.getBattlerIndex(),
+        pokemon.getBattlerIndex(),
+        CommonAnim.SALT_CURE,
       );
-    }
-  }
 
-  return ret;
+      // ✅ 간접 데미지 면역(매직가드/스터디밀/새벽비드 등)이면 저주 틱 무효
+      if (!blocksNonDirectDamage(pokemon, false)) {
+        pokemon.damageAndUpdate(toDmgValue(pokemon.getMaxHp() / 4), { result: HitResult.INDIRECT });
+
+        globalScene.phaseManager.queueMessage(
+          i18next.t("battlerTags:cursedLapse", {
+            pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+          }),
+        );
+      }
+    }
+
+    return ret;
   }
 }
 
@@ -4380,35 +4343,37 @@ export class GulpMissileTag extends SerializableBattlerTag {
   }
 
   override lapse(pokemon: Pokemon, _lapseType: BattlerTagLapseType): boolean {
-  if (pokemon.getTag(BattlerTagType.UNDERWATER)) {
-    return true;
-  }
-
-  const moveEffectPhase = globalScene.phaseManager.getCurrentPhase();
-  if (moveEffectPhase.is("MoveEffectPhase")) {
-    const attacker = moveEffectPhase.getUserPokemon();
-    if (!attacker) return false;
-
-    if (moveEffectPhase.move.hitsSubstitute(attacker, pokemon)) {
+    if (pokemon.getTag(BattlerTagType.UNDERWATER)) {
       return true;
     }
 
-    // ✅ Gulp Missile의 “간접 데미지(1/4)”는 attacker가 받음
-    // ✅ 매직가드/새벽비드/스터디밀 등 간접 데미지 면역이면 데미지 스킵
-    if (!blocksNonDirectDamage(attacker, false)) {
-      attacker.damageAndUpdate(Math.max(1, Math.floor(attacker.getMaxHp() / 4)), { result: HitResult.INDIRECT });
+    const moveEffectPhase = globalScene.phaseManager.getCurrentPhase();
+    if (moveEffectPhase.is("MoveEffectPhase")) {
+      const attacker = moveEffectPhase.getUserPokemon();
+      if (!attacker) {
+        return false;
+      }
+
+      if (moveEffectPhase.move.hitsSubstitute(attacker, pokemon)) {
+        return true;
+      }
+
+      // ✅ Gulp Missile의 “간접 데미지(1/4)”는 attacker가 받음
+      // ✅ 매직가드/새벽비드/스터디밀 등 간접 데미지 면역이면 데미지 스킵
+      if (!blocksNonDirectDamage(attacker, false)) {
+        attacker.damageAndUpdate(Math.max(1, Math.floor(attacker.getMaxHp() / 4)), { result: HitResult.INDIRECT });
+      }
+
+      // (부가효과는 데미지 면역이어도 그대로 발동시키는 쪽이 보통 자연스럽습니다)
+      if (this.tagType === BattlerTagType.GULP_MISSILE_ARROKUDA) {
+        globalScene.phaseManager.unshiftNew("StatStageChangePhase", attacker.getBattlerIndex(), false, [Stat.DEF], -1);
+      } else {
+        attacker.trySetStatus(StatusEffect.PARALYSIS, pokemon);
+      }
     }
 
-    // (부가효과는 데미지 면역이어도 그대로 발동시키는 쪽이 보통 자연스럽습니다)
-    if (this.tagType === BattlerTagType.GULP_MISSILE_ARROKUDA) {
-      globalScene.phaseManager.unshiftNew("StatStageChangePhase", attacker.getBattlerIndex(), false, [Stat.DEF], -1);
-    } else {
-      attacker.trySetStatus(StatusEffect.PARALYSIS, pokemon);
-    }
+    return false;
   }
-
-  return false;
-}
 
   canAdd(pokemon: Pokemon): boolean {
     const isSurfOrDive = [MoveId.SURF, MoveId.DIVE].includes(this.sourceMove!);
@@ -4484,34 +4449,34 @@ export class HealBlockTag extends MoveRestrictionBattlerTag {
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-  return pokemon.canAddTag?.(BattlerTagType.HEAL_BLOCK) ?? true;
-}
+    return pokemon.canAddTag?.(BattlerTagType.HEAL_BLOCK) ?? true;
+  }
 
   // ✅ 여기 추가
   override onAdd(pokemon: Pokemon): void {
-  super.onAdd(pokemon);
+    super.onAdd(pokemon);
 
-  if (!pokemon.getTag(BattlerTagType.HEAL_BLOCK)) {
-    return;
-  }
-
-  const mentalHerb = pokemon.getHeldItems?.().find(
-    item => item instanceof MentalHerbModifier,
-  ) as MentalHerbModifier | undefined;
-
-  if (mentalHerb) {
-    const removed = mentalHerb.apply(pokemon);
-    if (removed) {
+    if (!pokemon.getTag(BattlerTagType.HEAL_BLOCK)) {
       return;
     }
-  }
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battle:battlerTagsHealBlock", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    }),
-  );
-}
+    const mentalHerb = pokemon.getHeldItems?.().find(item => item instanceof MentalHerbModifier) as
+      | MentalHerbModifier
+      | undefined;
+
+    if (mentalHerb) {
+      const removed = mentalHerb.apply(pokemon);
+      if (removed) {
+        return;
+      }
+    }
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battle:battlerTagsHealBlock", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+    );
+  }
 
   onActivation(pokemon: Pokemon): string {
     return i18next.t("battle:battlerTagsHealBlock", {
@@ -4861,36 +4826,36 @@ export class TormentTag extends MoveRestrictionBattlerTag {
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-  return pokemon.canAddTag?.(BattlerTagType.TORMENT) ?? true;
-}
+    return pokemon.canAddTag?.(BattlerTagType.TORMENT) ?? true;
+  }
 
   override onAdd(pokemon: Pokemon): void {
-  super.onAdd(pokemon);
+    super.onAdd(pokemon);
 
-  if (!pokemon.getTag(BattlerTagType.TORMENT)) {
-    return;
-  }
-
-  console.log("TormentTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
-
-  const mentalHerb = pokemon.getHeldItems?.().find(
-    item => item instanceof MentalHerbModifier,
-  ) as MentalHerbModifier | undefined;
-
-  if (mentalHerb) {
-    const removed = mentalHerb.apply(pokemon);
-    if (removed) {
+    if (!pokemon.getTag(BattlerTagType.TORMENT)) {
       return;
     }
-  }
 
-  globalScene.phaseManager.queueMessage(
-    i18next.t("battlerTags:tormentOnAdd", {
-      pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
-    }),
-    1500,
-  );
-}
+    console.log("TormentTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
+
+    const mentalHerb = pokemon.getHeldItems?.().find(item => item instanceof MentalHerbModifier) as
+      | MentalHerbModifier
+      | undefined;
+
+    if (mentalHerb) {
+      const removed = mentalHerb.apply(pokemon);
+      if (removed) {
+        return;
+      }
+    }
+
+    globalScene.phaseManager.queueMessage(
+      i18next.t("battlerTags:tormentOnAdd", {
+        pokemonNameWithAffix: getPokemonNameWithAffix(pokemon),
+      }),
+      1500,
+    );
+  }
 
   override lapse(pokemon: Pokemon, _tagType: BattlerTagLapseType): boolean {
     // 토먼트는 배틀에서 나가기 전까지 유지
@@ -4927,34 +4892,25 @@ export class TormentTag extends MoveRestrictionBattlerTag {
  */
 export class TauntTag extends MoveRestrictionBattlerTag {
   constructor() {
-    super(
-      BattlerTagType.TAUNT,
-      [BattlerTagLapseType.PRE_MOVE, BattlerTagLapseType.AFTER_MOVE],
-      4,
-      MoveId.TAUNT,
-    );
+    super(BattlerTagType.TAUNT, [BattlerTagLapseType.PRE_MOVE, BattlerTagLapseType.AFTER_MOVE], 4, MoveId.TAUNT);
   }
 
   override canAdd(pokemon: Pokemon): boolean {
-  return pokemon.canAddTag?.(BattlerTagType.TAUNT) ?? true;
-}
+    return pokemon.canAddTag?.(BattlerTagType.TAUNT) ?? true;
+  }
 
   override onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
     console.log("TauntTag added to Pokemon:", getPokemonNameWithAffix(pokemon));
 
     if (!pokemon.getTag(BattlerTagType.TAUNT)) {
-    return;
-  }
+      return;
+    }
 
     // ✅ 멘탈허브 보유 여부 확인
-   const mentalHerb = globalScene
-  .getModifiers(MentalHerbModifier, pokemon.isPlayer())
-  .find(
-    mod =>
-      mod instanceof MentalHerbModifier &&
-      mod.pokemonId === pokemon.id,
-  ) as MentalHerbModifier | undefined;
+    const mentalHerb = globalScene
+      .getModifiers(MentalHerbModifier, pokemon.isPlayer())
+      .find(mod => mod instanceof MentalHerbModifier && mod.pokemonId === pokemon.id) as MentalHerbModifier | undefined;
 
     if (mentalHerb) {
       console.log("Mental Herb detected - removing Taunt tag immediately");
@@ -5393,7 +5349,13 @@ export function getBattlerTag(
     case BattlerTagType.ROLLOUT:
       return new RolloutTag(turnCount, sourceMove, sourceId);
     case BattlerTagType.DEFENSE_CURL:
-      return new SerializableBattlerTag(BattlerTagType.DEFENSE_CURL, BattlerTagLapseType.CUSTOM, 999, sourceMove, sourceId);
+      return new SerializableBattlerTag(
+        BattlerTagType.DEFENSE_CURL,
+        BattlerTagLapseType.CUSTOM,
+        999,
+        sourceMove,
+        sourceId,
+      );
     case BattlerTagType.CHARGING:
       return new SerializableBattlerTag(tagType, BattlerTagLapseType.CUSTOM, 1, sourceMove, sourceId);
     case BattlerTagType.ENCORE:
