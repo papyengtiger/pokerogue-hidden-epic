@@ -240,19 +240,19 @@ export class MenuUiHandler extends MessageUiHandler {
     };
 
     if (isBeta || isDev || isApp) {
-      manageDataOptions.push({
-        label: i18next.t("menuUiHandler:importSession"),
-        handler: () => {
-          confirmSlot(
-            i18next.t("menuUiHandler:importSlotSelect"),
-            () => true,
-            slotId => globalScene.gameData.importData(GameDataType.SESSION, slotId),
-          );
-          return true;
-        },
-        keepOpen: true,
-      });
-    }
+  manageDataOptions.push({
+    label: i18next.t("menuUiHandler:importSession"),
+    handler: () => {
+      confirmSlot(
+        i18next.t("menuUiHandler:importSlotSelect"),
+        () => true,
+        slotId => globalScene.gameData.importData(GameDataType.SESSION, slotId),
+      );
+      return true;
+    },
+    keepOpen: true,
+  });
+}
     manageDataOptions.push({
       label: i18next.t("menuUiHandler:exportSession"),
       handler: () => {
@@ -296,14 +296,14 @@ export class MenuUiHandler extends MessageUiHandler {
     });
     if (isBeta || isDev || isApp) {
       manageDataOptions.push({
-        label: i18next.t("menuUiHandler:importData"),
-        handler: () => {
-          ui.revertMode();
-          globalScene.gameData.importData(GameDataType.SYSTEM);
-          return true;
-        },
-        keepOpen: true,
-      });
+  label: i18next.t("menuUiHandler:importData"),
+  handler: () => {
+    ui.revertMode();
+    globalScene.gameData.importData(GameDataType.SYSTEM);
+    return true;
+  },
+  keepOpen: true,
+});
     }
     manageDataOptions.push(
       {
