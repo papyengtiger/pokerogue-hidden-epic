@@ -46,10 +46,14 @@ export default defineConfig(({ mode, command }) => {
     },
     server: {
   port: Number.isNaN(envPort) ? 8000 : envPort,
-  https: {
-    cert: fs.readFileSync("./certs/hidden-epic.pem"),
-    key: fs.readFileSync("./certs/hidden-epic-key.pem"),
-  },
+  ...(mode === "development"
+    ? {
+        https: {
+          cert: fs.readFileSync("./certs/hidden-epic.pem"),
+          key: fs.readFileSync("./certs/hidden-epic-key.pem"),
+        },
+      }
+    : {}),
 },
   };
 });
