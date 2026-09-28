@@ -11,6 +11,10 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
+ARG VITE_SERVER_URL
+ARG VITE_BYPASS_LOGIN
+ARG VITE_BYPASS_TUTORIAL
+
 RUN pnpm build
 
 EXPOSE 8000
