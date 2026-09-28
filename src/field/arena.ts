@@ -1054,7 +1054,7 @@ export class Arena {
       case BiomeId.BADLANDS:
         return 17.79;
       case BiomeId.CAVE:
-        return 14.24;
+        return 0.915;
       case BiomeId.DESERT:
         return 1.143;
       case BiomeId.ICE_CAVE:

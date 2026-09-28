@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-
+import fs from "node:fs";
 import { defineConfig, loadEnv, type Rollup, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -45,7 +45,11 @@ export default defineConfig(({ mode, command }) => {
       keepNames: true,
     },
     server: {
-      port: Number.isNaN(envPort) ? 8000 : envPort,
-    },
+  port: Number.isNaN(envPort) ? 8000 : envPort,
+  https: {
+    cert: fs.readFileSync("./certs/hidden-epic.pem"),
+    key: fs.readFileSync("./certs/hidden-epic-key.pem"),
+  },
+},
   };
 });

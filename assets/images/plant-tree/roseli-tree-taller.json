@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "roseli-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 16,
+				"h": 43
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 4,
+						"y": 12,
+						"w": 14,
+						"h": 20
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 14,
+						"h": 20
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 13,
+						"w": 14,
+						"h": 19
+					},
+					"frame": {
+						"x": 1,
+						"y": 23,
+						"w": 14,
+						"h": 19
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:03b1b238a11c335565bfde995526ae5e:00abe9802ba7cfdbd4a880e381a0fdf0:0b7b1ecf11b81a17cd11f07538ddfcc7$"
+	}
+}

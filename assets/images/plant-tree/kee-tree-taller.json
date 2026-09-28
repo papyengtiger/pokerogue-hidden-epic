@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "kee-tree-taller.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 20
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 14,
+						"w": 18,
+						"h": 18
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 18
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 14,
+						"w": 16,
+						"h": 18
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 16,
+						"h": 18
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:84bb3d7802fbdb7e3ec6c9dd34781067:48620c3f0628a03494af291bb6e154b9:393415e7a4e072a0ec0ebb666ae3943e$"
+	}
+}

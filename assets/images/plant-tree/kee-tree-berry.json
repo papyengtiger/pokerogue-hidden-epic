@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "kee-tree-berry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 23
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 11,
+						"w": 18,
+						"h": 21
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 21
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 11,
+						"w": 18,
+						"h": 21
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 18,
+						"h": 21
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f80f2df9340de5a78c982ed8415b2bf7:c28f9391b4975dc0b150e4f800a14cc9:10c38620d279e61748c4fba029babb8b$"
+	}
+}

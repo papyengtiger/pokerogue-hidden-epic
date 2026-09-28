@@ -6,7 +6,7 @@ const COOKIE_EXPIRATION_BUFFER = 3600000 * 24 * 30 * 3;
 export function setCookie(cName: string, cValue: string): void {
   const expiration = new Date();
   expiration.setTime(Date.now() + COOKIE_EXPIRATION_BUFFER);
-  document.cookie = `${cName}=${cValue};Secure;SameSite=Strict;Domain=${window.location.hostname};Path=/;Expires=${expiration.toUTCString()}`;
+  document.cookie = `${cName}=${cValue};SameSite=Strict;Path=/;Expires=${expiration.toUTCString()}`;
 }
 
 export function removeCookie(cName: string): void {

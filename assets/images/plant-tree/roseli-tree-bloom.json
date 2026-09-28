@@ -1,0 +1,62 @@
+{
+	"textures": [
+		{
+			"image": "roseli-tree-bloom.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 25
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "frame_0_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 9,
+						"w": 18,
+						"h": 23
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 18,
+						"h": 23
+					}
+				},
+				{
+					"filename": "frame_1_delay-0.5s.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 22,
+						"h": 32
+					},
+					"spriteSourceSize": {
+						"x": 2,
+						"y": 9,
+						"w": 18,
+						"h": 23
+					},
+					"frame": {
+						"x": 21,
+						"y": 1,
+						"w": 18,
+						"h": 23
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fddc069b80a1dc560dd4046d65309162:986a2a7273e74c2a396f0241fc0c9e16:2a2bda383a49333b453c6ea98252ea20$"
+	}
+}

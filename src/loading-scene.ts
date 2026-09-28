@@ -386,7 +386,7 @@ export class LoadingScene extends SceneBase {
       frameHeight: 64,
     });
 
-    this.load.spritesheet("apricorn_tree_hisui", "images/plant-tree/berry-tree-hisui-apricorn.png", {
+    this.load.spritesheet("apricorn_tree_brown", "images/plant-tree/berry-tree-brown-apricorn.png", {
       frameWidth: 32,
       frameHeight: 64,
     });
