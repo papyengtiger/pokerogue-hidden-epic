@@ -135,20 +135,6 @@ export class TrapPhase extends Phase {
     }
   }
 
-  private async returnToTrapChoice(reward: TrapReward): Promise<void> {
-    await globalScene.ui.setMode(UiMode.MESSAGE);
-
-    globalScene.ui.showText(
-      "함정을 발견했다!\n행동을 선택해 주세요.",
-      null,
-      () => {
-        this.openTrapChoiceMenu(reward);
-      },
-      null,
-      true,
-    );
-  }
-
   private async openDisarmConfirm(reward: TrapReward): Promise<void> {
     await globalScene.ui.setMode(UiMode.MESSAGE);
 

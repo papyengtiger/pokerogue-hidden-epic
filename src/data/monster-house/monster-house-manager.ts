@@ -91,7 +91,6 @@ export class MonsterHouseManager {
 
   private heldItemsGranted = false;
 
-  private heldItemsGranted = false;
   private escaped = false;
   private clearRewardGranted = false;
 
@@ -139,8 +138,6 @@ export class MonsterHouseManager {
       bossPokemonId: this.bossPokemonId,
 
       rank: this.rank,
-
-      heldItemsGranted: this.heldItemsGranted,
 
       heldItemsGranted: this.heldItemsGranted,
 
@@ -673,21 +670,6 @@ export class MonsterHouseManager {
   private getPartyMarkEncounterBonus(): number {
     const party = globalScene.getPlayerParty?.() ?? [];
 
-    const bonus = 0;
-
-    for (const pokemon of party) {
-      if (!pokemon) {
-      }
-
-      // 여기서 pokemon.mark의 등급에 따라 보너스 계산
-    }
-
-    return bonus;
-  }
-
-  private getPartyMarkEncounterBonus(): number {
-    const party = globalScene.getPlayerParty?.() ?? [];
-
     let bonus = 0;
 
     for (const pokemon of party) {
@@ -1049,10 +1031,6 @@ export class MonsterHouseManager {
 
   public getAliveMembers(): any[] {
     return this.members.filter(pokemon => pokemon && !pokemon.isFainted());
-  }
-
-  public getBossPokemonId(): number | null {
-    return this.bossPokemonId;
   }
 
   public isBossPokemon(pokemon: any): boolean {
