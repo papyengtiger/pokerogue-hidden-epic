@@ -37,23 +37,30 @@ export default defineConfig(({ mode, command }) => {
   const envPort = Number(loadEnv(mode, process.cwd()).VITE_PORT);
 
   return {
-    ...defaultConfig,
-    base: "",
-    publicDir: command === "serve" ? "assets" : false,
-    esbuild: {
-      pure: mode === "production" ? ["console.log"] : [],
-      keepNames: true,
-    },
-    server: {
-  port: Number.isNaN(envPort) ? 8000 : envPort,
-  ...(mode === "development"
-    ? {
-        https: {
-          cert: fs.readFileSync("./certs/hidden-epic.pem"),
-          key: fs.readFileSync("./certs/hidden-epic-key.pem"),
-        },
-      }
-    : {}),
-},
+  ...defaultConfig,
+  base: "",
+  publicDir: command === "serve" ? "assets" : false,
+  esbuild: {
+    pure: mode === "production" ? ["console.log"] : [],
+    keepNames: true,
+  },
+
+  server: {
+    port: Number.isNaN(envPort) ? 8000 : envPort,
+    ...(mode === "development"
+      ? {
+          https: {
+            cert: fs.readFileSync("./certs/hidden-epic.pem"),
+            key: fs.readFileSync("./certs/hidden-epic-key.pem"),
+          },
+        }
+      : {}),
+  },
+
+  preview: {
+    allowedHosts: [
+      "pokerogue-hidden-epic-production.up.railway.app",
+    ],
+  },
   };
 });
