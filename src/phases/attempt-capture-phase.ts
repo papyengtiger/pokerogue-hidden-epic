@@ -21,7 +21,6 @@ import { ChallengeType } from "#enums/challenge-type";
 import { EggTier } from "#enums/egg-type";
 import type { PokeballType } from "#enums/pokeball";
 import { StatusEffect } from "#enums/status-effect";
-import { SwitchType } from "#enums/switch-type";
 import { UiMode } from "#enums/ui-mode";
 import { VariantTier } from "#enums/variant-tier";
 import { addPokeballCaptureStars, addPokeballOpenParticles } from "#field/anims";
@@ -177,7 +176,11 @@ export class AttemptCapturePhase extends PokemonPhase {
 
     globalScene.playSound(isCritical ? "se/crit_throw" : "se/pb_throw");
     globalScene.time.delayedCall(300, () => {
-      globalScene.field.moveBelow(this.pokeball as Phaser.GameObjects.GameObject, pokemon);
+      const fieldList = globalScene.field.list;
+
+      if (fieldList.includes(this.pokeball) && fieldList.includes(pokemon)) {
+        globalScene.field.moveBelow(this.pokeball as Phaser.GameObjects.GameObject, pokemon);
+      }
     });
 
     globalScene.tweens.add({
@@ -382,6 +385,11 @@ export class AttemptCapturePhase extends PokemonPhase {
       }),
       null,
       () => {
+        console.log("[CAPTURE_MESSAGE_CALLBACK]", {
+          pokemon: pokemon.getName(),
+          monsterHouse: monsterHouseManager.isActive(),
+        });
+
         const end = () => {
           if (monsterHouseManager.isActive()) {
             monsterHouseManager.registerEnemyCaptured();
@@ -408,24 +416,8 @@ export class AttemptCapturePhase extends PokemonPhase {
               );
 
             if (hasReservePartyMember) {
-              /*
-               * 중간 포획에서는 VictoryPhase 전체를 호출하지 않는다.
-               * VictoryPhase는 일반 전투 종료 판정까지 포함할 수 있어
-               * 몬스터소굴 연속전투를 끊을 수 있다.
-               *
-               * 대신 포획 EXP만 직접 지급하고 다음 소굴 개체를 즉시 소환한다.
-               */
               const expValue = pokemon.getExpValue();
               globalScene.applyPartyExp(expValue, true);
-
-              globalScene.phaseManager.unshiftNew(
-                "SwitchSummonPhase",
-                SwitchType.SWITCH,
-                this.fieldIndex,
-                -1,
-                false,
-                false,
-              );
 
               console.log("[MONSTER_HOUSE_CAPTURE_CONTINUE]", {
                 pokemon: pokemon.getName(),
@@ -473,6 +465,12 @@ export class AttemptCapturePhase extends PokemonPhase {
         }
 
         const addToParty = (slotIndex?: number) => {
+          console.log("[CAPTURE_ADD_TO_PARTY]", {
+            pokemon: pokemon.getName(),
+            slotIndex,
+            monsterHouse: monsterHouseManager.isActive(),
+          });
+
           const newPokemon = pokemon.addToParty(this.pokeballType, slotIndex);
 
           const modifiers = globalScene.findModifiers(
@@ -521,12 +519,37 @@ export class AttemptCapturePhase extends PokemonPhase {
             removePokemon();
 
             if (newPokemon) {
-              newPokemon.leaveField(true, true, false);
+  newPokemon.leaveField(true, true, false);
 
-              newPokemon.loadAssets().then(end);
-            } else {
-              end();
-            }
+  newPokemon
+    .loadAssets()
+    .then(() => {
+      console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
+        pokemon: pokemon.getName(),
+        pokemonId: pokemon.id,
+      });
+
+      end();
+    })
+    .catch(error => {
+      console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
+        pokemon: pokemon.getName(),
+        pokemonId: pokemon.id,
+        error,
+      });
+
+      /*
+       * 에셋 로딩 실패 때문에 포획 Phase 자체가
+       * 영원히 끝나지 않는 것을 방지한다.
+       *
+       * 에셋은 이후 파티 UI 등에서 다시 로딩될 수 있으므로
+       * 전투 진행을 막지는 않는다.
+       */
+      end();
+    });
+} else {
+  end();
+}
           });
         };
 

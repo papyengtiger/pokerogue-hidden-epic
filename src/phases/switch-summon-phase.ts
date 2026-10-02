@@ -137,25 +137,33 @@ export class SwitchSummonPhase extends SummonPhase {
       }
     }
     if (!this.player) {
-      if (this.slotIndex === -1) {
-        const isKecleonTheftBattle = kecleonShopManager.isTheftBattleActive();
+      const isKecleonTheftBattle = kecleonShopManager.isTheftBattleActive();
+      const isMonsterHouse = monsterHouseManager.isActive();
 
-        const isMonsterHouse = monsterHouseManager.isActive();
+      const selectedEnemy = this.slotIndex >= 0 ? globalScene.getEnemyParty()[this.slotIndex] : undefined;
 
+      const needsMonsterHouseReselect =
+        isMonsterHouse
+        && (this.slotIndex === -1
+          || !selectedEnemy
+          || selectedEnemy.isFainted()
+          || selectedEnemy.isOnField()
+          || (!monsterHouseManager.isBossReleased() && monsterHouseManager.isBossPokemon(selectedEnemy)));
+
+      if (this.slotIndex === -1 || needsMonsterHouseReselect) {
         if (isKecleonTheftBattle) {
           this.slotIndex = globalScene.getEnemyParty().findIndex(p => !p.isFainted() && !p.isOnField());
         } else if (isMonsterHouse) {
-          const bossIndex = monsterHouseManager.getBossIndex();
-
           const bossReleased = monsterHouseManager.isBossReleased();
 
           this.slotIndex = globalScene
             .getEnemyParty()
-            .findIndex((p, index) => !p.isFainted() && !p.isOnField() && (bossReleased || index !== bossIndex));
+            .findIndex(
+              p => !p.isFainted() && !p.isOnField() && (bossReleased || !monsterHouseManager.isBossPokemon(p)),
+            );
 
           console.log("[MONSTER_HOUSE_NEXT_SUMMON]", {
             slotIndex: this.slotIndex,
-            bossIndex,
             bossReleased,
             remaining: monsterHouseManager.getRemainingEnemies(),
           });
@@ -167,10 +175,6 @@ export class SwitchSummonPhase extends SummonPhase {
             ) ?? -1;
         }
       }
-
-      const isKecleonTheftBattle = kecleonShopManager.isTheftBattleActive();
-
-      const isMonsterHouse = monsterHouseManager.isActive();
 
       if (this.slotIndex > -1 && !isKecleonTheftBattle && !isMonsterHouse) {
         this.showEnemyTrainer(this.fieldIndex % 2 ? TrainerSlot.TRAINER_PARTNER : TrainerSlot.TRAINER);
