@@ -179,21 +179,62 @@ export class MonsterHouseCaptureTargetPhase extends Phase {
   false,
 );
 
-globalScene.phaseManager.unshiftNew(
-  "MonsterHouseCaptureTargetPhase",
-  this.pokemonId,
-  this.pokeballType,
-);
+const waitForCaptureTarget = (attempt = 0): void => {
+  const captureTarget = monsterHouseManager
+    .getMembers()
+    .find(pokemon => pokemon?.id === this.pokemonId) as EnemyPokemon | undefined;
 
-    console.log("[MONSTER_HOUSE_CAPTURE_TARGET_QUEUED]", {
-      pokemonId: target.id,
-      pokemon: target.name,
-      targetPartyIndex,
-      pokeballType: this.pokeballType,
-      previousActivePokemonId: activeEnemy?.id ?? null,
-      previousActivePokemon: activeEnemy?.name ?? null,
+  if (
+    captureTarget
+    && captureTarget.isOnField()
+    && captureTarget.isActive(true)
+    && !captureTarget.isFainted()
+  ) {
+    console.log("[MONSTER_HOUSE_CAPTURE_TARGET_READY]", {
+      pokemonId: captureTarget.id,
+      pokemon: captureTarget.getName?.() ?? captureTarget.name,
+      attempt,
     });
 
-    this.end();
+    globalScene.phaseManager.unshiftNew(
+      "AttemptCapturePhase",
+      0,
+      this.pokeballType,
+      this.pokemonId,
+    );
+
+    return;
+  }
+
+  if (attempt >= 30) {
+    console.error("[MONSTER_HOUSE_CAPTURE_TARGET_READY_TIMEOUT]", {
+      pokemonId: this.pokemonId,
+      pokemon: captureTarget?.getName?.() ?? captureTarget?.name,
+      onField: captureTarget?.isOnField?.(),
+      active: captureTarget?.isActive?.(true),
+    });
+
+    return;
+  }
+
+  globalScene.time.delayedCall(100, () => {
+    waitForCaptureTarget(attempt + 1);
+  });
+};
+
+globalScene.time.delayedCall(100, () => {
+  waitForCaptureTarget();
+});
+
+console.log("[MONSTER_HOUSE_CAPTURE_TARGET_QUEUED]", {
+  pokemonId: target.id,
+  pokemon: target.name,
+  targetPartyIndex,
+  pokeballType: this.pokeballType,
+  previousActivePokemonId: activeEnemy?.id ?? null,
+  previousActivePokemon: activeEnemy?.name ?? null,
+});
+
+this.end();
   }
 }
