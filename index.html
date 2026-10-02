@@ -44,24 +44,53 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<link rel="stylesheet" type="text/css" href="./index.css" />
 	<link rel="manifest" href="./manifest.webmanifest">
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker.register("./service-worker.js").then(
-          function (registration) {
-            console.log("ServiceWorker registration successful");
-          },
-          function (err) {
-            console.log("ServiceWorker registration failed: ", err);
-          },
-        );
-      });
-    }
+  if ("serviceWorker" in navigator) {
+    let refreshing = false;
 
-    window.addEventListener('beforeinstallprompt', e => {
-      // Prevent invasive install prompt (users are still able to install as an app)
-      e.preventDefault();
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) {
+        return;
+      }
+
+      refreshing = true;
+      window.location.reload();
     });
-  </script>
+
+    window.addEventListener("load", async () => {
+      try {
+        const registration = await navigator.serviceWorker.register(
+          "./service-worker.js",
+          {
+            updateViaCache: "none",
+          }
+        );
+
+        console.log("Service Worker registered");
+
+        await registration.update();
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+
+          if (!newWorker) {
+            return;
+          }
+
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "activated"
+              && navigator.serviceWorker.controller
+            ) {
+              console.log("New Service Worker activated");
+            }
+          });
+        });
+      } catch (error) {
+        console.error("Service Worker registration failed:", error);
+      }
+    });
+  }
+</script>
 </head>
 
 <body>
@@ -148,16 +177,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 	</div>
 	        <script type="module" src="./src/main.ts"></script>
-        <script src="./src/touch-controls.ts" type="module"></script>
-
-        <script>
-                if ("serviceWorker" in navigator) {
-                        window.addEventListener("load", () => {
-                                navigator.serviceWorker.register("./service-worker.js")
-                                        .then(() => console.log("Service Worker registered"))
-                                        .catch(error => console.error("Service Worker registration failed:", error));
-                        });
-                }
-        </script>
+<script src="./src/touch-controls.ts" type="module"></script>
 </body>
 </html>
