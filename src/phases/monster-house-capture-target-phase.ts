@@ -169,7 +169,6 @@ export class MonsterHouseCaptureTargetPhase extends Phase {
      * targetPartyIndex를 직접 전달하므로
      * SwitchSummonPhase의 slotIndex === -1 자동 탐색을 사용하지 않는다.
      */
-    globalScene.phaseManager.unshiftNew("AttemptCapturePhase", 0, this.pokeballType, this.pokemonId);
 
     globalScene.phaseManager.unshiftNew("SwitchSummonPhase", SwitchType.SWITCH, 0, targetPartyIndex, false, false);
 

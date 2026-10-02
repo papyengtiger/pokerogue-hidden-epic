@@ -10,6 +10,7 @@ import { ArenaTagSide } from "#enums/arena-tag-side";
 import { Command } from "#enums/command";
 import { MoveId } from "#enums/move-id";
 import { Stat } from "#enums/stat";
+import { PokeballType } from "#enums/pokeball";
 import { SwitchType } from "#enums/switch-type";
 import { TrainerSlot } from "#enums/trainer-slot";
 import type { Pokemon } from "#field/pokemon";
@@ -28,6 +29,8 @@ export class SwitchSummonPhase extends SummonPhase {
   private lastPokemon: Pokemon;
   private skipOnEnd = false;
 
+  private readonly capturePokeballType?: PokeballType;
+  private readonly capturePokemonId?: number;
   /**
    * Constructor for creating a new SwitchSummonPhase
    * @param switchType - The type of switch behavior
@@ -36,13 +39,24 @@ export class SwitchSummonPhase extends SummonPhase {
    * @param doReturn - Whether to render "comeback" dialogue
    * @param player - Whether the switch came from the player or enemy; default `true`
    */
-  constructor(switchType: SwitchType, fieldIndex: number, slotIndex: number, doReturn: boolean, player = true) {
-    super(fieldIndex, player);
+  constructor(
+  switchType: SwitchType,
+  fieldIndex: number,
+  slotIndex: number,
+  doReturn: boolean,
+  player = true,
+  capturePokeballType?: PokeballType,
+  capturePokemonId?: number,
+) {
+  super(fieldIndex, player);
 
-    this.switchType = switchType;
-    this.slotIndex = slotIndex;
-    this.doReturn = doReturn;
-  }
+  this.switchType = switchType;
+  this.slotIndex = slotIndex;
+  this.doReturn = doReturn;
+
+  this.capturePokeballType = capturePokeballType;
+  this.capturePokemonId = capturePokemonId;
+}
 
   start(): void {
     super.start();
@@ -123,13 +137,15 @@ export class SwitchSummonPhase extends SummonPhase {
 
         // ✅ 2) 그 다음 교체(재삽입)
         globalScene.phaseManager.unshiftNew(
-          "SwitchSummonPhase",
-          this.switchType,
-          this.fieldIndex,
-          this.slotIndex,
-          this.doReturn,
-          this.player,
-        );
+  "SwitchSummonPhase",
+  this.switchType,
+  this.fieldIndex,
+  this.slotIndex,
+  this.doReturn,
+  this.player,
+  this.capturePokeballType,
+  this.capturePokemonId,
+);
 
         this.skipOnEnd = true;
         super.end();
@@ -443,6 +459,44 @@ export class SwitchSummonPhase extends SummonPhase {
     globalScene.triggerPokemonFormChange(pokemon, SpeciesFormChangeActiveTrigger, true);
     // Reverts to weather-based forms when weather suppressors (Cloud Nine/Air Lock) are switched out
     globalScene.arena.triggerWeatherBasedFormChanges(pokemon);
+    if (
+  monsterHouseManager.isActive()
+  && !this.player
+  && this.capturePokeballType !== undefined
+  && this.capturePokemonId !== undefined
+) {
+  const captureTarget = globalScene
+    .getEnemyParty()
+    .find(p => p.id === this.capturePokemonId);
+
+  console.log("[MONSTER_HOUSE_CAPTURE_AFTER_SUMMON]", {
+    pokemonId: this.capturePokemonId,
+    pokemon: captureTarget?.getName?.() ?? captureTarget?.name,
+    onField: captureTarget?.isOnField?.(),
+    active: captureTarget?.isActive?.(true),
+  });
+
+  if (
+    captureTarget
+    && captureTarget.isOnField()
+    && captureTarget.isActive(true)
+    && !captureTarget.isFainted()
+  ) {
+    globalScene.phaseManager.unshiftNew(
+      "AttemptCapturePhase",
+      0,
+      this.capturePokeballType,
+      this.capturePokemonId,
+    );
+  } else {
+    console.error("[MONSTER_HOUSE_CAPTURE_AFTER_SUMMON_INVALID]", {
+      pokemonId: this.capturePokemonId,
+      onField: captureTarget?.isOnField?.(),
+      active: captureTarget?.isActive?.(true),
+      fainted: captureTarget?.isFainted?.(),
+    });
+  }
+}
   }
 
   queuePostSummon(): void {
