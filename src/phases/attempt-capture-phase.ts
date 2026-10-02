@@ -36,6 +36,48 @@ import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder } from "#utils/common";
 import i18next from "i18next";
 
+function mobileDebug(message: string, data?: unknown): void {
+  const text =
+    `[${new Date().toLocaleTimeString()}] ${message}`
+    + (data !== undefined ? `\n${JSON.stringify(data)}` : "");
+
+  console.log(message, data ?? "");
+
+  let box = document.getElementById("mobile-debug-box");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "mobile-debug-box";
+
+    Object.assign(box.style, {
+      position: "fixed",
+      left: "4px",
+      top: "4px",
+      width: "calc(100vw - 8px)",
+      maxHeight: "45vh",
+      overflow: "auto",
+      zIndex: "999999",
+      background: "rgba(0, 0, 0, 0.85)",
+      color: "white",
+      fontSize: "11px",
+      fontFamily: "monospace",
+      whiteSpace: "pre-wrap",
+      padding: "6px",
+      pointerEvents: "none",
+    });
+
+    document.body.appendChild(box);
+  }
+
+  box.textContent += `${text}\n\n`;
+  box.scrollTop = box.scrollHeight;
+
+  try {
+    localStorage.setItem("hiddenEpicCaptureDebug", box.textContent ?? "");
+  } catch {
+    // 무시
+  }
+}
 // TODO: Refactor and split up to allow for overriding capture chance
 // TODO: Refactor and split up to allow for overriding capture chance
 export class AttemptCapturePhase extends PokemonPhase {
@@ -75,6 +117,13 @@ export class AttemptCapturePhase extends PokemonPhase {
 
     const pokemon = this.getCaptureTarget();
 
+    mobileDebug("1. AttemptCapture start", {
+  pokemonId: pokemon?.id,
+  name: pokemon?.getName?.() ?? pokemon?.name,
+  onField: pokemon?.isOnField?.(),
+  active: pokemon?.isActive?.(true),
+  hp: pokemon?.hp,
+});
     // 미스터리몬스터는 포획 불가
     if (pokemon.isMysteryMonster()) {
       globalScene.ui.showText("미스터리몬스터는 포획할 수 없다!", null, () => this.end(), 1500, true);
@@ -190,6 +239,7 @@ export class AttemptCapturePhase extends PokemonPhase {
       y: { value: 16 + fpOffset[1], ease: "Cubic.easeOut" },
       duration: 500,
       onComplete: () => {
+        mobileDebug("4. Pokemon entered ball");
         // Ball opens
         this.pokeball.setTexture("pb", `${pokeballAtlasKey}_opening`);
         globalScene.time.delayedCall(17, () => this.pokeball.setTexture("pb", `${pokeballAtlasKey}_open`));
@@ -304,6 +354,15 @@ export class AttemptCapturePhase extends PokemonPhase {
   failCatch(_shakeCount: number) {
     const pokemon = this.getCaptureTarget();
 
+    mobileDebug("2. Before pokeball animation", {
+  x: pokemon.x,
+  y: pokemon.y,
+  visible: pokemon.visible,
+  onField: pokemon.isOnField?.(),
+  active: pokemon.isActive?.(true),
+});
+
+const fpOffset = pokemon.getFieldPositionOffset();
     globalScene.playSound("se/pb_rel");
     pokemon.setY(this.originalY);
     if (pokemon.status?.effect !== StatusEffect.SLEEP) {
@@ -336,6 +395,36 @@ export class AttemptCapturePhase extends PokemonPhase {
 
   catch() {
     const pokemon = this.getCaptureTarget();
+
+mobileDebug("5. catch() reached", {
+    pokemonId: pokemon.id,
+    name: pokemon.getName?.() ?? pokemon.name,
+  });
+// 몬스터소굴 예비 개체가 실제 필드 준비를 마칠 때까지 대기
+if (
+  monsterHouseManager.isActive()
+  && this.targetPokemonId !== undefined
+  && (!pokemon.isOnField() || !pokemon.isActive(true))
+) {
+  console.warn("[MONSTER_HOUSE_CAPTURE_WAIT_FOR_TARGET]", {
+    pokemonId: pokemon.id,
+    pokemon: pokemon.getName?.() ?? pokemon.name,
+    onField: pokemon.isOnField?.(),
+    active: pokemon.isActive?.(true),
+  });
+
+  globalScene.time.delayedCall(250, () => {
+    globalScene.phaseManager.unshiftNew(
+      "AttemptCapturePhase",
+      0,
+      this.pokeballType,
+      this.targetPokemonId,
+    );
+  });
+
+  this.end();
+  return;
+}
 
     if (pokemon.isMysteryMonster()) {
       this.removePb();
@@ -385,6 +474,7 @@ export class AttemptCapturePhase extends PokemonPhase {
       }),
       null,
       () => {
+        mobileDebug("6. Capture message callback");
         console.log("[CAPTURE_MESSAGE_CALLBACK]", {
           pokemon: pokemon.getName(),
           monsterHouse: monsterHouseManager.isActive(),
@@ -465,6 +555,10 @@ export class AttemptCapturePhase extends PokemonPhase {
         }
 
         const addToParty = (slotIndex?: number) => {
+          mobileDebug("7. addToParty()", {
+  pokemon: pokemon.getName(),
+  slotIndex,
+});
           console.log("[CAPTURE_ADD_TO_PARTY]", {
             pokemon: pokemon.getName(),
             slotIndex,
