@@ -37,6 +37,45 @@ import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder } from "#utils/common";
 import i18next from "i18next";
 
+
+function mobileDebug(message: string, data?: unknown): void {
+  const text =
+    `[${new Date().toLocaleTimeString()}] ${message}`
+    + (data !== undefined ? `\n${JSON.stringify(data)}` : "");
+
+  console.log(message, data ?? "");
+
+  let box = document.getElementById("mobile-debug-box");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "mobile-debug-box";
+
+    Object.assign(box.style, {
+      position: "fixed",
+      left: "4px",
+      top: "4px",
+      width: "calc(100vw - 8px)",
+      maxHeight: "45vh",
+      overflow: "auto",
+      zIndex: "999999",
+      background: "rgba(0, 0, 0, 0.85)",
+      color: "white",
+      fontSize: "11px",
+      fontFamily: "monospace",
+      whiteSpace: "pre-wrap",
+      padding: "6px",
+      pointerEvents: "none",
+    });
+
+    document.body.appendChild(box);
+  }
+
+  box.textContent += `${text}\n\n`;
+  box.scrollTop = box.scrollHeight;
+}
+
+
 // TODO: Refactor and split up to allow for overriding capture chance
 // TODO: Refactor and split up to allow for overriding capture chance
 export class AttemptCapturePhase extends PokemonPhase {
@@ -510,10 +549,19 @@ console.log("[CAPTURE_ADD_TO_PARTY]", {
 
           const newPokemon = pokemon.addToParty(this.pokeballType, slotIndex);
 
+          mobileDebug("8. addToParty returned", {
+            pokemon: pokemon.getName(),
+            newPokemonCreated: !!newPokemon,
+          });
+
           const modifiers = globalScene.findModifiers(
             m => m instanceof PokemonHeldItemModifier && m.pokemonId === pokemon.id,
             false,
           ) as PokemonHeldItemModifier[];
+
+          mobileDebug("9. Before modifier transfer", {
+            modifierCount: modifiers.length,
+          });
 
           // 포획한 포켓몬의 지닌도구 의뢰 판정
           for (const modifier of modifiers) {
@@ -550,43 +598,64 @@ console.log("[CAPTURE_ADD_TO_PARTY]", {
           }
 
           // 실제 지닌도구를 플레이어 쪽으로 이전
-          Promise.all(modifiers.map(m => globalScene.addModifier(m, true))).then(() => {
-            globalScene.updateModifiers(true);
+          Promise.all(modifiers.map(m => globalScene.addModifier(m, true)))
+            .then(() => {
+              mobileDebug("10. Modifier transfer finished");
 
-            removePokemon();
+              globalScene.updateModifiers(true);
 
-            if (newPokemon) {
-  newPokemon.leaveField(true, true, false);
+              removePokemon();
 
-  newPokemon
-    .loadAssets()
-    .then(() => {
-      console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
-        pokemon: pokemon.getName(),
-        pokemonId: pokemon.id,
-      });
+              if (newPokemon) {
+                newPokemon.leaveField(true, true, false);
 
-      end();
-    })
-    .catch(error => {
-      console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
-        pokemon: pokemon.getName(),
-        pokemonId: pokemon.id,
-        error,
-      });
+                mobileDebug("11. Before newPokemon.loadAssets", {
+                  pokemon: pokemon.getName(),
+                  pokemonId: pokemon.id,
+                });
 
-      /*
-       * 에셋 로딩 실패 때문에 포획 Phase 자체가
-       * 영원히 끝나지 않는 것을 방지한다.
-       *
-       * 에셋은 이후 파티 UI 등에서 다시 로딩될 수 있으므로
-       * 전투 진행을 막지는 않는다.
-       */
-      end();
-    });
-} else {
-  end();
-}
+                newPokemon
+                  .loadAssets()
+                  .then(() => {
+                    mobileDebug("12. newPokemon.loadAssets finished", {
+                      pokemon: pokemon.getName(),
+                      pokemonId: pokemon.id,
+                    });
+
+                    console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
+                      pokemon: pokemon.getName(),
+                      pokemonId: pokemon.id,
+                    });
+
+                    end();
+                  })
+                  .catch(error => {
+                    mobileDebug("12. newPokemon.loadAssets failed", {
+                      pokemon: pokemon.getName(),
+                      pokemonId: pokemon.id,
+                      error: String(error),
+                    });
+
+                    console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
+                      pokemon: pokemon.getName(),
+                      pokemonId: pokemon.id,
+                      error,
+                    });
+
+                    end();
+                  });
+              } else {
+                mobileDebug("11. No newPokemon; calling end()");
+                end();
+              }
+            })
+            .catch(error => {
+              mobileDebug("10. Modifier transfer failed", {
+                error: String(error),
+              });
+
+              console.error("[CAPTURE_MODIFIER_TRANSFER_FAILED]", error);
+            });
           });
         };
 
