@@ -21,6 +21,7 @@ import { ChallengeType } from "#enums/challenge-type";
 import { EggTier } from "#enums/egg-type";
 import type { PokeballType } from "#enums/pokeball";
 import { StatusEffect } from "#enums/status-effect";
+import { SwitchType } from "#enums/switch-type";
 import { UiMode } from "#enums/ui-mode";
 import { VariantTier } from "#enums/variant-tier";
 import { addPokeballCaptureStars, addPokeballOpenParticles } from "#field/anims";
@@ -36,48 +37,6 @@ import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder } from "#utils/common";
 import i18next from "i18next";
 
-function mobileDebug(message: string, data?: unknown): void {
-  const text =
-    `[${new Date().toLocaleTimeString()}] ${message}`
-    + (data !== undefined ? `\n${JSON.stringify(data)}` : "");
-
-  console.log(message, data ?? "");
-
-  let box = document.getElementById("mobile-debug-box");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "mobile-debug-box";
-
-    Object.assign(box.style, {
-      position: "fixed",
-      left: "4px",
-      top: "4px",
-      width: "calc(100vw - 8px)",
-      maxHeight: "45vh",
-      overflow: "auto",
-      zIndex: "999999",
-      background: "rgba(0, 0, 0, 0.85)",
-      color: "white",
-      fontSize: "11px",
-      fontFamily: "monospace",
-      whiteSpace: "pre-wrap",
-      padding: "6px",
-      pointerEvents: "none",
-    });
-
-    document.body.appendChild(box);
-  }
-
-  box.textContent += `${text}\n\n`;
-  box.scrollTop = box.scrollHeight;
-
-  try {
-    localStorage.setItem("hiddenEpicCaptureDebug", box.textContent ?? "");
-  } catch {
-    // 무시
-  }
-}
 // TODO: Refactor and split up to allow for overriding capture chance
 // TODO: Refactor and split up to allow for overriding capture chance
 export class AttemptCapturePhase extends PokemonPhase {
@@ -116,15 +75,7 @@ export class AttemptCapturePhase extends PokemonPhase {
     });
 
     const pokemon = this.getCaptureTarget();
-
-    mobileDebug("1. AttemptCapture start", {
-  pokemonId: pokemon?.id,
-  name: pokemon?.getName?.() ?? pokemon?.name,
-  onField: pokemon?.isOnField?.(),
-  active: pokemon?.isActive?.(true),
-  hp: pokemon?.hp,
-});
-    // 미스터리몬스터는 포획 불가
+// 미스터리몬스터는 포획 불가
     if (pokemon.isMysteryMonster()) {
       globalScene.ui.showText("미스터리몬스터는 포획할 수 없다!", null, () => this.end(), 1500, true);
 
@@ -239,8 +190,7 @@ export class AttemptCapturePhase extends PokemonPhase {
       y: { value: 16 + fpOffset[1], ease: "Cubic.easeOut" },
       duration: 500,
       onComplete: () => {
-        mobileDebug("4. Pokemon entered ball");
-        // Ball opens
+// Ball opens
         this.pokeball.setTexture("pb", `${pokeballAtlasKey}_opening`);
         globalScene.time.delayedCall(17, () => this.pokeball.setTexture("pb", `${pokeballAtlasKey}_open`));
         globalScene.playSound("se/pb_rel");
@@ -353,17 +303,7 @@ export class AttemptCapturePhase extends PokemonPhase {
 
   failCatch(_shakeCount: number) {
     const pokemon = this.getCaptureTarget();
-
-    mobileDebug("2. Before pokeball animation", {
-  x: pokemon.x,
-  y: pokemon.y,
-  visible: pokemon.visible,
-  onField: pokemon.isOnField?.(),
-  active: pokemon.isActive?.(true),
-});
-
-const fpOffset = pokemon.getFieldPositionOffset();
-    globalScene.playSound("se/pb_rel");
+globalScene.playSound("se/pb_rel");
     pokemon.setY(this.originalY);
     if (pokemon.status?.effect !== StatusEffect.SLEEP) {
       pokemon.cry(pokemon.getHpRatio() > 0.25 ? undefined : { rate: 0.85 });
@@ -395,11 +335,6 @@ const fpOffset = pokemon.getFieldPositionOffset();
 
   catch() {
     const pokemon = this.getCaptureTarget();
-
-mobileDebug("5. catch() reached", {
-    pokemonId: pokemon.id,
-    name: pokemon.getName?.() ?? pokemon.name,
-  });
 // 몬스터소굴 예비 개체가 실제 필드 준비를 마칠 때까지 대기
 if (
   monsterHouseManager.isActive()
@@ -474,8 +409,7 @@ if (
       }),
       null,
       () => {
-        mobileDebug("6. Capture message callback");
-        console.log("[CAPTURE_MESSAGE_CALLBACK]", {
+console.log("[CAPTURE_MESSAGE_CALLBACK]", {
           pokemon: pokemon.getName(),
           monsterHouse: monsterHouseManager.isActive(),
         });
@@ -506,19 +440,32 @@ if (
               );
 
             if (hasReservePartyMember) {
-              const expValue = pokemon.getExpValue();
-              globalScene.applyPartyExp(expValue, true);
+  const expValue = pokemon.getExpValue();
+  globalScene.applyPartyExp(expValue, true);
 
-              console.log("[MONSTER_HOUSE_CAPTURE_CONTINUE]", {
-                pokemon: pokemon.getName(),
-                expValue,
-                remaining: monsterHouseManager.getRemainingEnemies(),
-                bossReleased,
-              });
-            } else {
-              // 우두머리까지 포획했거나 마지막 개체 처리 완료
-              globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
-            }
+  console.log("[MONSTER_HOUSE_CAPTURE_CONTINUE]", {
+    pokemon: pokemon.getName(),
+    expValue,
+    remaining: monsterHouseManager.getRemainingEnemies(),
+    bossReleased,
+  });
+
+  // 포획한 개체가 필드에서 사라졌으므로
+  // 다음 살아있는 소굴 개체를 필드에 소환한다.
+  globalScene.phaseManager.unshiftNew(
+    "SwitchSummonPhase",
+    SwitchType.SWITCH,
+    0,
+    -1,
+    false,
+    false,
+  );
+} else {
+  globalScene.phaseManager.unshiftNew(
+    "VictoryPhase",
+    this.battlerIndex,
+  );
+}
 
             console.log("[MONSTER_HOUSE_CAPTURE_FLOW]", {
               pokemon: pokemon.getName(),
@@ -555,11 +502,7 @@ if (
         }
 
         const addToParty = (slotIndex?: number) => {
-          mobileDebug("7. addToParty()", {
-  pokemon: pokemon.getName(),
-  slotIndex,
-});
-          console.log("[CAPTURE_ADD_TO_PARTY]", {
+console.log("[CAPTURE_ADD_TO_PARTY]", {
             pokemon: pokemon.getName(),
             slotIndex,
             monsterHouse: monsterHouseManager.isActive(),
