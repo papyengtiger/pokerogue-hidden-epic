@@ -38,44 +38,6 @@ import { BooleanHolder } from "#utils/common";
 import i18next from "i18next";
 
 
-function mobileDebug(message: string, data?: unknown): void {
-  const text =
-    `[${new Date().toLocaleTimeString()}] ${message}`
-    + (data !== undefined ? `\n${JSON.stringify(data)}` : "");
-
-  console.log(message, data ?? "");
-
-  let box = document.getElementById("mobile-debug-box");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "mobile-debug-box";
-
-    Object.assign(box.style, {
-      position: "fixed",
-      left: "4px",
-      top: "4px",
-      width: "calc(100vw - 8px)",
-      maxHeight: "45vh",
-      overflow: "auto",
-      zIndex: "999999",
-      background: "rgba(0, 0, 0, 0.85)",
-      color: "white",
-      fontSize: "11px",
-      fontFamily: "monospace",
-      whiteSpace: "pre-wrap",
-      padding: "6px",
-      pointerEvents: "none",
-    });
-
-    document.body.appendChild(box);
-  }
-
-  box.textContent += `${text}\n\n`;
-  box.scrollTop = box.scrollHeight;
-}
-
-
 // TODO: Refactor and split up to allow for overriding capture chance
 // TODO: Refactor and split up to allow for overriding capture chance
 export class AttemptCapturePhase extends PokemonPhase {
@@ -548,22 +510,11 @@ console.log("[CAPTURE_ADD_TO_PARTY]", {
           });
 
           const newPokemon = pokemon.addToParty(this.pokeballType, slotIndex);
-
-          mobileDebug("8. addToParty returned", {
-            pokemon: pokemon.getName(),
-            newPokemonCreated: !!newPokemon,
-          });
-
-          const modifiers = globalScene.findModifiers(
+const modifiers = globalScene.findModifiers(
             m => m instanceof PokemonHeldItemModifier && m.pokemonId === pokemon.id,
             false,
           ) as PokemonHeldItemModifier[];
-
-          mobileDebug("9. Before modifier transfer", {
-            modifierCount: modifiers.length,
-          });
-
-          // 포획한 포켓몬의 지닌도구 의뢰 판정
+// 포획한 포켓몬의 지닌도구 의뢰 판정
           for (const modifier of modifiers) {
             const itemId = modifier.type?.id;
 
@@ -600,29 +551,16 @@ console.log("[CAPTURE_ADD_TO_PARTY]", {
           // 실제 지닌도구를 플레이어 쪽으로 이전
           Promise.all(modifiers.map(m => globalScene.addModifier(m, true)))
             .then(() => {
-              mobileDebug("10. Modifier transfer finished");
-
-              globalScene.updateModifiers(true);
+globalScene.updateModifiers(true);
 
               removePokemon();
 
               if (newPokemon) {
                 newPokemon.leaveField(true, true, false);
-
-                mobileDebug("11. Before newPokemon.loadAssets", {
-                  pokemon: pokemon.getName(),
-                  pokemonId: pokemon.id,
-                });
-
-                newPokemon
+newPokemon
                   .loadAssets()
                   .then(() => {
-                    mobileDebug("12. newPokemon.loadAssets finished", {
-                      pokemon: pokemon.getName(),
-                      pokemonId: pokemon.id,
-                    });
-
-                    console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
+console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
                       pokemon: pokemon.getName(),
                       pokemonId: pokemon.id,
                     });
@@ -630,13 +568,7 @@ console.log("[CAPTURE_ADD_TO_PARTY]", {
                     end();
                   })
                   .catch(error => {
-                    mobileDebug("12. newPokemon.loadAssets failed", {
-                      pokemon: pokemon.getName(),
-                      pokemonId: pokemon.id,
-                      error: String(error),
-                    });
-
-                    console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
+console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
                       pokemon: pokemon.getName(),
                       pokemonId: pokemon.id,
                       error,
@@ -645,16 +577,11 @@ console.log("[CAPTURE_ADD_TO_PARTY]", {
                     end();
                   });
               } else {
-                mobileDebug("11. No newPokemon; calling end()");
-                end();
+end();
               }
             })
             .catch(error => {
-              mobileDebug("10. Modifier transfer failed", {
-                error: String(error),
-              });
-
-              console.error("[CAPTURE_MODIFIER_TRANSFER_FAILED]", error);
+console.error("[CAPTURE_MODIFIER_TRANSFER_FAILED]", error);
             });
           });
         };
