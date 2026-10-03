@@ -583,7 +583,6 @@ end();
             .catch(error => {
 console.error("[CAPTURE_MODIFIER_TRANSFER_FAILED]", error);
             });
-          });
         };
 
         const eggTier = getEggTierForSpecies(pokemon.species);
