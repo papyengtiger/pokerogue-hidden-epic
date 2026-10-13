@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "emma_old.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "emma_old.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2403ba6e13a3f6e2b4eb5792d14a2801:4954167786b40763d3b82bdf40063987:09cd0073dc2a64b633f5479873f05bb1$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "zisu.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "zisu.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d1f78a3cd04551db3a6117e562893c95:e9fb6b55189dbafb4881426223cb30f5:c73c4e5d83709d432cfd65fe396c59dc$"
+	}
+}

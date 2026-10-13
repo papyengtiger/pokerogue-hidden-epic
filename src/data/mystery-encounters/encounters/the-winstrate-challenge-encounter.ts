@@ -252,7 +252,7 @@ function endTrainerBattleAndShowDialogue(): Promise<void> {
 
 function getVictorTrainerConfig(): EnemyPartyConfig {
   return {
-    trainerType: TrainerType.VICTOR,
+    trainerType: TrainerType.VICTORY,
     pokemonConfigs: [
       {
         species: getPokemonSpecies(SpeciesId.SWELLOW),

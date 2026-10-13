@@ -280,15 +280,66 @@ export class SpeciesFormEvolution {
    * @param item {@linkcode EvolutionItem} optional, check if the evolution uses a certain item
    * @returns whether this evolution can apply to the Pokemon
    */
-  public validate(pokemon: Pokemon, forFusion = false, item?: EvolutionItem): boolean {
-    return (
-      pokemon.level >= this.level &&
-      // Check form key, using the fusion's form key if we're checking the fusion
-      (this.preFormKey == null || (forFusion ? pokemon.getFusionFormKey() : pokemon.getFormKey()) === this.preFormKey) &&
-      (this.condition == null || this.condition.conditionsFulfilled(pokemon, forFusion)) &&
-      ((item ?? EvolutionItem.NONE) === (this.item ?? EvolutionItem.NONE))
+  public validate(
+  pokemon: Pokemon,
+  forFusion = false,
+  item?: EvolutionItem,
+): boolean {
+  const companionTargetSpeciesId =
+    (pokemon as any).companionTargetEvolutionSpeciesId
+    ?? (pokemon as any).companionTargetSpeciesId;
+
+  const companionTargetFormKey =
+    (pokemon as any).companionTargetEvolutionFormKey;
+
+  // ========================================
+  // 동료 전용 목표 진화
+  // ========================================
+  const isCompanionTargetEvolution =
+    !forFusion
+    && companionTargetSpeciesId != null
+    && this.speciesId === companionTargetSpeciesId
+    && (
+      companionTargetFormKey == null
+      || this.evoFormKey === companionTargetFormKey
     );
-  }
+
+  return (
+    pokemon.level >= this.level
+
+    // 현재 폼 조건은 항상 확인
+    && (
+      this.preFormKey == null
+      || (
+        forFusion
+          ? pokemon.getFusionFormKey()
+          : pokemon.getFormKey()
+      ) === this.preFormKey
+    )
+
+    // 동료의 지정 최종진화라면
+    // 시간/날씨/기술/성별/친밀도 등의
+    // 외부 조건은 자동 만족 처리
+    && (
+      isCompanionTargetEvolution
+      || this.condition == null
+      || this.condition.conditionsFulfilled(
+        pokemon,
+        forFusion,
+      )
+    )
+
+    // 동료의 지정 최종진화는
+    // 진화의돌/연결의끈 등의 아이템도 자동 처리
+    && (
+      isCompanionTargetEvolution
+      || (
+        (item ?? EvolutionItem.NONE)
+        === (this.item ?? EvolutionItem.NONE)
+      )
+    )
+  );
+}
 
   /**
    * Checks if this evolution is item-based and any conditions for it are fulfilled

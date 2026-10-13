@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "ethan_back_pb.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 620,
+				"h": 113
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 35,
+						"y": 49,
+						"w": 88,
+						"h": 111
+					},
+					"frame": {
+						"x": 531,
+						"y": 1,
+						"w": 88,
+						"h": 111
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 25,
+						"y": 49,
+						"w": 120,
+						"h": 111
+					},
+					"frame": {
+						"x": 409,
+						"y": 1,
+						"w": 120,
+						"h": 111
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 5,
+						"y": 49,
+						"w": 126,
+						"h": 111
+					},
+					"frame": {
+						"x": 281,
+						"y": 1,
+						"w": 126,
+						"h": 111
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 13,
+						"y": 49,
+						"w": 138,
+						"h": 111
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 138,
+						"h": 111
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 15,
+						"y": 49,
+						"w": 138,
+						"h": 111
+					},
+					"frame": {
+						"x": 141,
+						"y": 1,
+						"w": 138,
+						"h": 111
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:efa3691c5e70dfcc10bfdf6f607573f6:0cc8413265328ea1fd91e68f7c7e44d7:17ba2b43149cb639a3cfb4e5c2d40ced$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dj_mary.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dj_mary.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:447f816941a5b0f9c4e1549bfb5c948a:9daf07de43f8926152af95117db26d72:954ec934d198d6b19b85c6ecdc10ddd9$"
+	}
+}

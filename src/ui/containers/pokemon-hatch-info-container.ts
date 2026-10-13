@@ -7,9 +7,9 @@ import type { EggHatchData } from "#data/egg-hatch-data";
 import { Gender } from "#data/gender";
 import { getMarkData } from "#data/mark";
 import { MarkId } from "#enums/mark-id";
-import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
 import { TextStyle } from "#enums/text-style";
+import { PokemonType } from "#enums/pokemon-type";
 import type { PlayerPokemon } from "#field/pokemon";
 import { addTextObject } from "#ui/text";
 import { padInt, rgbHexToRgba } from "#utils/common";
@@ -25,16 +25,13 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
   private currentPokemonSprite: Phaser.GameObjects.Sprite;
   private pokemonNumberText: Phaser.GameObjects.Text;
   private pokemonNameText: Phaser.GameObjects.Text;
-  private pokemonEggMovesContainer: Phaser.GameObjects.Container;
-  private pokemonEggMoveContainers: Phaser.GameObjects.Container[];
-  private pokemonEggMoveBgs: Phaser.GameObjects.NineSlice[];
-  private pokemonEggMoveLabels: Phaser.GameObjects.Text[];
   private pokemonHatchedIcon: Phaser.GameObjects.Sprite;
   private pokemonListContainer: Phaser.GameObjects.Container;
   private pokemonCandyIcon: Phaser.GameObjects.Sprite;
   private pokemonCandyOverlayIcon: Phaser.GameObjects.Sprite;
   private pokemonCandyCountText: Phaser.GameObjects.Text;
   private pokemonMarkText: Phaser.GameObjects.Text;
+
 
   constructor(listContainer: Phaser.GameObjects.Container, x = 115, y = 9) {
     super(x, y);
@@ -87,36 +84,38 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
     this.pokemonCandyCountText.setOrigin(0, 0);
     this.pokemonListContainer.add(this.pokemonCandyCountText);
 
-    // setup egg moves
-    this.pokemonEggMoveContainers = [];
-    this.pokemonEggMoveBgs = [];
-    this.pokemonEggMoveLabels = [];
-    this.pokemonEggMovesContainer = globalScene.add.container(0, 200);
-    this.pokemonEggMovesContainer.setVisible(false);
-    this.pokemonEggMovesContainer.setScale(0.5);
+    this.pokemonEggMoveContainer = globalScene.add.container(0, 0);
+this.pokemonEggMoveContainer.setScale(0.44);
+this.pokemonEggMoveContainer.setVisible(false);
 
-    for (let m = 0; m < 4; m++) {
-      const eggMoveContainer = globalScene.add.container(0, 0 + 6 * m);
+this.pokemonEggMoveBg = globalScene.add.nineslice(
+  70,
+  0,
+  "type_bgs",
+  "unknown",
+  92,
+  14,
+  2,
+  2,
+  2,
+  2,
+);
+this.pokemonEggMoveBg.setOrigin(1, 0);
 
-      const eggMoveBg = globalScene.add.nineslice(70, 0, "type_bgs", "unknown", 92, 14, 2, 2, 2, 2);
-      eggMoveBg.setOrigin(1, 0);
+this.pokemonEggMoveLabel = addTextObject(
+  70 - this.pokemonEggMoveBg.width / 2,
+  0,
+  "",
+  TextStyle.MOVE_LABEL,
+);
+this.pokemonEggMoveLabel.setOrigin(0.5, 0);
 
-      const eggMoveLabel = addTextObject(70 - eggMoveBg.width / 2, 0, "???", TextStyle.MOVE_LABEL);
-      eggMoveLabel.setOrigin(0.5, 0);
+this.pokemonEggMoveContainer.add([
+  this.pokemonEggMoveBg,
+  this.pokemonEggMoveLabel,
+]);
 
-      this.pokemonEggMoveBgs.push(eggMoveBg);
-      this.pokemonEggMoveLabels.push(eggMoveLabel);
-
-      eggMoveContainer.add(eggMoveBg);
-      eggMoveContainer.add(eggMoveLabel);
-      eggMoveContainer.setScale(0.44);
-
-      this.pokemonEggMoveContainers.push(eggMoveContainer);
-
-      this.pokemonEggMovesContainer.add(eggMoveContainer);
-    }
-
-    super.add(this.pokemonEggMoveContainers);
+super.add(this.pokemonEggMoveContainer);
   }
 
   /**
@@ -153,7 +152,6 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
    * @param hatchInfo The EggHatchData of the pokemon / new hatch to show
    */
   showHatchInfo(hatchInfo: EggHatchData) {
-    this.pokemonEggMovesContainer.setVisible(true);
 
     const pokemon = hatchInfo.pokemon;
     const species = pokemon.species;
@@ -180,23 +178,29 @@ export class PokemonHatchInfoContainer extends PokemonInfoContainer {
       this.pokemonNameText.setFontSize("64px").setText(species.name);
     }
 
-    const hasEggMoves = species && speciesEggMoves.hasOwnProperty(species.speciesId);
+    const rootSpeciesId = species.getRootSpeciesId();
+const eggMoveId =
+  speciesEggMoves[rootSpeciesId]?.[hatchInfo.eggMoveIndex];
 
-    for (let em = 0; em < 4; em++) {
-      const eggMove = hasEggMoves ? allMoves[speciesEggMoves[species.speciesId][em]] : null;
-      const eggMoveUnlocked = eggMove && globalScene.gameData.starterData[species.speciesId].eggMoves & Math.pow(2, em);
-      this.pokemonEggMoveBgs[em].setFrame(
-        PokemonType[eggMove ? eggMove.type : PokemonType.UNKNOWN].toString().toLowerCase(),
-      );
+const eggMove =
+  eggMoveId !== undefined
+    ? allMoves[eggMoveId]
+    : null;
 
-      this.pokemonEggMoveLabels[em].setText(eggMove && eggMoveUnlocked ? eggMove.name : "???");
-      if (!(eggMove && hatchInfo.starterDataEntryBeforeUpdate.eggMoves & Math.pow(2, em)) && eggMoveUnlocked) {
-        this.pokemonEggMoveLabels[em].setText("(+) " + eggMove.name);
-      }
-    }
+// 이번 부화로 새로 해금된 알기술만 표시
+if (eggMove && hatchInfo.eggMoveUnlocked) {
+  this.pokemonEggMoveBg.setFrame(
+    PokemonType[eggMove.type].toString().toLowerCase(),
+  );
 
+  this.pokemonEggMoveLabel.setText(`(+) ${eggMove.name}`);
+  this.pokemonEggMoveContainer.setVisible(true);
+} else {
+  // 이미 보유 중이던 알기술이 나온 경우에는 아무것도 표시하지 않음
+  this.pokemonEggMoveLabel.setText("");
+  this.pokemonEggMoveContainer.setVisible(false);
+}
     // will always have at least one egg move
-    this.pokemonEggMovesContainer.setVisible(true);
 
     if (species.speciesId === SpeciesId.MANAPHY || species.speciesId === SpeciesId.PHIONE) {
       this.pokemonHatchedIcon.setFrame("manaphy");

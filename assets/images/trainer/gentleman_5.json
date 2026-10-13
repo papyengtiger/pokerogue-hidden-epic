@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "gentleman_5.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "gentleman_5.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ce2d50fe8346edec803e974ac823a42a:03663c554fcc69a733c52115a3aa5cf4:07c6f08bc63f85322a0e53edb923ebda$"
+	}
+}

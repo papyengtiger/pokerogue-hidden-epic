@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "raifort.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "raifort.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:45db474f7edc45cbd4e1de0c2ae88414:4408b58eace4aa1850253b6e2ddd70ff:8bc139157f66ce9caba1c0881f72f276$"
+	}
+}

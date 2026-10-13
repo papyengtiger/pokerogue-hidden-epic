@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "juliana.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 64,
+				"h": 136
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "juliana.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 144
+					},
+					"spriteSourceSize": {
+						"x": 33,
+						"y": 8,
+						"w": 62,
+						"h": 134
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 134
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:27fb1a48a2e40518b38e564b04534112:d243dba12c90252420f3ac0aeb6d492d:60a54c6b269c52184d975c1c76b33af1$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ilima.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ilima.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:708353e88f5a23dee4799be32eac72c2:402480753ce5303e74061bef9d5dce57:f26110ffcad14469b682e6f77e3e5849$"
+	}
+}

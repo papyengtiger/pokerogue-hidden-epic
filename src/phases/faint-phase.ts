@@ -135,6 +135,12 @@ export class FaintPhase extends PokemonPhase {
   doFaint(): void {
     const pokemon = this.getPokemon();
 
+    const isCompanionPokemon =
+  pokemon.isPlayer()
+  && globalScene
+    .getCompanionParty()
+    .some(p => p.id === pokemon.id);
+
     // KO 카운트 기록 (라스트 리스펙트, 대장군 등에 사용)
     if (pokemon.isPlayer()) {
       globalScene.arena.playerFaints += 1;
@@ -237,35 +243,128 @@ export class FaintPhase extends PokemonPhase {
       }
     }
 
-    if (this.player) {
-      const battle = globalScene.currentBattle as any;
+    if (this.player && !isCompanionPokemon) {
+  const battle = globalScene.currentBattle as any;
 
-      if (battle?.isPracticeBattle && globalScene.getPlayerParty().every((p: any) => p.hp <= 0 || p.isFainted?.())) {
-        console.log("[PRACTICE_ALL_PLAYER_FAINTED]");
+  if (
+    battle?.isPracticeBattle
+    && globalScene
+      .getPlayerParty()
+      .every(
+        (p: any) =>
+          p.hp <= 0 || p.isFainted?.(),
+      )
+  ) {
+    console.log(
+      "[PRACTICE_ALL_PLAYER_FAINTED]",
+    );
 
-        this.end();
-        return;
-      }
+    this.end();
+    return;
+  }
 
-      const legalPlayerPokemon = globalScene.getPokemonAllowedInBattle();
-      const legalPlayerPartyPokemon = legalPlayerPokemon.filter(p => !p.isActive(true));
+  const legalPlayerPokemon =
+    globalScene.getPokemonAllowedInBattle();
 
-      if (legalPlayerPokemon.length === 0) {
-        globalScene.phaseManager.unshiftNew("GameOverPhase");
-      } else if (
-        globalScene.currentBattle.double
-        && legalPlayerPokemon.length === 1
-        && legalPlayerPartyPokemon.length === 0
-      ) {
-        globalScene.phaseManager.unshiftNew("ToggleDoublePositionPhase", true);
-      } else if (legalPlayerPartyPokemon.length > 0) {
-        globalScene.phaseManager.pushNew("SwitchPhase", SwitchType.SWITCH, this.fieldIndex, true, false);
-      }
+  const legalPlayerPartyPokemon =
+    legalPlayerPokemon.filter(
+      p => !p.isActive(true),
+    );
+
+  if (legalPlayerPokemon.length === 0) {
+    globalScene.phaseManager.unshiftNew(
+      "GameOverPhase",
+    );
+  } else if (
+    globalScene.currentBattle.double
+    && legalPlayerPokemon.length === 1
+    && legalPlayerPartyPokemon.length === 0
+  ) {
+    globalScene.phaseManager.unshiftNew(
+      "ToggleDoublePositionPhase",
+      true,
+    );
+  } else if (
+    legalPlayerPartyPokemon.length > 0
+  ) {
+    globalScene.phaseManager.pushNew(
+      "SwitchPhase",
+      SwitchType.SWITCH,
+      this.fieldIndex,
+      true,
+      false,
+    );
+  }
+  } else if (isCompanionPokemon) {
+    const companionParty =
+      globalScene.getCompanionParty();
+
+    const availableCompanions =
+      companionParty.filter(
+        p =>
+          p.id !== pokemon.id
+          && p.isAllowedInBattle()
+          && !p.isOnField(),
+      );
+
+    if (availableCompanions.length > 0) {
+      const nextPokemon =
+        availableCompanions[
+          globalScene.currentBattle.randSeedInt(
+            availableCompanions.length,
+          )
+        ];
+
+      const nextIndex =
+        companionParty.indexOf(nextPokemon);
+
+      // 현재 필드 동료는 companionParty[0]을 사용하므로
+      // 랜덤 선택된 포켓몬을 0번으로 이동
+      [
+        companionParty[0],
+        companionParty[nextIndex],
+      ] = [
+        companionParty[nextIndex],
+        companionParty[0],
+      ];
+
+      console.log(
+        "[COMPANION_RANDOM_REPLACEMENT]",
+        {
+          fainted: pokemon.getName(),
+          next: nextPokemon.getName(),
+          remaining:
+            availableCompanions.map(
+              p => p.getName(),
+            ),
+        },
+      );
+      globalScene.phaseManager.pushNew(
+  "SummonPhase",
+  0,
+  true,
+  false,
+  1,
+  true,
+);
     } else {
-      if (!(globalScene.currentBattle as any)?.isPracticeBattle) {
-        const isKecleonTheftBattle = kecleonShopManager.isTheftBattleActive();
+      console.log(
+        "[COMPANION_PARTY_EXHAUSTED]",
+        {
+          trainer:
+            globalScene.currentBattle
+              .companionTrainer
+              ?.getName(),
+        },
+      );
+    }
+  } else {
+    if (!(globalScene.currentBattle as any)?.isPracticeBattle) {
+      const isKecleonTheftBattle =
+        kecleonShopManager.isTheftBattleActive();
 
-        const isMonsterHouse = monsterHouseManager.isActive();
+      const isMonsterHouse =
+        monsterHouseManager.isActive();
 
         // ========================================
         // 미스터리타임 특수 미스터리언 격파
@@ -400,7 +499,9 @@ export class FaintPhase extends PokemonPhase {
         }
       }
 
-      const legalPlayerPokemon = globalScene.getPokemonAllowedInBattle();
+      if (!isCompanionPokemon) {
+  const legalPlayerPokemon =
+    globalScene.getPokemonAllowedInBattle();
       const legalPlayerPartyPokemon = legalPlayerPokemon.filter(p => !p.isActive(true));
 
       if (legalPlayerPokemon.length === 0) {
@@ -415,7 +516,7 @@ export class FaintPhase extends PokemonPhase {
         globalScene.phaseManager.pushNew("SwitchPhase", SwitchType.SWITCH, this.fieldIndex, true, false);
       }
     }
-
+  }
     // in double battles redirect potential moves off fainted pokemon
     const allyPokemon = pokemon.getAlly();
     if (globalScene.currentBattle.double && allyPokemon != null) {

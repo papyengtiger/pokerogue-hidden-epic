@@ -203,28 +203,49 @@ export abstract class PokemonSpeciesForm {
    * @param formIndex The form index to use, defaults to form for this species instance
    * @returns The id of the ability
    */
-  getPassiveAbility(formIndex?: number): AbilityId {
-    if (formIndex == null) {
-      formIndex = this.formIndex;
-    }
-    let starterSpeciesId = this.speciesId;
-    while (
-      !(starterSpeciesId in starterPassiveAbilities)
-      || !(formIndex in starterPassiveAbilities[starterSpeciesId])
-    ) {
-      if (pokemonPrevolutions.hasOwnProperty(starterSpeciesId)) {
-        starterSpeciesId = pokemonPrevolutions[starterSpeciesId];
-      } else {
-        // If we've reached the base species and still haven't found a matching ability, use form 0 if possible
-        if (0 in starterPassiveAbilities[starterSpeciesId]) {
-          return starterPassiveAbilities[starterSpeciesId][0];
-        }
-        console.log("No passive ability found for %s, using run away", this.speciesId);
-        return AbilityId.RUN_AWAY;
-      }
-    }
-    return starterPassiveAbilities[starterSpeciesId][formIndex];
+  getPassiveAbility(formIndex?: number, passiveIndex = 0): AbilityId {
+  if (formIndex == null) {
+    formIndex = this.formIndex;
   }
+
+  let starterSpeciesId = this.speciesId;
+
+  while (
+    !(starterSpeciesId in starterPassiveAbilities)
+    || !(formIndex in starterPassiveAbilities[starterSpeciesId])
+  ) {
+    if (pokemonPrevolutions.hasOwnProperty(starterSpeciesId)) {
+      starterSpeciesId = pokemonPrevolutions[starterSpeciesId];
+    } else {
+      // 폼 전용 패시브가 없으면 form 0 사용
+      if (0 in starterPassiveAbilities[starterSpeciesId]) {
+        const passive = starterPassiveAbilities[starterSpeciesId][0];
+
+        if (Array.isArray(passive)) {
+          return passive[passiveIndex] ?? passive[0];
+        }
+
+        return passive;
+      }
+
+      console.log(
+        "No passive ability found for %s, using run away",
+        this.speciesId,
+      );
+
+      return AbilityId.RUN_AWAY;
+    }
+  }
+
+  const passive =
+    starterPassiveAbilities[starterSpeciesId][formIndex];
+
+  if (Array.isArray(passive)) {
+    return passive[passiveIndex] ?? passive[0];
+  }
+
+  return passive;
+}
 
   getLevelMoves(): LevelMoves {
     if (

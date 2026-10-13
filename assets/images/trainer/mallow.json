@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mallow.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 47,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mallow.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 45,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 45,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 45,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f0860079b4011038db5c9a40a3693c49:97f2f15ee7949570105a5c43ef981ed7:8fd59db0283414ef78b33a302cc9302d$"
+	}
+}

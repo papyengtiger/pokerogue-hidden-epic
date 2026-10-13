@@ -6381,9 +6381,9 @@ export const trainerConfigs: TrainerConfigs = {
         p.pokeball = PokeballType.MASTER_BALL;
       }),
     ),
-  [TrainerType.VICTOR]: new TrainerConfig(++t)
+  [TrainerType.VICTORY]: new TrainerConfig(++t)
     .setTitle("The Winstrates")
-    .setLocalizedName("Victor")
+    .setLocalizedName("Victory")
     .setMoneyMultiplier(1) // The Winstrate trainers have total money multiplier of 6
     .setPartyTemplates(trainerPartyTemplates.ONE_AVG_ONE_STRONG),
   [TrainerType.VICTORIA]: new TrainerConfig(++t)

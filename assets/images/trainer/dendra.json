@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dendra.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dendra.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fa1b5fade8188d15110ffd7135e2c7cb:458a547245be3cb6c0609797b069be7d:1635f01901af84143d2b4997f9d754c5$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "jacinthe.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 48,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "jacinthe.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 46,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:46bbbbb43e868424138e72ed2cad8d69:03a866d37f54067824ba6a401233d72d:b0991370d44350fd969d939642df2c5a$"
+	}
+}

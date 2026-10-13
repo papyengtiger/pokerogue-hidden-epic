@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "kiwae.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 48,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "kiwae.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 46,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:af5fd1076ebb2d79c9673140162d0983:4171ed2f703021d4052325d8b2cadb54:c763f4b20704a6fc48e6a5ba019e98c0$"
+	}
+}

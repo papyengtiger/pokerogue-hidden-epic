@@ -1,0 +1,6 @@
+{
+  "superEffective": {"name": "Super Effective", "description": "Super-effective attacks gain a 1.5x damage multiplier."},
+  "sweetReward": {"name": "Sweet Reward", "description": "Gain 25% more Pokemon Candy."},
+  "growTogether": {"name": "Grow Together", "description": "Companion Pokemon gain 1.5x experience."},
+  "harmonyOfAll": {"name": "Harmony of All", "description": "Boost the bonus portion of equipped cards' numeric effects by 20%."}
+}

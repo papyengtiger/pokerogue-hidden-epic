@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dawn.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 82,
+				"h": 134
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dawn.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 141
+					},
+					"spriteSourceSize": {
+						"x": 27,
+						"y": 5,
+						"w": 80,
+						"h": 132
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 80,
+						"h": 132
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9ecc3e72a8b79bcd05a316fd2ad839aa:02ed664f5c2bbd85971fe4d0187437e5:a4d9c8d66e2d7bcd51101a683696892f$"
+	}
+}

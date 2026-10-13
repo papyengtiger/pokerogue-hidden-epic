@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "blue_back_pb.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 642,
+				"h": 116
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 23,
+						"y": 46,
+						"w": 86,
+						"h": 114
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 86,
+						"h": 114
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 1,
+						"y": 52,
+						"w": 154,
+						"h": 108
+					},
+					"frame": {
+						"x": 350,
+						"y": 1,
+						"w": 154,
+						"h": 108
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 9,
+						"y": 48,
+						"w": 126,
+						"h": 112
+					},
+					"frame": {
+						"x": 89,
+						"y": 1,
+						"w": 126,
+						"h": 112
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 29,
+						"y": 50,
+						"w": 131,
+						"h": 110
+					},
+					"frame": {
+						"x": 217,
+						"y": 1,
+						"w": 131,
+						"h": 110
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 58,
+						"w": 135,
+						"h": 102
+					},
+					"frame": {
+						"x": 506,
+						"y": 1,
+						"w": 135,
+						"h": 102
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ddc69e22a532d21c01a9c80c5e5391f3:c9170d3ac6f0efece6860c4110958242:3bc406bf606ca499583546d1df4daf10$"
+	}
+}

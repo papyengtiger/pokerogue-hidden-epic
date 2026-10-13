@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tarragon.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 42,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tarragon.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 40,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:524c965779a654545771e83a8298b0c6:08016b337e157e0d4449e57d5c60df6f:e8a7f62e2e93137582f979f23bcbaaf1$"
+	}
+}

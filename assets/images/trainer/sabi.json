@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sabi.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 42,
+				"h": 65
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sabi.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 63
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 63
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 40,
+						"h": 63
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:698c8d440c7d76d7230df73eb724d145:e6e1320f6d547cbd282e8d8c3c7ceb68:4c581b6d77f2fc059e381c01b93b4950$"
+	}
+}

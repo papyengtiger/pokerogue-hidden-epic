@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sage_2.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 49,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sage_2.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 47,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 47,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 47,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2f9af768fb7461694b0ffd4a15e84b1f:ae3a4e2df670ee93202a3bab17c534ef:fc76bcc4f2a2aa2a0ed3462fb19521a7$"
+	}
+}

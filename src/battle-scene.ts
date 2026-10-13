@@ -68,6 +68,7 @@ import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import { TextStyle } from "#enums/text-style";
 import type { TrainerSlot } from "#enums/trainer-slot";
+import { TrainerKnowhowId } from "#enums/trainer-knowhow-id";
 import { TrainerType } from "#enums/trainer-type";
 import { TrainerVariant } from "#enums/trainer-variant";
 import { UiTheme } from "#enums/ui-theme";
@@ -100,6 +101,8 @@ import {
   SpAtkStatModifier,
   SpeedStatModifier,
   StackingPowerBoosterModifier,
+  MegaEvolutionAccessModifier,
+  GigantamaxAccessModifier,
 } from "#modifiers/modifier";
 import {
   getDefaultModifierTypeForTier,
@@ -119,6 +122,8 @@ import type { Variant } from "#sprites/variant";
 import { clearVariantData, variantData } from "#sprites/variant";
 import type { Achv } from "#system/achv";
 import { achvs, ModifierAchv, MoneyAchv } from "#system/achv";
+import { companionManager } from "#system/companion-manager";
+import { trainerStrategyManager } from "#system/trainer-strategy-manager";
 import { GameData } from "#system/game-data";
 import { initGameSpeed } from "#system/game-speed";
 import type { PokemonData } from "#system/pokemon-data";
@@ -277,12 +282,14 @@ export class BattleScene extends SceneBase {
   public score: number;
   public lockModifierTiers: boolean;
   public trainer: Phaser.GameObjects.Sprite;
+  public companionTrainerSprite: Phaser.GameObjects.Sprite | null = null;
   public lastEnemyTrainer: Trainer | null;
   public currentBattle: Battle;
   public pokeballCounts: PokeballCounts;
   public money: number;
   public pokemonInfoContainer: PokemonInfoContainer;
   private party: PlayerPokemon[];
+  private companionParty: PlayerPokemon[] = [];
   /** Session save data that pertains to Mystery Encounters */
   public mysteryEncounterSaveData: MysteryEncounterSaveData = new MysteryEncounterSaveData();
   /** If the previous wave was a MysteryEncounter, tracks the object with this variable. Mostly used for visual object cleanup */
@@ -600,6 +607,7 @@ export class BattleScene extends SceneBase {
     this.fieldUI.add(this.pokemonInfoContainer);
 
     this.party = [];
+    this.companionParty = [];
 
     this.arenaPlayer = new ArenaBase(true);
     this.arenaPlayer.setName("arena-player");
@@ -622,16 +630,47 @@ export class BattleScene extends SceneBase {
     }
 
     const trainer = this.addFieldSprite(
-      0,
-      0,
-      `trainer_${this.gameData.gender === PlayerGender.FEMALE ? "f" : "m"}_back`,
-    );
-    trainer.setOrigin(0.5, 1);
-    trainer.setName("sprite-trainer");
+  0,
+  0,
+  `trainer_${
+    this.gameData.gender === PlayerGender.FEMALE
+      ? "f"
+      : "m"
+  }_back`,
+);
 
-    field.add(trainer);
+trainer.setOrigin(0.5, 1);
+trainer.setName("sprite-trainer");
 
-    this.trainer = trainer;
+field.add(trainer);
+
+this.trainer = trainer;
+
+// ========================================
+// 동료 트레이너 스프라이트
+// ========================================
+const companionSpriteKey =
+  this.gameData.gender === PlayerGender.FEMALE
+    ? "trainer_m_back_pb"
+    : "trainer_f_back_pb";
+
+const companionTrainerSprite =
+  this.addFieldSprite(
+    0,
+    0,
+    companionSpriteKey,
+  );
+
+companionTrainerSprite.setOrigin(0.5, 1);
+companionTrainerSprite.setName(
+  "sprite-companion-trainer",
+);
+companionTrainerSprite.setVisible(false);
+
+field.add(companionTrainerSprite);
+
+this.companionTrainerSprite =
+  companionTrainerSprite;
 
     this.anims.create({
       key: "prompt",
@@ -754,6 +793,10 @@ export class BattleScene extends SceneBase {
     }
   }
 
+  public getCompanionParty(): PlayerPokemon[] {
+  return this.companionParty;
+}
+
   // TODO: Add a `getPartyOnSide` function for getting the party of a pokemon
   public getPlayerParty(): PlayerPokemon[] {
     return this.party;
@@ -785,49 +828,118 @@ export class BattleScene extends SceneBase {
    * @returns array of {@linkcode PlayerPokemon}
    */
   public getPlayerField(active = false): PlayerPokemon[] {
-    const party = this.getPlayerParty();
-    return party
-      .slice(0, Math.min(party.length, this.currentBattle?.double ? 2 : 1))
-      .filter(p => !active || p.isActive());
+  const playerPokemon = this.getPlayerParty()[0];
+
+  const companionPokemon =
+    this.currentBattle?.companionTrainer
+      ? this.getCompanionParty()[0]
+      : undefined;
+
+  const field: PlayerPokemon[] = [];
+
+  if (playerPokemon) {
+    field.push(playerPokemon);
   }
+
+  if (
+  this.currentBattle?.double
+  && companionPokemon
+  && (
+    companionPokemon.isAllowedInBattle()
+    || companionPokemon.isOnField()
+  )
+) {
+  field.push(companionPokemon);
+} else if (
+  this.currentBattle?.double
+  && !companionManager.hasActive()
+  && this.getPlayerParty()[1]
+) {
+  field.push(this.getPlayerParty()[1]);
+}
+
+  return field.filter(
+    p => !active || p.isActive(),
+  );
+}
+
+  public canCompanionUseMega(): boolean {
+  return (
+    this.getModifiers(
+      MegaEvolutionAccessModifier,
+    ).length > 0
+  );
+}
+
+public canCompanionUseGigantamax(): boolean {
+  return (
+    this.getModifiers(
+      GigantamaxAccessModifier,
+    ).length > 0
+  );
+}
 
   public refreshActiveFieldPositions(): void {
-    const double = this.currentBattle?.double;
-    if (!double) {
-      return;
-    }
+  const double = this.currentBattle?.double;
 
-    // 플레이어 필드: party[0]=왼쪽, party[1]=오른쪽
-    const pParty = this.getPlayerParty();
-    const p0 = pParty[0];
-    const p1 = pParty[1];
-
-    if (p0?.isOnField?.() && p1?.isOnField?.()) {
-      p0.setFieldPosition(FieldPosition.LEFT, 0);
-      p1.setFieldPosition(FieldPosition.RIGHT, 0);
-      // setFieldPosition이 좌표까지 갱신하면 여기서 끝
-      p0.playAnim?.();
-      p1.playAnim?.();
-      p0.showInfo?.();
-      p1.showInfo?.();
-    }
-
-    // 적 필드도 동일하게 (enemy party[0]=왼쪽, [1]=오른쪽)
-    const eParty = this.getEnemyParty();
-    const e0 = eParty[0];
-    const e1 = eParty[1];
-
-    if (e0?.isOnField?.() && e1?.isOnField?.()) {
-      e0.setFieldPosition(FieldPosition.LEFT, 0);
-      e1.setFieldPosition(FieldPosition.RIGHT, 0);
-      e0.playAnim?.();
-      e1.playAnim?.();
-      e0.showInfo?.();
-      e1.showInfo?.();
-    }
-
-    this.updateFieldScale?.();
+  if (!double) {
+    return;
   }
+
+  // 플레이어측 실제 필드
+  // [0] = 플레이어 포켓몬
+  // [1] = 동료 포켓몬 또는 일반 더블의 두 번째 포켓몬
+  const playerField = this.getPlayerField();
+
+  const p0 = playerField[0];
+  const p1 = playerField[1];
+
+  if (p0?.isOnField?.()) {
+    p0.setFieldPosition(
+      p1?.isOnField?.()
+        ? FieldPosition.LEFT
+        : FieldPosition.CENTER,
+      0,
+    );
+
+    p0.playAnim?.();
+    p0.showInfo?.();
+  }
+
+  if (p1?.isOnField?.()) {
+    p1.setFieldPosition(FieldPosition.RIGHT, 0);
+
+    p1.playAnim?.();
+    p1.showInfo?.();
+  }
+
+  // 적 필드
+  const enemyField = this.getEnemyField();
+
+  const e0 = enemyField[0];
+  const e1 = enemyField[1];
+
+  if (e0?.isOnField?.()) {
+    e0.setFieldPosition(
+      e1?.isOnField?.()
+        ? FieldPosition.LEFT
+        : FieldPosition.CENTER,
+      0,
+    );
+
+    e0.playAnim?.();
+    e0.showInfo?.();
+  }
+
+  if (e1?.isOnField?.()) {
+    e1.setFieldPosition(FieldPosition.RIGHT, 0);
+
+    e1.playAnim?.();
+    e1.showInfo?.();
+  }
+
+  this.updateFieldScale?.();
+}
 
   public getEnemyParty(): EnemyPokemon[] {
     return this.currentBattle?.enemyParty ?? [];
@@ -919,7 +1031,23 @@ export class BattleScene extends SceneBase {
     }
 
     // 기존 일반 전투 동작
-    return party.slice(0, Math.min(party.length, this.currentBattle?.double ? 2 : 1));
+    // 동료 때문에 원래 싱글 전투를 강제로 더블로 만든 경우,
+// 적은 원래대로 1마리만 필드에 둔다.
+if (
+  (this.currentBattle as any)
+    ?.companionForcedDouble
+) {
+  return party.slice(0, 1);
+}
+
+// 원래부터 더블 전투였던 경우는 기존대로 2마리
+return party.slice(
+  0,
+  Math.min(
+    party.length,
+    this.currentBattle?.double ? 2 : 1,
+  ),
+);
   }
 
   /**
@@ -1130,14 +1258,23 @@ export class BattleScene extends SceneBase {
    * @returns The {@linkcode Pokemon} associated with the given id.
    * Returns `null` if the ID is `undefined` or not present in either party.
    */
-  getPokemonById(pokemonId: number | undefined): Pokemon | null {
-    if (pokemonId == null) {
-      return null;
-    }
-
-    const party = (this.getPlayerParty() as Pokemon[]).concat(this.getEnemyParty());
-    return party.find(p => p.id === pokemonId) ?? null;
+  getPokemonById(
+  pokemonId: number | undefined,
+): Pokemon | null {
+  if (pokemonId == null) {
+    return null;
   }
+
+  const party = (this.getPlayerParty() as Pokemon[])
+    .concat(
+      this.getCompanionParty(),
+      this.getEnemyParty(),
+    );
+
+  return party.find(
+    p => p.id === pokemonId,
+  ) ?? null;
+}
 
   addPlayerPokemon(
     species: PokemonSpecies,
@@ -1491,13 +1628,22 @@ export class BattleScene extends SceneBase {
 
   // TODO: Break up function - this does far too much in 1 sitting
   reset(clearScene = false, clearData = false, reloadI18n = false): void {
-    if (clearData) {
-      this.gameData = new GameData();
-    }
+  if (clearData) {
+    this.gameData = new GameData();
+  }
 
-    this.gameMode = getGameMode(GameModes.CLASSIC);
+  // ========================================
+  // 트레이닝 전략 초기화
+  // ========================================
+  trainerStrategyManager.reset();
 
-    this.disableMenu = false;
+  console.log("[TRAINER_STRATEGY_RESET]", {
+    strategy: trainerStrategyManager.currentId,
+  });
+
+  this.gameMode = getGameMode(GameModes.CLASSIC);
+
+  this.disableMenu = false;
 
     this.score = 0;
     this.money = 0;
@@ -1516,12 +1662,18 @@ export class BattleScene extends SceneBase {
     this.enemyModifierBar.removeAll(true);
 
     for (const p of this.getPlayerParty()) {
-      p.destroy();
-    }
-    this.party = [];
-    for (const p of this.getEnemyParty()) {
-      p.destroy();
-    }
+  p.destroy();
+}
+this.party = [];
+
+for (const p of this.getCompanionParty()) {
+  p.destroy();
+}
+this.companionParty = [];
+
+for (const p of this.getEnemyParty()) {
+  p.destroy();
+}
 
     // If this is a ME, clear any residual visual sprites before reloading
     if (this.currentBattle?.mysteryEncounter?.introVisuals) {
@@ -1580,6 +1732,11 @@ export class BattleScene extends SceneBase {
     this.trainer.setPosition(406, 186);
     this.trainer.setVisible(true);
 
+    if (this.companionTrainerSprite) {
+  this.companionTrainerSprite.setTexture("trainer_m_back");
+  this.companionTrainerSprite.setPosition(406, 186);
+  this.companionTrainerSprite.setVisible(false);
+}
     this.mysteryEncounterSaveData = new MysteryEncounterSaveData();
 
     this.updateGameInfo();
@@ -1798,7 +1955,7 @@ export class BattleScene extends SceneBase {
                 ? TrainerVariant.FEMALE
                 : TrainerVariant.DEFAULT;
 
-        newTrainer = trainerData !== undefined ? trainerData.toTrainer() : new Trainer(trainerType, variant);
+        newTrainer = trainerData != null ? trainerData.toTrainer() : new Trainer(trainerType, variant);
 
         this.field.add(newTrainer);
       }
@@ -1886,14 +2043,253 @@ export class BattleScene extends SceneBase {
       }
     }
 
-    this.executeWithSeedOffset(
-      () => {
-        this.currentBattle = new Battle(this.gameMode, newWaveIndex, newBattleType, newTrainer, newDouble);
-      },
-      newWaveIndex << 3,
-      this.waveSeed,
+// =======================================
+// 동료 활성 상태면 전투 생성 전부터 더블
+// =======================================
+const companionPokemon =
+  this.getCompanionParty()[0];
+
+const companionCanBattle =
+  !companionPokemon
+  || companionPokemon.isAllowedInBattle();
+
+if (
+  companionManager.hasActive()
+  && companionCanBattle
+) {
+  newDouble = true;
+}
+
+this.executeWithSeedOffset(
+  () => {
+    this.currentBattle = new Battle(
+      this.gameMode,
+      newWaveIndex,
+      newBattleType,
+      newTrainer,
+      newDouble,
     );
-    this.currentBattle.incrementTurn();
+  },
+  newWaveIndex << 3,
+  this.waveSeed,
+);
+
+this.currentBattle.companionTrainer =
+  companionManager.hasActive()
+  && companionCanBattle
+    ? companionManager.createActiveTrainer()
+    : null;
+
+if (
+  this.currentBattle.companionTrainer
+  && this.companionTrainerSprite
+) {
+  const companionSpriteKey =
+    this.gameData.gender === PlayerGender.FEMALE
+      ? "trainer_m_back"
+      : "trainer_f_back";
+
+  this.companionTrainerSprite.setTexture(
+    companionSpriteKey,
+  );
+
+  if (this.trainer.visible) {
+    this.companionTrainerSprite.setPosition(
+      this.trainer.x + 48,
+      this.trainer.y,
+    );
+
+    this.companionTrainerSprite.setVisible(true);
+
+    console.log("[COMPANION_IDLE_VISIBLE]", {
+      playerX: this.trainer.x,
+      playerY: this.trainer.y,
+      companionX: this.companionTrainerSprite.x,
+      companionY: this.companionTrainerSprite.y,
+      texture: this.companionTrainerSprite.texture.key,
+    });
+  } else {
+    this.companionTrainerSprite.setVisible(false);
+  }
+}
+
+// 동료가 있으면 강제로 더블 전투
+if (this.currentBattle.companionTrainer) {
+  (this.currentBattle as any).companionForcedDouble =
+  !this.currentBattle.double;
+
+this.currentBattle.double = true;
+
+  if (this.companionParty.length === 0) {
+    const definition =
+      companionManager.getActiveDefinition();
+
+    const team = definition?.pokemonTeam ?? [];
+
+const orderedTeam = [
+  ...team.filter(member => member.ace),
+  ...team.filter(member => !member.ace),
+];
+
+    const companionLevel = Math.max(
+      1,
+      this.getPlayerParty()[0]?.level ?? 5,
+    );
+
+    for (const member of orderedTeam) {
+  // ========================================
+  // 동료 포켓몬의 진화계통 시작점 찾기
+  // member.speciesId는 최종적으로 도달해야 할 종
+  // ========================================
+  let baseSpeciesId = member.speciesId;
+
+  while (
+    pokemonPrevolutions.hasOwnProperty(
+      baseSpeciesId,
+    )
+  ) {
+    baseSpeciesId =
+      pokemonPrevolutions[
+        baseSpeciesId
+      ] as SpeciesId;
+  }
+
+  // ========================================
+  // 현재 레벨에 맞춰 자연 진화 단계 결정
+  // ========================================
+  let resolvedSpeciesId =
+    getPokemonSpecies(
+      baseSpeciesId,
+    ).getTrainerSpeciesForLevel(
+      companionLevel,
+      true,
+    );
+
+  // ========================================
+  // 목표 최종진화 계통을 벗어나는
+  // 분기 진화 방지
+  // ========================================
+  const targetEvolutionLine =
+    new Set<SpeciesId>();
+
+  let targetCursor =
+    member.speciesId;
+
+  targetEvolutionLine.add(
+    targetCursor,
+  );
+
+  while (
+    pokemonPrevolutions.hasOwnProperty(
+      targetCursor,
+    )
+  ) {
+    targetCursor =
+      pokemonPrevolutions[
+        targetCursor
+      ] as SpeciesId;
+
+    targetEvolutionLine.add(
+      targetCursor,
+    );
+  }
+
+  if (
+    !targetEvolutionLine.has(
+      resolvedSpeciesId,
+    )
+  ) {
+    // 다른 분기로 샜다면 일단
+    // 목표 계통의 기본형 유지
+    resolvedSpeciesId =
+      baseSpeciesId;
+  }
+
+  const species =
+    getPokemonSpecies(
+      resolvedSpeciesId,
+    );
+
+  const companionPokemon =
+  this.addPlayerPokemon(
+    species,
+    companionLevel,
+  );
+
+(companionPokemon as any).isCompanionPokemon = true;
+
+companionPokemon.calculateStats();
+
+  if (member.forcedGender != null) {
+  companionPokemon.gender =
+    member.forcedGender;
+}
+
+if (
+  member.friendshipFloor != null
+  && companionPokemon.friendship
+    < member.friendshipFloor
+) {
+  companionPokemon.friendship =
+    member.friendshipFloor;
+}
+
+  companionPokemon.generateAndPopulateMoveset();
+
+  // 나중에 레벨업 시에도
+  // 어느 최종 종을 목표로 하는지 추적
+  (companionPokemon as any)
+    .companionTargetSpeciesId =
+      member.speciesId;
+
+  (companionPokemon as any)
+  .companionTargetEvolutionSpeciesId =
+    member.evolutionTarget;
+
+(companionPokemon as any)
+  .companionTargetEvolutionFormKey =
+    member.evolutionTargetFormKey;
+
+(companionPokemon as any)
+  .companionPreferredEvolutionTime =
+    member.preferredEvolutionTime;
+
+(companionPokemon as any)
+  .companionFriendshipFloor =
+    member.friendshipFloor;
+
+  (companionPokemon as any)
+    .companionTransformPolicy =
+      member.transformPolicy
+      ?? "NONE";
+
+  (companionPokemon as any)
+    .companionForcedTransformKey =
+      member.forcedTransformKey;
+
+  (companionPokemon as any)
+    .companionFormKey =
+      member.formKey;
+
+  this.companionParty.push(
+    companionPokemon,
+  );
+}
+
+    console.log("[COMPANION_PARTY_CREATED]", {
+  trainer:
+    this.currentBattle.companionTrainer.getName(),
+  count: this.companionParty.length,
+  party: this.companionParty.map((p, index) => ({
+    index,
+    name: p.getName(),
+    companion: (p as any).isCompanionPokemon === true,
+  })),
+});
+  }
+}
+
+this.currentBattle.incrementTurn();
 
     if (newBattleType === BattleType.MYSTERY_ENCOUNTER) {
       // Will generate the actual Mystery Encounter during NextEncounterPhase, to ensure it uses proper biome
@@ -4439,8 +4835,59 @@ export class BattleScene extends SceneBase {
     useWaveIndexMultiplier?: boolean,
     pokemonParticipantIds?: Set<number>,
   ): void {
-    const participantIds = pokemonParticipantIds ?? this.currentBattle.playerParticipantIds;
-    const party = this.getPlayerParty();
+    const participantIds =
+  pokemonParticipantIds
+  ?? this.currentBattle.playerParticipantIds;
+
+const playerParty = this.getPlayerParty();
+const companionParty = this.getCompanionParty();
+
+const hasCompanion =
+  !!this.currentBattle.companionTrainer
+  && companionParty.length > 0;
+
+const party = hasCompanion
+  ? [...playerParty, ...companionParty]
+  : playerParty;
+
+    // ========================================
+    // Hidden Epic - 전투 노력치 지급
+    // 모든 능력치 EV +1
+    // ========================================
+    const isPracticeBattle =
+      !!(this.currentBattle as any)?.isPracticeBattle;
+
+    if (
+      pokemonDefeated
+      && !isPracticeBattle
+      && participantIds.size > 0
+    ) {
+      // 동료/플레이어 파티 중복 등록 방지
+      const evRecipients = new Map(
+        party
+          .filter(pokemon => pokemon && pokemon.hp > 0)
+          .map(pokemon => [pokemon.id, pokemon] as const),
+      );
+
+      for (const pokemon of evRecipients.values()) {
+        const beforeEvs = [...pokemon.evs];
+        const beforeIvs = [...pokemon.ivs];
+
+        pokemon.addEvs(1);
+
+        console.log("[HIDDEN_EPIC_EV_GAIN]", {
+          pokemon: pokemon.name,
+          pokemonId: pokemon.id,
+          beforeEvs,
+          afterEvs: [...pokemon.evs],
+          beforeIvs,
+          afterIvs: [...pokemon.ivs],
+        });
+
+        void pokemon.updateInfo();
+      }
+    }
+
     const expShareModifier = this.findModifier(m => m instanceof ExpShareModifier) as ExpShareModifier;
     const expBalanceModifier = this.findModifier(m => m instanceof ExpBalanceModifier) as ExpBalanceModifier;
     const nonFaintedPartyMembers = party.filter(p => p.hp);
@@ -4451,6 +4898,9 @@ export class BattleScene extends SceneBase {
       expValue = Math.floor((expValue * this.currentBattle.waveIndex) / 5 + 1);
     }
 
+    if (hasCompanion) {
+  expValue = Math.floor(expValue * 1.25);
+}
     if ((globalScene.currentBattle as any)?.isPracticeBattle) {
       const result = (globalScene as any).practiceTurnResult;
 
@@ -4584,9 +5034,47 @@ export class BattleScene extends SceneBase {
         const beforeExp = Math.floor(expValue * expMultiplier);
 
         const pokemonExp = new NumberHolder(beforeExp);
-        this.applyModifiers(PokemonExpBoosterModifier, true, partyMember, pokemonExp);
 
-        const finalExp = Math.floor(pokemonExp.value);
+this.applyModifiers(
+  PokemonExpBoosterModifier,
+  true,
+  partyMember,
+  pokemonExp,
+);
+
+// ========================================
+// 트레이너 노하우 - 육성 전문가
+// 공명 / 명희가 동료라면 아군 전체 EXP 1.3배
+// ========================================
+const activeKnowhowId =
+  companionManager.getActiveKnowhowId();
+
+if (
+  activeKnowhowId ===
+  TrainerKnowhowId.TRAINING_EXPERT
+) {
+  const beforeKnowhowExp =
+    pokemonExp.value;
+
+  pokemonExp.value = Math.floor(
+    pokemonExp.value * 1.3,
+  );
+
+  console.log("[TRAINER_KNOWHOW_EXP]", {
+    pokemon: partyMember.name,
+    knowhowId: activeKnowhowId,
+    before: beforeKnowhowExp,
+    after: pokemonExp.value,
+  });
+}
+
+const finalExp =
+  Math.floor(pokemonExp.value);
+
+// ========================================
+// 트레이너 노하우 - 육성 전문가
+// 공명 / 명희의 동료 포켓몬만 경험치 1.3배
+// ========================================
 
         if ((globalScene.currentBattle as any)?.isPracticeBattle) {
           const result = (globalScene as any).practiceTurnResult;
@@ -4601,7 +5089,6 @@ export class BattleScene extends SceneBase {
         }
 
         partyMemberExp.push(finalExp);
-        partyMemberExp.push(Math.floor(pokemonExp.value));
       }
 
       if (expBalanceModifier) {
@@ -4636,12 +5123,34 @@ export class BattleScene extends SceneBase {
         const exp = partyMemberExp[pm];
 
         if (exp) {
-          const partyMemberIndex = party.indexOf(expPartyMembers[pm]);
-          this.phaseManager.unshiftPhase(
-            expPartyMembers[pm].isOnField()
-              ? this.phaseManager.create("ExpPhase", partyMemberIndex, exp)
-              : this.phaseManager.create("ShowPartyExpBarPhase", partyMemberIndex, exp),
-          );
+          const expPokemon = expPartyMembers[pm];
+
+const companionIndex =
+  companionParty.indexOf(expPokemon);
+
+const isCompanion =
+  companionIndex >= 0;
+
+const partyMemberIndex =
+  isCompanion
+    ? companionIndex
+    : playerParty.indexOf(expPokemon);
+
+this.phaseManager.unshiftPhase(
+  expPokemon.isOnField()
+    ? this.phaseManager.create(
+        "ExpPhase",
+        partyMemberIndex,
+        exp,
+        isCompanion,
+      )
+    : this.phaseManager.create(
+        "ShowPartyExpBarPhase",
+        partyMemberIndex,
+        exp,
+        isCompanion,
+      ),
+);
         }
       }
     }

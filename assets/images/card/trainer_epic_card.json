@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "trainer_epic_card.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 46
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "trainer_epic_card.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 44
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 44
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 44
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6e573734270fb818bfda128cc759500d:7de7b7d6609a81d3a59c1ff7f202266d:894dbf5a55504b14daf89e690111788b$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "corbeau.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "corbeau.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e9952c2d9bcddd65614c8b113a68f80e:26b31b9d668b72b9deeff4f0ae3587b5:e4b6cb80a2981f5f0304a7ab3374804e$"
+	}
+}

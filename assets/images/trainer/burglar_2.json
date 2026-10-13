@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "burglar_2.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 55,
+				"h": 67
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "burglar_2.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 53,
+						"h": 65
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 53,
+						"h": 65
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 53,
+						"h": 65
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e3911a0732770b0b2e22298c8cc8a90e:21357cbd73d26d222e216835b79640a1:ad68d7cb1647b28ff17c74d59ac68df4$"
+	}
+}

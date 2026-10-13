@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "jacq.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "jacq.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:cda4bee4b7845c99d157e42e2807b6ec:a7074feef19e02f26e0a6cb46f88a75b:2a594da411bea0c10c9635bea390e3a3$"
+	}
+}

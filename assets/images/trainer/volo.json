@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "volo.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "volo.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b1515d3fde763db22dfc50007374a89f:23eee7c27171058177335de6e8888c94:9ee150acbb351531c06453392941de86$"
+	}
+}

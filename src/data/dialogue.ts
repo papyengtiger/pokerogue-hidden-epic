@@ -905,7 +905,7 @@ export const trainerTypeDialogue: TrainerTypeDialogue = {
       defeat: ["dialogue:statTrainerRiley.defeat.1", "dialogue:statTrainerRiley.defeat.2"],
     },
   ],
-  [TrainerType.VICTOR]: [
+  [TrainerType.VICTORY]: [
     {
       encounter: ["dialogue:winstratesVictor.encounter.1"],
       victory: ["dialogue:winstratesVictor.victory.1"],

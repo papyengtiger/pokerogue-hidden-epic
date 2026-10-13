@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mai.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 24,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mai.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 22,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 22,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 22,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:de90ad7c6cd9881176991d9a3d1385b3:495cd760cd5ab5cea288c51d47519452:91c4c9c62bb52dd48c059df08925442a$"
+	}
+}

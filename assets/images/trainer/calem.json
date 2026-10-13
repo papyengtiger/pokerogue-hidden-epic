@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "calem.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 58,
+				"h": 156
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "calem.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 156
+					},
+					"spriteSourceSize": {
+						"x": 36,
+						"y": 1,
+						"w": 56,
+						"h": 154
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 56,
+						"h": 154
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:beaa014cfd1acdac195164f310b20584:871d716e3242fdef1fc8b70e0c061620:34da7e6975248d73da890b24caaa4168$"
+	}
+}

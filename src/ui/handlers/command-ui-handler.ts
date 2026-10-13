@@ -21,6 +21,7 @@ export class CommandUiHandler extends UiHandler {
   private teraButton: Phaser.GameObjects.Sprite;
 
   private rotomDexButton: Phaser.GameObjects.Sprite;
+  private trainerCardButton: Phaser.GameObjects.Text;
 
   protected fieldIndex = 0;
   protected cursor2 = 0;
@@ -60,6 +61,11 @@ export class CommandUiHandler extends UiHandler {
     this.rotomDexButton.setScale(0.3);
     this.commandsContainer.add(this.rotomDexButton);
 
+    // Temporary text button; replace with a dedicated 34x46 card icon later.
+    this.trainerCardButton = addTextObject(-95, 8, "CARD", TextStyle.WINDOW_BATTLE_COMMAND);
+    this.trainerCardButton.setName("trainer-card-button");
+    this.commandsContainer.add(this.trainerCardButton);
+
     for (let c = 0; c < commands.length; c++) {
       const commandText = addTextObject(
         c % 2 === 0 ? 0 : 55.8,
@@ -80,6 +86,7 @@ export class CommandUiHandler extends UiHandler {
     this.commandsContainer.setVisible(true);
 
     this.rotomDexButton.setVisible(true);
+    this.trainerCardButton.setVisible(true);
 
     let commandPhase: CommandPhase;
     const currentPhase = globalScene.phaseManager.getCurrentPhase();
@@ -168,6 +175,10 @@ export class CommandUiHandler extends UiHandler {
             ui.setMode(UiMode.ROTOM_DEX, this.fieldIndex);
             success = true;
             break;
+          case Command.TRAINER_CARD:
+            ui.setMode(UiMode.TRAINER_CARD, this.fieldIndex);
+            success = true;
+            break;
         }
       } else {
         (globalScene.phaseManager.getCurrentPhase() as CommandPhase).cancel();
@@ -191,6 +202,8 @@ export class CommandUiHandler extends UiHandler {
             success = this.setCursor(Command.ROTOM_DEX);
             this.toggleTeraButton();
           } else if (cursor === Command.ROTOM_DEX) {
+            success = this.setCursor(Command.TRAINER_CARD);
+          } else if (cursor === Command.TRAINER_CARD) {
             success = false;
           } else if (cursor === Command.FIGHT || cursor === Command.POKEMON) {
             success = this.canTera() ? this.setCursor(Command.TERA) : this.setCursor(Command.ROTOM_DEX);
@@ -199,7 +212,9 @@ export class CommandUiHandler extends UiHandler {
           }
           break;
         case Button.RIGHT:
-          if (cursor === Command.ROTOM_DEX) {
+          if (cursor === Command.TRAINER_CARD) {
+            success = this.setCursor(Command.ROTOM_DEX);
+          } else if (cursor === Command.ROTOM_DEX) {
             success = this.canTera() ? this.setCursor(Command.TERA) : this.setCursor(Command.FIGHT);
 
             this.toggleTeraButton();
@@ -260,6 +275,9 @@ export class CommandUiHandler extends UiHandler {
 
     if (cursor === Command.TERA) {
       this.cursorObj.setVisible(false);
+    } else if (cursor === Command.TRAINER_CARD) {
+      this.cursorObj.setPosition(-104, 15);
+      this.cursorObj.setVisible(true);
     } else if (cursor === Command.ROTOM_DEX) {
       this.cursorObj.setPosition(-65, 15);
       this.cursorObj.setVisible(true);

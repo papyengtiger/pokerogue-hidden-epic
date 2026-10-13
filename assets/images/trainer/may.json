@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "may.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 62,
+				"h": 136
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "may.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 145
+					},
+					"spriteSourceSize": {
+						"x": 34,
+						"y": 8,
+						"w": 60,
+						"h": 134
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 60,
+						"h": 134
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2685a81d1606448ccf79c59493d29a0a:805db408b2bd8530faa59988996f47ab:55aec13dfa39c403a9f6047026bbef3e$"
+	}
+}

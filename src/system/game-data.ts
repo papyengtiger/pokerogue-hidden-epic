@@ -33,6 +33,7 @@ import { MarkId } from "#enums/mark-id";
 import { MoveId } from "#enums/move-id";
 import type { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import { Nature } from "#enums/nature";
+import { Passive as PassiveAttr } from "#enums/passive";
 import { PlayerGender } from "#enums/player-gender";
 import { PokeballType } from "#enums/pokeball";
 import { PokemonType } from "#enums/pokemon-type";
@@ -52,6 +53,8 @@ import type { Variant } from "#sprites/variant";
 import { achvs } from "#system/achv";
 import { ArenaData, type SerializedArenaData } from "#system/arena-data";
 import { ChallengeData } from "#system/challenge-data";
+import { companionManager } from "#system/companion-manager";
+import { trainerStrategyManager } from "#system/trainer-strategy-manager";
 import { EggData } from "#system/egg-data";
 import { type ExchangePreviewResult, getExchangePreviewToRp } from "#system/exchange-utils";
 import { GameStats } from "#system/game-stats";
@@ -64,6 +67,8 @@ import { SettingGamepad, setSettingGamepad, settingGamepadDefaults } from "#syst
 import type { SettingKeyboard } from "#system/settings-keyboard";
 import { setSettingKeyboard } from "#system/settings-keyboard";
 import { TrainerData } from "#system/trainer-data";
+import { trainerCardManager } from "#system/trainer-card-manager";
+import { TrainerCardCategory } from "#enums/trainer-card-id";
 import {
   applySessionVersionMigration,
   applySettingsVersionMigration,
@@ -138,6 +143,8 @@ const systemShortKeys = {
   friendship: "$f",
   abilityAttr: "$a",
   passiveAttr: "$pa",
+  passiveUnlocks: "$pu",
+  passiveIndex: "$pi",
   valueReduction: "$vr",
   classicWinCount: "$wc",
 };
@@ -268,6 +275,43 @@ export class GameData {
 
     return true;
   }
+
+  public isGenerationDexComplete(generation: number): boolean {
+  const generationSpecies = allSpecies.filter(species => {
+    const speciesId = species.speciesId;
+
+    switch (generation) {
+      case 1:
+        return speciesId >= 1 && speciesId <= 151;
+      case 2:
+        return speciesId >= 152 && speciesId <= 251;
+      case 3:
+        return speciesId >= 252 && speciesId <= 386;
+      case 4:
+        return speciesId >= 387 && speciesId <= 493;
+      case 5:
+        return speciesId >= 494 && speciesId <= 649;
+      case 6:
+        return speciesId >= 650 && speciesId <= 721;
+      case 7:
+        return speciesId >= 722 && speciesId <= 809;
+      case 8:
+        return speciesId >= 810 && speciesId <= 905;
+      case 9:
+        return speciesId >= 906 && speciesId <= 1025;
+      default:
+        return false;
+    }
+  });
+
+  if (generationSpecies.length === 0) {
+    return false;
+  }
+
+  return generationSpecies.every(
+    species => !!this.dexData[species.speciesId]?.caughtAttr,
+  );
+}
 
   public addResource(resourceId: string, amount: number): boolean {
     if (!resourceId || amount <= 0) {
@@ -840,38 +884,43 @@ export class GameData {
   }
 
   public getSystemSaveData(): SystemSaveData {
-    return {
-      trainerId: this.trainerId,
-      secretId: this.secretId,
-      gender: this.gender,
-      dexData: this.dexData,
-      starterData: this.starterData,
-      gameStats: this.gameStats,
-      unlocks: this.unlocks,
-      achvUnlocks: this.achvUnlocks,
-      voucherUnlocks: this.voucherUnlocks,
-      voucherCounts: this.voucherCounts,
-      roguePoints: this.roguePoints,
-      lastAttendanceDate: this.lastAttendanceDate,
-      attendanceCount: this.attendanceCount,
-      achvPointsGranted: this.achvPointsGranted,
-      bankMoney: this.bankMoney,
-      bankRoguePoints: this.bankRoguePoints,
-      questList: this.questList,
-      storageItems: this.storageItems,
-      eggs: this.eggs.map(e => new EggData(e)),
-      gameVersion: globalScene.game.config.gameVersion,
-      timestamp: Date.now(),
-      eggPity: this.eggPity.slice(0),
-      unlockPity: this.unlockPity.slice(0),
-      practiceDummyConfig: this.practiceDummyConfig,
-      practicePresets: this.practicePresets,
-      pendingRunItems: this.pendingRunItems,
-      usedCoupons: this.usedCoupons,
-      berryPlanterSlots: this.berryPlanterSlots,
-      resourceInventory: this.resourceInventory,
-    };
-  }
+  return {
+    trainerId: this.trainerId,
+    secretId: this.secretId,
+    gender: this.gender,
+    dexData: this.dexData,
+    starterData: this.starterData,
+    gameStats: this.gameStats,
+    unlocks: this.unlocks,
+    achvUnlocks: this.achvUnlocks,
+    voucherUnlocks: this.voucherUnlocks,
+    voucherCounts: this.voucherCounts,
+
+    companionData: companionManager.exportSaveData(),
+
+    trainerCardData: trainerCardManager.exportSaveData(),
+
+    roguePoints: this.roguePoints,
+    lastAttendanceDate: this.lastAttendanceDate,
+    attendanceCount: this.attendanceCount,
+    achvPointsGranted: this.achvPointsGranted,
+    bankMoney: this.bankMoney,
+    bankRoguePoints: this.bankRoguePoints,
+    questList: this.questList,
+    storageItems: this.storageItems,
+    eggs: this.eggs.map(e => new EggData(e)),
+    gameVersion: globalScene.game.config.gameVersion,
+    timestamp: Date.now(),
+    eggPity: this.eggPity.slice(0),
+    unlockPity: this.unlockPity.slice(0),
+    practiceDummyConfig: this.practiceDummyConfig,
+    practicePresets: this.practicePresets,
+    pendingRunItems: this.pendingRunItems,
+    usedCoupons: this.usedCoupons,
+    berryPlanterSlots: this.berryPlanterSlots,
+    resourceInventory: this.resourceInventory,
+  };
+}
 
   /**
    * Checks if an `Unlockable` has been unlocked.
@@ -889,6 +938,24 @@ export class GameData {
     return new Promise<boolean>(resolve => {
       globalScene.ui.savingIcon.show();
       const data = this.getSystemSaveData();
+
+      console.log(
+  "[SYSTEM_SAVE_PASSIVES]",
+  Object.entries(this.starterData)
+    .filter(
+      ([, entry]) =>
+        (entry.passiveUnlocks ?? 0) !== 0,
+    )
+    .map(([speciesId, entry]) => ({
+      speciesId,
+      passiveUnlocks:
+        entry.passiveUnlocks,
+      passiveIndex:
+        entry.passiveIndex,
+      passiveAttr:
+        entry.passiveAttr,
+    })),
+);
 
       const maxIntAttrValue = 0x80000000;
       const systemData = JSON.stringify(data, (_k: any, v: any) =>
@@ -1005,6 +1072,19 @@ export class GameData {
   private initParsedSystem(systemData: SystemSaveData): void {
     applySystemVersionMigration(systemData);
 
+    companionManager.importSaveData(systemData.companionData);
+
+    trainerCardManager.configureSlots([
+  TrainerCardCategory.BATTLE,
+  TrainerCardCategory.GROWTH,
+  TrainerCardCategory.FRIEND,
+  TrainerCardCategory.EPIC,
+]);
+
+trainerCardManager.importSaveData(
+  systemData.trainerCardData,
+);
+
     this.trainerId = systemData.trainerId;
     this.secretId = systemData.secretId;
 
@@ -1045,13 +1125,60 @@ export class GameData {
       this.initStarterData();
 
       for (const speciesIdStr of Object.keys(savedStarterData)) {
-        const speciesId = Number(speciesIdStr) as SpeciesId;
+  const speciesId = Number(speciesIdStr) as SpeciesId;
 
-        this.starterData[speciesId] = {
-          ...this.starterData[speciesId],
-          ...savedStarterData[speciesId],
-        };
-      }
+  const savedEntry = savedStarterData[speciesId];
+
+  this.starterData[speciesId] = {
+    ...this.starterData[speciesId],
+    ...savedEntry,
+  };
+
+  const entry = this.starterData[speciesId];
+
+  if (savedEntry.passiveUnlocks === undefined) {
+    entry.passiveUnlocks =
+      entry.passiveAttr & PassiveAttr.UNLOCKED
+        ? 1
+        : 0;
+  }
+
+  if (savedEntry.passiveIndex === undefined) {
+    entry.passiveIndex = 0;
+  }
+
+  // 이 로그는 반드시 for문 안
+  if ((savedEntry.passiveUnlocks ?? 0) > 1) {
+    console.log("[PASSIVE_LOAD_ENTRY]", {
+      speciesId,
+      savedUnlocks:
+        savedEntry.passiveUnlocks,
+      loadedUnlocks:
+        entry.passiveUnlocks,
+      passiveIndex:
+        entry.passiveIndex,
+    });
+  }
+}
+
+// 이 전체 요약 로그는 for문 밖
+console.log(
+  "[SYSTEM_LOAD_PASSIVES]",
+  Object.entries(this.starterData)
+    .filter(
+      ([, entry]) =>
+        (entry.passiveUnlocks ?? 0) !== 0,
+    )
+    .map(([speciesId, entry]) => ({
+      speciesId,
+      passiveUnlocks:
+        entry.passiveUnlocks,
+      passiveIndex:
+        entry.passiveIndex,
+      passiveAttr:
+        entry.passiveAttr,
+    })),
+);
     } else {
       this.initStarterData();
 
@@ -1210,52 +1337,84 @@ export class GameData {
     this.dexData = Object.assign(this.dexData, systemData.dexData);
     this.consolidateDexData(this.dexData);
     this.defaultDexData = null;
+
+    companionManager.updateGenerationUnlocks(this);
   }
 
-  public initSystem(systemDataStr: string, cachedSystemDataStr?: string): Promise<boolean> {
-    const { promise, resolve } = Promise.withResolvers<boolean>();
-    try {
-      let systemData = GameData.parseSystemData(systemDataStr);
+  public initSystem(
+  systemDataStr: string,
+  cachedSystemDataStr?: string,
+): Promise<boolean> {
+  const { promise, resolve } =
+    Promise.withResolvers<boolean>();
 
-      if (cachedSystemDataStr) {
-        const cachedSystemData = GameData.parseSystemData(cachedSystemDataStr);
-        if (cachedSystemData.timestamp > systemData.timestamp) {
-          console.debug("Use cached system");
-          systemData = cachedSystemData;
-          systemDataStr = cachedSystemDataStr;
-        } else {
-          this.clearLocalData();
-        }
+  try {
+    let systemData =
+      GameData.parseSystemData(systemDataStr);
+
+    if (cachedSystemDataStr) {
+      const cachedSystemData =
+        GameData.parseSystemData(
+          cachedSystemDataStr,
+        );
+
+      if (
+        cachedSystemData.timestamp
+        >= systemData.timestamp
+      ) {
+        console.debug("Use cached system");
+        systemData = cachedSystemData;
+        systemDataStr = cachedSystemDataStr;
+      } else {
+        this.clearLocalData();
       }
-
-      if (isBeta || isDev) {
-        try {
-          console.debug(
-            GameData.parseSystemData(
-              JSON.stringify(systemData, (_, v: any) => (typeof v === "bigint" ? v.toString() : v)),
-            ),
-          );
-        } catch (err) {
-          console.debug("Attempt to log system data failed:", err);
-        }
-      }
-
-      localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(systemDataStr, bypassLogin));
-
-      const lsItemKey = `runHistoryData_${loggedInUser?.username}`;
-      const lsItem = localStorage.getItem(lsItemKey);
-      if (!lsItem) {
-        localStorage.setItem(lsItemKey, "");
-      }
-
-      this.initParsedSystem(systemData);
-      resolve(true);
-    } catch (err) {
-      console.error(err);
-      resolve(false);
     }
-    return promise;
+
+    if (isBeta || isDev) {
+      try {
+        console.debug(
+          GameData.parseSystemData(
+            JSON.stringify(
+              systemData,
+              (_, v: any) =>
+                typeof v === "bigint"
+                  ? v.toString()
+                  : v,
+            ),
+          ),
+        );
+      } catch (err) {
+        console.debug(
+          "Attempt to log system data failed:",
+          err,
+        );
+      }
+    }
+
+    localStorage.setItem(
+      `data_${loggedInUser?.username}`,
+      encrypt(systemDataStr, bypassLogin),
+    );
+
+    const lsItemKey =
+      `runHistoryData_${loggedInUser?.username}`;
+
+    const lsItem =
+      localStorage.getItem(lsItemKey);
+
+    if (!lsItem) {
+      localStorage.setItem(lsItemKey, "");
+    }
+
+    this.initParsedSystem(systemData);
+    resolve(true);
+  } catch (err) {
+    console.error(err);
+    resolve(false);
   }
+
+  return promise;
+}
 
   /**
    * Retrieves current run history data, organized by time stamp.
@@ -1620,6 +1779,45 @@ export class GameData {
       kecleonShop: kecleonShopSaveData,
     });
 
+    let saveBattleType = globalScene.currentBattle.battleType;
+
+const currentWave = globalScene.currentBattle.waveIndex;
+
+const isMysteryTimeBattle =
+  mysteryTimeManager.isActive()
+  && mysteryTimeManager.isMysteryTimeWave(currentWave);
+
+// 미스터리타임은 항상 야생전 형식으로 저장한다.
+// 원래 해당 층이 트레이너층/고정전투층이어도
+// 미스터리타임 전투가 우선한다.
+if (isMysteryTimeBattle) {
+  if (saveBattleType !== BattleType.WILD) {
+    console.warn("[SAVE_MYSTERY_TIME_BATTLE_TYPE_FIXED]", {
+      wave: currentWave,
+      before: saveBattleType,
+      after: BattleType.WILD,
+      trainer: !!globalScene.currentBattle.trainer,
+      boss: mysteryTimeManager.shouldSpawnBoss(currentWave),
+    });
+  }
+
+  saveBattleType = BattleType.WILD;
+}
+
+// 비정상 세이브 최종 방어
+if (
+  saveBattleType === BattleType.TRAINER
+  && !globalScene.currentBattle.trainer
+) {
+  console.warn("[SAVE_INVALID_TRAINER_BATTLE_FIXED]", {
+    wave: currentWave,
+    battleType: saveBattleType,
+    mysteryTime: mysteryTimeManager.isActive(),
+  });
+
+  saveBattleType = BattleType.WILD;
+}
+
     return {
       seed: globalScene.seed,
       playTime: globalScene.sessionPlayTime,
@@ -1633,11 +1831,14 @@ export class GameData {
       money: Math.floor(globalScene.money),
       score: globalScene.score,
       waveIndex: globalScene.currentBattle.waveIndex,
-      battleType: globalScene.currentBattle.battleType,
-      trainer:
-        globalScene.currentBattle.battleType === BattleType.TRAINER
-          ? new TrainerData(globalScene.currentBattle.trainer)
-          : null,
+      battleType: saveBattleType,
+
+trainer:
+  saveBattleType === BattleType.TRAINER
+  && globalScene.currentBattle.trainer
+    ? new TrainerData(globalScene.currentBattle.trainer)
+    : null,
+      trainerStrategy: trainerStrategyManager.exportSaveData(),
       gameVersion: globalScene.game.config.gameVersion,
       timestamp: Date.now(),
       challenges: globalScene.gameMode.challenges.map(c => new ChallengeData(c)),
@@ -1753,7 +1954,20 @@ export class GameData {
           }
         }
 
-        this.runStorageItems = Array.isArray(fromSession.runStorageItems)
+          // ========================================
+  // 트레이닝 전략 세션 복구
+  // ========================================
+  trainerStrategyManager.importSaveData(
+    fromSession.trainerStrategy,
+    fromSession.waveIndex,
+  );
+
+  console.log("[LOAD_TRAINER_STRATEGY]", {
+    wave: fromSession.waveIndex,
+    strategy: fromSession.trainerStrategy,
+  });
+
+  this.runStorageItems = Array.isArray(fromSession.runStorageItems)
           ? fromSession.runStorageItems
               .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
               .map(item => ({
@@ -1847,9 +2061,57 @@ export class GameData {
 
         globalScene.newArena(fromSession.arena.biome, fromSession.playerFaints);
 
-        const battleType = fromSession.battleType || 0;
+        let battleType = fromSession.battleType ?? BattleType.WILD;
 
-        const trainerConfig = fromSession.trainer ? trainerConfigs[fromSession.trainer.trainerType] : null;
+const savedMysteryTime = fromSession.mysteryTime;
+
+const isSavedMysteryTimeWave =
+  !!savedMysteryTime?.active
+  && savedMysteryTime.startWave !== null
+  && savedMysteryTime.endWave !== null
+  && fromSession.waveIndex >= savedMysteryTime.startWave
+  && fromSession.waveIndex <= savedMysteryTime.endWave;
+
+// ========================================
+// 미스터리타임 세이브 복구 보정
+// ========================================
+// 미스터리타임 진행 중에는
+// 저장된 원래 층이 트레이너층이었더라도
+// 반드시 야생전으로 복구한다.
+if (isSavedMysteryTimeWave && battleType !== BattleType.WILD) {
+  console.warn("[LOAD_MYSTERY_TIME_BATTLE_TYPE_FIXED]", {
+    wave: fromSession.waveIndex,
+    before: battleType,
+    after: BattleType.WILD,
+    trainerSaved: !!fromSession.trainer,
+    bossAwakened: savedMysteryTime?.bossAwakened ?? false,
+  });
+
+  battleType = BattleType.WILD;
+}
+
+// ========================================
+// 손상된 구버전 세이브 복구
+// ========================================
+// TRAINER인데 trainer 데이터가 없으면
+// newBattle() 내부의 null.toTrainer()가 발생한다.
+if (
+  battleType === BattleType.TRAINER
+  && !fromSession.trainer
+) {
+  console.warn("[LOAD_INVALID_TRAINER_SAVE_FIXED]", {
+    wave: fromSession.waveIndex,
+    battleType,
+    mysteryTime: savedMysteryTime,
+  });
+
+  battleType = BattleType.WILD;
+}
+
+const trainerConfig =
+  battleType === BattleType.TRAINER && fromSession.trainer
+    ? trainerConfigs[fromSession.trainer.trainerType]
+    : null;
 
         const mysteryEncounterType =
           fromSession.mysteryEncounterType !== -1 ? fromSession.mysteryEncounterType : undefined;
@@ -2562,17 +2824,23 @@ export class GameData {
       }
 
       starterData[speciesId] = {
-        moveset: null,
-        eggMoves: 0,
-        candyCount: 0,
-        friendship: 0,
-        abilityAttr: defaultStarterSpecies.includes(speciesId) ? AbilityAttr.ABILITY_1 : 0,
-        passiveAttr: 0,
-        valueReduction: 0,
-        classicWinCount: 0,
-        teraTypeAttr,
-        marks: [],
-      };
+  moveset: null,
+  eggMoves: 0,
+  candyCount: 0,
+  friendship: 0,
+  abilityAttr: defaultStarterSpecies.includes(speciesId)
+    ? AbilityAttr.ABILITY_1
+    : 0,
+
+  passiveAttr: 0,
+  passiveUnlocks: 0,
+  passiveIndex: 0,
+
+  valueReduction: 0,
+  classicWinCount: 0,
+  teraTypeAttr,
+  marks: [],
+};
     }
 
     this.starterData = starterData;
@@ -2656,6 +2924,7 @@ export class GameData {
       // Mark as caught
       dexEntry.caughtAttr |= dexAttr;
 
+      companionManager.updateGenerationUnlocks(this);
       // If the caught form is a battleform, we want to also mark the base form as caught.
       // This snippet assumes that the base form has formIndex equal to 0, which should be
       // always true except for the case of Urshifu.
@@ -2887,13 +3156,11 @@ export class GameData {
       }
       globalScene.playSound("level_up_fanfare");
       const moveName = allMoves[speciesEggMoves[speciesId][eggMoveIndex]].name;
-      let message = prependSpeciesToMessage ? species.getName() + " " : "";
-      message +=
-        eggMoveIndex === 3
-          ? i18next.t("egg:rareEggMoveUnlock", { moveName })
-          : i18next.t("egg:eggMoveUnlock", { moveName });
+let message = prependSpeciesToMessage ? species.getName() + " " : "";
 
-      globalScene.ui.showText(message, null, () => resolve(true), null, true);
+message += i18next.t("egg:eggMoveUnlock", { moveName });
+
+globalScene.ui.showText(message, null, () => resolve(true), null, true);
     });
   }
 

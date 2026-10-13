@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cyllene.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cyllene.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f5a79e3ce2175492c8e9a61cc93c3348:9997f38a48c7d89e60d1e9513c601663:0f8938a0539c6acb07cb0112ac6900d8$"
+	}
+}

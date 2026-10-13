@@ -14,12 +14,17 @@ import { GameModes } from "#enums/game-modes";
 import { ModifierTier } from "#enums/modifier-tier";
 import { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
+import { PlayerGender } from "#enums/player-gender";
 import type { SpeciesId } from "#enums/species-id";
 import { TextStyle } from "#enums/text-style";
+import { TrainerType } from "#enums/trainer-type";
+import { TrainerVariant } from "#enums/trainer-variant";
 import { UiMode } from "#enums/ui-mode";
 import { PokemonHeldItemModifier } from "#modifiers/modifier";
 import type { ModifierTypeOption } from "#modifiers/modifier-type";
 import { getModifierTypeById, type ModifierType, type ModifierTypeGenerator } from "#modifiers/modifier-type";
+import { companionManager, getTrainerKnowhow } from "#system/companion-manager";
+import { TrainerConfig } from "#trainers/trainer-config";
 import { buildRogueShopListings } from "#modifiers/rogue-shop-utils";
 import { type QuestEntry, questManager } from "#system/quest-manager";
 import { VoucherType } from "#system/voucher";
@@ -30,7 +35,16 @@ import { addTextObject } from "#ui/text";
 import { addWindow } from "#ui/ui-theme";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 
-export type RogueShopTab = "SHOP" | "BANK" | "STORAGE" | "QUEST" | "PRACTICE" | "WORKSHOP" | "MINE";
+export type RogueShopTab =
+  | "SHOP"
+  | "BANK"
+  | "STORAGE"
+  | "QUEST"
+  | "PRACTICE"
+  | "WORKSHOP"
+  | "MINE"
+  | "MEETING"
+  | "CAFE";
 
 export interface RogueShopBankData {
   roguePoints: number;
@@ -73,6 +87,13 @@ export interface RogueShopUiArgs {
 
   onPracticePresetStart?: () => void;
 }
+
+type RogueCompanionEntry = {
+  trainerType: TrainerType | null;
+  name: string;
+  description: string;
+  action: "RECRUIT" | "SELECT" | "SOLO";
+};
 
 type RogueBankActionEntry = {
   name: string;
@@ -138,6 +159,10 @@ export class RogueShopUiHandler extends MessageUiHandler {
   private listScroll = 0;
   private readonly visibleRows = 8;
 
+  private companionPortrait: Phaser.GameObjects.Sprite;
+  private companionKnowhowTitleText: Phaser.GameObjects.Text;
+  private companionKnowhowBodyText: Phaser.GameObjects.Text;
+
   private shopListings: RogueShopListing[] = [];
   private storageItems: RogueShopStorageEntry[] = [];
   private bankData: RogueShopBankData = {
@@ -153,7 +178,17 @@ export class RogueShopUiHandler extends MessageUiHandler {
   private readonly tabXPositions = [12, 70, 128, 186, 244];
 
   private uiArgs: RogueShopUiArgs | null = null;
-  private enabledTabs: RogueShopTab[] = ["SHOP", "BANK", "STORAGE", "QUEST", "PRACTICE", "WORKSHOP", "MINE"];
+  private enabledTabs: RogueShopTab[] = [
+  "SHOP",
+  "BANK",
+  "STORAGE",
+  "QUEST",
+  "PRACTICE",
+  "WORKSHOP",
+  "MINE",
+  "MEETING",
+  "CAFE",
+];
 
   private selectingTarget = false;
   private pendingTargetListing: RogueShopListing | null = null;
@@ -274,6 +309,32 @@ export class RogueShopUiHandler extends MessageUiHandler {
       this.tabTexts.push(tabText);
     }
 
+    this.companionPortrait = globalScene.add
+  .sprite(174, 133, "trainer_m")
+  .setOrigin(0.5, 1)
+  .setVisible(false);
+
+this.companionKnowhowTitleText = addTextObject(
+  202,
+  65,
+  "",
+  TextStyle.SUMMARY,
+).setVisible(false);
+
+this.companionKnowhowBodyText = addTextObject(
+  202,
+  80,
+  "",
+  TextStyle.WINDOW,
+  {
+    fontSize: 60,
+    wordWrap: {
+      width: 420,
+      useAdvancedWrap: true,
+    },
+  },
+).setVisible(false);
+
     this.tabCursorObj = globalScene.add.image(10, 23, "select_cursor").setOrigin(0);
     this.listCursorObj = globalScene.add.image(8, 44, "select_cursor").setOrigin(0);
 
@@ -334,27 +395,32 @@ export class RogueShopUiHandler extends MessageUiHandler {
     this.starterIconsContainer.add(this.starterIconCursorObj);
 
     this.rootContainer.add([
-      bg,
-      this.moneyWindow,
-      this.tabWindow,
-      this.mainListWindow,
-      this.detailWindow,
-      this.helpWindow,
-      this.titleText,
-      this.valueRoguePointText,
-      this.valueGoldText,
-      ...this.tabTexts,
-      this.tabCursorObj,
-      this.listCursorObj,
-      ...this.listTextObjects,
-      this.detailTitleText,
-      this.detailBodyText,
-      this.footerHelpText,
-      this.questFooterText,
-      this.starterPanelWindow,
-      this.starterPanelTitleText,
-      this.starterIconsContainer,
-    ]);
+  bg,
+  this.moneyWindow,
+  this.tabWindow,
+  this.mainListWindow,
+  this.detailWindow,
+  this.helpWindow,
+  this.titleText,
+  this.valueRoguePointText,
+  this.valueGoldText,
+  ...this.tabTexts,
+  this.tabCursorObj,
+  this.listCursorObj,
+  ...this.listTextObjects,
+  this.detailTitleText,
+  this.detailBodyText,
+
+  this.companionPortrait,
+  this.companionKnowhowTitleText,
+  this.companionKnowhowBodyText,
+
+  this.footerHelpText,
+  this.questFooterText,
+  this.starterPanelWindow,
+  this.starterPanelTitleText,
+  this.starterIconsContainer,
+]);
   }
 
   show(args: any[]): boolean {
@@ -370,7 +436,10 @@ export class RogueShopUiHandler extends MessageUiHandler {
     });
 
     this.rootContainer.setVisible(true);
-
+    companionManager.ensureDefaultPlayerCompanion(
+  globalScene.gameData.gender,
+);
+    
     this.shopListings = buildRogueShopListings();
     console.table(
       this.shopListings
@@ -544,6 +613,8 @@ export class RogueShopUiHandler extends MessageUiHandler {
     }
 
     enabledTabs.push("MINE");
+    enabledTabs.push("MEETING");
+    enabledTabs.push("CAFE");
 
     this.enabledTabs = enabledTabs.length > 0 ? enabledTabs : ["PRACTICE"];
 
@@ -2349,14 +2420,145 @@ export class RogueShopUiHandler extends MessageUiHandler {
         return this.handlePracticeConfirm();
       case "WORKSHOP":
         return this.handleWorkshopConfirm();
-
       case "MINE":
         return this.handleMineConfirm();
-
+      case "MEETING":
+        return this.handleMeetingConfirm();
+      case "CAFE":
+        return this.handleCafeConfirm();
       default:
         return false;
     }
   }
+
+  private handleMeetingConfirm(): boolean {
+  const list = this.getCurrentList();
+  const entry =
+    list[this.listCursor] as RogueCompanionEntry;
+
+  if (!entry || entry.trainerType == null) {
+    this.getUi().playError();
+    return false;
+  }
+
+  if (
+    companionManager.isRecruited(
+      entry.trainerType,
+    )
+  ) {
+    this.setNotice(
+      `${entry.name}은(는) 이미 동료입니다.`,
+    );
+    this.getUi().playError();
+    return true;
+  }
+
+  companionManager.recruit(entry.trainerType);
+
+globalScene.gameData.saveSystem();
+
+this.setNotice(
+  `${entry.name}이(가) 동료가 되었습니다!`,
+);
+
+  this.getUi().playSelect();
+
+  this.refreshList();
+  this.refreshDetail();
+
+  return true;
+}
+
+private handleCafeConfirm(): boolean {
+  const list = this.getCurrentList();
+  const entry =
+    list[this.listCursor] as RogueCompanionEntry;
+
+  if (!entry) {
+    this.getUi().playError();
+    return false;
+  }
+
+  if (entry.action === "SOLO") {
+  const previousKnowhow =
+    companionManager.getActiveKnowhow();
+
+  companionManager.clearActive();
+
+  console.log("[COMPANION_KNOWHOW_CLEARED]", {
+    previousKnowhowId: previousKnowhow?.id,
+    previousKnowhow: previousKnowhow?.name,
+  });
+
+  for (const pokemon of globalScene.getPlayerParty()) {
+    pokemon.calculateStats();
+  }
+
+  globalScene.gameData.saveSystem();
+
+    this.setNotice(
+      "이번 모험은 혼자 떠납니다.",
+    );
+
+    this.getUi().playSelect();
+
+    this.refreshList();
+    this.refreshDetail();
+
+    return true;
+  }
+
+  if (
+    entry.action === "SELECT"
+    && entry.trainerType != null
+  ) {
+    if (
+      !companionManager.isRecruited(
+        entry.trainerType,
+      )
+    ) {
+      this.setNotice(
+        `${entry.name}은(는) 아직 동료가 아닙니다.`,
+      );
+
+      this.getUi().playError();
+      return true;
+    }
+
+    const selected =
+  companionManager.setActive(entry.trainerType);
+
+if (selected) {
+  console.log("[COMPANION_KNOWHOW_ACTIVATED]", {
+    trainerType: entry.trainerType,
+    companion: entry.name,
+    knowhowId:
+      companionManager.getActiveKnowhowId(),
+    knowhow:
+      companionManager.getActiveKnowhow()?.name,
+  });
+
+  for (const pokemon of globalScene.getPlayerParty()) {
+    pokemon.calculateStats();
+  }
+}
+
+globalScene.gameData.saveSystem();
+
+this.setNotice(
+  `${entry.name}와 함께 모험을 떠납니다.`,
+);
+
+    this.getUi().playSelect();
+
+    this.refreshList();
+    this.refreshDetail();
+
+    return true;
+  }
+
+  return false;
+}
 
   private handleMineConfirm(): boolean {
     this.getUi().playSelect();
@@ -3310,14 +3512,27 @@ export class RogueShopUiHandler extends MessageUiHandler {
     return true;
   }
 
+  private getDefaultCompanionTrainerType(): TrainerType {
+  return globalScene.gameData.gender === PlayerGender.FEMALE
+    ? TrainerType.PLAYER_M_ALTERNATE
+    : TrainerType.PLAYER_F_ALTERNATE;
+}
+
+private getDefaultCompanionName(): string {
+  return globalScene.gameData.gender === PlayerGender.FEMALE
+    ? "남자 주인공"
+    : "여자 주인공";
+}
+
   private getCurrentList(): Array<
-    | RogueShopListing
-    | RogueShopStorageEntry
-    | RogueBankActionEntry
-    | RogueBankCandySpeciesEntry
-    | RogueWorkshopEntry
-    | QuestEntry
-  > {
+  | RogueShopListing
+  | RogueShopStorageEntry
+  | RogueBankActionEntry
+  | RogueBankCandySpeciesEntry
+  | RogueWorkshopEntry
+  | RogueCompanionEntry
+  | QuestEntry
+> {
     if (this.selectingCandySpecies) {
       return this.candySpeciesList;
     }
@@ -3377,6 +3592,53 @@ export class RogueShopUiHandler extends MessageUiHandler {
         },
       ];
     }
+
+    if (this.currentTab === "MEETING") {
+  return companionManager.getAvailableDefinitions().map(definition => ({
+    trainerType: definition.trainerType,
+    name: TrainerType[definition.trainerType],
+    description:
+      "조건을 달성하여 만남의광장에 찾아온 트레이너입니다.\n대화를 나누면 동료로 영입할 수 있습니다.",
+    action: "RECRUIT" as const,
+  }));
+}
+
+if (this.currentTab === "CAFE") {
+  const activeTrainerType =
+    companionManager.getActiveTrainerType();
+
+  const recruitedEntries: RogueCompanionEntry[] =
+    companionManager
+      .getRecruitedDefinitions()
+      .map(definition => {
+        const isActive =
+          activeTrainerType === definition.trainerType;
+
+        return {
+          trainerType: definition.trainerType,
+          name:
+            `${TrainerType[definition.trainerType]}${isActive ? " V" : ""}`,
+          description: isActive
+            ? "현재 함께 모험 중인 동료입니다."
+            : "영입한 동료입니다. 선택하면 함께 모험을 떠납니다.",
+          action: "SELECT" as const,
+        };
+      });
+
+  const isSolo =
+    activeTrainerType === null;
+
+  recruitedEntries.push({
+    trainerType: null,
+    name: `혼자 출발${isSolo ? " V" : ""}`,
+    description: isSolo
+      ? "현재 동료 없이 혼자 모험을 떠납니다."
+      : "이번 모험은 동료 없이 혼자 떠납니다.",
+    action: "SOLO",
+  });
+
+  return recruitedEntries;
+}
 
     if (this.currentTab === "PRACTICE") {
       const cfg = globalScene.gameData.practiceDummyConfig ?? {};
@@ -3560,14 +3822,16 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
   private refreshTabTexts(): void {
     const labels: Record<RogueShopTab, string> = {
-      SHOP: "상점",
-      BANK: "은행",
-      STORAGE: "창고",
-      QUEST: "의뢰소",
-      PRACTICE: "연습",
-      WORKSHOP: "공방소",
-      MINE: "로그광산",
-    };
+  SHOP: "상점",
+  BANK: "은행",
+  STORAGE: "창고",
+  QUEST: "의뢰소",
+  PRACTICE: "연습",
+  WORKSHOP: "공방소",
+  MINE: "로그광산",
+  MEETING: "만남의광장",
+  CAFE: "동료카페",
+};
 
     for (let i = 0; i < this.tabTexts.length; i++) {
       const visibleIndex = this.tabScroll + i;
@@ -3651,6 +3915,14 @@ export class RogueShopUiHandler extends MessageUiHandler {
         const mineEntry = row as RogueWorkshopEntry;
         textObj.setText(mineEntry.name);
       }
+
+      else if (
+  this.currentTab === "MEETING"
+  || this.currentTab === "CAFE"
+) {
+  const companionEntry = row as RogueCompanionEntry;
+  textObj.setText(companionEntry.name);
+}
 
       // 의뢰
       else if (this.currentTab === "QUEST") {
@@ -3956,6 +4228,106 @@ export class RogueShopUiHandler extends MessageUiHandler {
       );
       return;
     }
+
+    if (this.currentTab === "MEETING") {
+  const companionEntry =
+    selected as RogueCompanionEntry;
+
+  this.detailTitleText.setText(
+    companionEntry.name,
+  );
+  this.detailBodyText.setText(
+    companionEntry.description,
+  );
+
+  this.companionPortrait.setVisible(false);
+  this.companionKnowhowTitleText.setVisible(false);
+  this.companionKnowhowBodyText.setVisible(false);
+
+  return;
+}
+
+if (this.currentTab === "CAFE") {
+  const companionEntry =
+    selected as RogueCompanionEntry;
+
+  this.detailTitleText.setText(
+    companionEntry.name,
+  );
+
+  // 혼자 출발
+  if (companionEntry.trainerType === null) {
+    this.detailBodyText
+      .setText(companionEntry.description)
+      .setVisible(true);
+
+    this.companionPortrait.setVisible(false);
+    this.companionKnowhowTitleText.setVisible(false);
+    this.companionKnowhowBodyText.setVisible(false);
+
+    return;
+  }
+
+  const definition =
+    companionManager.getDefinition(
+      companionEntry.trainerType,
+    );
+
+  const trainerConfig =
+  new TrainerConfig(companionEntry.trainerType);
+
+const variant =
+  definition?.variant ?? TrainerVariant.DEFAULT;
+
+const spriteKey =
+  definition?.frontSpriteKey
+  ?? trainerConfig.getSpriteKey(
+    variant === TrainerVariant.FEMALE,
+  );
+
+trainerConfig.loadAssets(variant).then(() => {
+  this.companionPortrait
+    .setTexture(spriteKey);
+
+  const frame =
+    this.companionPortrait.frame;
+
+  const maxWidth = 42;
+  const maxHeight = 76;
+
+  const scale = Math.min(
+    maxWidth / frame.width,
+    maxHeight / frame.height,
+  );
+
+  this.companionPortrait
+    .setScale(scale)
+    .setVisible(true);
+});
+
+  const knowhow =
+    definition?.knowhowId !== undefined
+      ? getTrainerKnowhow(definition.knowhowId)
+      : undefined;
+
+  this.detailBodyText.setVisible(false);
+
+  this.companionKnowhowTitleText
+    .setText(
+      knowhow
+        ? `노하우: ${knowhow.name}`
+        : "노하우: 없음",
+    )
+    .setVisible(true);
+
+  this.companionKnowhowBodyText
+    .setText(
+      knowhow?.description ?? "",
+    )
+    .setVisible(true);
+
+  return;
+}
 
     if (this.currentTab === "PRACTICE") {
       this.detailTitleText.setText("연습센터");

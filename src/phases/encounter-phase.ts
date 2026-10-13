@@ -694,23 +694,43 @@ export class EncounterPhase extends BattlePhase {
       }
 
       // 예정되어 있던 트레이너전을 야생전으로 치환
-      if (battle.battleType === BattleType.TRAINER) {
-        console.log("[TRAINER_BATTLE_SUPPRESSED_BY_MYSTERY_TIME]", {
-          wave: battle.waveIndex,
-        });
+      // 예정되어 있던 트레이너전을
+// 미스터리타임 야생전 형식으로 치환
+if (battle.battleType === BattleType.TRAINER) {
+  console.log("[TRAINER_BATTLE_SUPPRESSED_BY_MYSTERY_TIME]", {
+    wave: battle.waveIndex,
+    loaded: this.loaded,
+    enemyPartyLength: battle.enemyParty.length,
+  });
 
-        (battle as any).battleType = BattleType.WILD;
+  (battle as any).battleType = BattleType.WILD;
+  (battle as any).trainer = undefined;
+  (battle as any).double = false;
 
-        (battle as any).trainer = undefined;
+  // ========================================
+  // 신규 진입일 때만 기존 트레이너 파티 제거
+  // ========================================
+  // 세이브 로드 상태에서는 game-data.ts가
+  // 이미 미스터리언/데몬스터리를 복원했으므로
+  // enemyParty를 절대 비우면 안 된다.
+  if (!this.loaded) {
+    if (battle.enemyLevels && battle.enemyLevels.length > 1) {
+      (battle as any).enemyLevels = [battle.enemyLevels[0]];
+    }
 
-        (battle as any).double = false;
+    battle.enemyParty.length = 0;
 
-        if (battle.enemyLevels && battle.enemyLevels.length > 1) {
-          (battle as any).enemyLevels = [battle.enemyLevels[0]];
-        }
-
-        battle.enemyParty.length = 0;
-      }
+    console.log("[MYSTERY_TIME_TRAINER_PARTY_CLEARED]", {
+      wave: battle.waveIndex,
+    });
+  } else {
+    console.log("[MYSTERY_TIME_LOADED_PARTY_PRESERVED]", {
+      wave: battle.waveIndex,
+      enemyPartyLength: battle.enemyParty.length,
+      enemies: battle.enemyParty.map(pokemon => pokemon?.name),
+    });
+  }
+}
     }
 
     // ========================================
@@ -1345,6 +1365,7 @@ export class EncounterPhase extends BattlePhase {
         enemyField,
         globalScene.arenaPlayer,
         globalScene.trainer,
+        globalScene.companionTrainerSprite,
       ].flat(),
       x: (_target, _key, value, fieldIndex: number) => (fieldIndex < 2 + enemyField.length ? value + 300 : value - 300),
       duration: 2000,
@@ -1813,32 +1834,69 @@ export class EncounterPhase extends BattlePhase {
     // ======================================
     const availablePartyMembers = globalScene.getPokemonAllowedInBattle();
 
-    // 리셋/로드 후에도 자연재해 처리
-    globalScene.phaseManager.pushNew("NaturalDisasterPhase");
+const companionParty = globalScene.getCompanionParty();
 
-    // 리셋/로드 후에도 함정 처리
-    globalScene.phaseManager.pushNew("TrapPhase");
+const hasCompanion =
+  !!globalScene.currentBattle.companionTrainer
+  && companionParty.some(p => p.isAllowedInBattle());
 
-    if (!this.loaded || kecleonShopManager.isTheftBattleActive()) {
-      if (!availablePartyMembers[0].isOnField()) {
-        globalScene.phaseManager.pushNew("SummonPhase", 0);
+// 리셋/로드 후에도 자연재해 처리
+globalScene.phaseManager.pushNew("NaturalDisasterPhase");
+
+// 리셋/로드 후에도 함정 처리
+globalScene.phaseManager.pushNew("TrapPhase");
+
+if (!this.loaded || kecleonShopManager.isTheftBattleActive()) {
+  if (!availablePartyMembers[0].isOnField()) {
+    globalScene.phaseManager.pushNew("SummonPhase", 0);
+  }
+
+  if (globalScene.currentBattle.double) {
+    globalScene.phaseManager.pushNew(
+      "ToggleDoublePositionPhase",
+      true,
+    );
+
+    if (hasCompanion) {
+      const companionPokemon =
+        companionParty.find(p => p.isAllowedInBattle());
+
+      if (
+        companionPokemon
+        && !companionPokemon.isOnField()
+      ) {
+        globalScene.phaseManager.pushNew(
+          "SummonPhase",
+          0,
+          true,
+          false,
+          1,
+        );
       }
-
-      if (globalScene.currentBattle.double) {
-        if (availablePartyMembers.length > 1) {
-          globalScene.phaseManager.pushNew("ToggleDoublePositionPhase", true);
-
-          if (!availablePartyMembers[1].isOnField()) {
-            globalScene.phaseManager.pushNew("SummonPhase", 1);
-          }
-        }
-      } else {
-        if (availablePartyMembers.length > 1 && availablePartyMembers[1].isOnField()) {
-          globalScene.phaseManager.pushNew("ReturnPhase", 1);
-        }
-
-        globalScene.phaseManager.pushNew("ToggleDoublePositionPhase", false);
+    } else if (availablePartyMembers.length > 1) {
+      if (!availablePartyMembers[1].isOnField()) {
+        globalScene.phaseManager.pushNew(
+          "SummonPhase",
+          1,
+        );
       }
+    }
+  } else {
+    if (
+      availablePartyMembers.length > 1
+      && availablePartyMembers[1].isOnField()
+    ) {
+      globalScene.phaseManager.pushNew(
+        "ReturnPhase",
+        1,
+      );
+    }
+
+    globalScene.phaseManager.pushNew(
+      "ToggleDoublePositionPhase",
+      false,
+    );
+  }
 
       if (
         globalScene.currentBattle.battleType !== BattleType.TRAINER

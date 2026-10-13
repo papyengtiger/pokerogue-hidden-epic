@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mina.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 31,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mina.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 29,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 29,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 29,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:858bd11376cb1b7b3296b30b373c514a:e2148de4a6eea4c14a9f8c85159da64a:92ae78da0efe9e601037c13be092ca3d$"
+	}
+}

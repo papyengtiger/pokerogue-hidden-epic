@@ -17,6 +17,7 @@ import { CheckStatusEffectPhase } from "#phases/check-status-effect-phase";
 import { CheckSwitchPhase } from "#phases/check-switch-phase";
 import { CommandPhase } from "#phases/command-phase";
 import { CommonAnimPhase } from "#phases/common-anim-phase";
+import { CompanionCommandPhase } from "#phases/companion-command-phase";
 import { DamageAnimPhase } from "#phases/damage-anim-phase";
 import { DynamicPhaseMarker } from "#phases/dynamic-phase-marker";
 import { EggHatchPhase } from "#phases/egg-hatch-phase";
@@ -105,6 +106,7 @@ import { SelectBiomePhase } from "#phases/select-biome-phase";
 import { SelectChallengePhase } from "#phases/select-challenge-phase";
 import { SelectGenderPhase } from "#phases/select-gender-phase";
 import { SelectModifierPhase } from "#phases/select-modifier-phase";
+import { SelectTrainerCardPhase } from "#phases/select-trainer-card-phase";
 import { SelectStarterPhase } from "#phases/select-starter-phase";
 import { SelectTargetPhase } from "#phases/select-target-phase";
 import { ShinySparklePhase } from "#phases/shiny-sparkle-phase";
@@ -161,6 +163,7 @@ const PHASES = Object.freeze({
   CheckSwitchPhase,
   CommandPhase,
   CommonAnimPhase,
+  CompanionCommandPhase,
   DamageAnimPhase,
   EggHatchPhase,
   EggLapsePhase,
@@ -236,6 +239,7 @@ const PHASES = Object.freeze({
   SelectChallengePhase,
   SelectGenderPhase,
   SelectModifierPhase,
+  SelectTrainerCardPhase,
   SelectStarterPhase,
   SelectTargetPhase,
   ShinySparklePhase,

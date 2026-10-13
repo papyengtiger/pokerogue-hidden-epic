@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "elm.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "elm.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:80761dd14e75c178469ca729ece8ec3b:567c6bdd625d7823f8d8263eb6bd7e9c:f767b71404bef1f5b37006ce987bdb41$"
+	}
+}

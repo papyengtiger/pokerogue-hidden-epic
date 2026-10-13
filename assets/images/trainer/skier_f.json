@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "skier_f.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 77,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "skier_f.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 75,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 75,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 75,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1bad4be928c2b75720e983d9a4b182cb:9b886090175a86a371058a597e04d75e:743d502b4ca828c23cfe29219411f39d$"
+	}
+}

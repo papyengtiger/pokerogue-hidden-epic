@@ -30,6 +30,7 @@ import { MoveFlags } from "#enums/move-flags";
 import { MoveId } from "#enums/move-id";
 import { MovePhaseTimingModifier } from "#enums/move-phase-timing-modifier";
 import { MoveResult } from "#enums/move-result";
+import { MoveTarget } from "#enums/move-target";
 import { isIgnorePP, isIgnoreStatus, isReflected, isVirtual, MoveUseMode } from "#enums/move-use-mode";
 import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
@@ -286,9 +287,130 @@ export class MovePhase extends PokemonPhase {
     }
 
     this.resolveRedirectTarget();
-    this.resolveCounterAttackTarget();
+this.resolveCounterAttackTarget();
 
-    console.log("[DEBUG] raw this.targets=", JSON.stringify(this.targets));
+// ========================================
+// 동료 포켓몬의 잘못된 아군 타깃 최종 보정
+// ========================================
+const isCompanion =
+  globalScene
+    .getCompanionParty()
+    .some(p => p.id === user.id);
+
+if (isCompanion) {
+  const companionMove = this.move.getMove();
+
+  const activeEnemies = globalScene
+    .getEnemyField()
+    .filter(
+      p =>
+        p.isActive(true)
+        && !p.isFainted(),
+    );
+
+  const enemyBattlerIndexes =
+    activeEnemies.map(
+      p => p.getBattlerIndex(),
+    );
+
+  switch (companionMove.moveTarget) {
+  // 동료 AI에서는 "다른 포켓몬 1마리"도
+  // 기본적으로 적에게만 사용한다.
+  case MoveTarget.NEAR_ENEMY:
+  case MoveTarget.RANDOM_NEAR_ENEMY:
+  case MoveTarget.NEAR_OTHER:
+  case MoveTarget.OTHER: {
+    if (enemyBattlerIndexes.length === 0) {
+  console.log(
+    "[COMPANION_SKIP_NO_ENEMY]",
+    {
+      user: user.getName?.(),
+      move: companionMove.name,
+      moveTarget:
+        MoveTarget[
+          companionMove.moveTarget
+        ],
+    },
+  );
+
+  // 적이 이미 전멸한 뒤 남은 동료 행동은
+  // 기술 실패가 아니라 그냥 행동 소멸 처리
+  this.cancel();
+  this.handlePreMoveFailures();
+  this.end();
+  return;
+}
+
+    const currentIsEnemy =
+      this.targets.length === 1
+      && enemyBattlerIndexes.includes(
+        this.targets[0],
+      );
+
+    if (!currentIsEnemy) {
+      this.targets = [
+        enemyBattlerIndexes[
+          user.randBattleSeedInt(
+            enemyBattlerIndexes.length,
+          )
+        ],
+      ];
+    }
+
+    break;
+  }
+
+  case MoveTarget.ALL_NEAR_ENEMIES:
+  case MoveTarget.ALL_ENEMIES:
+  case MoveTarget.ENEMY_SIDE: {
+    if (enemyBattlerIndexes.length === 0) {
+  console.log(
+    "[COMPANION_SKIP_NO_ENEMY]",
+    {
+      user: user.getName?.(),
+      move: companionMove.name,
+      moveTarget:
+        MoveTarget[
+          companionMove.moveTarget
+        ],
+    },
+  );
+
+  this.cancel();
+  this.handlePreMoveFailures();
+  this.end();
+  return;
+}
+
+    this.targets = enemyBattlerIndexes;
+    break;
+  }
+}
+
+  console.log(
+    "[COMPANION_TARGET_CORRECTED]",
+    {
+      user: user.getName?.(),
+      move: companionMove.name,
+      moveTarget:
+        MoveTarget[
+          companionMove.moveTarget
+        ],
+      targets: this.targets,
+      enemies:
+        activeEnemies.map(p => ({
+          name: p.getName?.(),
+          battlerIndex:
+            p.getBattlerIndex(),
+        })),
+    },
+  );
+}
+
+console.log(
+  "[DEBUG] raw this.targets=",
+  JSON.stringify(this.targets),
+);
 
     // ✅ (3) 이제 getActiveTargetPokemon() 호출해도 안전 (위에서 resolve 했으니까)
     const targets = this.getActiveTargetPokemon();
@@ -1002,13 +1124,60 @@ export class MovePhase extends PokemonPhase {
     const user = this.pokemon;
     const arena = globalScene.arena;
 
-    const t0 = this.getActiveTargetPokemon()[0];
+    const activeTargets =
+  this.getActiveTargetPokemon();
 
-    console.log("[SEQ2][ENTER]", MoveId[move.id], "user=", user?.name, "t0=", t0?.name);
+const t0 = activeTargets[0];
 
-    const isDelayedAttackMove = move.id === MoveId.FUTURE_SIGHT || move.id === MoveId.DOOM_DESIRE;
+console.log(
+  "[SEQ2][ENTER]",
+  MoveId[move.id],
+  "user=",
+  user?.name,
+  "rawTargets=",
+  this.targets,
+  "activeTargets=",
+  activeTargets.map(p => ({
+    name: p.getName?.(),
+    battlerIndex: p.getBattlerIndex(),
+  })),
+);
 
-    const okSeq2 = isDelayedAttackMove ? true : move.applyConditions(user, t0, 2);
+const isDelayedAttackMove =
+  move.id === MoveId.FUTURE_SIGHT
+  || move.id === MoveId.DOOM_DESIRE;
+
+// 유효한 실제 대상이 없으면 조건 검사에 undefined를 넘기지 않는다.
+if (!isDelayedAttackMove && !t0) {
+  console.warn(
+    "[SEQ2][NO_ACTIVE_TARGET]",
+    {
+      move: MoveId[move.id],
+      user: user?.getName?.(),
+      rawTargets: this.targets,
+      field: globalScene
+        .getField(true)
+        .map(p => ({
+          name: p.getName?.(),
+          battlerIndex:
+            p.getBattlerIndex(),
+        })),
+    },
+  );
+
+  this.failed = true;
+  this.showFailedText();
+  return true;
+}
+
+const okSeq2 =
+  isDelayedAttackMove
+    ? true
+    : move.applyConditions(
+        user,
+        t0,
+        2,
+      );
 
     if (!okSeq2) {
       console.warn("[SEQ2][FAIL]", MoveId[move.id], "user=", user?.name, "t0=", t0?.name);
@@ -1142,11 +1311,31 @@ export class MovePhase extends PokemonPhase {
      * TODO: is this sustainable?
      */
     const move = this.move.getMove();
-    const targets = this.getActiveTargetPokemon();
+    const targets =
+  this.getActiveTargetPokemon();
+
+if (targets.length === 0) {
+  console.warn(
+    "[SEQ3][NO_ACTIVE_TARGET]",
+    {
+      move: MoveId[move.id],
+      user: user?.getName?.(),
+      rawTargets: this.targets,
+    },
+  );
+
+  this.failMove();
+  return true;
+}
     const arena = globalScene.arena;
     const user = this.pokemon;
 
-    const failsConditions = !move.applyConditions(user, targets[0], 3);
+    const failsConditions =
+  !move.applyConditions(
+    user,
+    targets[0],
+    3,
+  );
     const failedDueToTerrain = arena.isMoveTerrainCancelled(user, this.targets, move);
     let failed = failsConditions || failedDueToTerrain;
 

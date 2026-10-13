@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "poke_maniac.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 52,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "poke_maniac.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 50,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 50,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 50,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d49c47400a3eb6ed54c61d40b2cc0d7f:bc62a417ad57ab07dfa5f353d746281d:48265e5ed67b4caa7ef461ffd12fa6ea$"
+	}
+}

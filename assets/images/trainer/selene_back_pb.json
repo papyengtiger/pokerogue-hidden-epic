@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "selene_back_pb.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 325,
+				"h": 101
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 49,
+						"y": 61,
+						"w": 63,
+						"h": 99
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 63,
+						"h": 99
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 49,
+						"y": 61,
+						"w": 63,
+						"h": 99
+					},
+					"frame": {
+						"x": 66,
+						"y": 1,
+						"w": 63,
+						"h": 99
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 49,
+						"y": 61,
+						"w": 63,
+						"h": 99
+					},
+					"frame": {
+						"x": 131,
+						"y": 1,
+						"w": 63,
+						"h": 99
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 49,
+						"y": 61,
+						"w": 63,
+						"h": 99
+					},
+					"frame": {
+						"x": 196,
+						"y": 1,
+						"w": 63,
+						"h": 99
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 49,
+						"y": 61,
+						"w": 63,
+						"h": 99
+					},
+					"frame": {
+						"x": 261,
+						"y": 1,
+						"w": 63,
+						"h": 99
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:dcffd152938ed84d95b429490095827a:208f564b5dd6b0e3df4a83149b0086b3:ca432b3c9b6fdd4c9f1f0bd7a09aeb7e$"
+	}
+}

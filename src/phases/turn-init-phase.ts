@@ -129,35 +129,50 @@ export class TurnInitPhase extends FieldPhase {
       turn: globalScene.currentBattle?.turn ?? "unknown",
     });
 
-    const isBattleStartTurn = (globalScene.currentBattle?.turn ?? 0) <= 1;
-    if (isBattleStartTurn) {
-      globalScene.phaseManager.pushNew("BattleStartImmediateBerryPhase");
-      this.end();
-      return;
-    }
+    
 
     // --- 여기부터는 기존 로직 그대로 (커맨드/턴스타트 큐잉) ---
     globalScene.getField().forEach((pokemon, i) => {
-      console.log("[PRACTICE][TURN_QUEUE_CHECK]", {
+  console.log("[PRACTICE][TURN_QUEUE_CHECK]", {
+    i,
+    name: pokemon?.getName?.(),
+    isActive: pokemon?.isActive?.(),
+    isPlayer: pokemon?.isPlayer?.(),
+    isEnemy: pokemon?.isEnemy?.(),
+    battlerIndex: pokemon?.getBattlerIndex?.(),
+  });
+
+  if (!pokemon?.isActive()) {
+    return;
+  }
+
+  if (pokemon.isPlayer()) {
+    const isCompanion =
+      !!globalScene.currentBattle.companionTrainer
+      && globalScene
+        .getCompanionParty()
+        .some(p => p.id === pokemon.id);
+
+    if (isCompanion) {
+      globalScene.phaseManager.pushNew(
+        "CompanionCommandPhase",
         i,
-        name: pokemon?.getName?.(),
-        isActive: pokemon?.isActive?.(),
-        isPlayer: pokemon?.isPlayer?.(),
-        isEnemy: pokemon?.isEnemy?.(),
-        battlerIndex: pokemon?.getBattlerIndex?.(),
-      });
+      );
+    } else {
+      globalScene.phaseManager.pushNew(
+        "CommandPhase",
+        i,
+      );
+    }
+  } else {
+    globalScene.phaseManager.pushNew(
+      "EnemyCommandPhase",
+      i - BattlerIndex.ENEMY,
+    );
+  }
+});
 
-      if (!pokemon?.isActive()) {
-        return;
-      }
-
-      if (pokemon.isPlayer()) {
-        globalScene.phaseManager.pushNew("CommandPhase", i);
-      } else {
-        globalScene.phaseManager.pushNew("EnemyCommandPhase", i - BattlerIndex.ENEMY);
-      }
-    });
-    globalScene.phaseManager.pushNew("TurnStartPhase");
+globalScene.phaseManager.pushNew("TurnStartPhase");
     this.end();
   }
 }

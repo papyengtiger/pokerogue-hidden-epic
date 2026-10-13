@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "lucas_back.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 593,
+				"h": 126
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 39,
+						"y": 36,
+						"w": 92,
+						"h": 124
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 92,
+						"h": 124
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 11,
+						"y": 42,
+						"w": 111,
+						"h": 118
+					},
+					"frame": {
+						"x": 351,
+						"y": 1,
+						"w": 111,
+						"h": 118
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 16,
+						"y": 37,
+						"w": 123,
+						"h": 123
+					},
+					"frame": {
+						"x": 95,
+						"y": 1,
+						"w": 123,
+						"h": 123
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 28,
+						"y": 39,
+						"w": 129,
+						"h": 121
+					},
+					"frame": {
+						"x": 220,
+						"y": 1,
+						"w": 129,
+						"h": 121
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 32,
+						"y": 47,
+						"w": 128,
+						"h": 113
+					},
+					"frame": {
+						"x": 464,
+						"y": 1,
+						"w": 128,
+						"h": 113
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d6811e33de49cdb6e60719499b1444eb:f8766bf38d4d0976090f5919eeae6374:f1d3c037aa88a0c5f4aef5a9ad5f6466$"
+	}
+}

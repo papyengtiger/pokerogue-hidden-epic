@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "brendan.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 76,
+				"h": 114
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "brendan.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 128
+					},
+					"spriteSourceSize": {
+						"x": 33,
+						"y": 15,
+						"w": 74,
+						"h": 112
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 74,
+						"h": 112
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:03d40664e3e9df411c1717bbc6808de7:2963a9118b1600b8a6a59a0cf8da3b30:941691caad26c1b02fde3108a696fe88$"
+	}
+}

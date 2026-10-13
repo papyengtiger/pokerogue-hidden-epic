@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lana.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 48,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lana.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 46,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:c4ddab8209f429ef78f7908933197285:088a39bc0cdf7a2b235ac2df4f95d235:8937ff64bddb119100a4e8162a6cac48$"
+	}
+}

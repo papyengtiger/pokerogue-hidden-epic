@@ -151,7 +151,7 @@ export enum TrainerType {
   MARLEY,
   MIRA,
   RILEY,
-  VICTOR,
+  VICTORY,
   VICTORIA,
   VIVI,
   VICKY,
@@ -330,4 +330,28 @@ export enum TrainerType {
   RIVAL_6,
 
   // #endregion Rivals
+
+  // #region Recruitable Protagonists
+
+LEAF = 400,
+ETHAN,
+LYRA,
+BRENDAN,
+MAY,
+LUCAS,
+DAWN,
+HILBERT,
+HILDA,
+NATE,
+ROSA,
+CALEM,
+SERENA,
+ELIO,
+SELENE,
+VICTOR,
+GLORIA,
+FLORIAN,
+JULIANA,
+
+// #endregion Recruitable Protagonists
 }

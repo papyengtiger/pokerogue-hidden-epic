@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "grisham.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "grisham.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9605976c5dc072f1a1f46591ee2abbb2:40812e17d0766a09eeb8969199a45d6c:ce5102ec96eaf46b3821afd362d7b2ba$"
+	}
+}

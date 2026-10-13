@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "super_nerd_2.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 46,
+				"h": 71
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "super_nerd_2.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 44,
+						"h": 69
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 44,
+						"h": 69
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 44,
+						"h": 69
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7bb7479a887cf558c0d7fc1179425401:58145da449f07c6cacd37a4e93d80f85:03365f2d62b651bc2d3d4d65076aaecf$"
+	}
+}

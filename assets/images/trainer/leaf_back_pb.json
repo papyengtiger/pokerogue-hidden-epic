@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "leaf_back_pb.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 547,
+				"h": 103
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 47,
+						"y": 61,
+						"w": 74,
+						"h": 99
+					},
+					"frame": {
+						"x": 132,
+						"y": 1,
+						"w": 74,
+						"h": 99
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 33,
+						"y": 69,
+						"w": 114,
+						"h": 91
+					},
+					"frame": {
+						"x": 432,
+						"y": 1,
+						"w": 114,
+						"h": 91
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 15,
+						"y": 63,
+						"w": 106,
+						"h": 97
+					},
+					"frame": {
+						"x": 208,
+						"y": 1,
+						"w": 106,
+						"h": 97
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 31,
+						"y": 59,
+						"w": 129,
+						"h": 101
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 129,
+						"h": 101
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 27,
+						"y": 67,
+						"w": 114,
+						"h": 93
+					},
+					"frame": {
+						"x": 316,
+						"y": 1,
+						"w": 114,
+						"h": 93
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:144fe97b1372752543f72a9520489d80:3daea253e78d8fb49da676c5570a7c43:772b8d78bf17aa858cc4e65f50c6b579$"
+	}
+}

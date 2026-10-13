@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "trainer_growth_card.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 46
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "trainer_growth_card.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 44
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 44
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 44
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2a4325fdb0ce109fb27194e2c5232f44:ce1a6342f4a1e34e156210958562b017:60bf034dd51c09ce777ad3349183e0bd$"
+	}
+}

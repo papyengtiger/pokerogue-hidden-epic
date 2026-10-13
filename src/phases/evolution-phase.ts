@@ -420,9 +420,32 @@ export class EvolutionPhase extends Phase {
     .getLevelMoves(this.lastLevel + 1, true, false, false, learnSituation)
     .filter(lm => lm[0] === EVOLVE_MOVE);
 
+  const isCompanion =
+  globalScene
+    .getCompanionParty()
+    .some(p => p.id === this.pokemon.id);
+
+if (!isCompanion) {
   for (const lm of levelMoves) {
-    globalScene.phaseManager.unshiftNew("LearnMovePhase", globalScene.getPlayerParty().indexOf(this.pokemon), lm[1]);
+    globalScene.phaseManager.unshiftNew(
+      "LearnMovePhase",
+      globalScene
+        .getPlayerParty()
+        .indexOf(this.pokemon),
+      lm[1],
+    );
   }
+} else {
+  console.log(
+    "[COMPANION_EVOLUTION_MOVE_SKIPPED]",
+    {
+      pokemon: this.pokemon.getName(),
+      moves: levelMoves.map(
+        lm => lm[1],
+      ),
+    },
+  );
+}
 
   globalScene.phaseManager.unshiftNew("EndEvolutionPhase");
 

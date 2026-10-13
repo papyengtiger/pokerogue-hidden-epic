@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "trainer_battle_card.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 46
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "trainer_battle_card.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 44
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 44
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 44
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e4df633d079ae8ed34f8ea4744c131a1:e1459692a2e657fb6129eedf70a8c46c:6d2ca4681ffebe83aa9e26e8e7d04b52$"
+	}
+}

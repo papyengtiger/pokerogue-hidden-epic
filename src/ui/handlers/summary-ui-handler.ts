@@ -359,15 +359,20 @@ export class SummaryUiHandler extends UiHandler {
     ],
   ): boolean;
   show(
-    args: [
-      pokemon: PlayerPokemon,
-      uiMode?: SummaryUiMode,
-      startPage?: Page | Move,
-      callback?: (cursor: number) => void,
-      player?: boolean,
-    ],
-  ): boolean {
-    super.show(args);
+  args: [
+    pokemon: PlayerPokemon,
+    uiMode?: SummaryUiMode,
+    startPage?: Page | Move,
+    callback?: (cursor: number) => void,
+    player?: boolean,
+  ],
+): boolean {
+  if (!args[0]) {
+    console.error("[SUMMARY_SHOW_NO_POKEMON]", args);
+    return false;
+  }
+
+  super.show(args);
 
     /* args[] information
      * args[0] : the Pokemon displayed in the Summary-UI
@@ -396,11 +401,82 @@ export class SummaryUiHandler extends UiHandler {
       getTextColor(!this.pokemon.isShiny() ? TextStyle.SUMMARY : TextStyle.SUMMARY_GOLD, true),
     );
     const spriteKey = this.pokemon.getSpriteKey(true);
-    try {
-      this.pokemonSprite.play(spriteKey);
-    } catch (err: unknown) {
-      console.error(`Failed to play animation for ${spriteKey}`, err);
-    }
+
+const playPokemonSprite = () => {
+  if (globalScene.anims.exists(spriteKey)) {
+    this.pokemonSprite.play(spriteKey);
+  } else {
+    console.warn(
+      "[SUMMARY_SPRITE_ANIM_MISSING]",
+      {
+        pokemon: this.pokemon?.getName(),
+        spriteKey,
+      },
+    );
+  }
+};
+
+const shownPokemon = this.pokemon;
+
+const playSummaryPokemon = () => {
+  if (!shownPokemon) {
+    return;
+  }
+
+  if (this.pokemon !== shownPokemon) {
+    return;
+  }
+
+  const currentSpriteKey =
+    shownPokemon.getSpriteKey(true);
+
+  if (globalScene.anims.exists(currentSpriteKey)) {
+    this.pokemonSprite.play(currentSpriteKey);
+  } else {
+    console.warn(
+      "[SUMMARY_SPRITE_ANIM_MISSING]",
+      {
+        pokemon: shownPokemon.getName(),
+        spriteKey: currentSpriteKey,
+      },
+    );
+  }
+
+  try {
+    shownPokemon.cry();
+  } catch (err) {
+    console.warn(
+      "[SUMMARY_CRY_FAILED]",
+      {
+        pokemon: shownPokemon.getName(),
+        speciesId:
+          shownPokemon.species.speciesId,
+        err,
+      },
+    );
+  }
+};
+
+if (globalScene.anims.exists(spriteKey)) {
+  playSummaryPokemon();
+} else {
+  shownPokemon
+    .loadAssets(true)
+    .then(() => {
+      playSummaryPokemon();
+    })
+    .catch(err => {
+      console.error(
+        "[SUMMARY_ASSET_LOAD_FAILED]",
+        {
+          pokemon: shownPokemon.getName(),
+          spriteKey,
+          err,
+        },
+      );
+    });
+}
+
     this.pokemonSprite
       .setPipelineData("teraColor", getTypeRgb(this.pokemon.getTeraType()))
       .setPipelineData("isTerastallized", this.pokemon.isTerastallized)
@@ -415,7 +491,6 @@ export class SummaryUiHandler extends UiHandler {
       }
       this.pokemonSprite.pipelineData[k] = this.pokemon?.getSprite().pipelineData[k];
     });
-    this.pokemon.cry();
 
     this.nameText.setText(this.pokemon.getNameToRender(false));
 
@@ -658,23 +733,63 @@ export class SummaryUiHandler extends UiHandler {
       const pages = getEnumValues(Page);
       switch (button) {
         case Button.UP:
-        case Button.DOWN: {
-          if (this.summaryUiMode === SummaryUiMode.LEARN_MOVE) {
-            break;
-          }
-          if (!fromPartyMode) {
-            break;
-          }
-          const isDown = button === Button.DOWN;
-          const party = globalScene.getPlayerParty();
-          const partyMemberIndex = this.pokemon ? party.indexOf(this.pokemon) : -1;
-          if ((isDown && partyMemberIndex < party.length - 1) || (!isDown && partyMemberIndex)) {
-            const page = this.cursor;
-            this.clear();
-            this.show([party[partyMemberIndex + (isDown ? 1 : -1)], this.summaryUiMode, page]);
-          }
-          break;
-        }
+case Button.DOWN: {
+  if (this.summaryUiMode === SummaryUiMode.LEARN_MOVE) {
+    break;
+  }
+
+  if (!fromPartyMode || !this.pokemon) {
+    break;
+  }
+
+  const playerParty = globalScene.getPlayerParty();
+  const companionParty = globalScene.getCompanionParty();
+
+  const party = companionParty.includes(this.pokemon)
+    ? companionParty
+    : playerParty;
+
+  const partyMemberIndex = party.indexOf(this.pokemon);
+
+  if (partyMemberIndex < 0) {
+    console.warn("[SUMMARY_PARTY_MEMBER_NOT_FOUND]", {
+      pokemon: this.pokemon.getName(),
+      id: this.pokemon.id,
+    });
+    break;
+  }
+
+  const isDown = button === Button.DOWN;
+
+  const nextIndex =
+    partyMemberIndex + (isDown ? 1 : -1);
+
+  if (
+    nextIndex < 0
+    || nextIndex >= party.length
+  ) {
+    break;
+  }
+
+  const nextPokemon = party[nextIndex];
+
+  if (!nextPokemon) {
+    break;
+  }
+
+  const page = this.cursor;
+
+  this.clear();
+
+  this.show([
+    nextPokemon,
+    this.summaryUiMode,
+    page,
+  ]);
+
+  success = true;
+  break;
+}
         case Button.LEFT:
           if (this.cursor) {
             success = this.setCursor(this.cursor - 1);

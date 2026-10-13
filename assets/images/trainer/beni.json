@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "beni.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 56,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "beni.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 54,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 54,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 54,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:992279dcd08d974c01a8d1e3e19e0ebc:b186164d82989da382b682d18db0758a:77c57393a71994f172b77f3bc8e8f5ac$"
+	}
+}

@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "hilda_back.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 64,
+				"h": 495
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 54,
+						"y": 63,
+						"w": 62,
+						"h": 97
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 97
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 54,
+						"y": 63,
+						"w": 62,
+						"h": 97
+					},
+					"frame": {
+						"x": 1,
+						"y": 100,
+						"w": 62,
+						"h": 97
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 54,
+						"y": 63,
+						"w": 62,
+						"h": 97
+					},
+					"frame": {
+						"x": 1,
+						"y": 199,
+						"w": 62,
+						"h": 97
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 54,
+						"y": 63,
+						"w": 62,
+						"h": 97
+					},
+					"frame": {
+						"x": 1,
+						"y": 298,
+						"w": 62,
+						"h": 97
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 54,
+						"y": 63,
+						"w": 62,
+						"h": 97
+					},
+					"frame": {
+						"x": 1,
+						"y": 397,
+						"w": 62,
+						"h": 97
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:728898174e542d38ddcb4cd5a750d213:e87827223c572e34fa7626c0f6ce946a:09a6939e8835567faa45cba997996848$"
+	}
+}

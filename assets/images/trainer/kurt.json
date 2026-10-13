@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "kurt.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "kurt.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:568c2bd7185f167ae28ea0aa1e5c2ce9:c3699e5fa0a69291e1aa78b8699bfb4b:c3d53405ff7315cf0558a8e3133754af$"
+	}
+}

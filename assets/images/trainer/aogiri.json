@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "aogiri.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 55,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "aogiri.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 53,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 53,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 53,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d10086028e4a5e732c79f4834f2b785f:47c11b18a1be9e5259a459a61b095c80:b097762249724429a655343e366fcc84$"
+	}
+}

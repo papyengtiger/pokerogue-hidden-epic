@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "volo_weird.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 60,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "volo_weird.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 58,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 58,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 58,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6a30545621e47e30b474852c78e50ce5:dd4b0fb1c8ecbb6b2a67f2937ea195d4:ae961880878d837b126e3e307eb558a6$"
+	}
+}

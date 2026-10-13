@@ -23,18 +23,22 @@ export class LearnMovePhase extends PlayerPartyMemberPokemonPhase {
   private messageMode: UiMode;
   private learnMoveType: LearnMoveType;
   private cost: number;
+  private companion: boolean;
 
   constructor(
-    partyMemberIndex: number,
-    moveId: MoveId,
-    learnMoveType: LearnMoveType = LearnMoveType.LEARN_MOVE,
-    cost = -1,
-  ) {
-    super(partyMemberIndex);
-    this.moveId = moveId;
-    this.learnMoveType = learnMoveType;
-    this.cost = cost;
-  }
+  partyMemberIndex: number,
+  moveId: MoveId,
+  learnMoveType: LearnMoveType = LearnMoveType.LEARN_MOVE,
+  cost = -1,
+  companion = false,
+) {
+  super(partyMemberIndex);
+
+  this.moveId = moveId;
+  this.learnMoveType = learnMoveType;
+  this.cost = cost;
+  this.companion = companion;
+}
 
   start() {
   console.log("[DEBUG] LearnMovePhase.start() moveId:", this.moveId);
@@ -42,10 +46,27 @@ export class LearnMovePhase extends PlayerPartyMemberPokemonPhase {
   
   super.start();
 
-  const pokemon = this.getPokemon();
-  console.log("[DEBUG] compatibleTrs:", pokemon.compatibleTrs);
+  const pokemon = this.companion
+  ? globalScene.getCompanionParty()[this.partyMemberIndex]
+  : this.getPokemon();
 
-  const move = allMoves[this.moveId];
+if (!pokemon) {
+  console.warn("[LEARN_MOVE_NO_POKEMON]", {
+    partyMemberIndex: this.partyMemberIndex,
+    companion: this.companion,
+    moveId: this.moveId,
+  });
+
+  this.end();
+  return;
+}
+
+console.log(
+  "[DEBUG] compatibleTrs:",
+  pokemon.compatibleTrs,
+);
+
+const move = allMoves[this.moveId];
   if (!move) {
     console.warn("[DEBUG] move not found, aborting LearnMovePhase");
     return this.end();

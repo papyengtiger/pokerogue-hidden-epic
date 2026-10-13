@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "elder.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "elder.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a5311e16ee26ba21d430b01ebfee673f:39691bccb7f20bbf5dd3e5599a899684:2dd5a8b355deb7c67584e2ffdba42930$"
+	}
+}

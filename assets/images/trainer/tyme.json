@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tyme.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tyme.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e7034ce5ac1cb2f5b2527b298b8c6e00:dbf4ae2915395261ced94c850ac47d69:1a523ce1b79fd9f8aec884c0af89f054$"
+	}
+}

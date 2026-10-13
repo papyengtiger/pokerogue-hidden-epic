@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ethan.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 76,
+				"h": 134
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ethan.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 142
+					},
+					"spriteSourceSize": {
+						"x": 27,
+						"y": 6,
+						"w": 74,
+						"h": 132
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 74,
+						"h": 132
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:de4a9b5f97aff1f40ededde2831afc44:d91d98265f9d3a137802227e3a50df9d:17ba2b43149cb639a3cfb4e5c2d40ced$"
+	}
+}

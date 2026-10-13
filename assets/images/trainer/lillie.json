@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lillie.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lillie.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7582cc497c2d778fd7b6f6bf0abdaa36:1f0164e8b164771077419024f67bd524:6ca7f2b4e942cf863613d8d8da0dee8a$"
+	}
+}

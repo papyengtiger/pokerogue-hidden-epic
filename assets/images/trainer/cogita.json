@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cogita.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cogita.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4eff0128ae4ae412d4bc79cd24eb9fba:94760200ad9bbd2aaac5ed0ad1031251:426705eee2d8fe6da7e3727bce0d84d0$"
+	}
+}

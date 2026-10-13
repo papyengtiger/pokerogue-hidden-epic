@@ -55,6 +55,7 @@ import { RenameFormUiHandler } from "#ui/rename-form-ui-handler";
 import { RogueMineUiHandler } from "#ui/rogue-mine-ui-handler";
 import { RogueShopUiHandler } from "#ui/rogue-shop-ui-handler";
 import { RotomDexUiHandler } from "#ui/rotom-dex-ui-handler";
+import { TrainerCardUiHandler } from "#ui/trainer-card-ui-handler";
 import { RunHistoryUiHandler } from "#ui/run-history-ui-handler";
 import { RunInfoUiHandler } from "#ui/run-info-ui-handler";
 import { SaveSlotSelectUiHandler } from "#ui/save-slot-select-ui-handler";
@@ -140,6 +141,7 @@ const noTransitionModes = [
   UiMode.COUPON,
   UiMode.BERRY_PLANTER,
   UiMode.CRAFTING,
+  UiMode.TRAINER_CARD,
 ];
 
 export class UI extends Phaser.GameObjects.Container {
@@ -239,6 +241,8 @@ export class UI extends Phaser.GameObjects.Container {
     this.handlers[UiMode.CRAFTING] = new CraftingUiHandler();
 
     this.handlers[UiMode.ROGUE_MINE] = new RogueMineUiHandler();
+
+    this.handlers[UiMode.TRAINER_CARD] = new TrainerCardUiHandler();
   }
 
   setup(): void {

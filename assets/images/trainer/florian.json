@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "florian.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 76,
+				"h": 136
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "florian.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 144
+					},
+					"spriteSourceSize": {
+						"x": 27,
+						"y": 7,
+						"w": 74,
+						"h": 134
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 74,
+						"h": 134
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a407d0c24762e1d19ca63acbed335134:272efb9085cf5e9e2d2c4fa25b51a0d9:4e4baccb5be845ac029de2544e677c0e$"
+	}
+}

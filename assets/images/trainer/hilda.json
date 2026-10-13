@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "hilda.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 84,
+				"h": 152
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "hilda.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 152
+					},
+					"spriteSourceSize": {
+						"x": 23,
+						"y": 2,
+						"w": 82,
+						"h": 150
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 82,
+						"h": 150
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:dd942ebc238186cc2a87d4ba7def52e8:741725f9a2a6ab472430a8bdd8ea975e:09a6939e8835567faa45cba997996848$"
+	}
+}

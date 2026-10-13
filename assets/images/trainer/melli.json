@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "melli.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 83
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "melli.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 81
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 81
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 81
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:71d849ae13e00a69653c09a53c53c838:945a149f56d1f2561755159db3d9924e:90aabd71a0a7e36fd394e785109dad59$"
+	}
+}

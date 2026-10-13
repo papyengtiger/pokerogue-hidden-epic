@@ -19,19 +19,64 @@ export class SummonPhase extends PartyMemberPokemonPhase {
   // The union type is needed to keep typescript happy as these phases extend from SummonPhase
   public readonly phaseName: "SummonPhase" | "SummonMissingPhase" | "SwitchSummonPhase" | "ReturnPhase" = "SummonPhase";
   private loaded: boolean;
+  protected companion: boolean;
 
-  constructor(fieldIndex: number, player = true, loaded = false) {
-    super(fieldIndex, player);
+  constructor(
+  partyMemberIndex: number,
+  player = true,
+  loaded = false,
+  fieldIndex?: number,
+  companion = false,
+) {
+  super(partyMemberIndex, player);
 
-    this.loaded = loaded;
+  if (fieldIndex !== undefined) {
+    this.fieldIndex = fieldIndex;
   }
+
+  this.loaded = loaded;
+  this.companion = companion;
+}
 
   start() {
-    super.start();
+  super.start();
 
-    applyAbAttrs("PreSummonAbAttr", { pokemon: this.getPokemon() });
+  const pokemon = this.getPokemon();
+
+const isCompanionSummon =
+  this.player
+  && this.fieldIndex === 1
+  && !!globalScene.currentBattle.companionTrainer
+  && (
+    this.companion
+    || globalScene
+      .getCompanionParty()
+      .some(p => p.id === pokemon.id)
+  );
+
+  const continueSummon = () => {
+    applyAbAttrs("PreSummonAbAttr", { pokemon });
     this.preSummon();
+  };
+
+  if (isCompanionSummon) {
+    pokemon.loadAssets().then(() => {
+      console.log("[COMPANION_ASSETS_LOADED]", {
+        name: pokemon.getName(),
+        spriteKey: pokemon.getBattleSpriteKey(true),
+        animExists: globalScene.anims.exists(
+          pokemon.getBattleSpriteKey(true),
+        ),
+      });
+
+      continueSummon();
+    });
+
+    return;
   }
+
+  continueSummon();
+}
 
   /**
    * Sends out a Pokemon before the battle begins and shows the appropriate messages
@@ -74,31 +119,115 @@ export class SummonPhase extends PartyMemberPokemonPhase {
     }
 
     if (this.player) {
-      globalScene.ui.showText(
-        i18next.t("battle:playerGo", {
-          pokemonName: getPokemonNameWithAffix(this.getPokemon()),
-        }),
-      );
-      if (this.player) {
-        globalScene.pbTray.hide();
-      }
-      globalScene.trainer.setTexture(
-        `trainer_${globalScene.gameData.gender === PlayerGender.FEMALE ? "f" : "m"}_back_pb`,
-      );
-      globalScene.time.delayedCall(562, () => {
-        globalScene.trainer.setFrame("2");
-        globalScene.time.delayedCall(64, () => {
-          globalScene.trainer.setFrame("3");
-        });
-      });
-      globalScene.tweens.add({
-        targets: globalScene.trainer,
-        x: -36,
-        duration: 1000,
-        onComplete: () => globalScene.trainer.setVisible(false),
-      });
-      globalScene.time.delayedCall(750, () => this.summon());
-    } else if (
+  const isCompanionSummon =
+    this.fieldIndex === 1
+    && !!globalScene.currentBattle.companionTrainer
+    && !!globalScene.companionTrainerSprite;
+
+  const hasCompanion =
+    !isCompanionSummon
+    && !!globalScene.currentBattle.companionTrainer
+    && !!globalScene.companionTrainerSprite;
+
+  console.log("[COMPANION_TRAINER_ANIM]", {
+    fieldIndex: this.fieldIndex,
+    isCompanionSummon,
+    hasCompanion,
+    hasBattleCompanion:
+      !!globalScene.currentBattle.companionTrainer,
+    hasSprite:
+      !!globalScene.companionTrainerSprite,
+  });
+
+  globalScene.ui.showText(
+    i18next.t("battle:playerGo", {
+      pokemonName: getPokemonNameWithAffix(this.getPokemon()),
+    }),
+  );
+
+  globalScene.pbTray.hide();
+
+  // ==========================================
+  // 동료 자신의 SummonPhase
+  // 이미 플레이어와 함께 등장 연출을 했으므로
+  // 트레이너를 다시 띄우지 않는다.
+  // ==========================================
+  if (isCompanionSummon) {
+    globalScene.time.delayedCall(250, () => this.summon());
+    return;
+  }
+
+  // ==========================================
+  // 플레이어 트레이너
+  // ==========================================
+  const trainerSprite = globalScene.trainer;
+
+trainerSprite.setTexture(
+  `trainer_${
+    globalScene.gameData.gender === PlayerGender.FEMALE
+      ? "f"
+      : "m"
+  }_back_pb`,
+);
+
+trainerSprite.setPosition(70, 186);
+trainerSprite.setVisible(true);
+trainerSprite.setFrame("1");
+
+const companionSprite = hasCompanion
+  ? globalScene.companionTrainerSprite!
+  : null;
+
+if (companionSprite) {
+  companionSprite.setTexture(
+    globalScene.gameData.gender === PlayerGender.FEMALE
+      ? "trainer_m_back_pb"
+      : "trainer_f_back_pb",
+  );
+
+  companionSprite.setPosition(118, 186);
+  companionSprite.setVisible(true);
+  companionSprite.setFrame("1");
+
+  console.log("[COMPANION_TRAINER_VISIBLE]", {
+    x: companionSprite.x,
+    y: companionSprite.y,
+    visible: companionSprite.visible,
+    texture: companionSprite.texture.key,
+  });
+}
+
+  // 둘이 동시에 몬스터볼을 드는 프레임
+  globalScene.time.delayedCall(562, () => {
+  trainerSprite.setFrame("2");
+  companionSprite?.setFrame("2");
+
+  globalScene.time.delayedCall(64, () => {
+    trainerSprite.setFrame("3");
+    companionSprite?.setFrame("3");
+  });
+});
+
+globalScene.tweens.add({
+  targets: trainerSprite,
+  x: -36,
+  duration: 1000,
+  onComplete: () =>
+    trainerSprite.setVisible(false),
+});
+
+if (companionSprite) {
+  globalScene.tweens.add({
+    targets: companionSprite,
+    x: 12,
+    duration: 1000,
+    onComplete: () =>
+      companionSprite.setVisible(false),
+  });
+}
+
+globalScene.time.delayedCall(750, () => this.summon());
+} else if (
       globalScene.currentBattle.battleType === BattleType.TRAINER
       || globalScene.currentBattle.mysteryEncounter?.encounterMode === MysteryEncounterMode.TRAINER_BATTLE
     ) {
@@ -125,12 +254,21 @@ export class SummonPhase extends PartyMemberPokemonPhase {
   summon(): void {
     const pokemon = this.getPokemon();
 
-    const pokeball = globalScene.addFieldSprite(
-      this.player ? 36 : 248,
-      this.player ? 80 : 44,
-      "pb",
-      getPokeballAtlasKey(pokemon.getPokeball(true)),
-    );
+    const isCompanionSummon =
+  this.player
+  && this.fieldIndex === 1
+  && !!globalScene.currentBattle.companionTrainer;
+
+const pokeball = globalScene.addFieldSprite(
+  this.player
+    ? isCompanionSummon
+      ? 68
+      : 36
+    : 248,
+  this.player ? 80 : 44,
+  "pb",
+  getPokeballAtlasKey(pokemon.getPokeball(true)),
+);
     pokeball.setVisible(false);
     pokeball.setOrigin(0.5, 0.625);
     globalScene.field.add(pokeball);
@@ -149,10 +287,16 @@ export class SummonPhase extends PartyMemberPokemonPhase {
     pokeball.setVisible(true);
 
     globalScene.tweens.add({
-      targets: pokeball,
-      duration: 650,
-      x: (this.player ? 100 : 236) + fpOffset[0],
-    });
+  targets: pokeball,
+  duration: 650,
+  x:
+    (this.player
+      ? isCompanionSummon
+        ? 116
+        : 100
+      : 236)
+    + fpOffset[0],
+});
 
     globalScene.tweens.add({
       targets: pokeball,
@@ -374,6 +518,18 @@ export class SummonPhase extends PartyMemberPokemonPhase {
       }
     }
   }
+
+  getParty(): Pokemon[] {
+  if (this.companion) {
+    return globalScene.getCompanionParty();
+  }
+
+  return super.getParty();
+}
+
+getPokemon(): Pokemon {
+  return this.getParty()[this.partyMemberIndex];
+}
 
   queuePostSummon(): void {
     globalScene.phaseManager.pushNew("PostSummonPhase", this.getPokemon().getBattlerIndex());

@@ -15,12 +15,15 @@ import type { MysteryEncounterSaveData } from "#mystery-encounters/mystery-encou
 import type { Variant } from "#sprites/variant";
 import type { ArenaData } from "#system/arena-data";
 import type { ChallengeData } from "#system/challenge-data";
+import type { CompanionSaveData } from "#system/companion-data";
 import type { EggData } from "#system/egg-data";
 import type { GameStats } from "#system/game-stats";
 import type { ModifierData } from "#system/modifier-data";
 import type { PokemonData } from "#system/pokemon-data";
 import type { QuestEntry } from "#system/quest-manager";
+import type { TrainerCardSaveData } from "#system/trainer-card-manager";
 import type { TrainerData } from "#system/trainer-data";
+import type { TrainerStrategySaveData } from "#system/trainer-strategy-manager";
 import type { DexData } from "./dex-data";
 
 export interface StoredItemData {
@@ -175,6 +178,11 @@ export interface SystemSaveData {
   timestamp: number;
   eggPity: number[];
   unlockPity: number[];
+
+  companionData?: CompanionSaveData;
+
+  trainerCardData?: TrainerCardSaveData;
+
   roguePoints?: number;
   lastAttendanceDate?: string;
   attendanceCount?: number;
@@ -212,7 +220,7 @@ export interface SessionSaveData {
   score: number;
   waveIndex: number;
   battleType: BattleType;
-  trainer: TrainerData;
+  trainer: TrainerData | null;
   gameVersion: string;
   name: string;
   timestamp: number;
@@ -228,6 +236,8 @@ export interface SessionSaveData {
   monsterHouse?: MonsterHouseSaveData;
 
   mysteryTime?: MysteryTimeSaveData;
+
+  trainerStrategy?: TrainerStrategySaveData;
 }
 
 export interface Unlocks {
@@ -259,6 +269,7 @@ export interface StarterMoveData {
 export interface StarterAttributes {
   nature?: number;
   ability?: number;
+  passive?: number;
   variant?: number;
   form?: number;
   female?: boolean;
@@ -284,6 +295,15 @@ export interface Starter {
   female?: boolean;
   abilityIndex: number;
   passive: boolean;
+  // StarterAttributes
+passive?: number;
+
+// Starter
+passiveIndex?: number;
+
+// StarterDataEntry
+passiveUnlocks?: number;
+passiveIndex?: number;
   nature: Nature;
   moveset?: StarterMoveset;
   pokerus: boolean;
@@ -314,6 +334,10 @@ export interface StarterDataEntry {
   friendship: number;
   abilityAttr: number;
   passiveAttr: number;
+
+  passiveUnlocks?: number;
+  passiveIndex?: number;
+
   valueReduction: number;
   classicWinCount: number;
   teraTypeAttr?: number;

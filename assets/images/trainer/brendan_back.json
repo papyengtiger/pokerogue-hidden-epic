@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "brendan_back.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 594,
+				"h": 107
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 37,
+						"y": 55,
+						"w": 98,
+						"h": 105
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 98,
+						"h": 105
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 17,
+						"y": 57,
+						"w": 130,
+						"h": 103
+					},
+					"frame": {
+						"x": 101,
+						"y": 1,
+						"w": 130,
+						"h": 103
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 13,
+						"y": 59,
+						"w": 96,
+						"h": 101
+					},
+					"frame": {
+						"x": 233,
+						"y": 1,
+						"w": 96,
+						"h": 101
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 29,
+						"y": 61,
+						"w": 130,
+						"h": 99
+					},
+					"frame": {
+						"x": 331,
+						"y": 1,
+						"w": 130,
+						"h": 99
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 29,
+						"y": 61,
+						"w": 130,
+						"h": 99
+					},
+					"frame": {
+						"x": 463,
+						"y": 1,
+						"w": 130,
+						"h": 99
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0a086e9cc4face7ed6463d2591d7c86e:8439cc726ef456330de60f73dddfbc78:941691caad26c1b02fde3108a696fe88$"
+	}
+}

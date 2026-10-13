@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lebanne.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 74,
+				"h": 68
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lebanne.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 72,
+						"h": 66
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 72,
+						"h": 66
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 72,
+						"h": 66
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ae769fec643863692652e28353c0b68a:16356321f8b270e90117de3ee0a77c69:5e37a4a982c72066725e3b97fd286387$"
+	}
+}

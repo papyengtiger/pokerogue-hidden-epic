@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "calaba.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 48,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "calaba.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 46,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 46,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 46,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:89ad3d82d38fe7376aced6d51750675b:6252afc3ab2f06cd9fafed84d405e61e:98fbbf9db7c20d3218b076dd5f37e3d2$"
+	}
+}

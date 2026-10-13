@@ -24,19 +24,26 @@ export class PartyHealPhase extends BattlePhase {
     globalScene.ui.fadeOut(1000).then(() => {
       const preventRevive = new BooleanHolder(false);
       applyChallenges(ChallengeType.PREVENT_REVIVE, preventRevive);
-      for (const pokemon of globalScene.getPlayerParty()) {
-        // Prevent reviving fainted pokemon during certain challenges
-        if (pokemon.isFainted() && preventRevive.value) {
-          continue;
-        }
+      const parties = [
+  ...globalScene.getPlayerParty(),
+  ...globalScene.getCompanionParty(),
+];
 
-        pokemon.hp = pokemon.getMaxHp();
-        pokemon.resetStatus(true, false, false, true);
-        for (const move of pokemon.moveset) {
-          move.ppUsed = 0;
-        }
-        pokemon.updateInfo(true);
-      }
+for (const pokemon of parties) {
+  // 부활 금지 챌린지는 동료에게도 동일 적용
+  if (pokemon.isFainted() && preventRevive.value) {
+    continue;
+  }
+
+  pokemon.hp = pokemon.getMaxHp();
+  pokemon.resetStatus(true, false, false, true);
+
+  for (const move of pokemon.moveset) {
+    move.ppUsed = 0;
+  }
+
+  pokemon.updateInfo(true);
+}
       const healSong = globalScene.playSoundWithoutBgm("heal");
       globalScene.time.delayedCall(fixedInt(healSong.totalDuration * 1000), () => {
         healSong.destroy();

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "kamado.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 49,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "kamado.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 47,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 47,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 47,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8e66911dd861268863490150f21cea3d:e4c79a73db8f7bb36b2f8eecf79e0aee:2d634700b600d8c0d5ad68cd5b70267b$"
+	}
+}

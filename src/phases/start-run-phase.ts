@@ -19,6 +19,7 @@ import {
 } from "#modifiers/modifier-type";
 import { PokemonMove } from "#moves/pokemon-move";
 import type { Starter } from "#types/save-data";
+import { trainerStrategyManager } from "#system/trainer-strategy-manager";
 import { applyChallenges } from "#utils/challenge-utils";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
@@ -270,15 +271,25 @@ export class StartRunPhase extends Phase {
   }
 
   start() {
-    super.start();
+  super.start();
 
-    console.log(
-      "[START_RUN_PRESET]",
-      this.starters.map(s => ({
-        speciesId: s.speciesId,
-        items: s.preRunItems,
-      })),
-    );
+  // ========================================
+  // 새 런 시작: 트레이닝 전략 초기화
+  // ========================================
+  trainerStrategyManager.reset();
+
+  console.log("[START_RUN_TRAINER_STRATEGY]", {
+    strategy: trainerStrategyManager.currentId,
+    slots: trainerStrategyManager.getSlots(),
+  });
+
+  console.log(
+    "[START_RUN_PRESET]",
+    this.starters.map(s => ({
+      speciesId: s.speciesId,
+      items: s.preRunItems,
+    })),
+  );
 
     const party = globalScene.getPlayerParty();
     const loadPokemonAssets: Promise<void>[] = [];

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sophocles.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 44,
+				"h": 66
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sophocles.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 42,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 42,
+						"h": 64
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 42,
+						"h": 64
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:330d4841807f17ae1cb8d798dcc7822e:5d5af49f01686ad02ea2c3283012d75c:c15ccad555bb46eacfb72e8bc3068dba$"
+	}
+}

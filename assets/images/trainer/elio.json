@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "elio.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 62,
+				"h": 138
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "elio.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 149
+					},
+					"spriteSourceSize": {
+						"x": 35,
+						"y": 9,
+						"w": 60,
+						"h": 136
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 60,
+						"h": 136
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d7ba7ba4f0050cc7ed923c23e8719554:9e32927f24ecb5e4dc1b2954317e5aaf:9fd31155a86a465966dcc8c5e90fad1c$"
+	}
+}

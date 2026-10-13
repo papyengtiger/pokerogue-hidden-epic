@@ -25,7 +25,8 @@ export class PokemonData {
   public nickname: string;
   public formIndex: number;
   public abilityIndex: number;
-  public passive: boolean;
+public passive: boolean;
+public passiveIndex: number;
   public shiny: boolean;
   public variant: Variant;
   public mark: MarkId;
@@ -38,7 +39,8 @@ export class PokemonData {
   public stats: number[];
   public customBaseStats?: number[];
   public ivs: number[];
-  public nature: Nature;
+public evs: number[];
+public nature: Nature;
   public moveset: PokemonMove[];
   public status: Status | null;
   public friendship: number;
@@ -99,7 +101,9 @@ export class PokemonData {
     this.nickname = source.nickname;
     this.formIndex = Math.max(Math.min(source.formIndex, getPokemonSpecies(this.species).forms.length - 1), 0);
     this.abilityIndex = source.abilityIndex;
-    this.passive = source.passive;
+this.passive = source.passive;
+this.passiveIndex = source.passiveIndex ?? 0;
+this.shiny = source.shiny;
     this.shiny = source.shiny;
     this.variant = source.variant;
     this.mark = source.mark ?? MarkId.NONE;
@@ -115,7 +119,11 @@ export class PokemonData {
     this.customBaseStats =
       Array.isArray(customBaseStats) && customBaseStats.length === 6 ? [...customBaseStats] : undefined;
     this.ivs = source.ivs;
-
+    this.evs = Array.isArray(source.evs)
+  ? Array.from({ length: 6 }, (_, s) =>
+      Math.max(0, Math.min(255, Math.floor(source.evs[s] ?? 0)))
+    )
+  : [0, 0, 0, 0, 0, 0];
     // TODO: Can't we move some of this verification stuff to an upgrade script?
     this.nature = source.nature ?? Nature.HARDY;
     this.moveset = source.moveset?.map((m: any) => PokemonMove.loadMove(m)) ?? [];

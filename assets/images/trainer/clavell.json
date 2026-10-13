@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "clavell.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 55,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "clavell.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 53,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 53,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 53,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6bd1530fcdcbf3e8bbbb5822632cb7b5:2a4dd5de496b75310f0b523df684a317:c7e0daca432386b6fc548e3832308215$"
+	}
+}

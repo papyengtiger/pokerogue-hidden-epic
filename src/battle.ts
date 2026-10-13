@@ -62,6 +62,7 @@ export class Battle {
   public battleType: BattleType;
   public battleSpec: BattleSpec;
   public trainer: Trainer | null;
+  public companionTrainer: Trainer | null = null;
   public enemyLevels: number[] | undefined;
   public enemyParty: EnemyPokemon[] = [];
   public seenEnemyPartyMemberIds: Set<number> = new Set<number>();

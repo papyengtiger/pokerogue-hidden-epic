@@ -2,7 +2,28 @@ import { AbilityId } from "#enums/ability-id";
 import { SpeciesId } from "#enums/species-id";
 
 export interface PassiveAbilities {
-  [key: number]: AbilityId[]
+  [key: number]: AbilityId | AbilityId[];
+}
+
+export function getStarterPassiveAbilities(
+  speciesId: SpeciesId,
+  formIndex = 0,
+): AbilityId[] {
+  const speciesPassives = starterPassiveAbilities[speciesId];
+
+  if (!speciesPassives) {
+    return [];
+  }
+
+  const passive = speciesPassives[formIndex] ?? speciesPassives[0];
+
+  if (passive === undefined) {
+    return [];
+  }
+
+  return Array.isArray(passive)
+    ? passive
+    : [passive];
 }
 
 interface StarterPassiveAbilities {
@@ -10,7 +31,14 @@ interface StarterPassiveAbilities {
 }
 
 export const starterPassiveAbilities: StarterPassiveAbilities = {
-  [SpeciesId.BULBASAUR]: { 0: AbilityId.SOUL_HEART },
+  [SpeciesId.BULBASAUR]: {
+  0: [
+    AbilityId.SOUL_HEART,
+    AbilityId.TRIAGE,
+    AbilityId.GRASSY_SURGE,
+    AbilityId.STURDY,
+  ],
+},
   [SpeciesId.CHARMANDER]: { 0: AbilityId.BEAST_BOOST },
   [SpeciesId.SQUIRTLE]: { 0: AbilityId.STURDY },
   [SpeciesId.CATERPIE]: { 0: AbilityId.SPEED_BOOST },

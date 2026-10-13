@@ -3,7 +3,6 @@ import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
 import { pokemonPrevolutions } from "#balance/pokemon-evolutions";
 import {
-  BOOSTED_RARE_EGGMOVE_RATES,
   EGG_PITY_EPIC_THRESHOLD,
   EGG_PITY_LEGENDARY_THRESHOLD,
   EGG_PITY_RARE_THRESHOLD,
@@ -21,7 +20,6 @@ import {
   HATCH_WAVES_MANAPHY_EGG,
   HATCH_WAVES_RARE_EGG,
   MANAPHY_EGG_MANAPHY_RATE,
-  RARE_EGGMOVE_RATES,
   SAME_SPECIES_EGG_HA_RATE,
   SAME_SPECIES_EGG_SHINY_RATE,
   SHINY_EPIC_CHANCE,
@@ -29,6 +27,7 @@ import {
 } from "#balance/rates";
 import { speciesEggTiers } from "#balance/species-egg-tiers";
 import { speciesStarterCosts } from "#balance/starters";
+import { speciesEggMoves } from "#balance/egg-moves";
 import { rollRandomMark } from "#data/mark";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { EggSourceType } from "#enums/egg-source-types";
@@ -380,17 +379,15 @@ export class Egg {
    * x is determined by Egg Tier. Boosted rates used for eggs obtained through Move Up Gacha and Candy.
    * @returns the slot for the egg move
    */
-  private rollEggMoveIndex() {
-    const tierNum = this.isManaphyEgg() ? 2 : this.tier;
-    let baseChance: number;
-    if (this._sourceType === EggSourceType.SAME_SPECIES_EGG || this._sourceType === EggSourceType.GACHA_MOVE) {
-      baseChance = BOOSTED_RARE_EGGMOVE_RATES[tierNum];
-    } else {
-      baseChance = RARE_EGGMOVE_RATES[tierNum];
-    }
+  private rollEggMoveIndex(): number {
+  const eggMoves = speciesEggMoves[this._species];
 
-    return randSeedInt(baseChance) ? randSeedInt(3) : 3;
+  if (!eggMoves?.length) {
+    return 0;
   }
+
+  return randSeedInt(eggMoves.length);
+}
 
   private getEggTierDefaultHatchWaves(eggTier?: EggTier): number {
     if (this._species === SpeciesId.PHIONE || this._species === SpeciesId.MANAPHY) {

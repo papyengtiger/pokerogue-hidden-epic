@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "serena.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 86,
+				"h": 144
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "serena.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 156
+					},
+					"spriteSourceSize": {
+						"x": 25,
+						"y": 10,
+						"w": 84,
+						"h": 142
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 84,
+						"h": 142
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:3dbb2cc3dd391454b21d9d20977a4107:10ceb5309e136c6d8c082933d3243282:462ab77f3705ca4141c0c0bee9cb6cfd$"
+	}
+}

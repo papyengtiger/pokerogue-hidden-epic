@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "gloria.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 92,
+				"h": 158
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "gloria.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 12,
+						"y": 0,
+						"w": 90,
+						"h": 156
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 90,
+						"h": 156
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7825826c354c43c5f8beb2f5840f65ab:57562bee917913fb8bdb3e3532064b62:02b3da1f6860fb7a9abde569b21d1c78$"
+	}
+}

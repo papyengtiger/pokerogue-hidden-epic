@@ -328,11 +328,24 @@ export class SelectModifierPhase extends BattlePhase {
 
     globalScene.gameData.saveSystem();
 
-    globalScene.ui.showText(`${modifierType.name}을(를) 창고로 보냈습니다.`, undefined, () => {
-      globalScene.ui.clearText();
-      globalScene.ui.setMode(UiMode.MESSAGE);
-      super.end();
-    });
+    globalScene.ui.showText(
+  `${modifierType.name}을(를) 창고로 보냈습니다.`,
+  undefined,
+  () => {
+    globalScene.ui.clearText();
+    globalScene.ui.setMode(UiMode.MESSAGE);
+
+    if (!this.isCopy) {
+      console.log("[TRAINER_CARD_PHASE_QUEUED_STORAGE]");
+
+      globalScene.phaseManager.unshiftNew(
+        "SelectTrainerCardPhase",
+      );
+    }
+
+    super.end();
+  },
+);
 
     return true;
   }
@@ -591,10 +604,20 @@ export class SelectModifierPhase extends BattlePhase {
         globalScene.ui.playError();
       }
     } else {
-      globalScene.ui.clearText();
-      globalScene.ui.setMode(UiMode.MESSAGE);
-      super.end();
-    }
+  globalScene.ui.clearText();
+  globalScene.ui.setMode(UiMode.MESSAGE);
+
+  // 일반 보상 아이템 선택 후 트레이닝 카드 선택
+  if (result && cost === -1 && !this.isCopy) {
+    console.log("[TRAINER_CARD_PHASE_QUEUED]");
+
+    globalScene.phaseManager.unshiftNew(
+      "SelectTrainerCardPhase",
+    );
+  }
+
+  super.end();
+}
   }
 
   // Opens the party menu specifically for fusions

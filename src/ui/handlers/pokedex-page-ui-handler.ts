@@ -250,8 +250,8 @@ export class PokedexPageUiHandler extends MessageUiHandler {
   private ability1: AbilityId;
   private ability2: AbilityId | undefined;
   private abilityHidden: AbilityId | undefined;
-  private passive: AbilityId;
-  private hasPassive: boolean;
+  private passives: AbilityId[] = [];
+private hasPassives: boolean[] = [];
   private hasAbilities: number[];
   private biomes: readonly BiomeTierTod[];
   private preBiomes: readonly BiomeTierTod[];
@@ -853,9 +853,10 @@ export class PokedexPageUiHandler extends MessageUiHandler {
 
     this.eggMoves = speciesEggMoves[this.starterId] ?? [];
     this.hasEggMoves = Array.from(
-      { length: 4 },
-      (_, em) => (globalScene.gameData.starterData[this.starterId].eggMoves & (1 << em)) !== 0,
-    );
+  { length: this.eggMoves.length },
+  (_, em) =>
+    (globalScene.gameData.starterData[this.starterId].eggMoves & (1 << em)) !== 0,
+);
 
     this.tmMoves =
       speciesTmMoves[species.speciesId]
@@ -864,16 +865,30 @@ export class PokedexPageUiHandler extends MessageUiHandler {
         .sort((a, b) => (allMoves[a].name > allMoves[b].name ? 1 : -1)) ?? [];
 
     const passiveId = starterPassiveAbilities.hasOwnProperty(species.speciesId)
-      ? species.speciesId
-      : starterPassiveAbilities.hasOwnProperty(this.starterId)
-        ? this.starterId
-        : pokemonPrevolutions[this.starterId];
-    const passives = starterPassiveAbilities[passiveId];
-    this.passive = this.formIndex in passives ? passives[formIndex] : passives[0];
+  ? species.speciesId
+  : starterPassiveAbilities.hasOwnProperty(this.starterId)
+    ? this.starterId
+    : pokemonPrevolutions[this.starterId];
 
-    const starterData = globalScene.gameData.starterData[this.starterId];
-    const abilityAttr = starterData.abilityAttr;
-    this.hasPassive = starterData.passiveAttr > 0;
+const passiveData = starterPassiveAbilities[passiveId];
+
+const formPassives =
+  passiveData?.[formIndex]
+  ?? passiveData?.[0]
+  ?? [];
+
+this.passives = Array.isArray(formPassives)
+  ? formPassives
+  : [formPassives];
+
+const starterData = globalScene.gameData.starterData[this.starterId];
+const abilityAttr = starterData.abilityAttr;
+
+const passiveUnlocks = starterData.passiveUnlocks ?? 0;
+
+this.hasPassives = this.passives.map(
+  (_, index) => !!(passiveUnlocks & (1 << index)),
+);
 
     const hasAbility1 = abilityAttr & AbilityAttr.ABILITY_1;
     const hasAbility2 = abilityAttr & AbilityAttr.ABILITY_2;
@@ -1090,6 +1105,38 @@ export class PokedexPageUiHandler extends MessageUiHandler {
     } else if (caughtAttr & DexAttr.MALE) {
       starterAttributes.female = false;
     }
+
+    const starterData =
+  globalScene.gameData.starterData[this.starterId];
+
+const passiveUnlocks =
+  starterData?.passiveUnlocks ?? 0;
+
+if (starterAttributes.passive === undefined) {
+  starterAttributes.passive =
+    starterData?.passiveIndex ?? 0;
+}
+
+const passiveIndex =
+  starterAttributes.passive ?? 0;
+
+if (
+  passiveIndex < 0
+  || passiveIndex >= 4
+  || !(passiveUnlocks & (1 << passiveIndex))
+) {
+  // 해금된 패시브 중 첫 번째 것으로 보정
+  const firstUnlocked =
+    this.passives.findIndex(
+      (_, index) =>
+        !!(passiveUnlocks & (1 << index)),
+    );
+
+  starterAttributes.passive =
+    firstUnlocked >= 0
+      ? firstUnlocked
+      : 0;
+}
 
     return starterAttributes;
   }
@@ -1317,71 +1364,69 @@ export class PokedexPageUiHandler extends MessageUiHandler {
             break;
 
           case MenuOptions.EGG_MOVES:
-            if (!isSeen) {
-              error = true;
-            } else {
-              this.blockInput = true;
+  if (!isSeen) {
+    error = true;
+  } else {
+    this.blockInput = true;
 
-              ui.setMode(UiMode.POKEDEX_PAGE, "refresh").then(() => {
-                if (this.eggMoves.length === 0) {
-                  ui.showText(i18next.t("pokedexUiHandler:noEggMoves"));
-                  this.blockInput = false;
-                  return true;
-                }
+    ui.setMode(UiMode.POKEDEX_PAGE, "refresh").then(() => {
+      if (this.eggMoves.length === 0) {
+        ui.showText(i18next.t("pokedexUiHandler:noEggMoves"));
+        this.blockInput = false;
+        return true;
+      }
 
-                ui.showText(i18next.t("pokedexUiHandler:showEggMoves"), null, () => {
-                  this.moveInfoOverlay.show(allMoves[this.eggMoves[0]]);
+      ui.showText(i18next.t("pokedexUiHandler:showEggMoves"), null, () => {
+        if (this.hasEggMoves[0]) {
+          this.moveInfoOverlay.show(allMoves[this.eggMoves[0]]);
+        } else {
+          this.moveInfoOverlay.clear();
+        }
 
-                  ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
-                    options: [
-                      {
-                        label: i18next.t("pokedexUiHandler:common"),
-                        skip: true,
-                        style: TextStyle.MONEY_WINDOW,
-                        handler: () => false, // Non-selectable, but handler is required
-                        onHover: () => this.moveInfoOverlay.clear(), // No hover behavior for titles
-                      },
-                      ...this.eggMoves.slice(0, 3).map((m, i) => ({
-                        label: allMoves[m].name,
-                        style: this.hasEggMoves[i] ? TextStyle.SETTINGS_VALUE : TextStyle.SHADOW_TEXT,
-                        handler: () => false,
-                        onHover: () => this.moveInfoOverlay.show(allMoves[m]),
-                      })),
-                      {
-                        label: i18next.t("pokedexUiHandler:rare"),
-                        skip: true,
-                        style: TextStyle.MONEY_WINDOW,
-                        handler: () => false,
-                        onHover: () => this.moveInfoOverlay.clear(),
-                      },
-                      {
-                        label: allMoves[this.eggMoves[3]].name,
-                        style: this.hasEggMoves[3] ? TextStyle.SETTINGS_VALUE : TextStyle.SHADOW_TEXT,
-                        handler: () => false,
-                        onHover: () => this.moveInfoOverlay.show(allMoves[this.eggMoves[3]]),
-                      },
-                      {
-                        label: i18next.t("menu:cancel"),
-                        handler: () => {
-                          this.moveInfoOverlay.clear();
-                          this.clearText();
-                          ui.setMode(UiMode.POKEDEX_PAGE, "refresh");
-                          return true;
-                        },
-                        onHover: () => this.moveInfoOverlay.clear(),
-                      },
-                    ],
-                    supportHover: true,
-                    maxOptions: 8,
-                    yOffset: 19,
-                  });
+        ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
+          options: this.eggMoves
+            .map((m, i) => {
+              const option: OptionSelectItem = {
+                label: this.hasEggMoves[i] ? allMoves[m].name : "???",
+                style: this.hasEggMoves[i]
+                  ? TextStyle.SETTINGS_VALUE
+                  : TextStyle.SHADOW_TEXT,
+                handler: () => false,
+                onHover: () => {
+                  if (this.hasEggMoves[i]) {
+                    this.moveInfoOverlay.show(allMoves[m]);
+                  } else {
+                    this.moveInfoOverlay.clear();
+                  }
+                },
+              };
 
-                  this.blockInput = false;
-                });
-              });
-              success = true;
-            }
-            break;
+              return option;
+            })
+            .concat({
+              label: i18next.t("menu:cancel"),
+              handler: () => {
+                this.moveInfoOverlay.clear();
+                this.clearText();
+                ui.setMode(UiMode.POKEDEX_PAGE, "refresh");
+                return true;
+              },
+              onHover: () => {
+                this.moveInfoOverlay.clear();
+              },
+            }),
+          supportHover: true,
+          maxOptions: 8,
+          yOffset: 19,
+        });
+
+        this.blockInput = false;
+      });
+    });
+
+    success = true;
+  }
+  break;
 
           case MenuOptions.TM_MOVES:
             if (!isSeen) {
@@ -1481,21 +1526,75 @@ export class PokedexPageUiHandler extends MessageUiHandler {
                     });
                   }
 
-                  if (this.passive) {
-                    options.push({
-                      label: i18next.t("pokedexUiHandler:passive"),
-                      skip: true,
-                      style: TextStyle.MONEY_WINDOW,
-                      handler: () => false,
-                      onHover: () => this.infoOverlay.clear(),
-                    });
-                    options.push({
-                      label: allAbilities[this.passive].name,
-                      style: this.hasPassive ? TextStyle.SETTINGS_VALUE : TextStyle.SHADOW_TEXT,
-                      handler: () => false,
-                      onHover: () => this.infoOverlay.show(allAbilities[this.passive].description),
-                    });
-                  }
+                  if (this.passives.length > 0) {
+  options.push({
+    label: i18next.t("pokedexUiHandler:passive"),
+    skip: true,
+    style: TextStyle.MONEY_WINDOW,
+    handler: () => false,
+    onHover: () => this.infoOverlay.clear(),
+  });
+
+  for (let i = 0; i < this.passives.length; i++) {
+    const passiveId = this.passives[i];
+    const passiveAbility = allAbilities[passiveId];
+    const unlocked = this.hasPassives[i];
+
+    const selectedPassiveIndex =
+      starterAttributes.passive
+      ?? starterData.passiveIndex
+      ?? 0;
+
+    options.push({
+      label: unlocked
+        ? `${selectedPassiveIndex === i ? "● " : ""}${passiveAbility.name}`
+        : "???",
+
+      style: unlocked
+        ? TextStyle.SETTINGS_VALUE
+        : TextStyle.SHADOW_TEXT,
+
+      handler: () => {
+        if (!unlocked) {
+          return false;
+        }
+
+        // 현재 선택 패시브 변경
+        starterData.passiveIndex = i;
+        starterAttributes.passive = i;
+        this.savedStarterAttributes.passive = i;
+
+        // 기존 패시브 활성 플래그 유지
+        starterData.passiveAttr |=
+          PassiveAttr.UNLOCKED | PassiveAttr.ENABLED;
+
+        globalScene.gameData.saveSystem().then(success => {
+          if (!success) {
+            return globalScene.reset(true);
+          }
+        });
+
+        globalScene.playSound("se/select");
+
+        this.starterSetup();
+        this.setSpeciesDetails(this.species);
+
+        this.infoOverlay.clear();
+        ui.setMode(UiMode.POKEDEX_PAGE, "refresh");
+
+        return true;
+      },
+
+      onHover: () => {
+        if (unlocked) {
+          this.infoOverlay.show(passiveAbility.description);
+        } else {
+          this.infoOverlay.clear();
+        }
+      },
+    });
+  }
+}
 
                   options.push({
                     label: i18next.t("menu:cancel"),
@@ -1963,38 +2062,85 @@ export class PokedexPageUiHandler extends MessageUiHandler {
               ui.showText("");
               const options: any[] = []; // TODO: add proper type
 
-              const passiveAttr = starterData.passiveAttr;
               const candyCount = starterData.candyCount;
+const passiveUnlocks = starterData.passiveUnlocks ?? 0;
 
-              if (!(passiveAttr & PassiveAttr.UNLOCKED)) {
-                const passiveCost = getPassiveCandyCount(speciesStarterCosts[this.starterId]);
-                options.push({
-                  label: `×${passiveCost} ${i18next.t("pokedexUiHandler:unlockPassive")}`,
-                  handler: () => {
-                    if (Overrides.FREE_CANDY_UPGRADE_OVERRIDE || candyCount >= passiveCost) {
-                      starterData.passiveAttr |= PassiveAttr.UNLOCKED | PassiveAttr.ENABLED;
-                      if (!Overrides.FREE_CANDY_UPGRADE_OVERRIDE) {
-                        starterData.candyCount -= passiveCost;
-                      }
-                      this.pokemonCandyCountText.setText(`×${starterData.candyCount}`);
-                      globalScene.gameData.saveSystem().then(success => {
-                        if (!success) {
-                          return globalScene.reset(true);
-                        }
-                      });
-                      this.setSpeciesDetails(this.species);
-                      globalScene.playSound("se/buy");
-                      ui.setMode(UiMode.POKEDEX_PAGE, "refresh");
+for (let passiveIndex = 0; passiveIndex < this.passives.length; passiveIndex++) {
+  const passiveId = this.passives[passiveIndex];
+  const passiveAbility = allAbilities[passiveId];
 
-                      return true;
-                    }
-                    return false;
-                  },
-                  style: this.isPassiveAvailable() ? TextStyle.WINDOW : TextStyle.SHADOW_TEXT,
-                  item: "candy",
-                  itemArgs: this.isPassiveAvailable() ? getStarterColors[this.starterId] : ["808080", "808080"],
-                });
-              }
+  const isUnlocked =
+    !!(passiveUnlocks & (1 << passiveIndex));
+
+  if (isUnlocked) {
+    continue;
+  }
+
+  const passiveCost =
+    getPassiveCandyCount(speciesStarterCosts[this.starterId]);
+
+  options.push({
+    label: `×${passiveCost} ${passiveAbility.name}`,
+    handler: () => {
+      if (
+        Overrides.FREE_CANDY_UPGRADE_OVERRIDE
+        || starterData.candyCount >= passiveCost
+      ) {
+        starterData.passiveUnlocks =
+          (starterData.passiveUnlocks ?? 0)
+          | (1 << passiveIndex);
+
+        // 첫 패시브를 처음 해금했다면 자동 선택
+        if (
+          (starterData.passiveUnlocks & ~(1 << passiveIndex)) === 0
+        ) {
+          starterData.passiveIndex = passiveIndex;
+
+          // 기존 시스템 호환
+          starterData.passiveAttr |=
+            PassiveAttr.UNLOCKED | PassiveAttr.ENABLED;
+        }
+
+        if (!Overrides.FREE_CANDY_UPGRADE_OVERRIDE) {
+          starterData.candyCount -= passiveCost;
+        }
+
+        this.pokemonCandyCountText.setText(
+          `×${starterData.candyCount}`,
+        );
+
+        globalScene.gameData.saveSystem().then(success => {
+          if (!success) {
+            return globalScene.reset(true);
+          }
+        });
+
+        this.starterSetup();
+        this.setSpeciesDetails(this.species);
+
+        globalScene.playSound("se/buy");
+        ui.setMode(UiMode.POKEDEX_PAGE, "refresh");
+
+        return true;
+      }
+
+      return false;
+    },
+
+    style:
+      Overrides.FREE_CANDY_UPGRADE_OVERRIDE
+      || starterData.candyCount >= passiveCost
+        ? TextStyle.WINDOW
+        : TextStyle.SHADOW_TEXT,
+
+    item: "candy",
+    itemArgs:
+      Overrides.FREE_CANDY_UPGRADE_OVERRIDE
+      || starterData.candyCount >= passiveCost
+        ? getStarterColors[this.starterId]
+        : ["808080", "808080"],
+  });
+}
 
               // Reduce cost option
               const valueReduction = starterData.valueReduction;

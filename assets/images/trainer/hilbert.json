@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "hilbert.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 74,
+				"h": 146
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "hilbert.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 128,
+						"h": 149
+					},
+					"spriteSourceSize": {
+						"x": 26,
+						"y": 3,
+						"w": 72,
+						"h": 144
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 72,
+						"h": 144
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5d24680407de67c726574b9410c56f9e:1657138ec7ffde2a7f997b88e4c9810e:0771b8e0af5214fe9e88c121c1d8c9ae$"
+	}
+}

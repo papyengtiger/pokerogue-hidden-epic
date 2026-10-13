@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "gentleman_vac.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 61,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "gentleman_vac.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 59,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 59,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 59,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7587fb9926d9ca68d14792fe4cfa8f86:d438add0b5514121cd6306dd3881a027:900e8ba9b6cf0489b1e711413e7dd428$"
+	}
+}

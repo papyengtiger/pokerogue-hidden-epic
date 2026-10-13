@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "griselle.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "griselle.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f1bbf020abb297c2baac7cce46b4192c:2b1ca171fe616fdbed33088190a1d524:d907d7f42ed7eb0e5fdeeb598fa846a4$"
+	}
+}

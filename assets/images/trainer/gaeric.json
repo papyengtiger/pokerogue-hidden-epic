@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "gaeric.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 26,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "gaeric.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 24,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 24,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 24,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4fb6c414aed868a28a6958fc7df56d05:29514a36da415212b49c622110b5154b:f5b57e26e227d2520053ca451deb749e$"
+	}
+}

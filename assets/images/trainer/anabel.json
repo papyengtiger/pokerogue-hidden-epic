@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "anabel.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "anabel.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0be3c71786f708045b0b39a4175bcfa0:1a4c27569e717cb5c4d5b088012a91ca:c242092d47378c21e38b9eaab4d406b4$"
+	}
+}

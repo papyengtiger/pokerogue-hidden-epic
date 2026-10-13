@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "nanu.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 30,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "nanu.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 28,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 28,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 28,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:da921b96c2e341ac919ddf8fa90e5bed:70ff731bf7ba42274b8054ae9f245151:35ec2f12b92cfaa5a034bc4bc42f99ec$"
+	}
+}

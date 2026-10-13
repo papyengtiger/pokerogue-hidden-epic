@@ -1,0 +1,125 @@
+{
+	"textures": [
+		{
+			"image": "gloria_back.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 350,
+				"h": 107
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 38,
+						"y": 55,
+						"w": 68,
+						"h": 105
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 68,
+						"h": 105
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 37,
+						"y": 55,
+						"w": 68,
+						"h": 105
+					},
+					"frame": {
+						"x": 71,
+						"y": 1,
+						"w": 68,
+						"h": 105
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 38,
+						"y": 55,
+						"w": 68,
+						"h": 105
+					},
+					"frame": {
+						"x": 141,
+						"y": 1,
+						"w": 68,
+						"h": 105
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 37,
+						"y": 55,
+						"w": 68,
+						"h": 105
+					},
+					"frame": {
+						"x": 211,
+						"y": 1,
+						"w": 68,
+						"h": 105
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 160,
+						"h": 160
+					},
+					"spriteSourceSize": {
+						"x": 36,
+						"y": 55,
+						"w": 68,
+						"h": 105
+					},
+					"frame": {
+						"x": 281,
+						"y": 1,
+						"w": 68,
+						"h": 105
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:832286d3e204d1ffe1384715a4f028a4:55b3231de03de69ba32cbeff49cf2a9b:02b3da1f6860fb7a9abde569b21d1c78$"
+	}
+}

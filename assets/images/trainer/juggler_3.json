@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "juggler_3.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 46,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "juggler_3.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 44,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 44,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 44,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e1477c7637f7fa29cf964ce4b19ea925:dec90a4250c5f0ecbf94ad4fc032f208:fa3f925e6c6589378092e8edbd6078ae$"
+	}
+}

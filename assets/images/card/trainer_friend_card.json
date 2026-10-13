@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "trainer_friend_card.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 46
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "trainer_friend_card.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 44
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 44
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 44
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4f34f44f80868a25a4bb1aebc9f437b6:16c4c20499e4254ac9cd1b26cfb5ba0a:43d8f43e45b848a77c9cc6ab78fac076$"
+	}
+}

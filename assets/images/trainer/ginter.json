@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ginter.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 63
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ginter.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 61
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 61
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 61
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:54b6590e8029f4de214438bc53c9fc93:57199cff6d6ed379d73b04b1617b3830:8eec570b4ad902d050113c326ee043e2$"
+	}
+}

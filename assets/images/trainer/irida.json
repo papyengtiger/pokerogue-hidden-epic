@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "irida.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "irida.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f46ee04fc274973919c9ceb9cc2ddb15:b098a1f53cd40bdfb1295b3c17ca2544:84a19b54e038f5f3d02fc85d84df86ba$"
+	}
+}

@@ -33,6 +33,7 @@ import { HitResult } from "#enums/hit-result";
 import { CommonAnim } from "#enums/move-anims-common";
 import { MoveCategory } from "#enums/move-category";
 import { MoveFlags } from "#enums/move-flags";
+import { MoveFlags2 } from "#enums/move-flags-2";
 import { MoveId } from "#enums/move-id";
 import { MoveResult } from "#enums/move-result";
 import { MoveTarget } from "#enums/move-target";

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "hapu.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 44,
+				"h": 63
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "hapu.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 42,
+						"h": 61
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 42,
+						"h": 61
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 42,
+						"h": 61
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a2564c9d2cd583bf765326d3bb22f394:3c92cf703b92dea1c7538aaa3c641a49:1fd832ae33c8d1ef7e6842ccbede51f2$"
+	}
+}

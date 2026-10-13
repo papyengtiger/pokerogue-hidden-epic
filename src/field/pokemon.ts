@@ -69,6 +69,9 @@ import {
   PokemonTurnData,
   PokemonWaveData,
 } from "#data/pokemon-data";
+import { companionManager } from "#system/companion-manager";
+import { applyKnowhowAttrs } from "#trainers/trainer-knowhow/apply-knowhow-attrs";
+import { KnowhowStatMultiplierAttr } from "#trainers/trainer-knowhow/knowhow-attrs";
 import type { SpeciesFormChange } from "#data/pokemon-forms";
 import type { PokemonSpeciesForm } from "#data/pokemon-species";
 import { PokemonSpecies } from "#data/pokemon-species";
@@ -222,6 +225,7 @@ import { populateVariantColors, variantColorCache, variantData } from "#sprites/
 import { achvs } from "#system/achv";
 import type { StarterDataEntry, StarterMoveset } from "#system/game-data";
 import type { PokemonData } from "#system/pokemon-data";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import { RibbonData } from "#system/ribbons/ribbon-data";
 import { awardRibbonsToSpeciesLine } from "#system/ribbons/ribbon-methods";
 import type { AbAttrMap, AbAttrString, TypeMultiplierAbAttrParams } from "#types/ability-types";
@@ -318,6 +322,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   public formIndex: number;
   public abilityIndex: number;
   public passive: boolean;
+  public passiveIndex = 0;
   public shiny: boolean;
   public variant: Variant;
   public mark: MarkId;
@@ -331,7 +336,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   public hpVersion = 0;
   public stats: number[];
   public ivs: number[];
-
+  public evs: number[];
   /** 특수 개체 전용 종족값. 없으면 원래 종족값을 사용 */
   public customBaseStats?: number[];
 
@@ -449,7 +454,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.hp = dataSource.hp;
       this.stats = dataSource.stats;
       this.ivs = dataSource.ivs;
+      this.evs = Array.isArray(dataSource.evs)
+  ? Array.from({ length: 6 }, (_, s) =>
+      Math.max(0, Math.min(255, Math.floor(dataSource.evs[s] ?? 0)))
+    )
+  : [0, 0, 0, 0, 0, 0];
       this.passive = !!dataSource.passive;
+      this.passiveIndex = dataSource.passiveIndex ?? 0;
       if (this.variant === undefined) {
         this.variant = this.shiny ? this.generateShinyVariant() : 0;
       }
@@ -491,7 +502,8 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.stellarTypesBoosted = dataSource.stellarTypesBoosted ?? [];
     } else {
       this.id = randSeedInt(4294967296);
-      this.ivs = ivs || getIvsFromId(this.id);
+this.ivs = ivs || getIvsFromId(this.id);
+this.evs = [0, 0, 0, 0, 0, 0];
 
       if (this.gender === undefined) {
         this.gender = this.species.generateGender();
@@ -2143,7 +2155,14 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     const baseStats = this.calculateBaseStats();
     // Using base stats, calculate and store stats one by one
     for (const s of PERMANENT_STATS) {
-      const statHolder = new NumberHolder(Math.floor((2 * baseStats[s] + this.ivs[s]) * this.level * 0.01));
+      const evBonus = Math.floor(this.evs[s] / 5);
+
+const statHolder = new NumberHolder(
+  Math.floor(
+    (2 * baseStats[s] + this.ivs[s] + evBonus)
+    * this.level / 100
+  )
+);
       if (s === Stat.HP) {
         const hadHp = this.hp != null;
         const oldHp = this.hp ?? 0;
@@ -2153,10 +2172,54 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         const wasFullBefore = hadHp && oldHp > 0 && oldMax > 0 && oldHp >= oldMax;
 
         // 새 HP stat 계산
-        statHolder.value = Math.floor((2 * baseStats[s] + this.ivs[s]) * this.level * 0.01);
-        statHolder.value += this.level + 10;
+        statHolder.value = Math.floor(
+  (2 * baseStats[s] + this.ivs[s] + evBonus)
+  * this.level / 100
+);
+statHolder.value += this.level + 10;
 
         globalScene.applyModifier(PokemonIncrementingStatModifier, this.isPlayer(), this, s, statHolder);
+
+        // ✅ 동료 노하우
+if (this.isPlayer()) {
+  const isCompanionPokemon =
+  !!(this as any).isCompanionPokemon;
+
+  const knowhow = isCompanionPokemon
+    ? companionManager.getActiveKnowhow()
+    : companionManager.getPlayerKnowhow(
+        globalScene.gameData.gender,
+      );
+
+  if (knowhow) {
+    const before = statHolder.value;
+
+    applyKnowhowAttrs(
+      knowhow,
+      KnowhowStatMultiplierAttr,
+      {
+        pokemon: this,
+        stat: s,
+        statVal: statHolder,
+      },
+    );
+
+    if (before !== statHolder.value) {
+      console.log("[TRAINER_KNOWHOW_STAT]", {
+        pokemon: this.name,
+        owner:
+          isCompanionPokemon
+            ? "COMPANION"
+            : "PLAYER",
+        knowhowId: knowhow.id,
+        knowhowName: knowhow.name,
+        stat: Stat[s],
+        before,
+        after: statHolder.value,
+      });
+    }
+  }
+}
 
         statHolder.value = Phaser.Math.Clamp(statHolder.value, 1, Number.MAX_SAFE_INTEGER);
 
@@ -2191,10 +2254,44 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
           1,
         );
       }
-      globalScene.applyModifier(PokemonIncrementingStatModifier, this.isPlayer(), this, s, statHolder);
-      statHolder.value = Phaser.Math.Clamp(statHolder.value, 1, Number.MAX_SAFE_INTEGER);
+      globalScene.applyModifier(
+  PokemonIncrementingStatModifier,
+  this.isPlayer(),
+  this,
+  s,
+  statHolder,
+);
 
-      this.setStat(s, statHolder.value);
+// ✅ 동료 노하우
+// ✅ 트레이너 노하우
+if (this.isPlayer()) {
+  const isCompanionPokemon =
+    !!(this as any).isCompanionPokemon;
+
+  const knowhow = isCompanionPokemon
+    ? companionManager.getActiveKnowhow()
+    : companionManager.getPlayerKnowhow(
+        globalScene.gameData.gender,
+      );
+
+  applyKnowhowAttrs(
+    knowhow,
+    KnowhowStatMultiplierAttr,
+    {
+      pokemon: this,
+      stat: s,
+      statVal: statHolder,
+    },
+  );
+}
+
+statHolder.value = Phaser.Math.Clamp(
+  statHolder.value,
+  1,
+  Number.MAX_SAFE_INTEGER,
+);
+
+this.setStat(s, statHolder.value);
     }
   }
 
@@ -2253,6 +2350,83 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     this.calculateStats();
   }
 
+  
+  /**
+   * 모든 능력치에 동일한 노력치를 지급한다.
+   * 능력치별 최대 255, 총합 제한 없음.
+   *
+   * EV가 255에 도달하면 해당 IV가 1 상승한다.
+   * EV는 초기화하지 않는다.
+   */
+  addEvs(amount: number): void {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return;
+    }
+
+    for (const stat of PERMANENT_STATS) {
+      this.addEvToStat(stat, amount, false);
+    }
+
+    this.calculateStats();
+  }
+
+  /**
+   * 특정 능력치의 노력치를 증가시킨다.
+   * 향후 영양제 및 육성 아이템에도 사용한다.
+   */
+  addEvToStat(
+    stat: PermanentStat,
+    amount: number,
+    recalculate = true,
+  ): void {
+    if (
+      !PERMANENT_STATS.includes(stat)
+      || !Number.isFinite(amount)
+      || amount <= 0
+    ) {
+      return;
+    }
+
+    const oldEv = this.evs[stat] ?? 0;
+    const gainedEv = Math.floor(amount);
+
+    if (gainedEv <= 0) {
+      return;
+    }
+
+    const newEv = Math.min(255, oldEv + gainedEv);
+
+    if (newEv === oldEv) {
+      return;
+    }
+
+    this.evs[stat] = newEv;
+
+    // EV가 255에 처음 도달했을 때만 IV +1
+    if (
+      oldEv < 255
+      && newEv === 255
+      && this.ivs[stat] < 31
+    ) {
+      const oldIv = this.ivs[stat];
+
+      this.ivs[stat] = Math.min(31, oldIv + 1);
+
+      console.log("[EV_IV_GROWTH]", {
+        pokemon: this.name,
+        stat: Stat[stat],
+        oldEv,
+        newEv,
+        oldIv,
+        newIv: this.ivs[stat],
+      });
+    }
+
+    if (recalculate) {
+      this.calculateStats();
+    }
+  }
+
   hasHeldItemOfType(type: ModifierType): boolean {
     return this.heldItem?.type === type;
   }
@@ -2263,7 +2437,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       return 1;
     }
     const baseStats = this.calculateBaseStats(); // 또는 별도로 캐싱
-    return Math.floor(((2 * baseStats[Stat.HP] + this.ivs[Stat.HP]) * this.level) / 100) + this.level + 10;
+    return Math.floor(
+  (
+    2 * baseStats[Stat.HP]
+    + this.ivs[Stat.HP]
+    + Math.floor(this.evs[Stat.HP] / 5)
+  ) * this.level / 100
+) + this.level + 10;
   }
 
   getDynamaxMaxHp(forceDynamaxState?: boolean): number {
@@ -2510,7 +2690,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     const species =
       this.metSpecies in speciesEggMoves ? this.metSpecies : this.getSpeciesForm(true).getRootSpeciesId(true);
     if (species in speciesEggMoves) {
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < speciesEggMoves[species].length; i++) {
         if (globalScene.gameData.starterData[species].eggMoves & (1 << i)) {
           moves.push(speciesEggMoves[species][i]);
         }
@@ -2766,7 +2946,12 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       return allAbilities[this.customPokemonData.passive];
     }
 
-    return allAbilities[this.species.getPassiveAbility(this.formIndex)];
+    return allAbilities[
+  this.species.getPassiveAbility(
+    this.formIndex,
+    this.passiveIndex,
+  )
+];
   }
 
   /**
@@ -3779,28 +3964,89 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   }
 
   getEvolution(): SpeciesFormEvolution | null {
-    if (pokemonEvolutions.hasOwnProperty(this.species.speciesId)) {
-      const evolutions = pokemonEvolutions[this.species.speciesId];
-      for (const e of evolutions) {
-        if (e.validate(this)) {
-          return e;
+  const companionTargetSpeciesId =
+    (this as any).companionTargetEvolutionSpeciesId
+    ?? (this as any).companionTargetSpeciesId;
+
+  const companionTargetFormKey =
+    (this as any).companionTargetEvolutionFormKey;
+
+  if (pokemonEvolutions.hasOwnProperty(this.species.speciesId)) {
+    const evolutions =
+      pokemonEvolutions[this.species.speciesId];
+
+    for (const e of evolutions) {
+      // ========================================
+      // 동료 포켓몬이면 지정된 최종 진화계통만 허용
+      // ========================================
+      if (companionTargetSpeciesId != null) {
+        let cursor = companionTargetSpeciesId as SpeciesId;
+        let belongsToTargetLine = false;
+
+        while (true) {
+          if (e.speciesId === cursor) {
+            belongsToTargetLine = true;
+            break;
+          }
+
+          if (
+            !pokemonPrevolutions.hasOwnProperty(cursor)
+          ) {
+            break;
+          }
+
+          cursor =
+            pokemonPrevolutions[cursor] as SpeciesId;
+        }
+
+        if (!belongsToTargetLine) {
+          continue;
+        }
+
+        // 같은 종에서 폼이 갈리는 경우
+        // 예: 루가루암, 스트린더
+        if (
+          companionTargetFormKey != null
+          && e.speciesId === companionTargetSpeciesId
+          && e.evoFormKey !== companionTargetFormKey
+        ) {
+          continue;
         }
       }
-    }
 
-    if (this.isFusion() && this.fusionSpecies && pokemonEvolutions.hasOwnProperty(this.fusionSpecies.speciesId)) {
-      const fusionEvolutions = pokemonEvolutions[this.fusionSpecies.speciesId].map(
-        e => new FusionSpeciesFormEvolution(this.species.speciesId, e),
-      );
-      for (const fe of fusionEvolutions) {
-        if (fe.validate(this)) {
-          return fe;
-        }
+      if (e.validate(this)) {
+        return e;
       }
     }
-
-    return null;
   }
+
+  if (
+    this.isFusion()
+    && this.fusionSpecies
+    && pokemonEvolutions.hasOwnProperty(
+      this.fusionSpecies.speciesId,
+    )
+  ) {
+    const fusionEvolutions =
+      pokemonEvolutions[
+        this.fusionSpecies.speciesId
+      ].map(
+        e =>
+          new FusionSpeciesFormEvolution(
+            this.species.speciesId,
+            e,
+          ),
+      );
+
+    for (const fe of fusionEvolutions) {
+      if (fe.validate(this)) {
+        return fe;
+      }
+    }
+  }
+
+  return null;
+}
 
   /**
    * Gets all level up moves in a given range for a particular pokemon.
@@ -6137,22 +6383,63 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     }
 
     if (typeMultiplier > 1) {
-      const expertBelt = attackerHeldMods.find(m => m instanceof SuperEffectiveBoosterModifier) as
-        | SuperEffectiveBoosterModifier
-        | undefined;
+  const expertBelt = attackerHeldMods.find(
+    m => m instanceof SuperEffectiveBoosterModifier,
+  ) as SuperEffectiveBoosterModifier | undefined;
 
-      if (expertBelt && expertBelt.shouldApply?.(source, move, typeMultiplier)) {
-        const modName =
-          (expertBelt as any).getPracticeLogName?.()
-          ?? (expertBelt as any).type?.name
-          ?? (expertBelt as any).type?.id
-          ?? expertBelt.constructor.name;
+  if (expertBelt && expertBelt.shouldApply?.(source, move, typeMultiplier)) {
+    const modName =
+      (expertBelt as any).getPracticeLogName?.()
+      ?? (expertBelt as any).type?.name
+      ?? (expertBelt as any).type?.id
+      ?? expertBelt.constructor.name;
 
-        watchDamageValue(modName, () => {
-          damage.value = expertBelt.applyMovePowerBoost(move, source, this, damage.value, globalScene.currentBattle);
+    watchDamageValue(modName, () => {
+      damage.value = expertBelt.applyMovePowerBoost(
+        move,
+        source,
+        this,
+        damage.value,
+        globalScene.currentBattle,
+      );
+    });
+  }
+
+  // 트레이닝 카드: 엄청난효과
+  if (source.isPlayer()) {
+  const cardMultiplier = trainerCardManager.getMultiplier(
+    "SUPER_EFFECTIVE_DAMAGE",
+  );
+
+  console.log(
+  "[TRAINER_CARD_STATE]",
+  JSON.stringify({
+    owned: trainerCardManager.exportSaveData().owned,
+    equipped: trainerCardManager.getEquipped(),
+    cardMultiplier: trainerCardManager.getMultiplier(
+      "SUPER_EFFECTIVE_DAMAGE",
+    ),
+  }),
+);
+
+    if (cardMultiplier > 1) {
+      watchDamageValue("트레이닝 카드: 엄청난효과", () => {
+        damage.value = Math.floor(damage.value * cardMultiplier);
+      });
+
+      if (!simulated) {
+        console.log("[TRAINER_CARD_SUPER_EFFECTIVE]", {
+          attacker: source.name,
+          defender: this.name,
+          move: move.name,
+          typeMultiplier,
+          cardMultiplier,
+          damage: damage.value,
         });
       }
     }
+  }
+}
 
     if (typeMultiplier < 1) {
       const notEffectiveMod = attackerHeldMods.find(m => m instanceof NotEffectiveBoostModifier) as
@@ -9012,15 +9299,57 @@ export class PlayerPokemon extends Pokemon {
     if (fusionStarterSpeciesId) {
       candyFriendshipMultiplier /= timedEventManager.areFusionsBoosted() ? 1.5 : 2;
     }
-    const candyFriendshipAmount = Math.floor(friendship * candyFriendshipMultiplier);
+    // 트레이닝 카드: 달콤한보상
+// 트레이닝 카드: 달콤한보상
+const candyCardMultiplier = trainerCardManager.getMultiplier(
+  "CANDY_REWARD",
+);
+
+const candyFriendshipAmount = Math.floor(
+  friendship * candyFriendshipMultiplier * candyCardMultiplier,
+);
+
+console.log("[TRAINER_CARD_SWEET_REWARD]", {
+  pokemon: this.name,
+  friendship,
+  candyCardMultiplier,
+  candyFriendshipAmount,
+});
+
+if (candyCardMultiplier > 1) {
+  console.log("[TRAINER_CARD_SWEET_REWARD]", {
+    pokemon: this.name,
+    friendship,
+    candyCardMultiplier,
+    candyFriendshipAmount,
+  });
+}
     // Add to candy progress for this mon's starter species and its fused species (if it has one)
-    starterData.forEach(([sd, id]: [StarterDataEntry, SpeciesId]) => {
-      sd.friendship = (sd.friendship || 0) + candyFriendshipAmount;
-      if (sd.friendship >= getStarterValueFriendshipCap(speciesStarterCosts[id])) {
-        globalScene.gameData.addStarterCandy(getPokemonSpecies(id), 1);
-        sd.friendship = 0;
-      }
+    // 사탕 획득 진행도 누적 및 초과분 이월
+starterData.forEach(([sd, id]: [StarterDataEntry, SpeciesId]) => {
+  const candyCap = getStarterValueFriendshipCap(speciesStarterCosts[id]);
+
+  if (candyCap <= 0) {
+    return;
+  }
+
+  sd.friendship = (sd.friendship || 0) + candyFriendshipAmount;
+
+  // 획득 기준에 도달할 때마다 사탕 지급
+  while (sd.friendship >= candyCap) {
+    globalScene.gameData.addStarterCandy(getPokemonSpecies(id), 1);
+
+    // 초과 진행도를 다음 사탕 획득에 이월
+    sd.friendship -= candyCap;
+
+    console.log("[TRAINER_CARD_CANDY_GAIN]", {
+      pokemon: this.name,
+      speciesId: id,
+      remainingProgress: sd.friendship,
+      candyCap,
     });
+  }
+});
   }
 
   getPossibleEvolution(evolution: SpeciesFormEvolution | null): Promise<Pokemon> {

@@ -1,0 +1,6 @@
+{
+  "superEffective": {"name": "엄청난효과", "description": "효과가 굉장한 공격의 위력이 1.5배가 된다."},
+  "sweetReward": {"name": "달콤한보상", "description": "획득하는 포켓몬 사탕이 25% 증가한다."},
+  "growTogether": {"name": "동반성장", "description": "동료 포켓몬이 받는 경험치가 1.5배가 된다."},
+  "harmonyOfAll": {"name": "만물의조화", "description": "다른 장착 카드의 수치형 추가 보너스가 20% 증가한다."}
+}

@@ -4,30 +4,30 @@
 			"image": "victor.png",
 			"format": "RGBA8888",
 			"size": {
-				"w": 55,
-				"h": 53
+				"w": 76,
+				"h": 146
 			},
 			"scale": 1,
 			"frames": [
 				{
-					"filename": "0001.png",
+					"filename": "victor.png",
 					"rotated": false,
 					"trimmed": true,
 					"sourceSize": {
-						"w": 80,
-						"h": 80
+						"w": 128,
+						"h": 149
 					},
 					"spriteSourceSize": {
-						"x": 12,
-						"y": 27,
-						"w": 55,
-						"h": 53
+						"x": 21,
+						"y": 3,
+						"w": 74,
+						"h": 144
 					},
 					"frame": {
-						"x": 0,
-						"y": 0,
-						"w": 55,
-						"h": 53
+						"x": 1,
+						"y": 1,
+						"w": 74,
+						"h": 144
 					}
 				}
 			]
@@ -36,6 +36,6 @@
 	"meta": {
 		"app": "https://www.codeandweb.com/texturepacker",
 		"version": "3.0",
-		"smartupdate": "$TexturePacker:SmartUpdate:64eff0f697754cdf9552b46342c9292a:611e0e2cacbd90c1229ce5443b2414f0:0cc0f5a2c1b2eedb46dd8318e8feb1d8$"
+		"smartupdate": "$TexturePacker:SmartUpdate:53978ee69da1d8376833e8bae2db2df1:0059fd8ca0bf4849598bc78960b76514:0cc0f5a2c1b2eedb46dd8318e8feb1d8$"
 	}
 }

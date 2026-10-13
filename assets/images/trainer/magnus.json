@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "magnus.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "magnus.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8a25537fc9bc197fd952b7a4c32eb2d0:0147e6fb0666760374a778652dbb6d9b:5a5c0ce0937b876c04dbc74b3f1cf0fd$"
+	}
+}

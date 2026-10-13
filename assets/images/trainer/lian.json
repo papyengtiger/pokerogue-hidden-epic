@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lian.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 32,
+				"h": 66
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lian.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 30,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 30,
+						"h": 64
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 30,
+						"h": 64
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d17f567de21b68b8814f250b4d8dd67c:f8a4df24a3ad7fa9faa3d9005299f65d:eca2dbbdae195c6927c185382c73377e$"
+	}
+}

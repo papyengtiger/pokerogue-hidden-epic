@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "phillipe.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "phillipe.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5caf37cd67eb9ed3fc8d78754d918ec3:23a9a4c41b2dc913fda888e6a08dbfc5:01eba586b0ae6ab9010e01c2c944de79$"
+	}
+}

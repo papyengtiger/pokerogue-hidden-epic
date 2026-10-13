@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "monsieur.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "monsieur.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:686c79a369e4d9c9617d84a72478701d:6786d8b4ae342ff7dc6bdd375cf2082b:abb5ec2bb9139c86bb0a4e3cc6fb3eb1$"
+	}
+}
