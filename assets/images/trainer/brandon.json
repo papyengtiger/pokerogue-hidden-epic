@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "brandon.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 30,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "brandon.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 28,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 28,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 28,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f82a91cce964cc02379e4a5f73a4cd84:bca13c50ce4dcac5d5cad25557a442f4:6da3d5acef203ab38291acf69f14bdf9$"
+	}
+}

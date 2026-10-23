@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cara_liss.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 29,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cara_liss.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 27,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 27,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 27,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ffc6ee99f82036585a3a08bbb3ec61e9:e9c7e34c7a380aa0183a1d1719d08c35:705d7e3e2ccb987503ea279a64aa2cc7$"
+	}
+}

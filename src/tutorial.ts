@@ -1,5 +1,6 @@
 import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
+import { GameModes } from "#enums/game-modes";
 import { UiMode } from "#enums/ui-mode";
 import { AwaitableUiHandler } from "#ui/awaitable-ui-handler";
 import type { UiHandler } from "#ui/ui-handler";
@@ -15,6 +16,26 @@ export enum Tutorial {
   Stat_Change = "STAT_CHANGE",
   Select_Item = "SELECT_ITEM",
   Egg_Gacha = "EGG_GACHA",
+  HE_Battle = "HE_BATTLE",
+  HE_Capture = "HE_CAPTURE",
+  HE_Switch = "HE_SWITCH",
+  HE_Type = "HE_TYPE",
+  HE_Biome = "HE_BIOME",
+  HE_Starter_Unlock = "HE_STARTER_UNLOCK",
+  HE_Growth = "HE_GROWTH",
+}
+
+const tutorialShownThisRun = new Set<Tutorial>();
+
+// 새 튜토리얼 회차 시작 시 호출
+export function resetTutorialShownThisRun(): void {
+  tutorialShownThisRun.clear();
+}
+
+function showHiddenEpicTutorial(key: string): Promise<void> {
+  return new Promise<void>(resolve => {
+    globalScene.ui.showText(i18next.t(`tutorialStory:${key}`), null, () => resolve(), null, true);
+  });
 }
 
 const tutorialHandlers = {
@@ -117,6 +138,13 @@ const tutorialHandlers = {
       );
     });
   },
+  [Tutorial.HE_Battle]: () => showHiddenEpicTutorial("battle"),
+  [Tutorial.HE_Capture]: () => showHiddenEpicTutorial("capture"),
+  [Tutorial.HE_Switch]: () => showHiddenEpicTutorial("switch"),
+  [Tutorial.HE_Type]: () => showHiddenEpicTutorial("type"),
+  [Tutorial.HE_Biome]: () => showHiddenEpicTutorial("biome"),
+  [Tutorial.HE_Starter_Unlock]: () => showHiddenEpicTutorial("starterUnlock"),
+  [Tutorial.HE_Growth]: () => showHiddenEpicTutorial("growth"),
 };
 
 /**
@@ -126,36 +154,62 @@ const tutorialHandlers = {
  * @param tutorial the {@linkcode Tutorial} to play
  * @returns a promise with result `true` if the tutorial was run and finished, `false` otherwise
  */
+
 export async function handleTutorial(tutorial: Tutorial): Promise<boolean> {
-  if (!globalScene.enableTutorials && !Overrides.BYPASS_TUTORIAL_SKIP_OVERRIDE) {
+  const isTutorialMode = globalScene.gameMode?.modeId === GameModes.TUTORIAL;
+
+  // 튜토리얼 모드에서는 같은 회차에 한 번만 표시
+  if (isTutorialMode && tutorialShownThisRun.has(tutorial)) {
     return false;
   }
 
-  if (globalScene.gameData.getTutorialFlags()[tutorial] && !Overrides.BYPASS_TUTORIAL_SKIP_OVERRIDE) {
+  // 등록되지 않은 튜토리얼은 실행하지 않음
+  const tutorialHandler = tutorialHandlers[tutorial];
+
+  if (typeof tutorialHandler !== "function") {
+    console.error("[TUTORIAL_HANDLER_MISSING]", tutorial);
+    console.trace("[TUTORIAL_CALL_TRACE]");
+    return false;
+  }
+
+  if (!isTutorialMode && !globalScene.enableTutorials && !Overrides.BYPASS_TUTORIAL_SKIP_OVERRIDE) {
+    return false;
+  }
+
+  if (
+    !isTutorialMode
+    && globalScene.gameData.getTutorialFlags()[tutorial]
+    && !Overrides.BYPASS_TUTORIAL_SKIP_OVERRIDE
+  ) {
     return false;
   }
 
   const handler = globalScene.ui.getHandler();
   const isMenuDisabled = globalScene.disableMenu;
 
-  // starting tutorial, disable menu
   globalScene.disableMenu = true;
+
   if (handler instanceof AwaitableUiHandler) {
     handler.tutorialActive = true;
   }
 
-  await showTutorialOverlay(handler);
-  await tutorialHandlers[tutorial]();
-  await hideTutorialOverlay(handler);
+  try {
+    await showTutorialOverlay(handler);
+    await tutorialHandler();
+    await hideTutorialOverlay(handler);
 
-  // tutorial finished and overlay gone, re-enable menu, save tutorial as seen
-  globalScene.disableMenu = isMenuDisabled;
-  globalScene.gameData.saveTutorialFlag(tutorial, true);
-  if (handler instanceof AwaitableUiHandler) {
-    handler.tutorialActive = false;
+    if (isTutorialMode) {
+      tutorialShownThisRun.add(tutorial);
+    }
+    globalScene.gameData.saveTutorialFlag(tutorial, true);
+    return true;
+  } finally {
+    globalScene.disableMenu = isMenuDisabled;
+
+    if (handler instanceof AwaitableUiHandler) {
+      handler.tutorialActive = false;
+    }
   }
-
-  return true;
 }
 
 /**

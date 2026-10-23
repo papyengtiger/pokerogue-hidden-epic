@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cyrano.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 30,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cyrano.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 28,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 28,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 28,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5a4326eaff82438446e5cd84b8072473:177c4f962b805376b1780b02ce9f4271:c5ac4aaa8dd91744e5810d0bdcb451fd$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "bianca_b2w2.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 32,
+				"h": 69
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "bianca_b2w2.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 30,
+						"h": 67
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 30,
+						"h": 67
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 30,
+						"h": 67
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e07738832cb2499d1ce8f54409738d9b:c0f87a869ae1f3c899ba962454959bff:5f25954e5ba65321fad6505ad74fc115$"
+	}
+}

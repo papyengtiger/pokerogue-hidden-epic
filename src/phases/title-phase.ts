@@ -12,6 +12,7 @@ import { getWeeklyRunSeed, getWeeklyRunStarters } from "#data/daily-seed/weekly-
 import { modifierTypes } from "#data/data-lists";
 import { Gender } from "#data/gender";
 import { BattleType } from "#enums/battle-type";
+import { GameDifficulty } from "#enums/game-difficulty";
 import { GameModes } from "#enums/game-modes";
 import { ModifierPoolType } from "#enums/modifier-pool-type";
 import { PokeballType } from "#enums/pokeball";
@@ -36,6 +37,7 @@ export class TitlePhase extends Phase {
   private enteringRogueShop = false;
   // TODO: Make `end` take a `GameModes` as a parameter rather than storing it on the class itself
   public gameMode: GameModes;
+  private selectedDifficulty: GameDifficulty = GameDifficulty.EASY;
 
   async start(): Promise<void> {
     super.start();
@@ -106,42 +108,138 @@ export class TitlePhase extends Phase {
         label: i18next.t("menu:newGame"),
         handler: () => {
           const setModeAndEnd = (gameMode: GameModes) => {
-            this.gameMode = gameMode;
+            const isEndlessMode = gameMode === GameModes.ENDLESS || gameMode === GameModes.SPLICED_ENDLESS;
+
+            if (isEndlessMode) {
+              this.gameMode = gameMode;
+              this.selectedDifficulty = GameDifficulty.NORMAL;
+
+              console.log("[ENDLESS_NORMAL_FIXED]", {
+                gameMode,
+                difficulty: GameDifficulty.NORMAL,
+              });
+
+              globalScene.ui.setMode(UiMode.MESSAGE);
+              globalScene.ui.clearText();
+              this.end();
+              return;
+            }
+
+            const difficulties =
+              gameMode === GameModes.TUTORIAL
+                ? [GameDifficulty.EASY]
+                : [GameDifficulty.EASY, GameDifficulty.NORMAL, GameDifficulty.HARD];
+
+            const difficultyOptions: OptionSelectItem[] = difficulties.map(difficulty => ({
+              label:
+                difficulty === GameDifficulty.EASY ? "이지" : difficulty === GameDifficulty.NORMAL ? "노말" : "하드",
+
+              handler: () => {
+                console.log("[DIFFICULTY_SELECTED]", gameMode, difficulty);
+
+                this.gameMode = gameMode;
+                this.selectedDifficulty = difficulty;
+
+                globalScene.ui.setMode(UiMode.MESSAGE);
+                globalScene.ui.clearText();
+
+                this.end();
+                return true;
+              },
+            }));
+
+            // 기존 모드 선택창을 먼저 종료
             globalScene.ui.setMode(UiMode.MESSAGE);
-            globalScene.ui.clearText();
-            this.end();
+
+            // 난이도 선택 안내를 표시한 뒤 새 선택창 열기
+            globalScene.ui.showText("난이도를 선택해주세요.", null, () => {
+              globalScene.ui.setMode(UiMode.OPTION_SELECT, {
+                options: difficultyOptions,
+                maxOptions: 3,
+              });
+            });
           };
+
           const { gameData } = globalScene;
+
           const options: OptionSelectItem[] = [];
+
+          // ========================================
+          // 튜토리얼 모드: 처음부터 선택 가능
+          // ========================================
           options.push({
-            label: GameMode.getModeName(GameModes.CLASSIC),
+            label: GameMode.getModeName(GameModes.TUTORIAL),
             handler: () => {
-              setModeAndEnd(GameModes.CLASSIC);
-              return true;
-            },
-          });
-          options.push({
-            label: i18next.t("menu:dailyRun"),
-            handler: () => {
-              this.initDailyRun();
-              return true;
-            },
-          });
-          options.push({
-            label: GameMode.getModeName(GameModes.WEEKLY),
-            handler: () => {
-              this.initWeeklyRun();
+              setModeAndEnd(GameModes.TUTORIAL);
               return true;
             },
           });
 
-          options.push({
-            label: GameMode.getModeName(GameModes.MONTHLY),
-            handler: () => {
-              this.initMonthlyRun();
-              return true;
-            },
-          });
+          // ========================================
+          // 클래식 모드: 튜토리얼 클리어 후 해금
+          // ========================================
+          if (gameData.isUnlocked(Unlockables.CLASSIC_MODE)) {
+            options.push({
+              label: GameMode.getModeName(GameModes.CLASSIC),
+              handler: () => {
+                setModeAndEnd(GameModes.CLASSIC);
+                return true;
+              },
+            });
+          }
+
+          // ========================================
+          // 어나더 모드: 클래식 클리어 후 해금
+          // ========================================
+          if (gameData.isUnlocked(Unlockables.ANOTHER_MODE)) {
+            options.push({
+              label: GameMode.getModeName(GameModes.ANOTHER),
+              handler: () => {
+                setModeAndEnd(GameModes.ANOTHER);
+                return true;
+              },
+            });
+          }
+
+          // ========================================
+          // 데일리 모드
+          // ========================================
+          if (gameData.isUnlocked(Unlockables.DAILY_MODE)) {
+            options.push({
+              label: i18next.t("menu:dailyRun"),
+              handler: () => {
+                this.initDailyRun();
+                return true;
+              },
+            });
+          }
+
+          // ========================================
+          // 주간 모드
+          // ========================================
+          if (gameData.isUnlocked(Unlockables.WEEKLY_MODE)) {
+            options.push({
+              label: GameMode.getModeName(GameModes.WEEKLY),
+              handler: () => {
+                this.initWeeklyRun();
+                return true;
+              },
+            });
+          }
+
+          // ========================================
+          // 월간 모드
+          // ========================================
+          if (gameData.isUnlocked(Unlockables.MONTHLY_MODE)) {
+            options.push({
+              label: GameMode.getModeName(GameModes.MONTHLY),
+              handler: () => {
+                this.initMonthlyRun();
+                return true;
+              },
+            });
+          }
+
           if (gameData.isUnlocked(Unlockables.ENDLESS_MODE)) {
             options.push({
               label: GameMode.getModeName(GameModes.CHALLENGE),
@@ -179,7 +277,7 @@ export class TitlePhase extends Phase {
           globalScene.ui.showText(i18next.t("menu:selectGameMode"), null, () =>
             globalScene.ui.setMode(UiMode.OPTION_SELECT, {
               options,
-              maxOptions: 6,
+              maxOptions: 7,
             }),
           );
           return true;
@@ -795,6 +893,10 @@ export class TitlePhase extends Phase {
     if (!this.loaded && !hasGeneratedStarters) {
       globalScene.arena.preloadBgm();
       globalScene.gameMode = getGameMode(this.gameMode);
+
+      const difficulty = globalScene.gameMode.isEndless ? GameDifficulty.NORMAL : this.selectedDifficulty;
+
+      globalScene.gameMode.setDifficulty(difficulty);
 
       if (this.gameMode === GameModes.CHALLENGE) {
         globalScene.phaseManager.pushNew("SelectChallengePhase");

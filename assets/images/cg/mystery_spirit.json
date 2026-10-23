@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mystery_spirit.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 143,
+				"h": 125
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "B2W2_Spirit_Pokéstar_Green.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 144,
+						"h": 123
+					},
+					"spriteSourceSize": {
+						"x": 3,
+						"y": 0,
+						"w": 141,
+						"h": 123
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 141,
+						"h": 123
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6f9cc8ba8622d5b110e9a8809109ed61:020499aee5a8e1a19679a7bb67a26aed:f98236a684033e2e2065475d55af9d86$"
+	}
+}

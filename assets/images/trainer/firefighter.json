@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "firefighter.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "firefighter.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:49d185fc642f6c34b04f18ee31eb0b37:05df17e6405a5368f57b535884b95ee4:52ade4566c8fdf62e48e99f94f403113$"
+	}
+}

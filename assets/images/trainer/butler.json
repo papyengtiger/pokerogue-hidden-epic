@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "butler.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "butler.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fe9cbc939e757679411c998d00846e5a:29075c5c083e9c393e837ccc61049a5d:6c2b8f3d41a5672b6b2a5ce229da1fa6$"
+	}
+}

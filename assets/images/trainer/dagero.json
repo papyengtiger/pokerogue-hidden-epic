@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dagero.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 57,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dagero.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 55,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 55,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 55,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b84ac30eb8ca023e15c8a9b6f405eb8c:ef550e5115db8ae438fed41b38dd53e6:f5d25b859f8ab4213e7af5c108fa463a$"
+	}
+}

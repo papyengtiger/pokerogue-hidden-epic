@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dojo_student_f.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 47,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dojo_student_f.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 45,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 45,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 45,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:90575124ea925fb556ddad91e2ff4afb:fee76a72465d17951d257cd9897f8796:b282b289c623d7e46c27c5721ea30fb3$"
+	}
+}

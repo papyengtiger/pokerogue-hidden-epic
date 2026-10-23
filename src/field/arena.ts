@@ -73,7 +73,9 @@ export class Arena {
   constructor(biome: BiomeId, playerFaints = 0) {
     this.biomeType = isValidBiomeId(biome) ? biome : BiomeId.TOWN;
     this.bgm = getBiomeKey(this.biomeType);
-    this.trainerPool = biomeTrainerPools[this.biomeType];
+    this.trainerPool = Object.fromEntries(
+      Object.entries(biomeTrainerPools[this.biomeType]).map(([tier, trainers]) => [tier, [...trainers]]),
+    ) as BiomeTierTrainerPools;
     this.updatePoolsForTimeOfDay();
     this.playerFaints = playerFaints;
   }
@@ -221,11 +223,24 @@ export class Arena {
   }
 
   randomTrainerType(waveIndex: number, isBoss = false): TrainerType {
+    const sourcePool = biomeTrainerPools[this.biomeType];
+    const activePool = this.trainerPool;
+
+    console.log("[TRAINER_POOL_SOURCE]", {
+      biome: BiomeId[this.biomeType],
+      wave: waveIndex,
+      sourceCommon: (sourcePool?.[BiomePoolTier.COMMON] ?? []).map(t => TrainerType[t]),
+      activeCommon: (activePool?.[BiomePoolTier.COMMON] ?? []).map(t => TrainerType[t]),
+      sourceBoss: (sourcePool?.[BiomePoolTier.BOSS] ?? []).map(t => TrainerType[t]),
+      activeBoss: (activePool?.[BiomePoolTier.BOSS] ?? []).map(t => TrainerType[t]),
+    });
+
     const isTrainerBoss =
-      this.trainerPool[BiomePoolTier.BOSS].length > 0
+      (activePool?.[BiomePoolTier.BOSS]?.length ?? 0) > 0
       && (globalScene.gameMode.isTrainerBoss(waveIndex, this.biomeType, globalScene.offsetGym) || isBoss);
-    console.log(isBoss, this.trainerPool);
-    const tierValue = randSeedInt(!isTrainerBoss ? 512 : 64);
+
+    const tierValue = randSeedInt(isTrainerBoss ? 64 : 512);
+
     let tier = !isTrainerBoss
       ? tierValue >= 156
         ? BiomePoolTier.COMMON
@@ -243,13 +258,33 @@ export class Arena {
           : tierValue >= 1
             ? BiomePoolTier.BOSS_SUPER_RARE
             : BiomePoolTier.BOSS_ULTRA_RARE;
-    console.log(BiomePoolTier[tier]);
-    while (tier && this.trainerPool[tier].length === 0) {
-      console.log(`Downgraded trainer rarity tier from ${BiomePoolTier[tier]} to ${BiomePoolTier[tier - 1]}`);
+
+    while (tier && (activePool?.[tier]?.length ?? 0) === 0) {
       tier--;
     }
-    const tierPool = this.trainerPool[tier] || [];
-    return tierPool.length === 0 ? TrainerType.BREEDER : tierPool[randSeedInt(tierPool.length)];
+
+    const tierPool = activePool?.[tier] ?? [];
+    const selected = tierPool.length === 0 ? TrainerType.BREEDER : tierPool[randSeedInt(tierPool.length)];
+
+    console.log("[TRAINER_SELECTED]", {
+      biome: BiomeId[this.biomeType],
+      wave: waveIndex,
+      isTrainerBoss,
+      tier: BiomePoolTier[tier],
+      candidates: tierPool.map(t => TrainerType[t]),
+      selected: TrainerType[selected],
+      fallbackBreeder: tierPool.length === 0,
+    });
+    console.log("[TRAINER_POOL_RAW]", {
+      biome: BiomeId[this.biomeType],
+      biomeId: this.biomeType,
+      pool: biomeTrainerPools[this.biomeType],
+      poolKeys: Object.keys(biomeTrainerPools[this.biomeType] ?? {}),
+      commonTier: BiomePoolTier.COMMON,
+      bossTier: BiomePoolTier.BOSS,
+      plainsPool: biomeTrainerPools[BiomeId.PLAINS],
+    });
+    return selected;
   }
 
   getSpeciesFormIndex(species: PokemonSpecies): number {
@@ -651,6 +686,49 @@ export class Arena {
       case BiomeId.FACTORY:
       case BiomeId.SNOWY_FOREST:
         return 8;
+      // 히든에픽 추가 바이옴 - 트레이너 출현 확률
+      case BiomeId.GREEN_MOUNTAIN:
+      case BiomeId.RIVER:
+      case BiomeId.SPA:
+      case BiomeId.AMUSEMENT_PARK:
+      case BiomeId.CASTLE:
+      case BiomeId.BAMBOO_FOREST:
+        return 8;
+
+      case BiomeId.SNOWY_FIELD:
+      case BiomeId.LIGHTNING_FIELD:
+      case BiomeId.SHARP_FIELD:
+      case BiomeId.LOG_CAVE:
+      case BiomeId.MUSHROOM_FOREST:
+      case BiomeId.SNOW_MOUNTAIN:
+      case BiomeId.GLACIER_LAKE:
+      case BiomeId.CANYON:
+      case BiomeId.DRAKE_LAKE:
+      case BiomeId.DRAGON_FOREST:
+      case BiomeId.WYVERN_MOUNTAIN:
+        return 12;
+
+      case BiomeId.SPARK_CAVE:
+      case BiomeId.THUNDER_MOUNTAIN:
+      case BiomeId.POLLUTED_CAVE:
+      case BiomeId.POLLUTED_RIVER:
+      case BiomeId.BLACK_MOUNTAIN:
+      case BiomeId.BLACK_FIELD:
+      case BiomeId.BLAZE_FIELD:
+      case BiomeId.INFERNO_FOREST:
+      case BiomeId.LAVA_LAKE:
+      case BiomeId.SAND_CAVE:
+      case BiomeId.VORTEX_CAVE:
+      case BiomeId.FAIRY_FOREST:
+      case BiomeId.DARK_FOREST:
+      case BiomeId.DESERTED_HOUSE:
+      case BiomeId.ABANDONED_CASTLE:
+      case BiomeId.GHOST_SHIP:
+      case BiomeId.SEWER:
+      case BiomeId.DRAGON_TEMPLE:
+      case BiomeId.STAR_MOUNTAIN:
+      case BiomeId.MAGMA_CAVERN:
+        return 16;
       case BiomeId.SEA:
       case BiomeId.ICE_CAVE:
       case BiomeId.VOLCANO:

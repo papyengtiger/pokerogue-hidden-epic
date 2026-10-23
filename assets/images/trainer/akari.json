@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "akari.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 67
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "akari.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 65
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 65
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 65
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ebd1b49fccaf3272e842981ac3470ebd:2485d352dcb4f84b34e808862d688867:d551eb08300f7c5ac9c0efbc57bb3afe$"
+	}
+}

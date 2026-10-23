@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "curtis.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 29,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "curtis.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 27,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 27,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 27,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ebd95d583130dada01c2b069bc0475fb:9c2bd5153899716503b5176dd5604226:049bc229d1f0387ff9ba087fe1bdd2c2$"
+	}
+}

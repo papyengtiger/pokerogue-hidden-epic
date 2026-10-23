@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "burnet.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "burnet.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6f9e9598187e9056b46c8831f941c4d2:1478ebc89902bbfdb8a552ab3bae4b45:d4eacc7c4e97886dfc7deebcfe18b134$"
+	}
+}

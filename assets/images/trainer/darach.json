@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "darach.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 25,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "darach.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 23,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 23,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 23,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2f8e04fc1a33d076cf407b74987c40a8:a9e0451dac0b8e322eb8cf63111088d9:84eedbd005a59437722b2acd6ff5849e$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "essentia.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "essentia.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e0bdaa29a5223de11a410553066aeb28:0940b2ae566d4dba944318f19f012b47:f3efa8ddea15df97967e0a5be0d1a6fe$"
+	}
+}

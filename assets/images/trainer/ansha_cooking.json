@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ansha_cooking.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 23,
+				"h": 57
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ansha_cooking.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 21,
+						"h": 55
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 21,
+						"h": 55
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 21,
+						"h": 55
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:287f1d96ed30265e63093bef47050739:3b8f9f7599b5a96aa8f4df6393820b32:07d5211d7a4c99468c0190cccc139e28$"
+	}
+}

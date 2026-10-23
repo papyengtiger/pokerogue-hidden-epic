@@ -1,5 +1,6 @@
 import { globalScene } from "#app/global-scene";
 import { Phase } from "#app/phase";
+import { resetTutorialShownThisRun } from "#app/tutorial";
 import { GameModes } from "#enums/game-modes";
 import { UiMode } from "#enums/ui-mode";
 import type { PracticePresetData, Starter } from "#types/save-data";
@@ -71,6 +72,16 @@ export class SelectStarterPhase extends Phase {
         }
 
         globalScene.sessionSlotId = slotId;
+
+        if (globalScene.gameMode.modeId === GameModes.TUTORIAL) {
+          // 새 회차의 튜토리얼 설명 기록 초기화
+          resetTutorialShownThisRun();
+
+          globalScene.phaseManager.unshiftPhase(new StartRunPhase(starters));
+
+          this.end();
+          return;
+        }
 
         globalScene.phaseManager.unshiftPhase(
           new RogueShopPhase({

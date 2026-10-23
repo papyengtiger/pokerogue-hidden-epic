@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "alexa.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "alexa.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6646aee1d86550a40b5a9dea6cea5081:4a741f060ce2df4d7030b305733bdf02:89c7efc372d63ca0a3714d1cce22ffcc$"
+	}
+}

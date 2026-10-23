@@ -63,7 +63,7 @@ export const TheWinstrateChallengeEncounter: MysteryEncounter = MysteryEncounter
       y: -4,
     },
     {
-      spriteKey: "victor",
+      spriteKey: "victory",
       fileRoot: "trainer",
       hasShadow: true,
       x: -32,
@@ -101,7 +101,7 @@ export const TheWinstrateChallengeEncounter: MysteryEncounter = MysteryEncounter
     encounter.enemyPartyConfigs.push(getVickyTrainerConfig());
     encounter.enemyPartyConfigs.push(getViviTrainerConfig());
     encounter.enemyPartyConfigs.push(getVictoriaTrainerConfig());
-    encounter.enemyPartyConfigs.push(getVictorTrainerConfig());
+    encounter.enemyPartyConfigs.push(getVictoryTrainerConfig());
 
     return true;
   })
@@ -250,7 +250,7 @@ function endTrainerBattleAndShowDialogue(): Promise<void> {
   });
 }
 
-function getVictorTrainerConfig(): EnemyPartyConfig {
+function getVictoryTrainerConfig(): EnemyPartyConfig {
   return {
     trainerType: TrainerType.VICTORY,
     pokemonConfigs: [

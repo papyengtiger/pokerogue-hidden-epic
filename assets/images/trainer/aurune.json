@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "aurune.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "aurune.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:3afdceaa3777900ce9c4ec57dff05aae:751ded2df74614b5a316413b652ab673:5e866a4346e8ef15d0eba55493bd8a4e$"
+	}
+}

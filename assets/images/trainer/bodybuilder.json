@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "bodybuilder.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 55,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "bodybuilder.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 53,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 53,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 53,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8c8c235c151431030e652c58e55de88b:fb862b68db8b9178515fd8a4e99e68f0:a831747c8e8f6a258fe96cde9c8a8349$"
+	}
+}

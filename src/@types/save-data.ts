@@ -3,6 +3,7 @@ import type { Tutorial } from "#app/tutorial";
 import type { MonsterHouseSaveData } from "#data/monster-house/monster-house-manager";
 import type { MysteryTimeSaveData } from "#data/mystery-time/mystery-time-manager";
 import type { BattleType } from "#enums/battle-type";
+import type { GameDifficulty } from "#enums/game-difficulty";
 import type { GameModes } from "#enums/game-modes";
 import type { MarkId } from "#enums/mark-id";
 import type { MoveId } from "#enums/move-id";
@@ -166,6 +167,7 @@ export interface SystemSaveData {
   trainerId: number;
   secretId: number;
   gender: PlayerGender;
+  clearVoucherRewards?: Record<string, number[]>;
   dexData: DexData;
   starterData: StarterData;
   gameStats: GameStats;
@@ -210,6 +212,7 @@ export interface SessionSaveData {
   seed: string;
   playTime: number;
   gameMode: GameModes;
+  difficulty?: GameDifficulty;
   party: PokemonData[];
   enemyParty: PokemonData[];
   modifiers: ModifierData[];
@@ -296,14 +299,14 @@ export interface Starter {
   abilityIndex: number;
   passive: boolean;
   // StarterAttributes
-passive?: number;
+  passive?: number;
 
-// Starter
-passiveIndex?: number;
+  // Starter
+  passiveIndex?: number;
 
-// StarterDataEntry
-passiveUnlocks?: number;
-passiveIndex?: number;
+  // StarterDataEntry
+  passiveUnlocks?: number;
+  passiveIndex?: number;
   nature: Nature;
   moveset?: StarterMoveset;
   pokerus: boolean;

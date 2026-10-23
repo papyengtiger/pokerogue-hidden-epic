@@ -67,6 +67,7 @@ export const signatureSpecies: SignatureSpecies = new Proxy({
   SKYLA: [SpeciesId.DUCKLETT, SpeciesId.WOOBAT, [SpeciesId.RUFFLET, SpeciesId.VULLABY], SpeciesId.ARCHEN],
   BRYCEN: [SpeciesId.CRYOGONAL, SpeciesId.VANILLITE, SpeciesId.CUBCHOO, SpeciesId.GALAR_DARUMAKA],
   DRAYDEN: [SpeciesId.AXEW, SpeciesId.DRUDDIGON, SpeciesId.TRAPINCH, SpeciesId.DEINO],
+  IRIS: [SpeciesId.AXEW, SpeciesId.DRAGONITE, SpeciesId.DRAMPA, SpeciesId.GARCHOMP],
   MARLON: [SpeciesId.FRILLISH, SpeciesId.TIRTOUGA, SpeciesId.WAILMER, SpeciesId.MANTYKE],
   // Gym Leaders- Kalos
   VIOLA: [SpeciesId.SCATTERBUG, SpeciesId.SURSKIT, SpeciesId.CUTIEFLY, SpeciesId.BLIPBUG],
@@ -99,6 +100,18 @@ export const signatureSpecies: SignatureSpecies = new Proxy({
   RYME: [SpeciesId.TOXEL, SpeciesId.GREAVARD, SpeciesId.SHUPPET, SpeciesId.MIMIKYU], // Tera Ghost Toxel
   TULIP: [SpeciesId.FLABEBE, SpeciesId.FLITTLE, SpeciesId.RALTS, SpeciesId.GIRAFARIG], // Tera Psychic Flabebe
   GRUSHA: [SpeciesId.SWABLU, SpeciesId.CETODDLE, SpeciesId.SNOM, SpeciesId.CUBCHOO], // Tera Ice Swablu
+  // Trial captain - kahuna - alola
+  ILIMA: [SpeciesId.GUMSHOOS, SpeciesId.SEARGLE, SpeciesId.KOMALA],
+  LANA: [SpeciesId.CLOYSTER, SpeciesId.LANTURN, SpeciesId.ARAQUANID],
+  KIAWE: [SpeciesId.ARCANINE, SpeciesId.TALONFLAME, SpeciesId.ALOLA_MAROWAK],
+  MALLOW: [SpeciesId.TREVENANT, SpeciesId.LURANTIS, SpeciesId.TSAREENA],
+  SOPHOCLES: [SpeciesId.TOGEDEMARU, SpeciesId.MAGNEZONE, SpeciesId.ELECTIVIRE, SpeciesId.VIKAVOLT, SpeciesId.ALOLA_GOLEM],
+  MINA: [SpeciesId.KLEFKI, SpeciesId.GRANBULL, SpeciesId.SHIINOTIC, SpeciesId.WIGGLYTUFF, SpeciesId.RIBOMBEE],
+  HALA_CAPTAIN: [SpeciesId.MACHAMP, SpeciesId.HARIYAMA, SpeciesId.CRABOMINABLE],
+  OLIVIA_CAPTAIN: [SpeciesId.CRADILY, SpeciesId.ARMALDO, SpeciesId.LYCANROC],
+  NANU: [SpeciesId.SABLEYE, SpeciesId.KROOKODILE, SpeciesId.ALOLA_PERSIAN],
+  HAPU: [SpeciesId.GOLURK, SpeciesId.GASTRODON, SpeciesId.FLYGON, SpeciesId.MUDSDALE],
+  RYUKI: [SpeciesId.TURTONATOR, SpeciesId.DRAMPA, SpeciesId.GARCHOMP],
 }, {
   get(target, prop: string) {
     return target[prop as keyof SignatureSpecies] ?? [];

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cameraman.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 44,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cameraman.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 42,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 42,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 42,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:c8d071d4d798be4f9d413c42ce2b0f76:289b52a5edcef88b0fb31c3f5b6d5ece:9aa177e867fb9f2fa6e42b2ccf6632fb$"
+	}
+}

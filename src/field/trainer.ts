@@ -278,11 +278,14 @@ export class Trainer extends Phaser.GameObjects.Container {
 
     const baseLevel = modeLevelOffset + 1 + difficultyWaveIndex / 2 + Math.pow(difficultyWaveIndex / 25, 2);
 
-    if (this.isDouble() && partyTemplate.size < 2) {
-      partyTemplate.size = 2;
-    }
+    const basePartySize = Math.max(partyTemplate.size, this.isDouble() ? 2 : 1);
 
-    for (let i = 0; i < partyTemplate.size; i++) {
+    const partySize = Math.min(
+      6,
+      Math.max(this.isDouble() ? 2 : 1, globalScene.gameMode.getTrainerPartySize(basePartySize)),
+    );
+
+    for (let i = 0; i < partySize; i++) {
       let multiplier = 1;
 
       const strength = partyTemplate.getStrength(i);
@@ -330,7 +333,8 @@ export class Trainer extends Phaser.GameObjects.Container {
     globalScene.executeWithSeedOffset(
       () => {
         const template = this.getPartyTemplate();
-        const strength: PartyMemberStrength = template.getStrength(index);
+        const strength: PartyMemberStrength =
+          index >= template.size ? PartyMemberStrength.AVERAGE : template.getStrength(index);
 
         // If the battle is not one of the named trainer doubles
         if (!(this.config.trainerTypeDouble && this.isDouble() && !this.config.doubleOnly)) {

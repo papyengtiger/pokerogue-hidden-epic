@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dana.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 52,
+				"h": 83
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dana.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 50,
+						"h": 81
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 50,
+						"h": 81
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 50,
+						"h": 81
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:834309836d7e8bd272a2d129d3ee992d:fb7814d5083ffb14d9cc87c21032b4e0:aeab480be7d23954587f673750b12a62$"
+	}
+}

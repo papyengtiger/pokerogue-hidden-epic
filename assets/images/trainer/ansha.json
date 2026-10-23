@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ansha.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 24,
+				"h": 60
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ansha.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 22,
+						"h": 58
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 22,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 22,
+						"h": 58
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4cae9779973123c6ae76615b59d15178:01f636bac1501a9a6555baca61f9f9be:635b85b0de2f37f960f847831f682062$"
+	}
+}

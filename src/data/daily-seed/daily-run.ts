@@ -86,7 +86,13 @@ export function getDailyStartingBiome(): BiomeId {
   }
 
   // END와 연습센터는 시작 바이옴 후보에서 제외
-  const biomes = Object.values(BiomeId).filter(biome => biome !== BiomeId.END && biome !== BiomeId.TUTORIAL_ROOM);
+  const biomes = getEnumValues(BiomeId).filter(
+    biome =>
+      biome !== BiomeId.END
+      && biome !== BiomeId.TUTORIAL_ROOM
+      && Number.isFinite(dailyBiomeWeights[biome])
+      && dailyBiomeWeights[biome] > 0,
+  );
 
   let totalWeight = 0;
   const biomeThresholds: number[] = [];

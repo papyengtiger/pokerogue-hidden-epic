@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "caretaker.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 32,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "caretaker.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 30,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 30,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 30,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:540db90e7e8311e66e88154fcee25340:e73ab79b08b13874e834d550c24776a6:7b1b75186c5180faccdf67ec840ee9de$"
+	}
+}

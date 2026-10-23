@@ -1,4 +1,5 @@
 export enum MysteryMonsterId {
+  ROBOKID,
   MYSTERIAN,
   DEMONSTERY,
   BLACK_DOOR,

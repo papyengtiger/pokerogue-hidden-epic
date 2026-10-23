@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "founder.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "founder.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:30e7d7f757ad06a1c754447c0352a83d:31793e78bbf0e83dfddc1bddccba41aa:d60207d4d4cfee73cb55762d2c2476a0$"
+	}
+}

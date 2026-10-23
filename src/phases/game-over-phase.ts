@@ -8,6 +8,7 @@ import { modifierTypes } from "#data/data-lists";
 import { getCharVariantFromDialogue } from "#data/dialogue";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { BattleType } from "#enums/battle-type";
+import { GameDifficulty } from "#enums/game-difficulty";
 import { GameModes } from "#enums/game-modes";
 import { PlayerGender } from "#enums/player-gender";
 import { TrainerType } from "#enums/trainer-type";
@@ -215,7 +216,7 @@ export class GameOverPhase extends BattlePhase {
         let firstClear = false;
         if (this.isVictory) {
           if (!isQuestClear && globalScene.gameMode.modeId !== GameModes.PRACTICE) {
-            const bonusRp = globalScene.gameMode.isClassic
+            const baseRp = globalScene.gameMode.isClassic
               ? 10000
               : globalScene.gameMode.isDaily
                 ? 7000
@@ -225,7 +226,22 @@ export class GameOverPhase extends BattlePhase {
                     ? 12000
                     : 0;
 
+            const difficulty = globalScene.gameMode.difficulty;
+
+            const rpMultiplier =
+              difficulty === GameDifficulty.EASY ? 0.5 : difficulty === GameDifficulty.HARD ? 1.5 : 1;
+
+            const bonusRp = Math.floor(baseRp * rpMultiplier);
+
             globalScene.gameData.addRoguePoints(bonusRp);
+
+            console.log("[DIFFICULTY_CLEAR_RP]", {
+              mode: globalScene.gameMode.modeId,
+              difficulty,
+              baseRp,
+              multiplier: rpMultiplier,
+              bonusRp,
+            });
           }
 
           if (!isQuestClear && globalScene.gameMode.isClassic) {
@@ -263,20 +279,49 @@ export class GameOverPhase extends BattlePhase {
             globalScene.gameMode.challenges.forEach(c => globalScene.validateAchvs(ChallengeAchv, c));
           }
 
-          const clear = (endCardPhase?: EndCardPhase) => {
+          const clear = async (endCardPhase?: EndCardPhase) => {
             if (this.isVictory) {
-              // 런 종료 시 아이템 회수/저장
-              if (globalScene.gameMode.modeId !== GameModes.PRACTICE) {
-                globalScene.gameData.depositRemainingRunItemsToStorage();
-                globalScene.gameData.saveSystem();
+              const isTutorial = globalScene.gameMode.modeId === GameModes.TUTORIAL;
+
+              // 해금 처리를 먼저 실행
+              if (!isQuestClear && (newClear || isTutorial)) {
+                this.handleUnlocks();
               }
 
-              // ★ 정상 모드 클리어일 때만
-              if (newClear && !isQuestClear) {
-                this.handleUnlocks();
+              // 아이템 회수 및 시스템 저장
+              if (globalScene.gameMode.modeId !== GameModes.PRACTICE) {
+                globalScene.gameData.depositRemainingRunItemsToStorage(
+                  this.isVictory && !isQuestClear && globalScene.gameMode.difficulty === GameDifficulty.HARD,
+                );
 
+                try {
+                  const saved = await globalScene.gameData.saveSystem();
+
+                  if (!saved) {
+                    console.error("[GAME_OVER] 시스템 저장 실패");
+                  } else {
+                    console.log("[GAME_OVER] 시스템 저장 완료");
+                  }
+                } catch (error) {
+                  console.error("[GAME_OVER] 시스템 저장 오류", error);
+                }
+              }
+
+              const difficulty = globalScene.gameMode.isEndless
+                ? GameDifficulty.NORMAL
+                : globalScene.gameMode.difficulty;
+
+              const clearVoucher =
+                difficulty === GameDifficulty.EASY
+                  ? modifierTypes.VOUCHER_PLUS
+                  : difficulty === GameDifficulty.HARD
+                    ? modifierTypes.VOUCHER_GOLDEN
+                    : modifierTypes.VOUCHER_PREMIUM;
+
+              // 기존 클리어 보상 유지
+              if (newClear && !isQuestClear) {
                 for (const species of this.firstRibbons) {
-                  globalScene.phaseManager.unshiftNew("RibbonModifierRewardPhase", modifierTypes.VOUCHER_PLUS, species);
+                  globalScene.phaseManager.unshiftNew("RibbonModifierRewardPhase", clearVoucher, species);
                 }
 
                 if (!firstClear) {
@@ -373,9 +418,47 @@ export class GameOverPhase extends BattlePhase {
   }
 
   handleUnlocks(): void {
+    // 튜토리얼 모드 클리어 보상
+
+    // 튜토리얼 모드 클리어 보상
+    if (this.isVictory && globalScene.gameMode.modeId === GameModes.TUTORIAL) {
+      const tutorialUnlocks = [
+        Unlockables.CLASSIC_MODE,
+        Unlockables.DAILY_MODE,
+        Unlockables.WEEKLY_MODE,
+        Unlockables.MONTHLY_MODE,
+      ];
+
+      for (const unlockable of tutorialUnlocks) {
+        if (!globalScene.gameData.isUnlocked(unlockable)) {
+          // 해금 연출 예약
+          globalScene.phaseManager.unshiftNew("UnlockPhase", unlockable);
+
+          // 저장 전에 해금 상태 변경
+          globalScene.gameData.unlocks[unlockable] = true;
+        }
+      }
+
+      console.log("[TUTORIAL_CLEAR] 4개 모드 해금 처리");
+
+      return;
+    }
+
     if (this.isVictory && globalScene.gameMode.isClassic) {
       if (!globalScene.gameData.unlocks[Unlockables.ENDLESS_MODE]) {
         globalScene.phaseManager.unshiftNew("UnlockPhase", Unlockables.ENDLESS_MODE);
+      }
+      if (
+        globalScene.gameMode.modeId === GameModes.CLASSIC
+        && !globalScene.gameData.isUnlocked(Unlockables.ANOTHER_MODE)
+      ) {
+        // 어나더 모드 해금 연출
+        globalScene.phaseManager.unshiftNew("UnlockPhase", Unlockables.ANOTHER_MODE);
+
+        // 시스템 저장 전에 해금 상태 반영
+        globalScene.gameData.unlocks[Unlockables.ANOTHER_MODE] = true;
+
+        console.log("[ANOTHER_MODE_UNLOCKED]");
       }
       if (
         globalScene.getPlayerParty().filter(p => p.fusionSpecies).length > 0
@@ -396,12 +479,31 @@ export class GameOverPhase extends BattlePhase {
   }
 
   awardFirstClassicCompletion(pokemon: Pokemon, forStarter = false): void {
-    const speciesId = getPokemonSpecies(pokemon.species.speciesId);
-    const speciesRibbonCount = globalScene.gameData.incrementRibbonCount(speciesId, forStarter);
-    // first time classic win, award voucher
-    if (speciesRibbonCount === 1) {
-      this.firstRibbons.push(getPokemonSpecies(pokemon.species.getRootSpeciesId(forStarter)));
+    const species = pokemon.species;
+
+    // 기존 클래식 클리어 횟수 및 리본 기록 유지
+    globalScene.gameData.incrementRibbonCount(getPokemonSpecies(species.speciesId), forStarter);
+
+    const rootSpeciesId = species.getRootSpeciesId(forStarter);
+
+    // 모드·난이도별 최초 클리어 보상 검사
+    const isFirstReward = globalScene.gameData.registerFirstClearVoucher(
+      globalScene.gameMode.modeId,
+      globalScene.gameMode.difficulty,
+      rootSpeciesId,
+    );
+
+    if (isFirstReward) {
+      this.firstRibbons.push(getPokemonSpecies(rootSpeciesId));
     }
+
+    console.log("[DIFFICULTY_CLEAR_VOUCHER]", {
+      pokemon: species.name,
+      rootSpeciesId,
+      mode: globalScene.gameMode.modeId,
+      difficulty: globalScene.gameMode.difficulty,
+      firstReward: isFirstReward,
+    });
   }
 
   // TODO: Make function use existing getSessionSaveData() function and then modify the values from there.

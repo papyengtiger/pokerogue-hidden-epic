@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "daisy_oak.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 29,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "daisy_oak.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 27,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 27,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 27,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fbffc9232cfe7fe342a39a56948b8b80:6a47f14f84e0b87beea077716c3a2f31:e9ce65c18004c16555ef59e4a6281bc2$"
+	}
+}

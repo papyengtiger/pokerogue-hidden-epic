@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "grace.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "grace.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:21c24de021541e637ea62b47d85c752f:7742c048890e866b1a370a89ec9dff06:81507a14f8314a546472d350f21c45ed$"
+	}
+}

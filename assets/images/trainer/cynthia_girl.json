@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cynthia_girl.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 29,
+				"h": 66
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cynthia_girl.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 27,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 27,
+						"h": 64
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 27,
+						"h": 64
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5089565513554176b05ceadc679cfbc8:4b207b8fb397052a83029aa16e8b6202:c273867c9276cb17714932c7e18738a3$"
+	}
+}

@@ -7,4 +7,6 @@ export enum GameModes {
   MONTHLY,
   CHALLENGE,
   PRACTICE,
+  TUTORIAL,
+  ANOTHER,
 }

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cedric_juniper.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cedric_juniper.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8281051e0a2daf174dbaec80ac76cb05:ae7bd3762a06ede6108f4b87f9e36dac:ab07c3b9705716b836a9480ba6825b9e$"
+	}
+}

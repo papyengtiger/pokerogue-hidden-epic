@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "gardener.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "gardener.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9affa4414b8e3064e761084d56daa70e:a5bee6545fd3904006ab0f488aca8baa:9df4b17b19231e78f325b7069cc944fa$"
+	}
+}

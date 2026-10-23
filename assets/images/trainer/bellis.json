@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "bellis.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "bellis.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:bd18677253a615983d50e2c4db01e277:ddf53e0939f1ca206f8523edb756a52d:df5b7d461421370fde444fd7a48610b0$"
+	}
+}

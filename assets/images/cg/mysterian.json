@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mysterian.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 155,
+				"h": 104
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "B2W2_Humanoid_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 153,
+						"h": 102
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 153,
+						"h": 102
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 153,
+						"h": 102
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0aa4a231b05ce3b94f1d3cc0c8bc29f5:fd8e4ead8bf163664757e8025a4b5a2a:edbb7aec8bd03d1460f577cd39c0ce8f$"
+	}
+}

@@ -237,6 +237,7 @@ import {
   ZCrystalMoveModifier
 } from "#modifiers/modifier";
 import type { PokemonMove } from "#moves/pokemon-move";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import { getVoucherTypeIcon, getVoucherTypeName, VoucherType } from "#system/voucher";
 import type { ModifierTypeFunc, WeightedModifierTypeWeightFunc } from "#types/modifier-types";
 import type { PokemonMoveSelectFilter, PokemonSelectFilter } from "#ui/party-ui-handler";
@@ -2249,7 +2250,7 @@ export class TrModifierType extends PokemonModifierType {
   constructor(moveId: MoveId) {
     super(
       "",
-      `tr_${PokemonType[allMoves[moveId].type].toLowerCase()}`,
+      `tr_${(PokemonType[allMoves[moveId].type] ?? "NORMAL").toLowerCase()}`,
       (_type, args) => new TrModifier(this, (args[0] as PlayerPokemon).id),
       (pokemon: PlayerPokemon) => {
         // 🔧 compatibleTrs는 maxmovesSpecies 기반으로 세팅되어 있어야 함
@@ -3411,9 +3412,22 @@ export class TrModifierTypeGenerator extends ModifierTypeGenerator {
       console.log("Flattened compatible TRs:", flattened);
 
       const filteredByTier = flattened.filter(tr => {
-        const tierMatch = trPoolTiers[tr] === tier;
-        return tierMatch;
-      });
+  const move = allMoves[tr];
+
+  if (!move) {
+    return false;
+  }
+
+  // 스텔라·미스터리 타입 TR 제외
+  if (
+    move.type === PokemonType.STELLAR ||
+    move.type === PokemonType.MYSTERY
+  ) {
+    return false;
+  }
+
+  return trPoolTiers[tr] === tier;
+});
       console.log("Filtered by tier:", filteredByTier);
 
       const filteredByName = filteredByTier.filter(tr => !allMoves[tr].name.endsWith(" (N)"));
@@ -5708,14 +5722,34 @@ export function getPlayerShopModifierTypeOptionsForWave(waveIndex: number, baseC
     [new ModifierTypeOption(modifierTypes.SACRED_ASH(), 0, baseCost * 10)],
   ];
 
-  return options
-    .slice(0, Math.ceil(Math.max(waveIndex + 10, 0) / 30))
-    .flat()
-    .filter(shopItem => {
-      const status = new BooleanHolder(true);
-      applyChallenges(ChallengeType.SHOP_ITEM, shopItem, status);
-      return status.value;
+  const shopPriceMultiplier =
+  trainerCardManager.getMultiplier("SHOP_PRICE");
+
+return options
+  .slice(0, Math.ceil(Math.max(waveIndex + 10, 0) / 30))
+  .flat()
+  .filter(shopItem => {
+    const status = new BooleanHolder(true);
+    applyChallenges(ChallengeType.SHOP_ITEM, shopItem, status);
+    return status.value;
+  })
+  .map(shopItem => {
+    const originalCost = shopItem.cost;
+
+    shopItem.cost = Math.max(
+      1,
+      Math.floor(originalCost * shopPriceMultiplier),
+    );
+
+    console.log("[TRAINER_CARD_FRUGAL_SHOP]", {
+      item: shopItem.type.getSafeName(),
+      originalCost,
+      multiplier: shopPriceMultiplier,
+      finalCost: shopItem.cost,
     });
+
+    return shopItem;
+  });
 }
 
 export function getEnemyBuffModifierForWave(
@@ -6041,40 +6075,63 @@ export class ModifierTypeOption {
  * @returns A number between 0 and 14 based on the party's total luck value, or a random number between 0 and 14 if the player is in Daily Run mode.
  */
 export function getPartyLuckValue(party: readonly Pokemon[]): number {
- if (
-  globalScene.gameMode.modeId === GameModes.DAILY
-  || globalScene.gameMode.modeId === GameModes.WEEKLY
-  || globalScene.gameMode.modeId === GameModes.MONTHLY
-) {
-  const DailyLuck = new NumberHolder(0);
+  const modeId = globalScene.gameMode.modeId;
 
-  globalScene.executeWithSeedOffset(
-    () => {
-      const eventLuck = getDailyEventSeedLuck();
+  const isPeriodicMode =
+    modeId === GameModes.DAILY ||
+    modeId === GameModes.WEEKLY ||
+    modeId === GameModes.MONTHLY;
 
-      if (eventLuck != null) {
-        DailyLuck.value = eventLuck;
-        return;
-      }
+  if (isPeriodicMode) {
+    const luckHolder = new NumberHolder(0);
 
-      DailyLuck.value = randSeedInt(15); // 0 ~ 14
-    },
-    0,
-    globalScene.seed,
-  );
+    globalScene.executeWithSeedOffset(
+      () => {
+        // 데일리에만 이벤트 지정 럭 적용
+        const eventLuck =
+          modeId === GameModes.DAILY
+            ? getDailyEventSeedLuck()
+            : null;
 
-  return DailyLuck.value;
-}
+        luckHolder.value =
+          eventLuck != null
+            ? Phaser.Math.Clamp(Math.floor(eventLuck), 0, 14)
+            : randSeedInt(15);
+      },
+      0,
+      globalScene.seed,
+    );
 
-  const eventSpecies = timedEventManager.getEventLuckBoostedSpecies();
+    console.log("[PERIODIC_LUCK]", {
+      modeId,
+      seed: globalScene.seed,
+      luck: luckHolder.value,
+      grade: getLuckString(luckHolder.value),
+    });
+
+    return luckHolder.value;
+  }
+
+  const eventSpecies =
+    timedEventManager.getEventLuckBoostedSpecies();
+
   const luck = Phaser.Math.Clamp(
     party
-      .map(p => (p.isAllowedInBattle() ? p.getLuck() + (eventSpecies.includes(p.species.speciesId) ? 1 : 0) : 0))
-      .reduce((total: number, value: number) => (total += value), 0),
+      .map(p =>
+        p.isAllowedInBattle()
+          ? p.getLuck() +
+            (eventSpecies.includes(p.species.speciesId) ? 1 : 0)
+          : 0,
+      )
+      .reduce((total, value) => total + value, 0),
     0,
     14,
   );
-  return Math.min(timedEventManager.getEventLuckBoost() + (luck ?? 0), 14);
+
+  return Math.min(
+    timedEventManager.getEventLuckBoost() + luck,
+    14,
+  );
 }
 
 export function getLuckString(luckValue: number): string {

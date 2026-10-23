@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "golfer.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "golfer.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:cc1aceadb3763e13ff85f7d1470aa187:562eb6659e1ecec6f16e285200309ca6:42987666b64795e587fbc0d26c51e34e$"
+	}
+}

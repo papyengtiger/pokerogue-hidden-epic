@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "chase.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 67
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "chase.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 65
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 65
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 65
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f1440435994403be646295aefa2109bd:3c9c51df10f8bc3c1cb5e1b13ef05b2c:d4981e2818631631fe2adec1e6785eef$"
+	}
+}

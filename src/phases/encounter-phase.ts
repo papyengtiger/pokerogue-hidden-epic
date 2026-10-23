@@ -60,10 +60,21 @@ import { randSeedInt, randSeedItem } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
+const ROBOKID_BOSS_SEGMENTS: Record<number, number> = {
+  25: 1,
+  55: 2,
+  95: 3,
+  145: 4,
+  195: 5,
+  245: 6,
+  295: 7,
+};
+
 export class EncounterPhase extends BattlePhase {
   // Union type is necessary as this is subclassed, and typescript will otherwise complain
   public readonly phaseName: "EncounterPhase" | "NextEncounterPhase" | "NewBiomeEncounterPhase" = "EncounterPhase";
   private loaded: boolean;
+  private tutorialIntroShown = false;
 
   private monsterHouseIntroVisuals: MonsterHouseIntroVisuals | null = null;
 
@@ -85,6 +96,19 @@ export class EncounterPhase extends BattlePhase {
     }
 
     return false;
+  }
+
+  private getHardDifficultyBoostStats(count: number): Stat[] {
+    const candidates = [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD];
+
+    const selected: Stat[] = [];
+
+    for (let i = 0; i < count && candidates.length > 0; i++) {
+      const index = randSeedInt(candidates.length);
+      selected.push(candidates.splice(index, 1)[0]);
+    }
+
+    return selected;
   }
 
   private collectMonsterHouseBossSpecies(value: any, level: number, result: SpeciesId[]): void {
@@ -695,42 +719,42 @@ export class EncounterPhase extends BattlePhase {
 
       // 예정되어 있던 트레이너전을 야생전으로 치환
       // 예정되어 있던 트레이너전을
-// 미스터리타임 야생전 형식으로 치환
-if (battle.battleType === BattleType.TRAINER) {
-  console.log("[TRAINER_BATTLE_SUPPRESSED_BY_MYSTERY_TIME]", {
-    wave: battle.waveIndex,
-    loaded: this.loaded,
-    enemyPartyLength: battle.enemyParty.length,
-  });
+      // 미스터리타임 야생전 형식으로 치환
+      if (battle.battleType === BattleType.TRAINER) {
+        console.log("[TRAINER_BATTLE_SUPPRESSED_BY_MYSTERY_TIME]", {
+          wave: battle.waveIndex,
+          loaded: this.loaded,
+          enemyPartyLength: battle.enemyParty.length,
+        });
 
-  (battle as any).battleType = BattleType.WILD;
-  (battle as any).trainer = undefined;
-  (battle as any).double = false;
+        (battle as any).battleType = BattleType.WILD;
+        (battle as any).trainer = undefined;
+        (battle as any).double = false;
 
-  // ========================================
-  // 신규 진입일 때만 기존 트레이너 파티 제거
-  // ========================================
-  // 세이브 로드 상태에서는 game-data.ts가
-  // 이미 미스터리언/데몬스터리를 복원했으므로
-  // enemyParty를 절대 비우면 안 된다.
-  if (!this.loaded) {
-    if (battle.enemyLevels && battle.enemyLevels.length > 1) {
-      (battle as any).enemyLevels = [battle.enemyLevels[0]];
-    }
+        // ========================================
+        // 신규 진입일 때만 기존 트레이너 파티 제거
+        // ========================================
+        // 세이브 로드 상태에서는 game-data.ts가
+        // 이미 미스터리언/데몬스터리를 복원했으므로
+        // enemyParty를 절대 비우면 안 된다.
+        if (!this.loaded) {
+          if (battle.enemyLevels && battle.enemyLevels.length > 1) {
+            (battle as any).enemyLevels = [battle.enemyLevels[0]];
+          }
 
-    battle.enemyParty.length = 0;
+          battle.enemyParty.length = 0;
 
-    console.log("[MYSTERY_TIME_TRAINER_PARTY_CLEARED]", {
-      wave: battle.waveIndex,
-    });
-  } else {
-    console.log("[MYSTERY_TIME_LOADED_PARTY_PRESERVED]", {
-      wave: battle.waveIndex,
-      enemyPartyLength: battle.enemyParty.length,
-      enemies: battle.enemyParty.map(pokemon => pokemon?.name),
-    });
-  }
-}
+          console.log("[MYSTERY_TIME_TRAINER_PARTY_CLEARED]", {
+            wave: battle.waveIndex,
+          });
+        } else {
+          console.log("[MYSTERY_TIME_LOADED_PARTY_PRESERVED]", {
+            wave: battle.waveIndex,
+            enemyPartyLength: battle.enemyParty.length,
+            enemies: battle.enemyParty.map(pokemon => pokemon?.name),
+          });
+        }
+      }
     }
 
     // ========================================
@@ -865,9 +889,33 @@ if (battle.battleType === BattleType.TRAINER) {
           !isMysteryTime && monsterHouseManager.isActive() && e === monsterHouseManager.getBossIndex();
 
         // ========================================
-        // 1순위: 미스터리타임
+        // 어나더 모드: 로보키드 고정 보스
         // ========================================
-        if (isMysteryTime) {
+        const robokidSegments =
+          globalScene.gameMode.modeId === GameModes.ANOTHER ? ROBOKID_BOSS_SEGMENTS[battle.waveIndex] : undefined;
+
+        if (robokidSegments !== undefined) {
+          const mysterySpecies = getMysteryMonster(MysteryMonsterId.ROBOKID);
+
+          const robokid = globalScene.addMysteryMonster(mysterySpecies, level, TrainerSlot.NONE, true);
+
+          robokid.setBoss(true, robokidSegments);
+          robokid.initBattleInfo();
+          robokid.mark = MarkId.NONE;
+
+          battle.enemyParty[e] = robokid;
+
+          console.log("[ANOTHER_ROBOKID_BOSS]", {
+            wave: battle.waveIndex,
+            level,
+            bossSegments: robokid.bossSegments,
+          });
+        }
+
+        // ========================================
+        // 기존 미스터리타임
+        // ========================================
+        else if (isMysteryTime) {
           const mysterySpecies = getMysteryMonster(
             isMysteryTimeBoss ? MysteryMonsterId.DEMONSTERY : MysteryMonsterId.MYSTERIAN,
           );
@@ -1573,6 +1621,39 @@ if (battle.battleType === BattleType.TRAINER) {
   }
 
   doEncounterCommon(showEncounterMessage = true) {
+    const isTutorialIntro =
+      globalScene.gameMode.modeId === GameModes.TUTORIAL
+      && globalScene.currentBattle.waveIndex === 1
+      && !this.loaded
+      && !this.tutorialIntroShown;
+
+    if (isTutorialIntro) {
+      this.tutorialIntroShown = true;
+
+      const introMessages = [
+        "tutorialStory:intro01",
+        "tutorialStory:intro02",
+        "tutorialStory:intro03",
+        "tutorialStory:intro04",
+        "tutorialStory:intro05",
+        "tutorialStory:intro06",
+        "tutorialStory:intro07",
+        "tutorialStory:intro08",
+      ];
+
+      const showIntroMessage = (index: number): void => {
+        if (index >= introMessages.length) {
+          this.doEncounterCommon(showEncounterMessage);
+          return;
+        }
+
+        globalScene.ui.showText(i18next.t(introMessages[index]), null, () => showIntroMessage(index + 1), 0, true);
+      };
+
+      showIntroMessage(0);
+      return;
+    }
+
     const enemyField = globalScene.getEnemyField();
 
     if (globalScene.currentBattle.battleType === BattleType.WILD) {
@@ -1626,7 +1707,24 @@ if (battle.battleType === BattleType.TRAINER) {
           });
         }
 
-        globalScene.ui.showText(encounterMessage, null, () => this.end(), 1500);
+        globalScene.ui.showText(
+          encounterMessage,
+          null,
+          async () => {
+            if (globalScene.gameMode.modeId === GameModes.TUTORIAL && !this.loaded) {
+              const wave = globalScene.currentBattle.waveIndex;
+
+              if (wave === 1) {
+                await handleTutorial(Tutorial.HE_Battle);
+              } else if (wave === 2) {
+                await handleTutorial(Tutorial.HE_Capture);
+              }
+            }
+
+            this.end();
+          },
+          1500,
+        );
       } else {
         this.end();
       }
@@ -1666,11 +1764,32 @@ if (battle.battleType === BattleType.TRAINER) {
         globalScene.pbTrayEnemy.showPbTray(globalScene.getEnemyParty());
         const doTrainerSummon = () => {
           this.hideEnemyTrainer();
-          const availablePartyMembers = globalScene.getEnemyParty().filter(p => !p.isFainted()).length;
+
+          const battle = globalScene.currentBattle;
+          const enemyParty = globalScene.getEnemyParty();
+          const availablePartyMembers = enemyParty.filter(pokemon => pokemon && !pokemon.isFainted()).length;
+
+          const shouldSummonSecond = battle.double && availablePartyMembers > 1;
+
+          console.log("[DOUBLE_SUMMON_CHECK]", {
+            wave: battle.waveIndex,
+            loaded: this.loaded,
+            double: battle.double,
+            battleType: battle.battleType,
+            enemyLevels: battle.enemyLevels,
+            enemyPartyLength: enemyParty.length,
+            availablePartyMembers,
+            enemyNames: enemyParty.map(p => p?.name),
+            shouldSummonSecond,
+          });
+
+          // 기존 소환 순서는 유지
           globalScene.phaseManager.unshiftNew("SummonPhase", 0, false);
-          if (globalScene.currentBattle.double && availablePartyMembers > 1) {
+
+          if (shouldSummonSecond) {
             globalScene.phaseManager.unshiftNew("SummonPhase", 1, false);
           }
+
           this.end();
         };
         if (showEncounterMessage) {
@@ -1829,74 +1948,90 @@ if (battle.battleType === BattleType.TRAINER) {
 
     console.log("[ENCOUNTER_END] 버프 호출 완료");
 
+    if (
+      !this.loaded
+      && globalScene.gameMode.difficulty === "HARD"
+      && globalScene.currentBattle.battleType === BattleType.WILD
+    ) {
+      for (const enemy of globalScene.getEnemyField()) {
+        if (!enemy) {
+          continue;
+        }
+
+        const isFinalBoss = globalScene.currentBattle.battleSpec === BattleSpec.FINAL_BOSS;
+
+        const rarityRank = this.getMonsterHouseRarityRank(enemy);
+
+        const statCount = isFinalBoss ? 5 : !enemy.isBoss() ? 1 : rarityRank >= 3 ? 3 : 2;
+
+        const selectedStats = isFinalBoss
+          ? [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD]
+          : this.getHardDifficultyBoostStats(statCount);
+
+        globalScene.phaseManager.pushNew("StatStageChangePhase", enemy.getBattlerIndex(), true, selectedStats, 1, true);
+
+        console.log("[HARD_WILD_STAT_BOOST]", {
+          pokemon: enemy.name,
+          boss: enemy.isBoss(),
+          finalBoss: isFinalBoss,
+          rarityRank,
+          stats: selectedStats.map(stat => Stat[stat]),
+          stages: 1,
+        });
+      }
+    }
     // ======================================
     // 신규 Encounter일 때만 기존 초기화
     // ======================================
     const availablePartyMembers = globalScene.getPokemonAllowedInBattle();
 
-const companionParty = globalScene.getCompanionParty();
+    const companionParty = globalScene.getCompanionParty();
 
-const hasCompanion =
-  !!globalScene.currentBattle.companionTrainer
-  && companionParty.some(p => p.isAllowedInBattle());
+    const hasCompanion =
+      !!globalScene.currentBattle.companionTrainer && companionParty.some(p => p.isAllowedInBattle());
 
-// 리셋/로드 후에도 자연재해 처리
-globalScene.phaseManager.pushNew("NaturalDisasterPhase");
-
-// 리셋/로드 후에도 함정 처리
-globalScene.phaseManager.pushNew("TrapPhase");
-
-if (!this.loaded || kecleonShopManager.isTheftBattleActive()) {
-  if (!availablePartyMembers[0].isOnField()) {
-    globalScene.phaseManager.pushNew("SummonPhase", 0);
-  }
-
-  if (globalScene.currentBattle.double) {
-    globalScene.phaseManager.pushNew(
-      "ToggleDoublePositionPhase",
-      true,
-    );
-
-    if (hasCompanion) {
-      const companionPokemon =
-        companionParty.find(p => p.isAllowedInBattle());
-
-      if (
-        companionPokemon
-        && !companionPokemon.isOnField()
-      ) {
-        globalScene.phaseManager.pushNew(
-          "SummonPhase",
-          0,
-          true,
-          false,
-          1,
-        );
-      }
-    } else if (availablePartyMembers.length > 1) {
-      if (!availablePartyMembers[1].isOnField()) {
-        globalScene.phaseManager.pushNew(
-          "SummonPhase",
-          1,
-        );
-      }
-    }
-  } else {
+    // 자연재해는 새로운 일반 조우에서만 한 번 추첨합니다.
+    // 저장 데이터 로드 및 캘리몬 추격전에서는 재추첨하지 않습니다.
     if (
-      availablePartyMembers.length > 1
-      && availablePartyMembers[1].isOnField()
+      !this.loaded
+      && !(
+        kecleonShopManager.isTheftBattleActive()
+        && kecleonShopManager.isTheftChaseWave(globalScene.currentBattle.waveIndex)
+      )
+      && !globalScene.currentBattle.isBattleMysteryEncounter()
+      && !mysteryTimeManager.isMysteryTimeWave(globalScene.currentBattle.waveIndex)
+      && !monsterHouseManager.isActive()
     ) {
-      globalScene.phaseManager.pushNew(
-        "ReturnPhase",
-        1,
-      );
+      globalScene.phaseManager.pushNew("NaturalDisasterPhase");
     }
 
-    globalScene.phaseManager.pushNew(
-      "ToggleDoublePositionPhase",
-      false,
-    );
-  }
+    // 리셋/로드 후에도 함정 처리
+    globalScene.phaseManager.pushNew("TrapPhase");
+
+    if (!this.loaded || kecleonShopManager.isTheftBattleActive()) {
+      if (!availablePartyMembers[0].isOnField()) {
+        globalScene.phaseManager.pushNew("SummonPhase", 0);
+      }
+
+      if (globalScene.currentBattle.double) {
+        globalScene.phaseManager.pushNew("ToggleDoublePositionPhase", true);
+
+        if (hasCompanion) {
+          const companionPokemon = companionParty.find(p => p.isAllowedInBattle());
+
+          if (companionPokemon && !companionPokemon.isOnField()) {
+            globalScene.phaseManager.pushNew("SummonPhase", 0, true, false, 1);
+          }
+        } else if (availablePartyMembers.length > 1 && !availablePartyMembers[1].isOnField()) {
+          globalScene.phaseManager.pushNew("SummonPhase", 1);
+        }
+      } else {
+        if (availablePartyMembers.length > 1 && availablePartyMembers[1].isOnField()) {
+          globalScene.phaseManager.pushNew("ReturnPhase", 1);
+        }
+
+        globalScene.phaseManager.pushNew("ToggleDoublePositionPhase", false);
+      }
 
       if (
         globalScene.currentBattle.battleType !== BattleType.TRAINER

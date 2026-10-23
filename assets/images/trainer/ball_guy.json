@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ball_guy.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ball_guy.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1d287c5c9c99be16a67d089afd291cf7:e9fa36c6b65ae9f6490d51c75ca8a51c:cd7b283da8f3feb471ea695062ac74a4$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mystery_statue.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 165,
+				"h": 129
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "B2W2_Ancient_Statue_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 163,
+						"h": 127
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 163,
+						"h": 127
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 163,
+						"h": 127
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b746a4dac88602643f886caf7c3623de:374623d6dc15d4b48ab42b430dddc1a4:e339c63eaba6ff1effa5831a7a33a7e3$"
+	}
+}

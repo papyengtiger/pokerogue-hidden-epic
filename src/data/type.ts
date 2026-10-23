@@ -122,7 +122,6 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
           return 2;
         case PokemonType.POISON:
         case PokemonType.FAIRY:
-        case PokemonType.DRAGON:
           return 0.5;
         case PokemonType.NORMAL:
         case PokemonType.FIGHTING:

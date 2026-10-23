@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "celio.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 26,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "celio.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 24,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 24,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 24,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6f303f96af33c3b2204f2d46ebdeb284:d361bf6a14915cb39d3e2bec218cdbc0:d33f63cabbc9bbbf8f40c3a97e6fdde6$"
+	}
+}

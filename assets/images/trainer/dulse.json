@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dulse.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dulse.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:aa5cd500f9f4f41cf4065926672238da:4ef949e7b3de72ef42688ac56e55fc03:37ce728faec2f8f87f43ecc030e4d04f$"
+	}
+}

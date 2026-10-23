@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "clive.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 44,
+				"h": 71
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "clive.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 42,
+						"h": 69
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 42,
+						"h": 69
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 42,
+						"h": 69
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f1197ee6faf386421a93a441ce4d52e2:41fa2e07af7f639759f940f9605a0871:c98e8f675bbcf15e73d6581a411401d9$"
+	}
+}

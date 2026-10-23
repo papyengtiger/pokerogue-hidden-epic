@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "delinquent.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "delinquent.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1dcb14b727f33baf0d6e73188d40ed84:1e7bb836fac87990419279a370c3dc93:3332f1c54f2b89c29736b9d582902a67$"
+	}
+}

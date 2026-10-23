@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "anthea.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 47,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "anthea.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 45,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 45,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 45,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:9898b31fe4ca68d921ac40bf01f9c8ef:564989bbd5a6e9dfe339e1f225df2802:5355e6bf0c880f37a3a500bb15e48ec7$"
+	}
+}

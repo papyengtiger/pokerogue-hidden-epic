@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "agnos.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 182,
+				"h": 122
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "180px-B2W2_Majin_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 180,
+						"h": 120
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 180,
+						"h": 120
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 180,
+						"h": 120
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5c2c6827d5ea8095f7565b6e279e626a:6c7f4f932eae9f355c17843536d98798:7c71e703507408c459261d89f8787d0d$"
+	}
+}

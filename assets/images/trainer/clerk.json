@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "clerk.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 50,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "clerk.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 48,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:de6c5dae3d2eff11f0f2c9ad8c1832c2:dce0c122b73a8f8518c7da20f3653781:30a6f79ef3ebee9715ba327723777752$"
+	}
+}

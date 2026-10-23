@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "christoph.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 31,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "christoph.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 29,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 29,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 29,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d1dedf08206513d49d5a9d9df9f8a0db:3f0c7da68a8496f948f98ef14adb779e:c8b9ed839c6362c8544ceb7041d66679$"
+	}
+}

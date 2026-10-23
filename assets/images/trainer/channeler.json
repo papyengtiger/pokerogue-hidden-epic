@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "channeler.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 53,
+				"h": 90
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "channeler.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 51,
+						"h": 88
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 51,
+						"h": 88
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 51,
+						"h": 88
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4e0bbf241fba905c91488eb2b8fcd1b4:9385e26a6fd2f5e19d8dec371d2816a9:8bbc9e82ce0b3da5414c126329a83c0f$"
+	}
+}

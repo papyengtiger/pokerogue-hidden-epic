@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "harmony.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "harmony.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ab35adc915f440c2bc3ab1543610fe2d:5ebac925cc479209d5180a9ff539a3dc:ad58a363b4250eaf2f925f49957f6514$"
+	}
+}

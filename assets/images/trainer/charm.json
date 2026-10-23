@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "charm.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 29,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "charm.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 27,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 27,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 27,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0d71a6b6e8ffaa5a4a20c43216ee6db8:95f74129d75f9673a78f509a69a8be23:8e3955d82054a91c2fcf0e35ece23b87$"
+	}
+}

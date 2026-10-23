@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "health.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 30,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "health.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 28,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 28,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 28,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5a209cd8269b977198dd295f35212269:3f28e1c8187987911d7a849d134c27b7:4ab86db837ea5a7156439e8a327f2d27$"
+	}
+}

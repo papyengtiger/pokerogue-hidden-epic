@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "zinnia.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 69
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "zinnia.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 67
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 67
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 67
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:925fd6cf9953d2761b1958310f451c83:cf55ca5bb17268bea6a7877a79853eef:ebaeb0aff35b2a38f2c6d1b2de1b5c10$"
+	}
+}

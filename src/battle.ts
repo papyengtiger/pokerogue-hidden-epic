@@ -22,6 +22,7 @@ import { MoneyMultiplierModifier, type PokemonHeldItemModifier } from "#modifier
 import type { CustomModifierSettings } from "#modifiers/modifier-type";
 import type { MysteryEncounter } from "#mystery-encounters/mystery-encounter";
 import { MusicPreference } from "#system/settings";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import { trainerConfigs } from "#trainers/trainer-config";
 import type { TurnMove } from "#types/turn-move";
 import {
@@ -117,12 +118,17 @@ export class Battle {
     this.waveIndex = waveIndex;
     this.battleType = battleType;
     this.trainer = trainer ?? null;
+
+    // 더블배틀 여부 저장
+    this.double = double;
+
     this.initBattleSpec();
+    const difficultyMultiplier = this.gameMode.getEnemyLevelMultiplier();
+
     this.enemyLevels =
       battleType !== BattleType.TRAINER
         ? new Array(double ? 2 : 1).fill(null).map(() => this.getLevelForWave())
-        : trainer?.getPartyLevels(this.waveIndex);
-    this.double = double;
+        : trainer?.getPartyLevels(this.waveIndex).map(level => Math.max(1, Math.floor(level * difficultyMultiplier)));
   }
 
   private initBattleSpec(): void {
@@ -145,13 +151,19 @@ export class Battle {
 
     const baseLevel = modeStartingLevel + 1 + levelWaveIndex / 2 + Math.pow(levelWaveIndex / 25, 2);
 
+    const difficultyMultiplier = this.gameMode.getEnemyLevelMultiplier();
+
+    const applyDifficulty = (level: number): number => {
+      return Math.max(1, Math.floor(level * difficultyMultiplier));
+    };
+
     const bossMultiplier = 1.2;
 
     if (this.gameMode.isBoss(this.waveIndex)) {
       const ret = Math.floor(baseLevel * bossMultiplier);
 
       if (this.battleSpec === BattleSpec.FINAL_BOSS || !(this.waveIndex % 250)) {
-        return Math.ceil(ret / 25) * 25;
+        return applyDifficulty(Math.ceil(ret / 25) * 25);
       }
 
       let levelOffset = 0;
@@ -160,15 +172,13 @@ export class Battle {
         levelOffset = Math.round(Phaser.Math.RND.realInRange(-1, 1) * Math.floor(levelWaveIndex / 10));
       }
 
-      return ret + levelOffset;
+      return applyDifficulty(ret + levelOffset);
     }
 
-    let levelOffset = 0;
     const deviation = 10 / Math.max(levelWaveIndex, 1);
+    const levelOffset = Math.abs(this.randSeedGaussForLevel(deviation));
 
-    levelOffset = Math.abs(this.randSeedGaussForLevel(deviation));
-
-    return Math.max(Math.round(baseLevel + levelOffset), 1);
+    return applyDifficulty(Math.max(Math.round(baseLevel + levelOffset), 1));
   }
 
   randSeedGaussForLevel(value: number): number {
@@ -216,19 +226,38 @@ export class Battle {
 
   pickUpScatteredMoney(): void {
     const moneyAmount = new NumberHolder(globalScene.currentBattle.moneyScattered);
+
     globalScene.applyModifiers(MoneyMultiplierModifier, true, moneyAmount);
 
     if (globalScene.arena.getTag(ArenaTagType.HAPPY_HOUR)) {
       moneyAmount.value *= 2;
     }
 
+    const profitMultiplier = trainerCardManager.getMultiplier("GOLD_GAIN");
+
+    moneyAmount.value *= profitMultiplier;
+
+    const beforeMoney = moneyAmount.value;
+    const difficultyMultiplier = globalScene.gameMode.getGoldMultiplier();
+
+    moneyAmount.value = Math.floor(beforeMoney * difficultyMultiplier);
+
+    console.log("[DIFFICULTY_SCATTERED_MONEY]", {
+      difficulty: globalScene.gameMode.difficulty,
+      beforeMoney,
+      multiplier: difficultyMultiplier,
+      afterMoney: moneyAmount.value,
+    });
+
     globalScene.addMoney(moneyAmount.value);
 
     const userLocale = navigator.language || "en-US";
     const formattedMoneyAmount = moneyAmount.value.toLocaleString(userLocale);
+
     const message = i18next.t("battle:moneyPickedUp", {
       moneyAmount: formattedMoneyAmount,
     });
+
     globalScene.phaseManager.queueMessage(message, undefined, true);
 
     globalScene.currentBattle.moneyScattered = 0;

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "az_za.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 50,
+				"h": 91
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "az_za.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 89
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 89
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 48,
+						"h": 89
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a3b88cebd754000d20759e334be0773c:3ab8b553c294ccde4614fe24e5b438b7:c8c577cf0c07cb592d1617629bd6f1e8$"
+	}
+}

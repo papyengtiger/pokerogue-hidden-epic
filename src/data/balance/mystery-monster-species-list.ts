@@ -5,6 +5,26 @@ import { PokemonType } from "#enums/pokemon-type";
 
 export const allMysteryMonsters: MysteryMonsterSpecies[] = [
   new MysteryMonsterSpecies(
+  MysteryMonsterId.ROBOKID,
+  "Robokid",
+  PokemonType.MYSTERY,
+  null,
+
+  AbilityId.DOWNLOAD,
+  AbilityId.NONE,
+  AbilityId.NONE,
+
+  80, // HP
+  80, // 공격
+  80, // 방어
+  80, // 특수공격
+  80, // 특수방어
+  80, // 스피드
+
+  "robokid",
+  52,
+),
+  new MysteryMonsterSpecies(
     MysteryMonsterId.MYSTERIAN,
     "Mysterian",
     PokemonType.MYSTERY,

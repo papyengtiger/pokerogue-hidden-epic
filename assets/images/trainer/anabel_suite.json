@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "anabel_suite.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "anabel_suite.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:c0d94bb5ffa57720f041773f8ec3ff54:1a4c27569e717cb5c4d5b088012a91ca:fa998a7bee990c52dfacfcbdd1e7d1fb$"
+	}
+}

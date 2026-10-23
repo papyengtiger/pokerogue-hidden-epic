@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "argenta.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 32,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "argenta.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 30,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 30,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 30,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5217dcfd115b32f51902bf53bbf7fe3a:aa45be79ae78dcc022b941b8d092e6c4:f303b7375e4517120bd29198807a20f3$"
+	}
+}

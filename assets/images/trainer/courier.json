@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "courier.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "courier.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fa7f24a99779298efacded21241a7f98:8e7d6e5057b0f29bef6edd5d635cc332:0f6d76e1c616e92b23f0c8b8cbcd31a4$"
+	}
+}

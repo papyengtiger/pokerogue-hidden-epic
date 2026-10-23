@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "briar.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 25,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "briar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 23,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 23,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 23,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:930267cda2b4e76ed4c512d0056d75e2:9cac06af0372758ce9901ab9c63089b4:4ebb83ab61d27c6a0a4de50fe9c5c14a$"
+	}
+}

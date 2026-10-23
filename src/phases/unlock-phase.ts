@@ -18,6 +18,13 @@ export class UnlockPhase extends Phase {
   start(): void {
     globalScene.time.delayedCall(2000, () => {
       globalScene.gameData.unlocks[this.unlockable] = true;
+
+      // 해금 상태를 시스템 데이터에 저장
+      void globalScene.gameData.saveSystem().then(saved => {
+        if (!saved) {
+          console.error("[UNLOCK_PHASE] 해금 데이터 저장 실패:", this.unlockable);
+        }
+      });
       // Sound loaded into game as is
       globalScene.playSound("level_up_fanfare");
       globalScene.ui.setMode(UiMode.MESSAGE);

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cowgirl.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 68
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cowgirl.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 66
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 66
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 66
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:271aa10985f9df55bab8cdcabab62244:1742b592998e65d5281a3dc97cd5d646:effc37509d23df900eff9695b7af41af$"
+	}
+}

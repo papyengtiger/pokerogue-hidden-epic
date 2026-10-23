@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cabbie.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 42,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cabbie.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 40,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:aa0aaafe6107f8ae3e5cd610e2e13ed7:016403ea1d4236b21a57e15d82c5a80c:e712496ddb831d3565b3d1bf6791585a$"
+	}
+}

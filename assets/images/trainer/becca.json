@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "becca.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 67
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "becca.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 65
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 65
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 65
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ad3b016dbdd84f72024496d6851ca14c:d5b470291e40c6ea58a5a1c3abbf435d:175f8cf77e1da8c54791a2a727a7f7a7$"
+	}
+}

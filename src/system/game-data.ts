@@ -28,6 +28,7 @@ import { Device } from "#enums/devices";
 import { DexAttr } from "#enums/dex-attr";
 import { ExchangeCurrencyType } from "#enums/exchange-currency-type";
 import { GameDataType } from "#enums/game-data-type";
+import { GameDifficulty } from "#enums/game-difficulty";
 import { GameModes } from "#enums/game-modes";
 import { MarkId } from "#enums/mark-id";
 import { MoveId } from "#enums/move-id";
@@ -54,7 +55,6 @@ import { achvs } from "#system/achv";
 import { ArenaData, type SerializedArenaData } from "#system/arena-data";
 import { ChallengeData } from "#system/challenge-data";
 import { companionManager } from "#system/companion-manager";
-import { trainerStrategyManager } from "#system/trainer-strategy-manager";
 import { EggData } from "#system/egg-data";
 import { type ExchangePreviewResult, getExchangePreviewToRp } from "#system/exchange-utils";
 import { GameStats } from "#system/game-stats";
@@ -66,9 +66,9 @@ import { resetSettings, SettingKeys, setSetting } from "#system/settings";
 import { SettingGamepad, setSettingGamepad, settingGamepadDefaults } from "#system/settings-gamepad";
 import type { SettingKeyboard } from "#system/settings-keyboard";
 import { setSettingKeyboard } from "#system/settings-keyboard";
+import { type TrainerCardSaveData, trainerCardManager } from "#system/trainer-card-manager";
 import { TrainerData } from "#system/trainer-data";
-import { trainerCardManager } from "#system/trainer-card-manager";
-import { TrainerCardCategory } from "#enums/trainer-card-id";
+import { trainerStrategyManager } from "#system/trainer-strategy-manager";
 import {
   applySessionVersionMigration,
   applySettingsVersionMigration,
@@ -169,10 +169,13 @@ export class GameData {
 
   public voucherUnlocks: VoucherUnlocks;
   public voucherCounts: VoucherCounts;
+  public clearVoucherRewards: Record<string, number[]>;
   public eggs: Egg[];
   public eggPity: number[];
   public unlockPity: number[];
   public roguePoints: number;
+
+  private battleRpRemainder = 0;
 
   public bankMoney: number;
   public bankRoguePoints: number;
@@ -214,14 +217,24 @@ export class GameData {
     this.starterData = {};
     this.gameStats = new GameStats();
     this.runHistory = {};
+
     this.unlocks = {
       [Unlockables.ENDLESS_MODE]: false,
       [Unlockables.MINI_BLACK_HOLE]: false,
       [Unlockables.SPLICED_ENDLESS_MODE]: false,
       [Unlockables.EVIOLITE]: false,
+
+      // 튜토리얼 클리어 후 해금
+      [Unlockables.CLASSIC_MODE]: false,
+      [Unlockables.ANOTHER_MODE]: false,
+      [Unlockables.DAILY_MODE]: false,
+      [Unlockables.WEEKLY_MODE]: false,
+      [Unlockables.MONTHLY_MODE]: false,
     };
+
     this.achvUnlocks = {};
     this.voucherUnlocks = {};
+    this.clearVoucherRewards = {};
     this.voucherCounts = {
       [VoucherType.REGULAR]: 0,
       [VoucherType.PLUS]: 0,
@@ -277,41 +290,39 @@ export class GameData {
   }
 
   public isGenerationDexComplete(generation: number): boolean {
-  const generationSpecies = allSpecies.filter(species => {
-    const speciesId = species.speciesId;
+    const generationSpecies = allSpecies.filter(species => {
+      const speciesId = species.speciesId;
 
-    switch (generation) {
-      case 1:
-        return speciesId >= 1 && speciesId <= 151;
-      case 2:
-        return speciesId >= 152 && speciesId <= 251;
-      case 3:
-        return speciesId >= 252 && speciesId <= 386;
-      case 4:
-        return speciesId >= 387 && speciesId <= 493;
-      case 5:
-        return speciesId >= 494 && speciesId <= 649;
-      case 6:
-        return speciesId >= 650 && speciesId <= 721;
-      case 7:
-        return speciesId >= 722 && speciesId <= 809;
-      case 8:
-        return speciesId >= 810 && speciesId <= 905;
-      case 9:
-        return speciesId >= 906 && speciesId <= 1025;
-      default:
-        return false;
+      switch (generation) {
+        case 1:
+          return speciesId >= 1 && speciesId <= 151;
+        case 2:
+          return speciesId >= 152 && speciesId <= 251;
+        case 3:
+          return speciesId >= 252 && speciesId <= 386;
+        case 4:
+          return speciesId >= 387 && speciesId <= 493;
+        case 5:
+          return speciesId >= 494 && speciesId <= 649;
+        case 6:
+          return speciesId >= 650 && speciesId <= 721;
+        case 7:
+          return speciesId >= 722 && speciesId <= 809;
+        case 8:
+          return speciesId >= 810 && speciesId <= 905;
+        case 9:
+          return speciesId >= 906 && speciesId <= 1025;
+        default:
+          return false;
+      }
+    });
+
+    if (generationSpecies.length === 0) {
+      return false;
     }
-  });
 
-  if (generationSpecies.length === 0) {
-    return false;
+    return generationSpecies.every(species => !!this.dexData[species.speciesId]?.caughtAttr);
   }
-
-  return generationSpecies.every(
-    species => !!this.dexData[species.speciesId]?.caughtAttr,
-  );
-}
 
   public addResource(resourceId: string, amount: number): boolean {
     if (!resourceId || amount <= 0) {
@@ -325,23 +336,40 @@ export class GameData {
     return true;
   }
 
-  public addRoguePoints(amount: number): void {
+  public addRoguePoints(amount: number, source: "GENERAL" | "BATTLE" = "GENERAL"): void {
     const practiceConfig = this.practiceDummyConfig;
+    const isPractice = !!(globalScene.currentBattle as any)?.isPracticeBattle;
 
-    if ((globalScene.currentBattle as any)?.isPracticeBattle) {
+    // 전투 RP만 카드 보정
+    // 연습장은 기존 보상 설정을 유지
+    if (source === "BATTLE" && !isPractice && amount > 0) {
+      const multiplier = trainerCardManager.getMultiplier("RP_GAIN");
+
+      const total = amount * multiplier + this.battleRpRemainder;
+
+      const before = amount;
+
+      amount = Math.floor(total + 1e-9);
+      this.battleRpRemainder = Math.max(0, total - amount);
+
+      console.log("[TRAINER_CARD_SMALL_PROFIT_RP]", {
+        before,
+        multiplier,
+        after: amount,
+        remainder: this.battleRpRemainder,
+      });
+    }
+
+    if (isPractice) {
       const result = (globalScene as any).practiceTurnResult;
 
       if (result) {
         result.roguePointsGained += amount;
-
         result.roguePointFactors ??= [];
-
         result.roguePointFactors.push(`RP +${amount}`);
-
         console.log("[PRACTICE_RP]", amount);
       }
 
-      // OFF면 표시만 하고 실제 지급 안함
       if (!practiceConfig?.rewardFlags?.roguePoints) {
         return;
       }
@@ -737,8 +765,9 @@ export class GameData {
     return true;
   }
 
-  public depositRemainingRunItemsToStorage(): void {
+  public depositRemainingRunItemsToStorage(hardClearBonus = false): void {
     const recoveredKeys = new Set<string>();
+    const recoveredItemIds = new Set<string>();
 
     const getRecoverItemId = (modifier: any): string | null => {
       const className = modifier.constructor?.name;
@@ -811,6 +840,7 @@ export class GameData {
 
       const storageId = `BALL_${ballType}`;
       this.addToStorage(storageId, count);
+      recoveredItemIds.add(storageId);
 
       console.log("[DEPOSIT_POKEBALL]", {
         ballType,
@@ -823,6 +853,7 @@ export class GameData {
       if (item.quantity > 0) {
         this.addToStorage(item.itemId, item.quantity);
         recoveredKeys.add(`run:${item.itemId}`);
+        recoveredItemIds.add(item.itemId);
       }
     }
 
@@ -859,6 +890,7 @@ export class GameData {
 
       this.addToStorage(itemId, qty);
       recoveredKeys.add(key);
+      recoveredItemIds.add(itemId);
 
       console.log("[DEPOSIT_RECOVERED_MODIFIER]", {
         itemId,
@@ -871,7 +903,16 @@ export class GameData {
         pokemonId: (modifier as any).pokemonId,
       });
     }
+    if (hardClearBonus) {
+      for (const itemId of recoveredItemIds) {
+        this.addToStorage(itemId, 1);
 
+        console.log("[HARD_CLEAR_ITEM_BONUS]", {
+          itemId,
+          bonus: 1,
+        });
+      }
+    }
     this.runStorageItems = [];
   }
 
@@ -884,43 +925,44 @@ export class GameData {
   }
 
   public getSystemSaveData(): SystemSaveData {
-  return {
-    trainerId: this.trainerId,
-    secretId: this.secretId,
-    gender: this.gender,
-    dexData: this.dexData,
-    starterData: this.starterData,
-    gameStats: this.gameStats,
-    unlocks: this.unlocks,
-    achvUnlocks: this.achvUnlocks,
-    voucherUnlocks: this.voucherUnlocks,
-    voucherCounts: this.voucherCounts,
+    return {
+      trainerId: this.trainerId,
+      secretId: this.secretId,
+      gender: this.gender,
+      dexData: this.dexData,
+      clearVoucherRewards: this.clearVoucherRewards,
+      starterData: this.starterData,
+      gameStats: this.gameStats,
+      unlocks: this.unlocks,
+      achvUnlocks: this.achvUnlocks,
+      voucherUnlocks: this.voucherUnlocks,
+      voucherCounts: this.voucherCounts,
 
-    companionData: companionManager.exportSaveData(),
+      companionData: companionManager.exportSaveData(),
 
-    trainerCardData: trainerCardManager.exportSaveData(),
+      // Trainer cards are run-specific and saved in the session instead.
 
-    roguePoints: this.roguePoints,
-    lastAttendanceDate: this.lastAttendanceDate,
-    attendanceCount: this.attendanceCount,
-    achvPointsGranted: this.achvPointsGranted,
-    bankMoney: this.bankMoney,
-    bankRoguePoints: this.bankRoguePoints,
-    questList: this.questList,
-    storageItems: this.storageItems,
-    eggs: this.eggs.map(e => new EggData(e)),
-    gameVersion: globalScene.game.config.gameVersion,
-    timestamp: Date.now(),
-    eggPity: this.eggPity.slice(0),
-    unlockPity: this.unlockPity.slice(0),
-    practiceDummyConfig: this.practiceDummyConfig,
-    practicePresets: this.practicePresets,
-    pendingRunItems: this.pendingRunItems,
-    usedCoupons: this.usedCoupons,
-    berryPlanterSlots: this.berryPlanterSlots,
-    resourceInventory: this.resourceInventory,
-  };
-}
+      roguePoints: this.roguePoints,
+      lastAttendanceDate: this.lastAttendanceDate,
+      attendanceCount: this.attendanceCount,
+      achvPointsGranted: this.achvPointsGranted,
+      bankMoney: this.bankMoney,
+      bankRoguePoints: this.bankRoguePoints,
+      questList: this.questList,
+      storageItems: this.storageItems,
+      eggs: this.eggs.map(e => new EggData(e)),
+      gameVersion: globalScene.game.config.gameVersion,
+      timestamp: Date.now(),
+      eggPity: this.eggPity.slice(0),
+      unlockPity: this.unlockPity.slice(0),
+      practiceDummyConfig: this.practiceDummyConfig,
+      practicePresets: this.practicePresets,
+      pendingRunItems: this.pendingRunItems,
+      usedCoupons: this.usedCoupons,
+      berryPlanterSlots: this.berryPlanterSlots,
+      resourceInventory: this.resourceInventory,
+    };
+  }
 
   /**
    * Checks if an `Unlockable` has been unlocked.
@@ -934,28 +976,45 @@ export class GameData {
     return this.unlocks[unlockable];
   }
 
+  public async unlockTutorialCompletion(): Promise<boolean> {
+    const tutorialUnlocks = [
+      Unlockables.CLASSIC_MODE,
+      Unlockables.DAILY_MODE,
+      Unlockables.WEEKLY_MODE,
+      Unlockables.MONTHLY_MODE,
+    ];
+
+    for (const unlockable of tutorialUnlocks) {
+      this.unlocks[unlockable] = true;
+    }
+
+    const saved = await this.saveSystem();
+
+    if (saved) {
+      console.log("[TUTORIAL_CLEAR] 4개 모드 해금 완료");
+    } else {
+      console.error("[TUTORIAL_CLEAR] 해금 데이터 저장 실패");
+    }
+
+    return saved;
+  }
+
   public saveSystem(): Promise<boolean> {
     return new Promise<boolean>(resolve => {
       globalScene.ui.savingIcon.show();
       const data = this.getSystemSaveData();
 
       console.log(
-  "[SYSTEM_SAVE_PASSIVES]",
-  Object.entries(this.starterData)
-    .filter(
-      ([, entry]) =>
-        (entry.passiveUnlocks ?? 0) !== 0,
-    )
-    .map(([speciesId, entry]) => ({
-      speciesId,
-      passiveUnlocks:
-        entry.passiveUnlocks,
-      passiveIndex:
-        entry.passiveIndex,
-      passiveAttr:
-        entry.passiveAttr,
-    })),
-);
+        "[SYSTEM_SAVE_PASSIVES]",
+        Object.entries(this.starterData)
+          .filter(([, entry]) => (entry.passiveUnlocks ?? 0) !== 0)
+          .map(([speciesId, entry]) => ({
+            speciesId,
+            passiveUnlocks: entry.passiveUnlocks,
+            passiveIndex: entry.passiveIndex,
+            passiveAttr: entry.passiveAttr,
+          })),
+      );
 
       const maxIntAttrValue = 0x80000000;
       const systemData = JSON.stringify(data, (_k: any, v: any) =>
@@ -1074,17 +1133,14 @@ export class GameData {
 
     companionManager.importSaveData(systemData.companionData);
 
-    trainerCardManager.configureSlots([
-  TrainerCardCategory.BATTLE,
-  TrainerCardCategory.GROWTH,
-  TrainerCardCategory.FRIEND,
-  TrainerCardCategory.EPIC,
-]);
+    // Legacy system-save card state must not override a run's state.
+    // A session load below restores card ownership and equipment.
+    trainerCardManager.resetRun();
 
-trainerCardManager.importSaveData(
-  systemData.trainerCardData,
-);
-
+    this.clearVoucherRewards =
+      systemData.clearVoucherRewards && typeof systemData.clearVoucherRewards === "object"
+        ? systemData.clearVoucherRewards
+        : {};
     this.trainerId = systemData.trainerId;
     this.secretId = systemData.secretId;
 
@@ -1125,60 +1181,48 @@ trainerCardManager.importSaveData(
       this.initStarterData();
 
       for (const speciesIdStr of Object.keys(savedStarterData)) {
-  const speciesId = Number(speciesIdStr) as SpeciesId;
+        const speciesId = Number(speciesIdStr) as SpeciesId;
 
-  const savedEntry = savedStarterData[speciesId];
+        const savedEntry = savedStarterData[speciesId];
 
-  this.starterData[speciesId] = {
-    ...this.starterData[speciesId],
-    ...savedEntry,
-  };
+        this.starterData[speciesId] = {
+          ...this.starterData[speciesId],
+          ...savedEntry,
+        };
 
-  const entry = this.starterData[speciesId];
+        const entry = this.starterData[speciesId];
 
-  if (savedEntry.passiveUnlocks === undefined) {
-    entry.passiveUnlocks =
-      entry.passiveAttr & PassiveAttr.UNLOCKED
-        ? 1
-        : 0;
-  }
+        if (savedEntry.passiveUnlocks === undefined) {
+          entry.passiveUnlocks = entry.passiveAttr & PassiveAttr.UNLOCKED ? 1 : 0;
+        }
 
-  if (savedEntry.passiveIndex === undefined) {
-    entry.passiveIndex = 0;
-  }
+        if (savedEntry.passiveIndex === undefined) {
+          entry.passiveIndex = 0;
+        }
 
-  // 이 로그는 반드시 for문 안
-  if ((savedEntry.passiveUnlocks ?? 0) > 1) {
-    console.log("[PASSIVE_LOAD_ENTRY]", {
-      speciesId,
-      savedUnlocks:
-        savedEntry.passiveUnlocks,
-      loadedUnlocks:
-        entry.passiveUnlocks,
-      passiveIndex:
-        entry.passiveIndex,
-    });
-  }
-}
+        // 이 로그는 반드시 for문 안
+        if ((savedEntry.passiveUnlocks ?? 0) > 1) {
+          console.log("[PASSIVE_LOAD_ENTRY]", {
+            speciesId,
+            savedUnlocks: savedEntry.passiveUnlocks,
+            loadedUnlocks: entry.passiveUnlocks,
+            passiveIndex: entry.passiveIndex,
+          });
+        }
+      }
 
-// 이 전체 요약 로그는 for문 밖
-console.log(
-  "[SYSTEM_LOAD_PASSIVES]",
-  Object.entries(this.starterData)
-    .filter(
-      ([, entry]) =>
-        (entry.passiveUnlocks ?? 0) !== 0,
-    )
-    .map(([speciesId, entry]) => ({
-      speciesId,
-      passiveUnlocks:
-        entry.passiveUnlocks,
-      passiveIndex:
-        entry.passiveIndex,
-      passiveAttr:
-        entry.passiveAttr,
-    })),
-);
+      // 이 전체 요약 로그는 for문 밖
+      console.log(
+        "[SYSTEM_LOAD_PASSIVES]",
+        Object.entries(this.starterData)
+          .filter(([, entry]) => (entry.passiveUnlocks ?? 0) !== 0)
+          .map(([speciesId, entry]) => ({
+            speciesId,
+            passiveUnlocks: entry.passiveUnlocks,
+            passiveIndex: entry.passiveIndex,
+            passiveAttr: entry.passiveAttr,
+          })),
+      );
     } else {
       this.initStarterData();
 
@@ -1255,6 +1299,36 @@ console.log(
           this.unlocks[key] = systemData.unlocks[key];
         }
       }
+    }
+
+    // 기존 저장 데이터 호환성 처리
+    const oldUnlocks = systemData.unlocks as Partial<Record<Unlockables, boolean>> | undefined;
+
+    const hasOldProgress =
+      (this.gameStats.classicSessionsPlayed ?? 0) > 0 || this.unlocks[Unlockables.ENDLESS_MODE] === true;
+
+    // 튜토리얼 클리어 후 해금되는 4개 모드
+    const tutorialUnlocks = [
+      Unlockables.CLASSIC_MODE,
+      Unlockables.DAILY_MODE,
+      Unlockables.WEEKLY_MODE,
+      Unlockables.MONTHLY_MODE,
+    ];
+
+    // 기존 플레이어의 해금 상태 보존
+    if (hasOldProgress) {
+      for (const unlockable of tutorialUnlocks) {
+        // 이전 저장 데이터에 해당 항목이 없을 때만 해금
+        if (oldUnlocks?.[unlockable] === undefined) {
+          this.unlocks[unlockable] = true;
+        }
+      }
+    }
+
+    // 클래식 클리어 기록이 있는 기존 플레이어에게
+    // 어나더 모드 해금 적용
+    if (this.unlocks[Unlockables.ENDLESS_MODE] === true) {
+      this.unlocks[Unlockables.ANOTHER_MODE] = true;
     }
 
     if (systemData.achvUnlocks) {
@@ -1341,80 +1415,75 @@ console.log(
     companionManager.updateGenerationUnlocks(this);
   }
 
-  public initSystem(
-  systemDataStr: string,
-  cachedSystemDataStr?: string,
-): Promise<boolean> {
-  const { promise, resolve } =
-    Promise.withResolvers<boolean>();
+  public registerFirstClearVoucher(modeId: GameModes, difficulty: GameDifficulty, speciesId: number): boolean {
+    const key = `${modeId}:${difficulty}`;
 
-  try {
-    let systemData =
-      GameData.parseSystemData(systemDataStr);
+    this.clearVoucherRewards[key] ??= [];
 
-    if (cachedSystemDataStr) {
-      const cachedSystemData =
-        GameData.parseSystemData(
-          cachedSystemDataStr,
-        );
-
-      if (
-        cachedSystemData.timestamp
-        >= systemData.timestamp
-      ) {
-        console.debug("Use cached system");
-        systemData = cachedSystemData;
-        systemDataStr = cachedSystemDataStr;
-      } else {
-        this.clearLocalData();
-      }
+    if (this.clearVoucherRewards[key].includes(speciesId)) {
+      return false;
     }
 
-    if (isBeta || isDev) {
-      try {
-        console.debug(
-          GameData.parseSystemData(
-            JSON.stringify(
-              systemData,
-              (_, v: any) =>
-                typeof v === "bigint"
-                  ? v.toString()
-                  : v,
-            ),
-          ),
-        );
-      } catch (err) {
-        console.debug(
-          "Attempt to log system data failed:",
-          err,
-        );
-      }
-    }
+    this.clearVoucherRewards[key].push(speciesId);
 
-    localStorage.setItem(
-      `data_${loggedInUser?.username}`,
-      encrypt(systemDataStr, bypassLogin),
-    );
+    console.log("[FIRST_CLEAR_VOUCHER_REGISTERED]", {
+      modeId,
+      difficulty,
+      speciesId,
+    });
 
-    const lsItemKey =
-      `runHistoryData_${loggedInUser?.username}`;
-
-    const lsItem =
-      localStorage.getItem(lsItemKey);
-
-    if (!lsItem) {
-      localStorage.setItem(lsItemKey, "");
-    }
-
-    this.initParsedSystem(systemData);
-    resolve(true);
-  } catch (err) {
-    console.error(err);
-    resolve(false);
+    return true;
   }
 
-  return promise;
-}
+  public initSystem(systemDataStr: string, cachedSystemDataStr?: string): Promise<boolean> {
+    const { promise, resolve } = Promise.withResolvers<boolean>();
+
+    try {
+      let systemData = GameData.parseSystemData(systemDataStr);
+
+      if (cachedSystemDataStr) {
+        const cachedSystemData = GameData.parseSystemData(cachedSystemDataStr);
+
+        if (cachedSystemData.timestamp >= systemData.timestamp) {
+          console.debug("Use cached system");
+          systemData = cachedSystemData;
+          systemDataStr = cachedSystemDataStr;
+        } else {
+          this.clearLocalData();
+        }
+      }
+
+      if (isBeta || isDev) {
+        try {
+          console.debug(
+            GameData.parseSystemData(
+              JSON.stringify(systemData, (_, v: any) => (typeof v === "bigint" ? v.toString() : v)),
+            ),
+          );
+        } catch (err) {
+          console.debug("Attempt to log system data failed:", err);
+        }
+      }
+
+      localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(systemDataStr, bypassLogin));
+
+      const lsItemKey = `runHistoryData_${loggedInUser?.username}`;
+
+      const lsItem = localStorage.getItem(lsItemKey);
+
+      if (!lsItem) {
+        localStorage.setItem(lsItemKey, "");
+      }
+
+      this.initParsedSystem(systemData);
+      resolve(true);
+    } catch (err) {
+      console.error(err);
+      resolve(false);
+    }
+
+    return promise;
+  }
 
   /**
    * Retrieves current run history data, organized by time stamp.
@@ -1725,19 +1794,23 @@ console.log(
 
   public getTutorialFlags(): TutorialFlags {
     const key = getDataTypeKey(GameDataType.TUTORIALS);
-    const ret: TutorialFlags = Object.values(Tutorial).reduce((acc, tutorial) => {
-      acc[Tutorial[tutorial]] = false;
-      return acc;
-    }, {} as TutorialFlags);
+
+    const ret = {} as TutorialFlags;
+
+    // 기존 및 히든에픽 튜토리얼 항목 초기화
+    for (const tutorial of Object.values(Tutorial)) {
+      ret[tutorial] = false;
+    }
 
     if (!localStorage.hasOwnProperty(key)) {
       return ret;
     }
 
-    const tutorials = JSON.parse(localStorage.getItem(key)!); // TODO: is this bang correct?
+    const tutorials = JSON.parse(localStorage.getItem(key)!);
 
-    for (const tutorial of Object.keys(tutorials)) {
-      ret[tutorial] = tutorials[tutorial];
+    // 저장된 완료 기록 복원
+    for (const tutorial of Object.values(Tutorial)) {
+      ret[tutorial] = tutorials[tutorial] ?? false;
     }
 
     return ret;
@@ -1781,47 +1854,43 @@ console.log(
 
     let saveBattleType = globalScene.currentBattle.battleType;
 
-const currentWave = globalScene.currentBattle.waveIndex;
+    const currentWave = globalScene.currentBattle.waveIndex;
 
-const isMysteryTimeBattle =
-  mysteryTimeManager.isActive()
-  && mysteryTimeManager.isMysteryTimeWave(currentWave);
+    const isMysteryTimeBattle = mysteryTimeManager.isActive() && mysteryTimeManager.isMysteryTimeWave(currentWave);
 
-// 미스터리타임은 항상 야생전 형식으로 저장한다.
-// 원래 해당 층이 트레이너층/고정전투층이어도
-// 미스터리타임 전투가 우선한다.
-if (isMysteryTimeBattle) {
-  if (saveBattleType !== BattleType.WILD) {
-    console.warn("[SAVE_MYSTERY_TIME_BATTLE_TYPE_FIXED]", {
-      wave: currentWave,
-      before: saveBattleType,
-      after: BattleType.WILD,
-      trainer: !!globalScene.currentBattle.trainer,
-      boss: mysteryTimeManager.shouldSpawnBoss(currentWave),
-    });
-  }
+    // 미스터리타임은 항상 야생전 형식으로 저장한다.
+    // 원래 해당 층이 트레이너층/고정전투층이어도
+    // 미스터리타임 전투가 우선한다.
+    if (isMysteryTimeBattle) {
+      if (saveBattleType !== BattleType.WILD) {
+        console.warn("[SAVE_MYSTERY_TIME_BATTLE_TYPE_FIXED]", {
+          wave: currentWave,
+          before: saveBattleType,
+          after: BattleType.WILD,
+          trainer: !!globalScene.currentBattle.trainer,
+          boss: mysteryTimeManager.shouldSpawnBoss(currentWave),
+        });
+      }
 
-  saveBattleType = BattleType.WILD;
-}
+      saveBattleType = BattleType.WILD;
+    }
 
-// 비정상 세이브 최종 방어
-if (
-  saveBattleType === BattleType.TRAINER
-  && !globalScene.currentBattle.trainer
-) {
-  console.warn("[SAVE_INVALID_TRAINER_BATTLE_FIXED]", {
-    wave: currentWave,
-    battleType: saveBattleType,
-    mysteryTime: mysteryTimeManager.isActive(),
-  });
+    // 비정상 세이브 최종 방어
+    if (saveBattleType === BattleType.TRAINER && !globalScene.currentBattle.trainer) {
+      console.warn("[SAVE_INVALID_TRAINER_BATTLE_FIXED]", {
+        wave: currentWave,
+        battleType: saveBattleType,
+        mysteryTime: mysteryTimeManager.isActive(),
+      });
 
-  saveBattleType = BattleType.WILD;
-}
+      saveBattleType = BattleType.WILD;
+    }
 
     return {
       seed: globalScene.seed,
       playTime: globalScene.sessionPlayTime,
       gameMode: globalScene.gameMode.modeId,
+      difficulty: globalScene.gameMode.difficulty,
       party: globalScene.getPlayerParty().map(p => new PokemonData(p)),
       enemyParty: globalScene.getEnemyParty().map(p => new PokemonData(p)),
       modifiers: globalScene.findModifiers(() => true).map(m => new PersistentModifierData(m, true)),
@@ -1833,12 +1902,12 @@ if (
       waveIndex: globalScene.currentBattle.waveIndex,
       battleType: saveBattleType,
 
-trainer:
-  saveBattleType === BattleType.TRAINER
-  && globalScene.currentBattle.trainer
-    ? new TrainerData(globalScene.currentBattle.trainer)
-    : null,
+      trainer:
+        saveBattleType === BattleType.TRAINER && globalScene.currentBattle.trainer
+          ? new TrainerData(globalScene.currentBattle.trainer)
+          : null,
       trainerStrategy: trainerStrategyManager.exportSaveData(),
+      trainerCardData: trainerCardManager.exportSaveData(),
       gameVersion: globalScene.game.config.gameVersion,
       timestamp: Date.now(),
       challenges: globalScene.gameMode.challenges.map(c => new ChallengeData(c)),
@@ -1954,20 +2023,24 @@ trainer:
           }
         }
 
-          // ========================================
-  // 트레이닝 전략 세션 복구
-  // ========================================
-  trainerStrategyManager.importSaveData(
-    fromSession.trainerStrategy,
-    fromSession.waveIndex,
-  );
+        // ========================================
+        // 트레이닝 전략 세션 복구
+        // ========================================
+        trainerStrategyManager.importSaveData(fromSession.trainerStrategy, fromSession.waveIndex);
 
-  console.log("[LOAD_TRAINER_STRATEGY]", {
-    wave: fromSession.waveIndex,
-    strategy: fromSession.trainerStrategy,
-  });
+        // Recover the slot layout first, then run-owned cards and equipped cards.
+        trainerCardManager.syncSlotsWithStrategy();
+        trainerCardManager.importSaveData(
+          (fromSession as SessionSaveData & { trainerCardData?: TrainerCardSaveData }).trainerCardData,
+        );
+        console.log("[LOAD_TRAINER_CARDS]", trainerCardManager.exportSaveData());
 
-  this.runStorageItems = Array.isArray(fromSession.runStorageItems)
+        console.log("[LOAD_TRAINER_STRATEGY]", {
+          wave: fromSession.waveIndex,
+          strategy: fromSession.trainerStrategy,
+        });
+
+        this.runStorageItems = Array.isArray(fromSession.runStorageItems)
           ? fromSession.runStorageItems
               .filter(item => item && typeof item.itemId === "string" && typeof item.quantity === "number")
               .map(item => ({
@@ -2000,7 +2073,25 @@ trainer:
             wave: fromSession.waveIndex,
           });
         }
-        globalScene.gameMode = getGameMode(fromSession.gameMode || GameModes.CLASSIC);
+        globalScene.gameMode = getGameMode(fromSession.gameMode ?? GameModes.CLASSIC);
+
+        // 저장된 난이도 복원
+        // 구버전 세이브에는 난이도 정보가 없으므로
+        // 기존 전투 밸런스인 NORMAL로 처리
+        const savedDifficulty =
+          fromSession.difficulty === GameDifficulty.EASY
+          || fromSession.difficulty === GameDifficulty.NORMAL
+          || fromSession.difficulty === GameDifficulty.HARD
+            ? fromSession.difficulty
+            : GameDifficulty.NORMAL;
+
+        globalScene.gameMode.setDifficulty(savedDifficulty);
+
+        console.log("[DIFFICULTY_LOADED]", {
+          gameMode: globalScene.gameMode.modeId,
+          difficulty: globalScene.gameMode.difficulty,
+          expMultiplier: globalScene.gameMode.getPlayerExpMultiplier(),
+        });
         if (fromSession.challenges) {
           globalScene.gameMode.challenges = fromSession.challenges.map(c => c.toChallenge());
         }
@@ -2063,55 +2154,52 @@ trainer:
 
         let battleType = fromSession.battleType ?? BattleType.WILD;
 
-const savedMysteryTime = fromSession.mysteryTime;
+        const savedMysteryTime = fromSession.mysteryTime;
 
-const isSavedMysteryTimeWave =
-  !!savedMysteryTime?.active
-  && savedMysteryTime.startWave !== null
-  && savedMysteryTime.endWave !== null
-  && fromSession.waveIndex >= savedMysteryTime.startWave
-  && fromSession.waveIndex <= savedMysteryTime.endWave;
+        const isSavedMysteryTimeWave =
+          !!savedMysteryTime?.active
+          && savedMysteryTime.startWave !== null
+          && savedMysteryTime.endWave !== null
+          && fromSession.waveIndex >= savedMysteryTime.startWave
+          && fromSession.waveIndex <= savedMysteryTime.endWave;
 
-// ========================================
-// 미스터리타임 세이브 복구 보정
-// ========================================
-// 미스터리타임 진행 중에는
-// 저장된 원래 층이 트레이너층이었더라도
-// 반드시 야생전으로 복구한다.
-if (isSavedMysteryTimeWave && battleType !== BattleType.WILD) {
-  console.warn("[LOAD_MYSTERY_TIME_BATTLE_TYPE_FIXED]", {
-    wave: fromSession.waveIndex,
-    before: battleType,
-    after: BattleType.WILD,
-    trainerSaved: !!fromSession.trainer,
-    bossAwakened: savedMysteryTime?.bossAwakened ?? false,
-  });
+        // ========================================
+        // 미스터리타임 세이브 복구 보정
+        // ========================================
+        // 미스터리타임 진행 중에는
+        // 저장된 원래 층이 트레이너층이었더라도
+        // 반드시 야생전으로 복구한다.
+        if (isSavedMysteryTimeWave && battleType !== BattleType.WILD) {
+          console.warn("[LOAD_MYSTERY_TIME_BATTLE_TYPE_FIXED]", {
+            wave: fromSession.waveIndex,
+            before: battleType,
+            after: BattleType.WILD,
+            trainerSaved: !!fromSession.trainer,
+            bossAwakened: savedMysteryTime?.bossAwakened ?? false,
+          });
 
-  battleType = BattleType.WILD;
-}
+          battleType = BattleType.WILD;
+        }
 
-// ========================================
-// 손상된 구버전 세이브 복구
-// ========================================
-// TRAINER인데 trainer 데이터가 없으면
-// newBattle() 내부의 null.toTrainer()가 발생한다.
-if (
-  battleType === BattleType.TRAINER
-  && !fromSession.trainer
-) {
-  console.warn("[LOAD_INVALID_TRAINER_SAVE_FIXED]", {
-    wave: fromSession.waveIndex,
-    battleType,
-    mysteryTime: savedMysteryTime,
-  });
+        // ========================================
+        // 손상된 구버전 세이브 복구
+        // ========================================
+        // TRAINER인데 trainer 데이터가 없으면
+        // newBattle() 내부의 null.toTrainer()가 발생한다.
+        if (battleType === BattleType.TRAINER && !fromSession.trainer) {
+          console.warn("[LOAD_INVALID_TRAINER_SAVE_FIXED]", {
+            wave: fromSession.waveIndex,
+            battleType,
+            mysteryTime: savedMysteryTime,
+          });
 
-  battleType = BattleType.WILD;
-}
+          battleType = BattleType.WILD;
+        }
 
-const trainerConfig =
-  battleType === BattleType.TRAINER && fromSession.trainer
-    ? trainerConfigs[fromSession.trainer.trainerType]
-    : null;
+        const trainerConfig =
+          battleType === BattleType.TRAINER && fromSession.trainer
+            ? trainerConfigs[fromSession.trainer.trainerType]
+            : null;
 
         const mysteryEncounterType =
           fromSession.mysteryEncounterType !== -1 ? fromSession.mysteryEncounterType : undefined;
@@ -2824,23 +2912,21 @@ const trainerConfig =
       }
 
       starterData[speciesId] = {
-  moveset: null,
-  eggMoves: 0,
-  candyCount: 0,
-  friendship: 0,
-  abilityAttr: defaultStarterSpecies.includes(speciesId)
-    ? AbilityAttr.ABILITY_1
-    : 0,
+        moveset: null,
+        eggMoves: 0,
+        candyCount: 0,
+        friendship: 0,
+        abilityAttr: defaultStarterSpecies.includes(speciesId) ? AbilityAttr.ABILITY_1 : 0,
 
-  passiveAttr: 0,
-  passiveUnlocks: 0,
-  passiveIndex: 0,
+        passiveAttr: 0,
+        passiveUnlocks: 0,
+        passiveIndex: 0,
 
-  valueReduction: 0,
-  classicWinCount: 0,
-  teraTypeAttr,
-  marks: [],
-};
+        valueReduction: 0,
+        classicWinCount: 0,
+        teraTypeAttr,
+        marks: [],
+      };
     }
 
     this.starterData = starterData;
@@ -3156,11 +3242,11 @@ const trainerConfig =
       }
       globalScene.playSound("level_up_fanfare");
       const moveName = allMoves[speciesEggMoves[speciesId][eggMoveIndex]].name;
-let message = prependSpeciesToMessage ? species.getName() + " " : "";
+      let message = prependSpeciesToMessage ? species.getName() + " " : "";
 
-message += i18next.t("egg:eggMoveUnlock", { moveName });
+      message += i18next.t("egg:eggMoveUnlock", { moveName });
 
-globalScene.ui.showText(message, null, () => resolve(true), null, true);
+      globalScene.ui.showText(message, null, () => resolve(true), null, true);
     });
   }
 

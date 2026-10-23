@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dahlia.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 64,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dahlia.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 62,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:583ea27186b2f57c9352095a16b5a505:6144157af809fae20a7bb8d4bf0a57b5:30221228a45fb5d453412163baa4f246$"
+	}
+}

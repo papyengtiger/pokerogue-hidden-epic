@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "baoba.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 46,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "baoba.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 44,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 44,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 44,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b642992e56c8deaaf9cf8b4c408632bc:56e2acd84aeb57128247bbf31601fa86:114f679e42c59339f9b4e35115db18fe$"
+	}
+}

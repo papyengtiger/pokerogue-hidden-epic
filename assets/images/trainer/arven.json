@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "arven.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "arven.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:3f8d0862eacca1cedbc4059acb113459:7e376fa4cec0a80d66915bafee2afdc8:84df54761d4374d27511a87b8bbe70dc$"
+	}
+}

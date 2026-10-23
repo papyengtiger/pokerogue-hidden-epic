@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "draconid.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 63,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "draconid.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 61,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 61,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 61,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:82e5bcf79e4eaf650f48ba168d2ebf49:16ec7fd23a2be723548cbac65f819829:9f96e059cad10c0fa308513cfc48a899$"
+	}
+}

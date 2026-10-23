@@ -1,7 +1,7 @@
-import { TrainerCardCategory, TrainerCardId } from "#enums/trainer-card-id";
-import { CardMultiplierAttr, HarmonyCardAttr, type CardNumericKind } from "#trainers/trainer-card/card-attrs";
-import { trainerCardById } from "#trainers/trainer-card/trainer-card";
+import { TrainerCardCategory, type TrainerCardId } from "#enums/trainer-card-id";
 import { trainerStrategyManager } from "#system/trainer-strategy-manager";
+import { CardMultiplierAttr, type CardNumericKind, HarmonyCardAttr } from "#trainers/trainer-card/card-attrs";
+import { trainerCardById } from "#trainers/trainer-card/trainer-card";
 import { TrainingSlotType } from "#trainers/trainer-strategy";
 
 export interface TrainerCardSaveData {
@@ -25,49 +25,65 @@ export class TrainerCardManager {
   }
 
   syncSlotsWithStrategy(): void {
-  const strategySlots = trainerStrategyManager.getSlots();
+    const strategySlots = trainerStrategyManager.getSlots();
 
-  const types: TrainerCardCategory[] = [
-    ...Array(strategySlots[TrainingSlotType.BATTLE]).fill(
-      TrainerCardCategory.BATTLE,
-    ),
-    ...Array(strategySlots[TrainingSlotType.GROWTH]).fill(
-      TrainerCardCategory.GROWTH,
-    ),
-    ...Array(strategySlots[TrainingSlotType.FRIEND]).fill(
-      TrainerCardCategory.FRIEND,
-    ),
-    ...Array(strategySlots[TrainingSlotType.EPIC]).fill(
-      TrainerCardCategory.EPIC,
-    ),
-  ];
+    const types: TrainerCardCategory[] = [
+      ...new Array(strategySlots[TrainingSlotType.BATTLE]).fill(TrainerCardCategory.BATTLE),
+      ...new Array(strategySlots[TrainingSlotType.GROWTH]).fill(TrainerCardCategory.GROWTH),
+      ...new Array(strategySlots[TrainingSlotType.FRIEND]).fill(TrainerCardCategory.FRIEND),
+      ...new Array(strategySlots[TrainingSlotType.EPIC]).fill(TrainerCardCategory.EPIC),
+    ];
 
-  this.configureSlots(types);
-}
+    this.configureSlots(types);
+  }
+
+  /** Start a fresh run. Do not call this when resuming a saved run. */
+  resetRun(): void {
+    this.owned.clear();
+    this.equipped = this.slotTypes.map(() => null);
+  }
 
   grant(id: TrainerCardId): boolean {
-    if (!trainerCardById.has(id)) return false;
+    if (!trainerCardById.has(id)) {
+      return false;
+    }
     this.owned.add(id);
     return true;
   }
 
-  has(id: TrainerCardId): boolean { return this.owned.has(id); }
-  isEquipped(id: TrainerCardId): boolean { return this.equipped.includes(id); }
-  getSlotTypes(): readonly TrainerCardCategory[] { return [...this.slotTypes]; }
-  getEquipped(): readonly (TrainerCardId | null)[] { return [...this.equipped]; }
+  has(id: TrainerCardId): boolean {
+    return this.owned.has(id);
+  }
+  isEquipped(id: TrainerCardId): boolean {
+    return this.equipped.includes(id);
+  }
+  getSlotTypes(): readonly TrainerCardCategory[] {
+    return [...this.slotTypes];
+  }
+  getEquipped(): readonly (TrainerCardId | null)[] {
+    return [...this.equipped];
+  }
 
   equip(slotIndex: number, id: TrainerCardId): boolean {
     const slot = this.slotTypes[slotIndex];
     const card = trainerCardById.get(id);
-    if (!slot || !card || !this.owned.has(id)) return false;
-    if (slot !== TrainerCardCategory.EPIC && slot !== card.category) return false;
-    if (this.isEquipped(id)) return false; // no double-equipping the same card
+    if (!slot || !card || !this.owned.has(id)) {
+      return false;
+    }
+    if (slot !== TrainerCardCategory.EPIC && slot !== card.category) {
+      return false;
+    }
+    if (this.isEquipped(id)) {
+      return false; // no double-equipping the same card
+    }
     this.equipped[slotIndex] = id;
     return true;
   }
 
   unequip(slotIndex: number): boolean {
-    if (slotIndex < 0 || slotIndex >= this.equipped.length) return false;
+    if (slotIndex < 0 || slotIndex >= this.equipped.length) {
+      return false;
+    }
     this.equipped[slotIndex] = null;
     return true;
   }
@@ -78,11 +94,13 @@ export class TrainerCardManager {
     for (const id of this.equipped) {
       const card = id && trainerCardById.get(id);
       for (const attr of card?.attrs ?? []) {
-        if (attr instanceof CardMultiplierAttr && attr.kind === kind) multiplier *= attr.multiplier;
+        if (attr instanceof CardMultiplierAttr && attr.kind === kind) {
+          multiplier *= attr.multiplier;
+        }
       }
     }
-    const harmony = this.equipped.some(id =>
-      (id && trainerCardById.get(id)?.attrs.some(attr => attr instanceof HarmonyCardAttr)) || false,
+    const harmony = this.equipped.some(
+      id => (id && trainerCardById.get(id)?.attrs.some(attr => attr instanceof HarmonyCardAttr)) || false,
     );
     return harmony ? 1 + (multiplier - 1) * 1.2 : multiplier;
   }
@@ -96,9 +114,15 @@ export class TrainerCardManager {
     this.equipped = this.slotTypes.map((slot, i) => {
       const id = data?.equipped?.[i];
       const card = id && trainerCardById.get(id);
-      if (!id || !this.owned.has(id) || !card) return null;
-      if (slot !== TrainerCardCategory.EPIC && slot !== card.category) return null;
-      if (data?.equipped?.indexOf(id) !== i) return null;
+      if (!id || !this.owned.has(id) || !card) {
+        return null;
+      }
+      if (slot !== TrainerCardCategory.EPIC && slot !== card.category) {
+        return null;
+      }
+      if (data?.equipped?.indexOf(id) !== i) {
+        return null;
+      }
       return id;
     });
   }

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "hayley.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 33,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "hayley.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 31,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 31,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 31,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:69ccb2f26f323f3d4b2fbbd17df559a5:95bea05b38ac6f9dceb1b4ff7107398f:fed46656b15b2f18bf07c9b9db82663a$"
+	}
+}

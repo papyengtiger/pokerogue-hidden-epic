@@ -1,5 +1,8 @@
 import { globalScene } from "#app/global-scene";
+import { AbilityId } from "#enums/ability-id";
 import { HitResult } from "#enums/hit-result";
+import { MoveId } from "#enums/move-id";
+import { PokemonType } from "#enums/pokemon-type";
 import type { Pokemon } from "#field/pokemon";
 import { randSeedInt } from "#utils/common";
 
@@ -9,6 +12,7 @@ export enum NaturalDisasterType {
   ROCKSLIDE,
   LIGHTNING,
   ERUPTION,
+  TYPHOON,
 }
 
 export enum NaturalDisasterGrade {
@@ -17,6 +21,22 @@ export enum NaturalDisasterGrade {
   GRADE_3 = 3,
   GRADE_4 = 4,
   GRADE_5 = 5,
+}
+
+/**
+ * 도구/기술/특성 시스템에서 등록하는 추가 감면 판정.
+ * 반환값: 0 = 면역, 0.5 = 피해 절반, 1 = 감면 없음.
+ * 여러 효과가 있으면 곱연산으로 중첩된다.
+ * 주의: 실제 도구 및 기술 판정은 호출 측에서 연결해야 한다.
+ */
+export type DisasterProtectionResolver = (pokemon: Pokemon, disaster: NaturalDisaster, reserve: boolean) => number;
+
+const disasterProtectionResolvers = new Set<DisasterProtectionResolver>();
+
+/** 호출 시 등록 해제 함수를 반환한다. */
+export function registerDisasterProtectionResolver(resolver: DisasterProtectionResolver): () => void {
+  disasterProtectionResolvers.add(resolver);
+  return () => disasterProtectionResolvers.delete(resolver);
 }
 
 export abstract class NaturalDisaster {
@@ -97,8 +117,118 @@ export abstract class NaturalDisaster {
   /**
    * 실제 피해량 계산.
    */
-  protected calculateDamage(pokemon: Pokemon): number {
-    return Math.max(1, Math.floor(pokemon.getMaxHp() * this.getDamageRatio()));
+  protected calculateDamage(pokemon: Pokemon, reserve = false): number {
+    const baseDamage = Math.max(1, Math.floor(pokemon.getMaxHp() * this.getDamageRatio()));
+    // 자연재해는 기술 공격이 아닌 간접 피해다.
+    // 매직가드와 사용자 지정 특성별 재해 면역을 먼저 적용한다.
+    if (this.hasDisasterImmunityAbility(pokemon)) {
+      return 0;
+    }
+    // 미스터리 조우처럼 진영 내 생존 포켓몬이 보호 기술을 보유했다면 모두 보호.
+    if (this.hasDisasterProtectionMoveInParty(pokemon)) {
+      return 0;
+    }
+    const typeMultiplier = this.getTypeDamageMultiplier(pokemon);
+    if (typeMultiplier === 0) {
+      return 0;
+    }
+
+    // 실제 소지 도구를 확인한다. 파손되어 목록에서 제거된 풍선은 적용되지 않는다.
+    const heldItems = pokemon.getHeldItems();
+    const itemIds = new Set(heldItems.map(item => item.type?.id));
+    if (this.type === NaturalDisasterType.EARTHQUAKE && itemIds.has("AIR_BALLOON")) {
+      return 0;
+    }
+    if (this.type === NaturalDisasterType.TYPHOON && itemIds.has("UTILITY_UMBRELLA")) {
+      return 0;
+    }
+
+    let modifier = typeMultiplier;
+    for (const resolver of disasterProtectionResolvers) {
+      const result = resolver(pokemon, this, reserve);
+      // 잘못된 반환값이 HP를 증가시키거나 피해를 증폭하지 않도록 제한
+      if (Number.isFinite(result)) {
+        modifier *= Math.max(0, Math.min(1, result));
+      }
+    }
+    // 면역이면 0, 감면 중 살아남은 피해는 최소 1
+    return modifier === 0 ? 0 : Math.max(1, Math.floor(baseDamage * modifier));
+  }
+
+  /**
+   * 기술을 실제로 사용하지 않아도, 같은 진영의 생존 포켓몬 중
+   * 대응 기술을 보유한 포켓몬이 하나라도 있으면 그 진영 전체를 보호한다.
+   * 기술을 배울 수 있기만 한 경우는 제외하고 실제 기술칸을 검사한다.
+   * 지진/홍수/태풍 외 재해는 여기서 보호하지 않는다.
+   */
+  protected hasDisasterProtectionMoveInParty(pokemon: Pokemon): boolean {
+    const escapeMoves = [MoveId.SHADOW_FORCE, MoveId.PHANTOM_FORCE];
+    const specificMoves: Partial<Record<NaturalDisasterType, MoveId[]>> = {
+      [NaturalDisasterType.EARTHQUAKE]: [MoveId.FLY, MoveId.BOUNCE, MoveId.SKY_DROP],
+      [NaturalDisasterType.FLOOD]: [MoveId.DIVE],
+      [NaturalDisasterType.TYPHOON]: [MoveId.DIG],
+    };
+    const protectedMoves = [...escapeMoves, ...(specificMoves[this.type] ?? [])];
+    // 사전에 정한 세 재해가 아닌 경우 섀도다이브도 별도 적용하지 않는다.
+    if (![NaturalDisasterType.EARTHQUAKE, NaturalDisasterType.FLOOD, NaturalDisasterType.TYPHOON].includes(this.type)) {
+      return false;
+    }
+    const party = pokemon.isPlayer() ? globalScene.getPlayerParty() : globalScene.getEnemyParty();
+    return party.some(
+      member => member && !member.isFainted() && member.getMoveset().some(move => protectedMoves.includes(move.moveId)),
+    );
+  }
+
+  /** 특성별 자연재해 면역. Pokemon.hasAbility()로 현재 특성을 판정한다. */
+  protected hasDisasterImmunityAbility(pokemon: Pokemon): boolean {
+    if (pokemon.hasAbility(AbilityId.MAGIC_GUARD)) {
+      return true;
+    }
+    switch (this.type) {
+      case NaturalDisasterType.EARTHQUAKE:
+        // 천정부지의 실제 AbilityId가 확인되면 부유와 함께 면역에 추가하세요.
+        return pokemon.hasAbility(AbilityId.LEVITATE);
+      case NaturalDisasterType.FLOOD:
+        return pokemon.hasAbility(AbilityId.STORM_DRAIN) || pokemon.hasAbility(AbilityId.WATER_ABSORB);
+      case NaturalDisasterType.TYPHOON:
+        return pokemon.hasAbility(AbilityId.WIND_POWER) || pokemon.hasAbility(AbilityId.WIND_RIDER);
+      default:
+        return false;
+    }
+  }
+
+  /** 재해별 타입 면역/감면. 복합 타입이라도 같은 감면은 한 번만 적용. */
+  protected getTypeDamageMultiplier(pokemon: Pokemon): number {
+    const types = pokemon.getTypes();
+    const has = (type: PokemonType) => types.includes(type);
+    switch (this.type) {
+      case NaturalDisasterType.EARTHQUAKE:
+        if (has(PokemonType.FLYING)) {
+          return 0;
+        }
+        if (has(PokemonType.GROUND) || has(PokemonType.STEEL)) {
+          return 0.5;
+        }
+        return 1;
+      case NaturalDisasterType.FLOOD:
+        if (has(PokemonType.WATER)) {
+          return 0;
+        }
+        if (has(PokemonType.GRASS) || has(PokemonType.DRAGON)) {
+          return 0.5;
+        }
+        return 1;
+      case NaturalDisasterType.TYPHOON:
+        if (has(PokemonType.FLYING)) {
+          return 0;
+        }
+        if (has(PokemonType.ROCK) || has(PokemonType.STEEL)) {
+          return 0.5;
+        }
+        return 1;
+      default:
+        return 1;
+    }
   }
 
   /**
@@ -133,7 +263,12 @@ export abstract class NaturalDisaster {
       return false;
     }
 
-    const damage = this.calculateDamage(pokemon);
+    const damage = this.calculateDamage(pokemon, reserve);
+
+    if (damage === 0) {
+      console.log("[NATURAL_DISASTER_IMMUNE]", { type: this.type, pokemon: pokemon.getName() });
+      return false;
+    }
 
     console.log("[NATURAL_DISASTER_DAMAGE]", {
       type: this.type,
@@ -287,4 +422,13 @@ export abstract class NaturalDisaster {
 
 export class EarthquakeDisaster extends NaturalDisaster {
   public readonly type = NaturalDisasterType.EARTHQUAKE;
+}
+
+/** 홍수와 태풍은 기존 지진과 동일한 규모/대기 피해 규칙을 공유한다. */
+export class FloodDisaster extends NaturalDisaster {
+  public readonly type = NaturalDisasterType.FLOOD;
+}
+
+export class TyphoonDisaster extends NaturalDisaster {
+  public readonly type = NaturalDisasterType.TYPHOON;
 }

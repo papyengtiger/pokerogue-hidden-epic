@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "birch.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "birch.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:107db693c218725ca408befd2e50bc9e:dec1d3278d39e4caf92809ccdfca1f82:c47411062b803273ca372e89f49bd538$"
+	}
+}

@@ -1,6 +1,7 @@
 import { globalScene } from "#app/global-scene";
 import { Phase } from "#app/phase";
 import { getCharVariantFromDialogue } from "#data/dialogue";
+import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import { ArenaTagSide } from "#enums/arena-tag-side";
 import { BattleSpec } from "#enums/battle-spec";
 import { BattlerTagLapseType } from "#enums/battler-tag-lapse-type";
@@ -47,6 +48,17 @@ export class MysteryEncounterPhase extends Phase {
    */
   start() {
     super.start();
+
+    // 미스터리 조우에서는 몬스터 소굴 상태를 유지하지 않음
+    if (monsterHouseManager.isActive()) {
+      console.warn("[MYSTERY_ENCOUNTER_MONSTER_HOUSE_CONFLICT]", {
+        wave: globalScene.currentBattle.waveIndex,
+      });
+
+      monsterHouseManager.reset();
+
+      console.log("[MYSTERY_ENCOUNTER_HOUSE_RESET]");
+    }
 
     // Clears out queued phases that are part of standard battle
     globalScene.phaseManager.clearPhaseQueue();

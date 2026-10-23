@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "robokid_reckless.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 117,
+				"h": 119
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "B2W2_F-00_Pokéstar_2.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 115,
+						"h": 117
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 115,
+						"h": 117
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 115,
+						"h": 117
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:55f40742db3d1712da0cc9220ddbd037:414cc968f6ff33e0c789c1373c79a3fd:56a56270fda2f6aba8fb042600d25592$"
+	}
+}

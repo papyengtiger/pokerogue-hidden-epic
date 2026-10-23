@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dexio.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 46,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dexio.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 44,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 44,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 44,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:257887cc02a19775ff86deb794b7719b:bac8ad65ca1034e4dcaf2f1df33b1011:1702959aba671d1893d581caa44587c5$"
+	}
+}

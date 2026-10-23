@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "adaman.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "adaman.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4cb4c2a1be9b44add5351de5b6aad941:6b43b680340939c8ff0cff9a7aa5b74a:d01b1936c61a26dbda8c941454231344$"
+	}
+}

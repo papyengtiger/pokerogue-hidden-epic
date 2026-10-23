@@ -6,6 +6,7 @@ import { mysteryTimeManager } from "#data/mystery-time/mystery-time-manager";
 import { BattleType } from "#enums/battle-type";
 import type { BattlerIndex } from "#enums/battler-index";
 import { ClassicFixedBossWaves } from "#enums/fixed-boss-waves";
+import { GameModes } from "#enums/game-modes";
 import { ModifierTier } from "#enums/modifier-tier";
 import { handleMysteryEncounterVictory } from "#mystery-encounters/encounter-phase-utils";
 import { PokemonPhase } from "#phases/pokemon-phase";
@@ -175,7 +176,7 @@ export class VictoryPhase extends PokemonPhase {
           }
         } else {
           const superExpWave = !gameMode.isEndless ? (globalScene.offsetGym ? 0 : 20) : 10;
-          if (gameMode.isEndless && currentWaveIndex === 10) {
+          if ((gameMode.isEndless || gameMode.modeId === GameModes.ANOTHER) && currentWaveIndex === 10) {
             globalScene.phaseManager.pushNew("ModifierRewardPhase", modifierTypes.EXP_SHARE);
           }
           if (currentWaveIndex <= 750 && (currentWaveIndex <= 500 || currentWaveIndex % 30 === superExpWave)) {

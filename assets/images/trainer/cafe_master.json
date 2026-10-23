@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cafe_master.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cafe_master.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f9ac2b8e217f1b789244741dcbf2a42a:719ee284527d0fd6082ca131185113e8:874330b7a137b554b53bc816dcfd1559$"
+	}
+}

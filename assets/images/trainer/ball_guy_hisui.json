@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ball_guy_hisui.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ball_guy_hisui.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fbb5718278cbb8d70153dfa141cd369f:9f7f7b38249f8fefa6fe099ce4fe8c86:b1a933ef9e16e1d15cf95441db019b01$"
+	}
+}

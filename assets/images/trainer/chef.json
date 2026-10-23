@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "chef.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 73,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "chef.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 71,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 71,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 71,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6daaf93b72a79f2f17592803df39c2d4:92e05134afadea1475f8a20f8c869198:827b466cad4e043f985af93c8690a1ae$"
+	}
+}

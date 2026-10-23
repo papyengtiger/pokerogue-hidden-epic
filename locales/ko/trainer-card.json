@@ -1,6 +1,50 @@
 {
-  "superEffective": {"name": "엄청난효과", "description": "효과가 굉장한 공격의 위력이 1.5배가 된다."},
-  "sweetReward": {"name": "달콤한보상", "description": "획득하는 포켓몬 사탕이 25% 증가한다."},
-  "growTogether": {"name": "동반성장", "description": "동료 포켓몬이 받는 경험치가 1.5배가 된다."},
-  "harmonyOfAll": {"name": "만물의조화", "description": "다른 장착 카드의 수치형 추가 보너스가 20% 증가한다."}
+  "superEffective": {
+    "name": "엄청난효과",
+    "description": "효과가 굉장한 공격의 위력이 1.5배가 된다."
+  },
+  "sweetReward": {
+    "name": "달콤한보상",
+    "description": "획득하는 포켓몬 사탕이 25% 증가한다."
+  },
+  "growTogether": {
+    "name": "동반성장",
+    "description": "동료 포켓몬이 받는 경험치가 1.5배가 된다."
+  },
+  "harmonyOfAll": {
+    "name": "만물의조화",
+    "description": "다른 장착 카드의 수치형 추가 보너스가 20% 증가한다."
+  },
+  "ppSaver": {
+    "name": "요령이좋아",
+    "description": "기술을 사용할 때 50% 확률로 PP를 소모하지 않는다."
+  },
+  "notVeryEffectivePower": {
+    "name": "그럭저럭파워",
+    "description": "효과가 별로인 공격의 위력이 2배, 효과가 매우 별로인 공격의 위력이 4배가 된다."
+  },
+  "smallProfit": {
+    "name": "소소한이득",
+    "description": "획득하는 경험치, 골드, RP가 25% 증가한다."
+  },
+  "diligent": {
+    "name": "근면성실",
+    "description": "획득하는 노력치가 25% 증가한다."
+  },
+  "weAreFriends": {
+    "name": "우리는친구",
+    "description": "포켓몬의 포획률이 1.25배가 된다."
+  },
+  "bestLoyalty": {
+    "name": "최고의의리",
+    "description": "아군 포켓몬이 받는 피해가 25% 감소한다."
+  },
+  "oneMoreOne": {
+    "name": "원모어원",
+    "description": "전투 후 보상 선택 시 서로 다른 아이템을 하나 더 선택할 수 있다."
+  },
+  "frugal": {
+    "name": "알뜰살뜰",
+    "description": "상점 아이템 가격과 리롤 비용이 10% 감소한다."
+  }
 }

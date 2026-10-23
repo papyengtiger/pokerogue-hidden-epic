@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "cook_1.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "cook_1.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6e0a7288bf0445aa3b1593368da747fb:b2fe8fd7de73f52f454603fe8cd008c8:d2e9d2eb474ac7f88840bde127f4ac98$"
+	}
+}

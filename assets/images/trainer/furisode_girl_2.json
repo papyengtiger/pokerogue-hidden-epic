@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "furisode_girl_2.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 53,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "furisode_girl_2.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 51,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 51,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 51,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d34806f595cb440f404bcce33d3b1824:aedbcefcd07e34a797d39484cf5c5941:b6c800235b55425bdd32f3fcaced68d1$"
+	}
+}

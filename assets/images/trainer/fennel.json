@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "fennel.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 31,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "fennel.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 29,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 29,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 29,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:70a9950cb3342be910f77046e9c852b8:5dc91cb0249c226cde4800c6599d7da6:ef0c9c747ed34e34df6b430e3fed3eab$"
+	}
+}

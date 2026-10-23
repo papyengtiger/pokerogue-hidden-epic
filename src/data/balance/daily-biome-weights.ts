@@ -1,9 +1,10 @@
 import { BiomeId } from "#enums/biome-id";
+import { getEnumValues } from "#utils/enums";
 
 // Initially weighted by amount of exits each biome has
 // Town and End are set to 0 however
 // And some other biomes were balanced +1/-1 based on average size of the total daily.
-export const dailyBiomeWeights = Object.freeze({
+const baseDailyBiomeWeights: Partial<Record<BiomeId, number>> = {
   [BiomeId.CAVE]: 3,
   [BiomeId.LAKE]: 3,
   [BiomeId.PLAINS]: 3,
@@ -42,4 +43,18 @@ export const dailyBiomeWeights = Object.freeze({
 
   [BiomeId.TOWN]: 0,
   [BiomeId.END]: 0,
-}) satisfies Readonly<Record<BiomeId, number>>;
+};
+
+export const dailyBiomeWeights: Readonly<Record<BiomeId, number>> =
+  Object.freeze(
+    Object.fromEntries(
+      getEnumValues(BiomeId).map(biome => [
+        biome,
+        biome === BiomeId.END ||
+        biome === BiomeId.TUTORIAL_ROOM ||
+        biome === BiomeId.TOWN
+          ? 0
+          : baseDailyBiomeWeights[biome] ?? 1
+      ])
+    ) as Record<BiomeId, number>
+  );

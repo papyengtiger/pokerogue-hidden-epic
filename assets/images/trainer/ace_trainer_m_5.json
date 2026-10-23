@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ace_trainer_m_5.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ace_trainer_m_5.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:afd409920a298d0c8ab96b523e0e4c19:225d57324b18ae6d678dc25ae7b9c7a3:3dea9634821da5d22709fd63c077d0e2$"
+	}
+}

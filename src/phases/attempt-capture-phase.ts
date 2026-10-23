@@ -30,13 +30,13 @@ import { PokemonHeldItemModifier } from "#modifiers/modifier";
 import { PokemonPhase } from "#phases/pokemon-phase";
 import { achvs } from "#system/achv";
 import { questManager } from "#system/quest-manager";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import type { PartyOption } from "#ui/party-ui-handler";
 import { PartyUiMode } from "#ui/party-ui-handler";
 import { SummaryUiMode } from "#ui/summary-ui-handler";
 import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder } from "#utils/common";
 import i18next from "i18next";
-
 
 // TODO: Refactor and split up to allow for overriding capture chance
 // TODO: Refactor and split up to allow for overriding capture chance
@@ -76,7 +76,7 @@ export class AttemptCapturePhase extends PokemonPhase {
     });
 
     const pokemon = this.getCaptureTarget();
-// 미스터리몬스터는 포획 불가
+    // 미스터리몬스터는 포획 불가
     if (pokemon.isMysteryMonster()) {
       globalScene.ui.showText("미스터리몬스터는 포획할 수 없다!", null, () => this.end(), 1500, true);
 
@@ -148,9 +148,22 @@ export class AttemptCapturePhase extends PokemonPhase {
     const pokeballMultiplier = getPokeballCatchMultiplier(this.pokeballType, pokemon);
     const statusMultiplier = pokemon.status ? getStatusEffectCatchRateMultiplier(pokemon.status.effect) : 1;
     const shinyMultiplier = pokemon.isShiny() ? timedEventManager.getShinyCatchMultiplier() : 1;
+    // 우리는친구: 플레이어의 야생 포켓몬 포획 계산에만 1.25배 적용.
+    // 확정 포획(-1)과 포획 불가(0) 등의 특수 판정은 기존 동작을 유지한다.
+    const cardCatchMultiplier =
+      !pokemon.hasTrainer() && catchRate > 0 && pokeballMultiplier > 0
+        ? trainerCardManager.getMultiplier("CATCH_RATE")
+        : 1;
     const modifiedCatchRate = Math.round(
-      (((_3m - _2h) * catchRate * pokeballMultiplier) / _3m) * statusMultiplier * shinyMultiplier,
+      (((_3m - _2h) * catchRate * pokeballMultiplier) / _3m) * statusMultiplier * shinyMultiplier * cardCatchMultiplier,
     );
+    console.log("[TRAINER_CARD_CATCH_RATE]", {
+      pokemon: pokemon.getName(),
+      cardCatchMultiplier,
+      modifiedCatchRate,
+      isWild: !pokemon.hasTrainer(),
+      pokeballMultiplier,
+    });
     const shakeProbability = Math.round(65536 / Math.pow(255 / modifiedCatchRate, 0.1875)); // Formula taken from gen 6
     const criticalCaptureChance = getCriticalCaptureChance(modifiedCatchRate);
 
@@ -191,7 +204,7 @@ export class AttemptCapturePhase extends PokemonPhase {
       y: { value: 16 + fpOffset[1], ease: "Cubic.easeOut" },
       duration: 500,
       onComplete: () => {
-// Ball opens
+        // Ball opens
         this.pokeball.setTexture("pb", `${pokeballAtlasKey}_opening`);
         globalScene.time.delayedCall(17, () => this.pokeball.setTexture("pb", `${pokeballAtlasKey}_open`));
         globalScene.playSound("se/pb_rel");
@@ -304,7 +317,7 @@ export class AttemptCapturePhase extends PokemonPhase {
 
   failCatch(_shakeCount: number) {
     const pokemon = this.getCaptureTarget();
-globalScene.playSound("se/pb_rel");
+    globalScene.playSound("se/pb_rel");
     pokemon.setY(this.originalY);
     if (pokemon.status?.effect !== StatusEffect.SLEEP) {
       pokemon.cry(pokemon.getHpRatio() > 0.25 ? undefined : { rate: 0.85 });
@@ -336,31 +349,26 @@ globalScene.playSound("se/pb_rel");
 
   catch() {
     const pokemon = this.getCaptureTarget();
-// 몬스터소굴 예비 개체가 실제 필드 준비를 마칠 때까지 대기
-if (
-  monsterHouseManager.isActive()
-  && this.targetPokemonId !== undefined
-  && (!pokemon.isOnField() || !pokemon.isActive(true))
-) {
-  console.warn("[MONSTER_HOUSE_CAPTURE_WAIT_FOR_TARGET]", {
-    pokemonId: pokemon.id,
-    pokemon: pokemon.getName?.() ?? pokemon.name,
-    onField: pokemon.isOnField?.(),
-    active: pokemon.isActive?.(true),
-  });
+    // 몬스터소굴 예비 개체가 실제 필드 준비를 마칠 때까지 대기
+    if (
+      monsterHouseManager.isActive()
+      && this.targetPokemonId !== undefined
+      && (!pokemon.isOnField() || !pokemon.isActive(true))
+    ) {
+      console.warn("[MONSTER_HOUSE_CAPTURE_WAIT_FOR_TARGET]", {
+        pokemonId: pokemon.id,
+        pokemon: pokemon.getName?.() ?? pokemon.name,
+        onField: pokemon.isOnField?.(),
+        active: pokemon.isActive?.(true),
+      });
 
-  globalScene.time.delayedCall(250, () => {
-    globalScene.phaseManager.unshiftNew(
-      "AttemptCapturePhase",
-      0,
-      this.pokeballType,
-      this.targetPokemonId,
-    );
-  });
+      globalScene.time.delayedCall(250, () => {
+        globalScene.phaseManager.unshiftNew("AttemptCapturePhase", 0, this.pokeballType, this.targetPokemonId);
+      });
 
-  this.end();
-  return;
-}
+      this.end();
+      return;
+    }
 
     if (pokemon.isMysteryMonster()) {
       this.removePb();
@@ -410,7 +418,7 @@ if (
       }),
       null,
       () => {
-console.log("[CAPTURE_MESSAGE_CALLBACK]", {
+        console.log("[CAPTURE_MESSAGE_CALLBACK]", {
           pokemon: pokemon.getName(),
           monsterHouse: monsterHouseManager.isActive(),
         });
@@ -441,32 +449,22 @@ console.log("[CAPTURE_MESSAGE_CALLBACK]", {
               );
 
             if (hasReservePartyMember) {
-  const expValue = pokemon.getExpValue();
-  globalScene.applyPartyExp(expValue, true);
+              const expValue = pokemon.getExpValue();
+              globalScene.applyPartyExp(expValue, true);
 
-  console.log("[MONSTER_HOUSE_CAPTURE_CONTINUE]", {
-    pokemon: pokemon.getName(),
-    expValue,
-    remaining: monsterHouseManager.getRemainingEnemies(),
-    bossReleased,
-  });
+              console.log("[MONSTER_HOUSE_CAPTURE_CONTINUE]", {
+                pokemon: pokemon.getName(),
+                expValue,
+                remaining: monsterHouseManager.getRemainingEnemies(),
+                bossReleased,
+              });
 
-  // 포획한 개체가 필드에서 사라졌으므로
-  // 다음 살아있는 소굴 개체를 필드에 소환한다.
-  globalScene.phaseManager.unshiftNew(
-    "SwitchSummonPhase",
-    SwitchType.SWITCH,
-    0,
-    -1,
-    false,
-    false,
-  );
-} else {
-  globalScene.phaseManager.unshiftNew(
-    "VictoryPhase",
-    this.battlerIndex,
-  );
-}
+              // 포획한 개체가 필드에서 사라졌으므로
+              // 다음 살아있는 소굴 개체를 필드에 소환한다.
+              globalScene.phaseManager.unshiftNew("SwitchSummonPhase", SwitchType.SWITCH, 0, -1, false, false);
+            } else {
+              globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
+            }
 
             console.log("[MONSTER_HOUSE_CAPTURE_FLOW]", {
               pokemon: pokemon.getName(),
@@ -503,18 +501,18 @@ console.log("[CAPTURE_MESSAGE_CALLBACK]", {
         }
 
         const addToParty = (slotIndex?: number) => {
-console.log("[CAPTURE_ADD_TO_PARTY]", {
+          console.log("[CAPTURE_ADD_TO_PARTY]", {
             pokemon: pokemon.getName(),
             slotIndex,
             monsterHouse: monsterHouseManager.isActive(),
           });
 
           const newPokemon = pokemon.addToParty(this.pokeballType, slotIndex);
-const modifiers = globalScene.findModifiers(
+          const modifiers = globalScene.findModifiers(
             m => m instanceof PokemonHeldItemModifier && m.pokemonId === pokemon.id,
             false,
           ) as PokemonHeldItemModifier[];
-// 포획한 포켓몬의 지닌도구 의뢰 판정
+          // 포획한 포켓몬의 지닌도구 의뢰 판정
           for (const modifier of modifiers) {
             const itemId = modifier.type?.id;
 
@@ -551,16 +549,16 @@ const modifiers = globalScene.findModifiers(
           // 실제 지닌도구를 플레이어 쪽으로 이전
           Promise.all(modifiers.map(m => globalScene.addModifier(m, true)))
             .then(() => {
-globalScene.updateModifiers(true);
+              globalScene.updateModifiers(true);
 
               removePokemon();
 
               if (newPokemon) {
                 newPokemon.leaveField(true, true, false);
-newPokemon
+                newPokemon
                   .loadAssets()
                   .then(() => {
-console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
+                    console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
                       pokemon: pokemon.getName(),
                       pokemonId: pokemon.id,
                     });
@@ -568,7 +566,7 @@ console.log("[CAPTURE_NEW_POKEMON_ASSETS_LOADED]", {
                     end();
                   })
                   .catch(error => {
-console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
+                    console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
                       pokemon: pokemon.getName(),
                       pokemonId: pokemon.id,
                       error,
@@ -577,11 +575,11 @@ console.error("[CAPTURE_NEW_POKEMON_ASSET_LOAD_FAILED]", {
                     end();
                   });
               } else {
-end();
+                end();
               }
             })
             .catch(error => {
-console.error("[CAPTURE_MODIFIER_TRANSFER_FAILED]", error);
+              console.error("[CAPTURE_MODIFIER_TRANSFER_FAILED]", error);
             });
         };
 

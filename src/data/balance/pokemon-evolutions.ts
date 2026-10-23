@@ -12,7 +12,7 @@ import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesFormKey } from "#enums/species-form-key";
 import { SpeciesId } from "#enums/species-id";
 import { TimeOfDay } from "#enums/time-of-day";
-import { WeatherType } from "#enums/weather-type";
+import type { WeatherType } from "#enums/weather-type";
 import type { Pokemon } from "#field/pokemon";
 import type { SpeciesStatBoosterItem, SpeciesStatBoosterModifierType } from "#modifiers/modifier-type";
 import type { EvoLevelThreshold } from "#types/species-gen-types";
@@ -1161,7 +1161,7 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.SLIGGOO, 20, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DAWN, TimeOfDay.DAY]})
   ],
   [SpeciesId.SLIGGOO]: [
-    new SpeciesEvolution(SpeciesId.GOODRA, 45, null, {key: EvoCondKey.WEATHER, weather: [ WeatherType.RAIN, WeatherType.FOG, WeatherType.HEAVY_RAIN ]}, [50, 60, 70])
+    new SpeciesEvolution(SpeciesId.GOODRA, 45, null, null, [50, 60, 70])
   ],
   [SpeciesId.BERGMITE]: [
     new SpeciesEvolution(SpeciesId.HISUI_AVALUGG, 37, null, {key: EvoCondKey.TIME, time: [TimeOfDay.DUSK, TimeOfDay.NIGHT]}),
@@ -1385,7 +1385,7 @@ export const pokemonEvolutions: PokemonEvolutions = {
     new SpeciesEvolution(SpeciesId.HISUI_ZOROARK, 30, null, null)
   ],
   [SpeciesId.HISUI_SLIGGOO]: [
-    new SpeciesEvolution(SpeciesId.HISUI_GOODRA, 50, null, {key: EvoCondKey.WEATHER, weather: [ WeatherType.RAIN, WeatherType.FOG, WeatherType.HEAVY_RAIN ]}, [60, 70, 80])
+    new SpeciesEvolution(SpeciesId.HISUI_GOODRA, 45, null, null, [60, 70, 80])
   ],
   [SpeciesId.SPRIGATITO]: [
     new SpeciesEvolution(SpeciesId.FLORAGATO, 16, null, null)

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "m_f_o.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 182,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "180px-B2W2_UFO_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 180,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 180,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 180,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:de06558e993598c601fee96a5b6de813:22a701f2c2ca06bbde509d222a84a079:80239128cffb57053e63f5ea1873ff35$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "dragon_tamer_f.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "dragon_tamer_f.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:375ba8cf8abdd3070182b3322a9e8d02:18f00f6120308beebd928be4edd83a7e:6b1fc13e5ba5643d6140839be3949867$"
+	}
+}

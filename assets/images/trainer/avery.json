@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "avery.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 60,
+				"h": 90
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "avery.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 58,
+						"h": 88
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 58,
+						"h": 88
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 58,
+						"h": 88
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ead6dfffa0d6633626cdf9b6a313072e:11e86351b34305898cdaab4fbe231308:69f633761647269d2cae53948f0a9099$"
+	}
+}

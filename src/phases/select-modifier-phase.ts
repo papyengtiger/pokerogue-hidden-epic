@@ -1,8 +1,10 @@
 import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
 import type { BerryType } from "#enums/berry-type";
+import { GameModes } from "#enums/game-modes";
 import { ModifierPoolType } from "#enums/modifier-pool-type";
 import { ModifierTier } from "#enums/modifier-tier";
+import { TrainerCardId } from "#enums/trainer-card-id";
 import { UiMode } from "#enums/ui-mode";
 import type { Modifier } from "#modifiers/modifier";
 import {
@@ -32,6 +34,7 @@ import {
 } from "#modifiers/modifier-type";
 import { BattlePhase } from "#phases/battle-phase";
 import { questManager } from "#system/quest-manager";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import type { ModifierSelectUiHandler } from "#ui/modifier-select-ui-handler";
 import { SHOP_OPTIONS_ROW_LIMIT } from "#ui/modifier-select-ui-handler";
 import { PartyOption, PartyUiHandler, PartyUiMode } from "#ui/party-ui-handler";
@@ -48,6 +51,12 @@ export class SelectModifierPhase extends BattlePhase {
   private isCopy: boolean;
 
   private typeOptions: ModifierTypeOption[];
+
+  private remainingRewardChoices = 1;
+  private initialRewardChoices = 1;
+  private pendingRewardOption?: ModifierTypeOption;
+  private rewardSelectCallback?: ModifierSelectCallback;
+  private rewardCompleted = false;
 
   constructor(
     rerollCount = 0,
@@ -83,6 +92,18 @@ export class SelectModifierPhase extends BattlePhase {
     const modifierCount = this.getModifierCount();
 
     this.typeOptions = this.getModifierTypeOptions(modifierCount);
+
+    // 원모어원: 보상 아이템을 최대 2개 선택 가능
+    this.remainingRewardChoices = !this.isCopy && trainerCardManager.isEquipped(TrainerCardId.ONE_MORE_ONE) ? 2 : 1;
+
+    this.initialRewardChoices = this.remainingRewardChoices;
+    this.pendingRewardOption = undefined;
+    this.rewardCompleted = false;
+
+    console.log("[TRAINER_CARD_ONE_MORE_ONE_INIT]", {
+      equipped: trainerCardManager.isEquipped(TrainerCardId.ONE_MORE_ONE),
+      remainingChoices: this.remainingRewardChoices,
+    });
 
     // ★ REWARD 방식 물건 찾기 의뢰
     const rewardItemQuest = questManager.getActiveRewardItemFindQuest(globalScene.currentBattle.waveIndex);
@@ -121,7 +142,11 @@ export class SelectModifierPhase extends BattlePhase {
             () => {
               globalScene.ui.revertMode();
               globalScene.ui.setMode(UiMode.MESSAGE);
-              super.end();
+              if (this.remainingRewardChoices < this.initialRewardChoices) {
+                this.finishRewardSelection();
+              } else {
+                super.end();
+              }
             },
             () => {
               globalScene.ui.revertMode(); // 핵심
@@ -206,6 +231,7 @@ export class SelectModifierPhase extends BattlePhase {
       }
     };
 
+    this.rewardSelectCallback = modifierSelectCallback;
     this.resetModifierSelect(modifierSelectCallback);
   }
 
@@ -253,19 +279,86 @@ export class SelectModifierPhase extends BattlePhase {
     return false;
   }
 
+  private finishRewardSelection(): void {
+    if (this.rewardCompleted) {
+      return;
+    }
+
+    this.rewardCompleted = true;
+    this.pendingRewardOption = undefined;
+
+    globalScene.ui.clearText();
+    globalScene.ui.setMode(UiMode.MESSAGE);
+
+    if (!this.isCopy && globalScene.gameMode.modeId !== GameModes.TUTORIAL) {
+      console.log("[TRAINER_CARD_PHASE_QUEUED]");
+
+      globalScene.phaseManager.unshiftNew("SelectTrainerCardPhase");
+    }
+
+    super.end();
+  }
+
+  private completeRewardSelection(
+    selectedOption: ModifierTypeOption,
+    modifierSelectCallback: ModifierSelectCallback,
+  ): void {
+    if (this.rewardCompleted) {
+      return;
+    }
+
+    // 획득한 선택지만 제거한다.
+    const index = this.typeOptions.indexOf(selectedOption);
+
+    if (index < 0) {
+      console.warn("[ONE_MORE_ONE_OPTION_NOT_FOUND]");
+      return;
+    }
+
+    this.typeOptions.splice(index, 1);
+    this.remainingRewardChoices--;
+    this.pendingRewardOption = undefined;
+
+    console.log("[TRAINER_CARD_ONE_MORE_ONE_REWARD]", {
+      item: selectedOption.type?.getSafeName(),
+      remainingChoices: this.remainingRewardChoices,
+      remainingOptions: this.typeOptions.length,
+    });
+
+    if (this.remainingRewardChoices > 0 && this.typeOptions.length > 0) {
+      // 동일 MODIFIER_SELECT 모드 안에서 setMode를 다시 호출하면
+      // 선택 입력 상태가 복구되지 않을 수 있다. 모드를 한 번 전환한다.
+      globalScene.ui.clearText();
+      globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+        if (!this.rewardCompleted) {
+          this.resetModifierSelect(modifierSelectCallback);
+        }
+      });
+      return;
+    }
+
+    // 두 번째 보상까지 획득하면 정상 종료
+    this.finishRewardSelection();
+  }
+
   // Pick a modifier from among the rewards and apply it
   private selectRewardModifierOption(cursor: number, modifierSelectCallback: ModifierSelectCallback): boolean {
-    const modifierType = this.typeOptions[cursor]?.type;
-    if (!modifierType) {
+    const selectedOption = this.typeOptions[cursor];
+    const modifierType = selectedOption?.type;
+
+    if (!modifierType || this.rewardCompleted) {
       return false;
     }
 
-    // 포켓몬 대상 아이템만 메뉴 표시
+    // 비동기 지급 처리에서도 같은 아이템을 식별하도록 저장
+    this.pendingRewardOption = selectedOption;
+
+    // 포켓몬 대상 아이템은 기존 메뉴 사용
     if (modifierType instanceof PokemonModifierType) {
       return this.openRewardActionMenu(cursor, modifierSelectCallback);
     }
 
-    // 금구슬 등 즉시/비포켓몬 대상 아이템은 기존처럼 바로 처리
+    // 즉시 적용 아이템
     return this.applyChosenModifier(modifierType, -1, modifierSelectCallback);
   }
 
@@ -311,6 +404,8 @@ export class SelectModifierPhase extends BattlePhase {
       purchaseMode = "TRAINER_LOADOUT";
     }
 
+    const selectedOption = this.typeOptions[cursor];
+
     const stored = globalScene.gameData.addToStorage(itemId, 1, {
       purchaseMode,
     });
@@ -328,24 +423,9 @@ export class SelectModifierPhase extends BattlePhase {
 
     globalScene.gameData.saveSystem();
 
-    globalScene.ui.showText(
-  `${modifierType.name}을(를) 창고로 보냈습니다.`,
-  undefined,
-  () => {
-    globalScene.ui.clearText();
-    globalScene.ui.setMode(UiMode.MESSAGE);
-
-    if (!this.isCopy) {
-      console.log("[TRAINER_CARD_PHASE_QUEUED_STORAGE]");
-
-      globalScene.phaseManager.unshiftNew(
-        "SelectTrainerCardPhase",
-      );
-    }
-
-    super.end();
-  },
-);
+    globalScene.ui.showText(`${modifierType.name}을(를) 창고로 보냈습니다.`, undefined, () => {
+      this.completeRewardSelection(selectedOption, modifierSelectCallback);
+    });
 
     return true;
   }
@@ -398,6 +478,12 @@ export class SelectModifierPhase extends BattlePhase {
 
   // Reroll rewards
   private rerollModifiers() {
+    if (this.remainingRewardChoices < this.initialRewardChoices) {
+      globalScene.ui.playError();
+      console.log("[ONE_MORE_ONE_REROLL_BLOCKED]");
+      return false;
+    }
+
     const rerollCost = this.getRerollCost(globalScene.lockModifierTiers);
     if (rerollCost < 0 || globalScene.money < rerollCost) {
       globalScene.ui.playError();
@@ -604,20 +690,37 @@ export class SelectModifierPhase extends BattlePhase {
         globalScene.ui.playError();
       }
     } else {
-  globalScene.ui.clearText();
-  globalScene.ui.setMode(UiMode.MESSAGE);
+      // 보상 아이템 획득
+      if (cost === -1) {
+        if (!result) {
+          globalScene.ui.playError();
 
-  // 일반 보상 아이템 선택 후 트레이닝 카드 선택
-  if (result && cost === -1 && !this.isCopy) {
-    console.log("[TRAINER_CARD_PHASE_QUEUED]");
+          if (this.rewardSelectCallback) {
+            const callback = this.rewardSelectCallback;
+            globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+              if (!this.rewardCompleted) {
+                this.resetModifierSelect(callback);
+              }
+            });
+          }
+          return;
+        }
 
-    globalScene.phaseManager.unshiftNew(
-      "SelectTrainerCardPhase",
-    );
-  }
+        if (this.pendingRewardOption && this.rewardSelectCallback) {
+          this.completeRewardSelection(this.pendingRewardOption, this.rewardSelectCallback);
+        } else {
+          // 기존 선택 기록이 없는 특수 보상 경로
+          this.finishRewardSelection();
+        }
 
-  super.end();
-}
+        return;
+      }
+
+      // 기존 유료 아이템 관련 예외 처리
+      globalScene.ui.clearText();
+      globalScene.ui.setMode(UiMode.MESSAGE);
+      super.end();
+    }
   }
 
   // Opens the party menu specifically for fusions
@@ -705,7 +808,11 @@ export class SelectModifierPhase extends BattlePhase {
 
   // Function that determines how many reward slots are available
   private getModifierCount(): number {
-    const modifierCountHolder = new NumberHolder(3);
+    const difficulty = globalScene.gameMode.difficulty;
+
+    const baseModifierCount = difficulty === "EASY" ? 4 : difficulty === "HARD" ? 2 : 3;
+
+    const modifierCountHolder = new NumberHolder(baseModifierCount);
     globalScene.applyModifiers(ExtraModifierModifier, true, modifierCountHolder);
     globalScene.applyModifiers(TempExtraModifierModifier, true, modifierCountHolder);
 
@@ -778,8 +885,32 @@ export class SelectModifierPhase extends BattlePhase {
 
     // Apply Black Sludge to reroll cost
     const modifiedRerollCost = new NumberHolder(baseMultiplier);
+
     globalScene.applyModifier(HealShopCostModifier, true, modifiedRerollCost);
-    return modifiedRerollCost.value;
+
+    // 난이도별 리롤 비용 보정
+    const difficulty = globalScene.gameMode.difficulty;
+
+    const difficultyMultiplier = difficulty === "EASY" ? 0.75 : difficulty === "HARD" ? 1.5 : 1;
+
+    const frugalMultiplier = trainerCardManager.getMultiplier("REROLL_PRICE");
+
+    const finalCost = Math.floor(modifiedRerollCost.value * difficultyMultiplier * frugalMultiplier);
+
+    console.log("[TRAINER_CARD_FRUGAL_REROLL]", {
+      difficulty,
+      frugalMultiplier,
+      finalCost,
+    });
+
+    console.log("[DIFFICULTY_REROLL_COST]", {
+      difficulty,
+      beforeCost: modifiedRerollCost.value,
+      multiplier: difficultyMultiplier,
+      afterCost: finalCost,
+    });
+
+    return finalCost;
   }
 
   getPoolType(): ModifierPoolType {

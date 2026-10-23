@@ -18,8 +18,8 @@ import {
   PokemonHeldItemModifierType,
 } from "#modifiers/modifier-type";
 import { PokemonMove } from "#moves/pokemon-move";
-import type { Starter } from "#types/save-data";
 import { trainerStrategyManager } from "#system/trainer-strategy-manager";
+import type { Starter } from "#types/save-data";
 import { applyChallenges } from "#utils/challenge-utils";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
@@ -271,25 +271,25 @@ export class StartRunPhase extends Phase {
   }
 
   start() {
-  super.start();
+    super.start();
 
-  // ========================================
-  // 새 런 시작: 트레이닝 전략 초기화
-  // ========================================
-  trainerStrategyManager.reset();
+    // ========================================
+    // 새 런 시작: 트레이닝 전략 초기화
+    // ========================================
+    trainerStrategyManager.reset();
 
-  console.log("[START_RUN_TRAINER_STRATEGY]", {
-    strategy: trainerStrategyManager.currentId,
-    slots: trainerStrategyManager.getSlots(),
-  });
+    console.log("[START_RUN_TRAINER_STRATEGY]", {
+      strategy: trainerStrategyManager.currentId,
+      slots: trainerStrategyManager.getSlots(),
+    });
 
-  console.log(
-    "[START_RUN_PRESET]",
-    this.starters.map(s => ({
-      speciesId: s.speciesId,
-      items: s.preRunItems,
-    })),
-  );
+    console.log(
+      "[START_RUN_PRESET]",
+      this.starters.map(s => ({
+        speciesId: s.speciesId,
+        items: s.preRunItems,
+      })),
+    );
 
     const party = globalScene.getPlayerParty();
     const loadPokemonAssets: Promise<void>[] = [];
@@ -440,8 +440,9 @@ export class StartRunPhase extends Phase {
       party.push(starterPokemon);
 
       // 여기서 로그센터 지정 아이템 적용
-      // 여기서 로그센터 지정 아이템 적용
-      this.applyPreRunItems(starter, starterPokemon);
+      if (globalScene.gameMode.modeId !== GameModes.TUTORIAL) {
+        this.applyPreRunItems(starter, starterPokemon);
+      }
 
       if (chalApplied) {
         loadPokemonAssets.push(starterPokemon.updateInfo());
@@ -454,8 +455,8 @@ export class StartRunPhase extends Phase {
       SoundFade.fadeOut(globalScene, globalScene.sound.get("menu"), 500, true);
       globalScene.time.delayedCall(500, () => globalScene.playBgm());
 
-      if (globalScene.gameMode.modeId === GameModes.PRACTICE) {
-        // 연습모드는 일반 세션 카운트 증가 제외
+      if (globalScene.gameMode.modeId === GameModes.PRACTICE || globalScene.gameMode.modeId === GameModes.TUTORIAL) {
+        // 연습 및 튜토리얼은 기존 모드 통계에서 제외
       } else if (globalScene.gameMode.isClassic) {
         globalScene.gameData.gameStats.classicSessionsPlayed++;
       } else {

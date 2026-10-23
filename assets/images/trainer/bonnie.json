@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "bonnie.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 58
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "bonnie.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 56
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 56
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 56
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:feea5b776e4922016c3a942d7b6e096b:032ce790dec0bbf74f19acb44dc0b1ee:7b4bfc25411d589b6c083d771bfc3392$"
+	}
+}

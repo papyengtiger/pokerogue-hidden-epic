@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "engineer.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 62,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "engineer.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 60,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 60,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 60,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:416820d7581a5a35b9d2054e22bf5f47:c9f1554653566544adc19b73ea890453:d62453f9a610459b77a53ed6743a560d$"
+	}
+}

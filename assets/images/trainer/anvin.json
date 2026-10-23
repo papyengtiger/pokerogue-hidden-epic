@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "anvin.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "anvin.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:013abea24e69b4d1760e32d7a927878d:4021a54679ed08710b2be599488e8c83:796e30a83c50082a62b46f42874807ae$"
+	}
+}

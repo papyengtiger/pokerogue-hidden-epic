@@ -16,6 +16,7 @@ import { monthlyFixedBattles } from "#data/trainers/fixed-battle-configs";
 import { BiomeId } from "#enums/biome-id";
 import { ChallengeType } from "#enums/challenge-type";
 import { Challenges } from "#enums/challenges";
+import { GameDifficulty } from "#enums/game-difficulty";
 import { GameModes } from "#enums/game-modes";
 import { SpeciesId } from "#enums/species-id";
 import type { Arena } from "#field/arena";
@@ -40,6 +41,7 @@ interface GameModeConfig {
 }
 
 export class GameMode implements GameModeConfig {
+  public difficulty: GameDifficulty = GameDifficulty.NORMAL;
   public modeId: GameModes;
   public isClassic: boolean;
   public isEndless: boolean;
@@ -65,6 +67,127 @@ export class GameMode implements GameModeConfig {
       this.challenges = allChallenges.map(c => copyChallenge(c));
     }
     this.battleConfig = battleConfig || {};
+  }
+
+  isPeriodicMode(): boolean {
+    return this.modeId === GameModes.DAILY || this.modeId === GameModes.WEEKLY || this.modeId === GameModes.MONTHLY;
+  }
+
+  setDifficulty(difficulty: GameDifficulty): void {
+    if (this.modeId === GameModes.TUTORIAL) {
+      this.difficulty = GameDifficulty.EASY;
+      return;
+    }
+
+    if (this.isEndless || this.isPeriodicMode()) {
+      this.difficulty = GameDifficulty.NORMAL;
+      return;
+    }
+
+    this.difficulty = difficulty;
+  }
+
+  getAvailableDifficulties(): GameDifficulty[] {
+    if (this.modeId === GameModes.TUTORIAL) {
+      return [GameDifficulty.EASY];
+    }
+
+    if (this.isEndless || this.isPeriodicMode()) {
+      return [GameDifficulty.NORMAL];
+    }
+
+    return [GameDifficulty.EASY, GameDifficulty.NORMAL, GameDifficulty.HARD];
+  }
+
+  getDifficultyWeight(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 15;
+
+      case GameDifficulty.NORMAL:
+        return 0; // 추후 확정
+
+      case GameDifficulty.HARD:
+        return 0; // 추후 확정
+    }
+  }
+
+  getEnemyLevelMultiplier(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 0.5;
+      case GameDifficulty.NORMAL:
+        return 1;
+      case GameDifficulty.HARD:
+        return 1.5;
+      default:
+        return 1;
+    }
+  }
+
+  getPlayerExpMultiplier(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 1.5;
+      case GameDifficulty.NORMAL:
+        return 1;
+      case GameDifficulty.HARD:
+        return 0.5;
+      default:
+        return 1;
+    }
+  }
+
+  getGoldMultiplier(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 1.25;
+      case GameDifficulty.NORMAL:
+        return 1;
+      case GameDifficulty.HARD:
+        return 0.75;
+      default:
+        return 1;
+    }
+  }
+
+  getRerollCostMultiplier(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 0.75;
+      case GameDifficulty.NORMAL:
+        return 1;
+      case GameDifficulty.HARD:
+        return 1.5;
+      default:
+        return 1;
+    }
+  }
+
+  getFriendshipMultiplier(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 1.5;
+      case GameDifficulty.NORMAL:
+        return 1;
+      case GameDifficulty.HARD:
+        return 0.5;
+      default:
+        return 1;
+    }
+  }
+
+  getTrainerPartySize(baseSize: number): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return Math.max(1, Math.ceil(baseSize / 2));
+      case GameDifficulty.NORMAL:
+        return baseSize;
+      case GameDifficulty.HARD:
+        return 6;
+      default:
+        return baseSize;
+    }
   }
 
   /**
@@ -220,6 +343,11 @@ export class GameMode implements GameModeConfig {
     /**
      * Daily spawns trainers on floors 5, 15, 20, 25, 30, 35, 40, and 45
      */
+
+    if (this.modeId === GameModes.TUTORIAL) {
+      return false;
+    }
+
     if (this.isDaily) {
       return waveIndex % 10 === 5 || (!(waveIndex % 10) && waveIndex > 10 && !this.isWaveFinal(waveIndex));
     }
@@ -315,6 +443,9 @@ export class GameMode implements GameModeConfig {
 
   isTrainerBoss(waveIndex: number, biomeType: BiomeId, offsetGym: boolean): boolean {
     switch (this.modeId) {
+      case GameModes.TUTORIAL:
+        return false;
+
       case GameModes.DAILY:
         return waveIndex > 10 && waveIndex < 50 && !(waveIndex % 10);
 
@@ -445,10 +576,14 @@ export class GameMode implements GameModeConfig {
    */
   isWaveFinal(waveIndex: number, modeId: GameModes = this.modeId): boolean {
     switch (modeId) {
+      case GameModes.TUTORIAL:
+        return waveIndex === 50;
       case GameModes.CLASSIC:
       case GameModes.CHALLENGE:
       case GameModes.MONTHLY:
         return waveIndex === 200;
+      case GameModes.ANOTHER:
+        return waveIndex === 300;
       case GameModes.ENDLESS:
       case GameModes.SPLICED_ENDLESS:
         return !(waveIndex % 250);
@@ -572,8 +707,12 @@ export class GameMode implements GameModeConfig {
 
   getName(): string {
     switch (this.modeId) {
+      case GameModes.TUTORIAL:
+        return i18next.t("gameMode:tutorial");
       case GameModes.CLASSIC:
         return i18next.t("gameMode:classic");
+      case GameModes.ANOTHER:
+        return i18next.t("gameMode:another");
       case GameModes.ENDLESS:
         return i18next.t("gameMode:endless");
       case GameModes.SPLICED_ENDLESS:
@@ -597,9 +736,12 @@ export class GameMode implements GameModeConfig {
   getMysteryEncounterLegalWaves(): [number, number] {
     switch (this.modeId) {
       case GameModes.CLASSIC:
+      case GameModes.ANOTHER:
         return CLASSIC_MODE_MYSTERY_ENCOUNTER_WAVES;
+
       case GameModes.CHALLENGE:
         return CHALLENGE_MODE_MYSTERY_ENCOUNTER_WAVES;
+
       default:
         return [0, 0];
     }
@@ -619,8 +761,12 @@ export class GameMode implements GameModeConfig {
 
   static getModeName(modeId: GameModes): string {
     switch (modeId) {
+      case GameModes.TUTORIAL:
+        return i18next.t("gameMode:tutorial");
       case GameModes.CLASSIC:
         return i18next.t("gameMode:classic");
+      case GameModes.ANOTHER:
+        return i18next.t("gameMode:another");
       case GameModes.ENDLESS:
         return i18next.t("gameMode:endless");
       case GameModes.SPLICED_ENDLESS:
@@ -639,25 +785,51 @@ export class GameMode implements GameModeConfig {
 
 export function getGameMode(gameMode: GameModes): GameMode {
   switch (gameMode) {
+    case GameModes.TUTORIAL:
+      return new GameMode(GameModes.TUTORIAL, {
+        isClassic: false,
+        isEndless: false,
+        isDaily: false,
+        hasTrainers: false,
+        hasNoShop: false,
+        hasShortBiomes: false,
+        hasRandomBiomes: false,
+        hasRandomBosses: false,
+        hasMysteryEncounters: false,
+      });
     case GameModes.CLASSIC:
       return new GameMode(
         GameModes.CLASSIC,
         { isClassic: true, hasTrainers: true, hasMysteryEncounters: true },
         classicFixedBattles,
       );
-    case GameModes.ENDLESS:
-      return new GameMode(GameModes.ENDLESS, {
+    case GameModes.ANOTHER:
+      return new GameMode(GameModes.ANOTHER, {
+        isClassic: false,
+        hasTrainers: true,
+        hasMysteryEncounters: true,
+      });
+    case GameModes.ENDLESS: {
+      const mode = new GameMode(GameModes.ENDLESS, {
         isEndless: true,
         hasShortBiomes: true,
         hasRandomBosses: true,
       });
-    case GameModes.SPLICED_ENDLESS:
-      return new GameMode(GameModes.SPLICED_ENDLESS, {
+
+      mode.difficulty = GameDifficulty.NORMAL;
+      return mode;
+    }
+    case GameModes.SPLICED_ENDLESS: {
+      const mode = new GameMode(GameModes.SPLICED_ENDLESS, {
         isEndless: true,
         hasShortBiomes: true,
         hasRandomBosses: true,
         isSplicedOnly: true,
       });
+
+      mode.difficulty = GameDifficulty.NORMAL;
+      return mode;
+    }
     case GameModes.DAILY:
       return new GameMode(GameModes.DAILY, {
         isDaily: true,

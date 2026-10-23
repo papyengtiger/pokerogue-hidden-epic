@@ -14,27 +14,28 @@ export const FRIENDSHIP_LOSS_FROM_FAINT = 1;
  * @param starterCost - The cost of the starter, found in {@linkcode speciesStarterCosts}
  * @returns aforementioned threshold
  */
-export function getStarterValueFriendshipCap(starterCost: number): number {
+export function getStarterValueFriendshipCap(starterCost: StarterCost): number {
   switch (starterCost) {
     case 1:
-      return 1;
+      return 25;
     case 2:
-      return 1;
+      return 50;
     case 3:
-      return 1;
+      return 75;
     case 4:
-      return 1;
+      return 100;
     case 5:
-      return 1;
+      return 150;
     case 6:
-      return 1;
+      return 200;
     case 7:
-      return 1;
+      return 300;
     case 8:
     case 9:
-      return 1;
-    default:
-      return 1;
+      return 450;
+    case 10:
+    default: // fallback for invalid starter costs (should never happen, but just in case)
+      return 600;
   }
 }
 
@@ -633,16 +634,16 @@ interface StarterCandyCosts {
 }
 
 const allStarterCandyCosts: readonly StarterCandyCosts[] = [
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [20, 40, 80] }, // 1 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [20, 40, 80] }, // 2 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [20, 40, 80] }, // 3 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [15, 30, 60] }, // 4 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [15, 30, 60] }, // 5 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [15, 30, 60] }, // 6 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [10, 20, 40] }, // 7 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [10, 20, 40] }, // 8 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [10, 20, 40] }, // 9 Cost
-  { passive: 1, costReduction: [1, 1], eggCosts: [1, 1, 1, 1], eggCostReductionThresholds: [8, 16, 32] }, // 10 Cost
+  { passive: 40, costReduction: [25, 60], eggCosts: [30, 27, 22, 15], eggCostReductionThresholds: [20, 40, 80] }, // 1 Cost
+  { passive: 40, costReduction: [25, 60], eggCosts: [30, 27, 22, 15], eggCostReductionThresholds: [20, 40, 80] }, // 2 Cost
+  { passive: 35, costReduction: [20, 50], eggCosts: [25, 22, 18, 12], eggCostReductionThresholds: [20, 40, 80] }, // 3 Cost
+  { passive: 30, costReduction: [15, 40], eggCosts: [20, 18, 15, 10], eggCostReductionThresholds: [15, 30, 60] }, // 4 Cost
+  { passive: 25, costReduction: [12, 35], eggCosts: [18, 16, 13, 9], eggCostReductionThresholds: [15, 30, 60] }, // 5 Cost
+  { passive: 20, costReduction: [10, 30], eggCosts: [15, 13, 11, 7], eggCostReductionThresholds: [15, 30, 60] }, // 6 Cost
+  { passive: 15, costReduction: [8, 20], eggCosts: [12, 10, 9, 6], eggCostReductionThresholds: [10, 20, 40] }, // 7 Cost
+  { passive: 10, costReduction: [5, 15], eggCosts: [10, 9, 7, 5], eggCostReductionThresholds: [10, 20, 40] }, // 8 Cost
+  { passive: 10, costReduction: [5, 15], eggCosts: [10, 9, 7, 5], eggCostReductionThresholds: [10, 20, 40] }, // 9 Cost
+  { passive: 10, costReduction: [5, 15], eggCosts: [10, 9, 7, 5], eggCostReductionThresholds: [8, 16, 32] }, // 10 Cost
 ];
 
 /**

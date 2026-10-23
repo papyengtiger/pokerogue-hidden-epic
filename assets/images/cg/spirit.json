@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "spirit.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 137,
+				"h": 146
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "B2W2_Weird_Light_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 135,
+						"h": 144
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 135,
+						"h": 144
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 135,
+						"h": 144
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1175af65726302ea81c28098bfe514df:959477aa9222818ef707ab216f7daf28:01488072bd5a3b4d053b27d9a4f356b9$"
+	}
+}

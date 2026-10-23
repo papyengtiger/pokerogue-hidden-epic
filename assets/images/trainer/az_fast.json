@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "az_fast.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 58,
+				"h": 84
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "az_fast.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 56,
+						"h": 82
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 56,
+						"h": 82
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 56,
+						"h": 82
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a16ff531c768a25cb7329a54c4707666:b6b74fdb4f4f389d5fc2093b06c7022b:ed84644aa5e8aa1a8198c25a4ce54552$"
+	}
+}

@@ -10,6 +10,7 @@ import {
   ModifierTypeOption,
   type WeightedModifierType,
 } from "#modifiers/modifier-type";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import type { KecleonShopSaveData } from "#types/save-data";
 import { randSeedInt } from "#utils/common";
 import { getModifierPoolForType } from "#utils/modifier-utils";
@@ -433,7 +434,7 @@ export class KecleonShopManager {
   }
 
   public getPlacedItemValue(modifier: PersistentModifier): number {
-    const shopPrice = this.calculatePrice(modifier.type, this.generatedWave);
+    const shopPrice = this.calculatePrice(modifier.type, this.generatedWave, false);
 
     // 판매가는 상점가의 절반
     return Math.max(1, Math.floor(shopPrice / 2));
@@ -926,7 +927,7 @@ export class KecleonShopManager {
    * 일반 상점처럼 wave money를 기준으로 하므로
    * 게임 진행도에 따라 자연스럽게 가격이 증가한다.
    */
-  private calculatePrice(type: ModifierType, _waveIndex: number): number {
+  private calculatePrice(type: ModifierType, _waveIndex: number, applyDiscount = true): number {
     const baseCost = globalScene.getWaveMoneyAmount(1);
 
     let tierMultiplier = 1;
@@ -953,7 +954,20 @@ export class KecleonShopManager {
         break;
     }
 
-    return Math.max(1, Math.round(baseCost * tierMultiplier * this.config.priceMultiplier));
+    const discountMultiplier = applyDiscount ? trainerCardManager.getMultiplier("SHOP_PRICE") : 1;
+
+    const originalPrice = baseCost * tierMultiplier * this.config.priceMultiplier;
+
+    const finalPrice = Math.max(1, Math.round(originalPrice * discountMultiplier));
+
+    console.log("[TRAINER_CARD_FRUGAL_KECLEON]", {
+      item: type.getSafeName(),
+      originalPrice: Math.round(originalPrice),
+      discountMultiplier,
+      finalPrice,
+    });
+
+    return finalPrice;
   }
 
   /**

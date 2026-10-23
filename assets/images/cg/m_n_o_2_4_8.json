@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "m_n_o_2_4_8.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 182,
+				"h": 89
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "180px-B2W2_MT_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 180,
+						"h": 87
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 180,
+						"h": 87
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 180,
+						"h": 87
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7446f3f86ac42a0197c81e1cc061040c:534fdfd992fb22ea86e725643d9e8126:9287bddfc2694d9000a5d682c68d5221$"
+	}
+}

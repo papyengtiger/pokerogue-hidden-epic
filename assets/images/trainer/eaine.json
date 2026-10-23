@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "eaine.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 30,
+				"h": 65
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "eaine.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 28,
+						"h": 63
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 28,
+						"h": 63
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 28,
+						"h": 63
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7f57eaf915b7803bb6f90f6596f94b9a:aa3230cbf2b533530092a4b614614437:4d098add2dc8dcc1a8fb1a5f02ddbdf7$"
+	}
+}

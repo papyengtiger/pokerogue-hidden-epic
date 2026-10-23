@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "demonstery.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 173,
+				"h": 150
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "B2W2_Monster_Pokéstar.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 171,
+						"h": 148
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 171,
+						"h": 148
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 171,
+						"h": 148
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:51f7c65e2f47f8b1ae25d86ba4338bed:c56821ec1a276ca021f0aaf22cdd843d:d3c847248109e48b1b290eb06eb03d99$"
+	}
+}

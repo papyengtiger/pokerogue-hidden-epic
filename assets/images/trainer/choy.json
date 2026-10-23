@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "choy.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "choy.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fb1703d5e63a40e9e2e9663794bbd742:b1a49abde682a7d2ec75fd8cb6ba0dfd:c1b11296854422999ef9283e64522ec1$"
+	}
+}

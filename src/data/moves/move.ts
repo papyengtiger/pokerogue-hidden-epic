@@ -3565,10 +3565,8 @@ export class RestAttr extends HealAttr {
   // TODO: change after HealAttr is changed to fail move
   override getCondition(): MoveConditionFunc {
     return (user, target, move) =>
-      super.canApply(user, target, move, [])
-      && // Intentionally suppress messages here as we display generic fail msg
-      // TODO: This might have order-of-operation jank
-      user.canSetStatus(StatusEffect.SLEEP, true, true, user);
+      super.canApply(user, target, move, []) // Intentionally suppress messages here as we display generic fail msg // TODO: This might have order-of-operation jank
+      && user.canSetStatus(StatusEffect.SLEEP, true, true, user);
   }
 }
 
@@ -10364,9 +10362,8 @@ export class ForceSwitchOutAttr extends MoveEffectAttr {
         // wild pokemon cannot switch out with baton pass.
         return (
           !this.isBatonPass()
-          && globalScene.currentBattle.waveIndex % 10 !== 0
-          && // Don't allow wild mons to flee with U-turn et al.
-          !(this.selfSwitch && MoveCategory.STATUS !== move.category)
+          && globalScene.currentBattle.waveIndex % 10 !== 0 // Don't allow wild mons to flee with U-turn et al.
+          && !(this.selfSwitch && MoveCategory.STATUS !== move.category)
         );
       }
 
@@ -11239,9 +11236,8 @@ export class RepeatMoveAttr extends MoveEffectAttr {
       if (
         !lastMove?.move // no move to instruct
         || !movesetMove // called move not in target's moveset (forgetting the move, etc.)
-        || movesetMove.ppUsed === movesetMove.getMovePp() // move out of pp
-        || // TODO: This next line is likely redundant as all charging moves are in the above list
-        allMoves[lastMove.move].isChargingMove() // called move is a charging/recharging move
+        || movesetMove.ppUsed === movesetMove.getMovePp() // move out of pp // TODO: This next line is likely redundant as all charging moves are in the above list
+        || allMoves[lastMove.move].isChargingMove() // called move is a charging/recharging move
         || uninstructableMoves.includes(lastMove.move)
       ) {
         // called move is in the banlist
@@ -14720,7 +14716,7 @@ export function initMoves() {
       MultiHitAttr,
       MultiHitType._2,
     ),
-    new AttackMove(MoveId.ROAR_OF_TIME, PokemonType.DRAGON, MoveCategory.SPECIAL, 150, 90, 5, 30, 0, 4)
+    new AttackMove(MoveId.ROAR_OF_TIME, PokemonType.DRAGON, MoveCategory.SPECIAL, 180, -1, 5, 30, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(FlinchAttr)
       .soundBased()
@@ -15100,7 +15096,7 @@ export function initMoves() {
     new AttackMove(MoveId.WILD_CHARGE, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 120, 100, 15, -1, 0, 5)
       .attr(RecoilAttr, false, 0.33)
       .recklessMove(),
-    new AttackMove(MoveId.DRILL_RUN, PokemonType.GROUND, MoveCategory.PHYSICAL, 80, 95, 10, -1, 0, 5)
+    new AttackMove(MoveId.DRILL_RUN, PokemonType.GROUND, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 5)
       .drillMove()
       .attr(HighCritAttr),
     new AttackMove(MoveId.DUAL_CHOP, PokemonType.DRAGON, MoveCategory.PHYSICAL, 50, 100, 15, -1, 0, 5).attr(
@@ -16350,7 +16346,7 @@ export function initMoves() {
       .attr(ZStatStageChangeAttr, [Stat.DEF], 2, true)
       .target(MoveTarget.USER),
     new AttackMove(MoveId.FALSE_SURRENDER, PokemonType.DARK, MoveCategory.PHYSICAL, 80, -1, 10, -1, 0, 8).spearMove(),
-    new AttackMove(MoveId.METEOR_ASSAULT, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 150, 100, 5, -1, 0, 8)
+    new AttackMove(MoveId.METEOR_ASSAULT, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 180, 100, 5, -1, 0, 8)
       .spearMove()
       .condition((user, target, move) => {
         const turnMove = user.getLastXMoves(1);
@@ -16618,28 +16614,28 @@ export function initMoves() {
         StatusEffect.BURN,
         StatusEffect.SLEEP,
       ]),
-    new AttackMove(MoveId.G_MAX_WILDFIRE, PokemonType.FIRE, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_WILDFIRE, PokemonType.FIRE, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.G_MAX_WILDFIRE_BURN),
-    new AttackMove(MoveId.G_MAX_BEFUDDLE, PokemonType.BUG, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_BEFUDDLE, PokemonType.BUG, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(MultiStatusEffectAttr, [StatusEffect.POISON, StatusEffect.PARALYSIS, StatusEffect.SLEEP]),
-    new AttackMove(MoveId.G_MAX_VOLT_CRASH, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_VOLT_CRASH, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(StatusEffectAttr, StatusEffect.PARALYSIS),
-    new AttackMove(MoveId.G_MAX_GOLD_RUSH, PokemonType.NORMAL, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_GOLD_RUSH, PokemonType.NORMAL, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
@@ -16647,56 +16643,56 @@ export function initMoves() {
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddArenaTagAttr, ArenaTagType.HAPPY_HOUR, null, true),
-    new AttackMove(MoveId.G_MAX_CHI_STRIKE, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_CHI_STRIKE, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.CRIT_STACKING_BOOST, true, false),
-    new AttackMove(MoveId.G_MAX_TERROR, PokemonType.GHOST, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_TERROR, PokemonType.GHOST, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(CurseAttr),
-    new AttackMove(MoveId.G_MAX_RESONANCE, PokemonType.ICE, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_RESONANCE, PokemonType.ICE, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddArenaTagAttr, ArenaTagType.AURORA_VEIL, 5, false, true),
-    new AttackMove(MoveId.G_MAX_CUDDLE, PokemonType.NORMAL, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_CUDDLE, PokemonType.NORMAL, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.INFATUATED),
-    new AttackMove(MoveId.G_MAX_REPLENISH, PokemonType.NORMAL, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_REPLENISH, PokemonType.NORMAL, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(HitHealAttr),
-    new AttackMove(MoveId.G_MAX_MALODOR, PokemonType.POISON, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_MALODOR, PokemonType.POISON, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(StatusEffectAttr, StatusEffect.TOXIC),
-    new AttackMove(MoveId.G_MAX_STONESURGE, PokemonType.WATER, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_STONESURGE, PokemonType.WATER, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .attr(PhotonGeyserCategoryAttr)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddArenaTrapTagHitAttr, ArenaTagType.STEALTH_ROCK),
-    new AttackMove(MoveId.G_MAX_WIND_RAGE, PokemonType.FLYING, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_WIND_RAGE, PokemonType.FLYING, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .attr(ClearWeatherAttr, WeatherType.FOG)
@@ -16707,140 +16703,140 @@ export function initMoves() {
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(RemoveArenaTagsAttr, [ArenaTagType.MIST, ArenaTagType.SAFEGUARD], false),
-    new AttackMove(MoveId.G_MAX_STUN_SHOCK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_STUN_SHOCK, PokemonType.ELECTRIC, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(MultiStatusEffectAttr, [StatusEffect.POISON, StatusEffect.PARALYSIS]),
-    new AttackMove(MoveId.G_MAX_FINALE, PokemonType.FAIRY, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_FINALE, PokemonType.FAIRY, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(HealAttr, 0.5), // 또는 0.1667
-    new AttackMove(MoveId.G_MAX_DEPLETION, PokemonType.DRAGON, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_DEPLETION, PokemonType.DRAGON, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(ResetStatsAttr, false),
-    new AttackMove(MoveId.G_MAX_GRAVITAS, PokemonType.PSYCHIC, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_GRAVITAS, PokemonType.PSYCHIC, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddArenaTagAttr, ArenaTagType.GRAVITY, 5),
-    new AttackMove(MoveId.G_MAX_VOLCALITH, PokemonType.ROCK, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_VOLCALITH, PokemonType.ROCK, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.G_MAX_VOLCALITH),
-    new AttackMove(MoveId.G_MAX_SANDBLAST, PokemonType.GROUND, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_SANDBLAST, PokemonType.GROUND, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(TrapAttr, BattlerTagType.SAND_TOMB),
-    new AttackMove(MoveId.G_MAX_SNOOZE, PokemonType.DARK, MoveCategory.PHYSICAL, 100, -1, 10, 50, 0, 8)
+    new AttackMove(MoveId.G_MAX_SNOOZE, PokemonType.DARK, MoveCategory.PHYSICAL, 150, -1, 10, 50, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.DROWSY, false, true),
-    new AttackMove(MoveId.G_MAX_TARTNESS, PokemonType.GRASS, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_TARTNESS, PokemonType.GRASS, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(StatStageChangeAttr, [Stat.EVA], -1),
-    new AttackMove(MoveId.G_MAX_SWEETNESS, PokemonType.GRASS, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_SWEETNESS, PokemonType.GRASS, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(PartyStatusCureAttr, i18next.t("moveTriggers:soothingAromaWaftedThroughArea"), AbilityId.SAP_SIPPER),
-    new AttackMove(MoveId.G_MAX_SMITE, PokemonType.FAIRY, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_SMITE, PokemonType.FAIRY, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(ConfuseAttr),
-    new AttackMove(MoveId.G_MAX_STEELSURGE, PokemonType.STEEL, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_STEELSURGE, PokemonType.STEEL, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddArenaTrapTagHitAttr, ArenaTagType.G_MAX_STEELSURGE),
-    new AttackMove(MoveId.G_MAX_MELTDOWN, PokemonType.STEEL, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_MELTDOWN, PokemonType.STEEL, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(GMaxSmashAttr),
-    new AttackMove(MoveId.G_MAX_FOAM_BURST, PokemonType.WATER, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_FOAM_BURST, PokemonType.WATER, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(StatStageChangeAttr, [Stat.EVA], -2),
-    new AttackMove(MoveId.G_MAX_CENTIFERNO, PokemonType.FIRE, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_CENTIFERNO, PokemonType.FIRE, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(TrapAttr, BattlerTagType.FIRE_SPIN),
-    new AttackMove(MoveId.G_MAX_VINE_LASH, PokemonType.GRASS, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_VINE_LASH, PokemonType.GRASS, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.G_MAX_VINE_LASH),
-    new AttackMove(MoveId.G_MAX_CANNONADE, PokemonType.WATER, MoveCategory.PHYSICAL, 100, -1, 10, 100, 0, 8)
+    new AttackMove(MoveId.G_MAX_CANNONADE, PokemonType.WATER, MoveCategory.PHYSICAL, 150, -1, 10, 100, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .attr(AddBattlerTagAttr, BattlerTagType.G_MAX_CANNONADE),
-    new AttackMove(MoveId.G_MAX_DRUM_SOLO, PokemonType.GRASS, MoveCategory.PHYSICAL, 100, -1, 10, -1, 0, 8)
+    new AttackMove(MoveId.G_MAX_DRUM_SOLO, PokemonType.GRASS, MoveCategory.PHYSICAL, 150, -1, 10, -1, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .ignoresAbilities(),
-    new AttackMove(MoveId.G_MAX_FIREBALL, PokemonType.Fire, MoveCategory.PHYSICAL, 100, -1, 10, -1, 0, 8)
+    new AttackMove(MoveId.G_MAX_FIREBALL, PokemonType.FIRE, MoveCategory.PHYSICAL, 150, -1, 10, -1, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .ignoresAbilities(),
-    new AttackMove(MoveId.G_MAX_HYDROSNIPE, PokemonType.WATER, MoveCategory.PHYSICAL, 100, -1, 10, -1, 0, 8)
+    new AttackMove(MoveId.G_MAX_HYDROSNIPE, PokemonType.WATER, MoveCategory.PHYSICAL, 150, -1, 10, -1, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .setZMoveDamageRate(0.25)
       .makesContact(false)
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .ignoresAbilities(),
-    new AttackMove(MoveId.G_MAX_ONE_BLOW, PokemonType.DARK, MoveCategory.PHYSICAL, 100, -1, 10, -1, 0, 8)
+    new AttackMove(MoveId.G_MAX_ONE_BLOW, PokemonType.DARK, MoveCategory.PHYSICAL, 150, -1, 10, -1, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(CritOnlyAttr)
       .attr(PhotonGeyserCategoryAttr)
@@ -16848,7 +16844,7 @@ export function initMoves() {
       .ignoresMaxGuard()
       .attr(MovePowerMultiplierAttr, (user, target, move) => (user.isDynamaxed ? 1.5 : 1))
       .ignoresProtect(),
-    new AttackMove(MoveId.G_MAX_RAPID_FLOW, PokemonType.WATER, MoveCategory.PHYSICAL, 100, -1, 10, -1, 0, 8)
+    new AttackMove(MoveId.G_MAX_RAPID_FLOW, PokemonType.WATER, MoveCategory.PHYSICAL, 150, -1, 10, -1, 0, 8)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(CritOnlyAttr)
       .attr(PhotonGeyserCategoryAttr)
