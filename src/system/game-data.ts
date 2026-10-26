@@ -174,6 +174,8 @@ export class GameData {
   public eggPity: number[];
   public unlockPity: number[];
   public roguePoints: number;
+  public lastAttendanceDate: string;
+  public attendanceCount: number;
 
   private battleRpRemainder = 0;
 
@@ -2195,6 +2197,14 @@ export class GameData {
 
           battleType = BattleType.WILD;
         }
+
+        console.log("[SAVED_TRAINER_CHECK]", {
+          wave: fromSession.waveIndex,
+          biome: fromSession.arena.biome,
+          savedTrainerType: fromSession.trainer?.trainerType,
+          savedTrainerVariant: fromSession.trainer?.variant,
+          restoredConfigName: fromSession.trainer ? trainerConfigs[fromSession.trainer.trainerType]?.name : null,
+        });
 
         const trainerConfig =
           battleType === BattleType.TRAINER && fromSession.trainer

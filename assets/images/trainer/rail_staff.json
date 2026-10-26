@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "rail_staff.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "rail_staff.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b1a0e974634e473b29dac09f2c95d08a:cfabe58fe1c3cd1795e13dcf5bac60d5:daaf747cc41e8160153a6b72e68f2d7f$"
+	}
+}

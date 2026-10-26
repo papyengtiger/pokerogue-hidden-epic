@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "rye.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "rye.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:68aa4f9d79d773036457b4128141dcd8:a3147be9b4c5fd5de8405aa7871d18e3:42bc4678a3e3eacd08c1f54957ff9b48$"
+	}
+}

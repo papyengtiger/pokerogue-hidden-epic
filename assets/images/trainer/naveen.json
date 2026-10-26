@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "naveen.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 42,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "naveen.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 40,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d11cf4589d79de75c76d57a1666a2832:628ec2dccc3d90ae1793f883a21e79eb:5957245ab13957061bee6badb1f3e91b$"
+	}
+}

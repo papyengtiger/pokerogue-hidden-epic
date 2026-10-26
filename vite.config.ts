@@ -48,6 +48,16 @@ export default defineConfig(({ mode, command }) => {
     server: {
       host: "127.0.0.1",
       port: Number.isNaN(envPort) ? 8000 : envPort,
+
+      proxy: {
+        "/api": {
+          target: "https://127.0.0.1:8001",
+          changeOrigin: true,
+          secure: false,
+          rewrite: path => path.replace(/^\/api/, ""),
+        },
+      },
+
       ...(mode === "development"
         ? {
             https: {

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "shielbert.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 50,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "shielbert.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 48,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:535de5dcd7fa871049c84ef83de836c0:2ebd00072e332673a2f4da9db6f1d01b:0c313a179c0d279d72651d089762aaad$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "rocker.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 45,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "rocker.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 43,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 43,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 43,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ffbaf58e6009aa3588ea980c1cf18f2f:5f97b6efb35886f73bec59d5d5c9d46a:83131a8262baa092d3ac0b26b8e483a6$"
+	}
+}

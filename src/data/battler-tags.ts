@@ -49,6 +49,7 @@
  * @module
  */
 
+import { bypassChargeOrRechargeByAbsoluteTime } from "#abilities/ability";
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
 import { globalScene } from "#app/global-scene";
@@ -803,6 +804,9 @@ export class RechargingTag extends SerializableBattlerTag {
 
   onAdd(pokemon: Pokemon): void {
     super.onAdd(pokemon);
+    if (bypassChargeOrRechargeByAbsoluteTime(pokemon)) {
+      return;
+    }
 
     // Queue a placeholder move for the Pokemon to "use" next turn.
     pokemon.pushMoveQueue({ move: MoveId.NONE, targets: [], useMode: MoveUseMode.NORMAL });
@@ -810,6 +814,9 @@ export class RechargingTag extends SerializableBattlerTag {
 
   /** Cancels the source's move this turn and queues a "__ must recharge!" message */
   lapse(pokemon: Pokemon, lapseType: BattlerTagLapseType): boolean {
+    if (lapseType === BattlerTagLapseType.PRE_MOVE && bypassChargeOrRechargeByAbsoluteTime(pokemon)) {
+      return false;
+    }
     if (lapseType === BattlerTagLapseType.PRE_MOVE) {
       globalScene.phaseManager.queueMessage(
         i18next.t("battlerTags:rechargingLapse", {
@@ -1658,9 +1665,8 @@ export class NightmareTag extends SerializableBattlerTag {
       // (너 코드 스타일에 맞춰 최대한 안전하게)
       const hasNightmareSymbol = (src.getHeldItemModifiers?.() ?? []).some(
         m =>
-          m instanceof SpeciesStatBoosterModifier
-          && // 키 접근은 프로젝트마다 다르니 안전하게 여러 후보를 허용
-          (m.getKey?.() ?? (m as any).key ?? (m as any).type?.key ?? (m as any).type?.id) === "NIGHTMARE_SYMBOLE"
+          m instanceof SpeciesStatBoosterModifier // 키 접근은 프로젝트마다 다르니 안전하게 여러 후보를 허용
+          && (m.getKey?.() ?? (m as any).key ?? (m as any).type?.key ?? (m as any).type?.id) === "NIGHTMARE_SYMBOLE"
           && m.hasMatchingSpecies?.(src),
       );
 

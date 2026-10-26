@@ -1,4 +1,5 @@
 import type { AbAttrParamsWithCancel, PreAttackModifyPowerAbAttrParams } from "#abilities/ability";
+import { blocksInstantChargeByAbsoluteTime, bypassChargeOrRechargeByAbsoluteTime } from "#abilities/ability";
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
 import { loggedInUser } from "#app/account";
@@ -5164,6 +5165,10 @@ export class InstantChargeAttr extends MoveAttr {
     const instantCharge = args[0];
 
     if (!(instantCharge instanceof BooleanHolder)) {
+      return false;
+    }
+
+    if (blocksInstantChargeByAbsoluteTime(user)) {
       return false;
     }
 
@@ -12895,10 +12900,7 @@ export function initMoves() {
     new AttackMove(MoveId.HYPER_BEAM, PokemonType.NORMAL, MoveCategory.SPECIAL, 150, 90, 5, -1, 0, 1)
       .beamMove()
       .lightMove()
-      .condition((user, target, move) => {
-        const turnMove = user.getLastXMoves(1);
-        return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
-      }),
+      .attr(RechargeAttr),
     new AttackMove(MoveId.PECK, PokemonType.FLYING, MoveCategory.PHYSICAL, 35, 100, 35, -1, 0, 1).beakMove(),
     new AttackMove(MoveId.DRILL_PECK, PokemonType.FLYING, MoveCategory.PHYSICAL, 80, 100, 20, -1, 0, 1)
       .drillMove()
@@ -14556,11 +14558,8 @@ export function initMoves() {
       .target(MoveTarget.NEAR_OTHER)
       .attr(TrickSwapAttr)
       .attr(ZStatStageChangeAttr, [Stat.ATK], 4, false),
-    new AttackMove(MoveId.GIGA_IMPACT, PokemonType.NORMAL, MoveCategory.PHYSICAL, 150, 90, 5, -1, 0, 4).condition(
-      (user, target, move) => {
-        const turnMove = user.getLastXMoves(1);
-        return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
-      },
+    new AttackMove(MoveId.GIGA_IMPACT, PokemonType.NORMAL, MoveCategory.PHYSICAL, 150, 90, 5, -1, 0, 4).attr(
+      RechargeAttr,
     ),
     new SelfStatusMove(MoveId.NASTY_PLOT, PokemonType.DARK, -1, 20, -1, 0, 4)
       .attr(ZStatStageChangeAttr, [Stat.SPD], 2, true)
@@ -14724,7 +14723,7 @@ export function initMoves() {
         const turnMove = user.getLastXMoves(1);
         return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
       }),
-    new AttackMove(MoveId.SPACIAL_REND, PokemonType.DRAGON, MoveCategory.SPECIAL, 130, 95, 5, -1, 0, 4)
+    new AttackMove(MoveId.SPACIAL_REND, PokemonType.DRAGON, MoveCategory.SPECIAL, 130, -1, 5, -1, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(HighCritAttr),
     new SelfStatusMove(MoveId.LUNAR_DANCE, PokemonType.PSYCHIC, -1, 10, -1, 0, 4)
@@ -17075,6 +17074,10 @@ export function initMoves() {
       .makesContact(false)
       .hammerMove()
       .condition((user, target, move) => {
+        // 절대시간: 연속 사용 제한 공격기는 특성이 유지되는 동안 연속 사용 가능.
+        if (bypassChargeOrRechargeByAbsoluteTime(user)) {
+          return true;
+        }
         const turnMove = user.getLastXMoves(1);
         return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
       }), // TODO Add Instruct/Encore interaction
@@ -17114,6 +17117,10 @@ export function initMoves() {
       .makesContact(false),
     new AttackMove(MoveId.BLOOD_MOON, PokemonType.NORMAL, MoveCategory.SPECIAL, 140, 100, 5, -1, 0, 9).condition(
       (user, target, move) => {
+        // 절대시간: 연속 사용 제한 공격기는 특성이 유지되는 동안 연속 사용 가능.
+        if (bypassChargeOrRechargeByAbsoluteTime(user)) {
+          return true;
+        }
         const turnMove = user.getLastXMoves(1);
         return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
       },
@@ -18485,7 +18492,12 @@ export function initMoves() {
     new AttackMove(MoveId.FAIRY_WING, PokemonType.FAIRY, MoveCategory.PHYSICAL, 85, 100, 15, -1, 0, 224).wingMove(),
     new AttackMove(MoveId.ANCIENT_WING, PokemonType.ROCK, MoveCategory.PHYSICAL, 85, 100, 15, -1, 0, 224).wingMove(),
     new AttackMove(MoveId.HARD_HAMMER, PokemonType.BUG, MoveCategory.PHYSICAL, 100, 85, 15, -1, 0, 224).hammerMove(),
-    new AttackMove(MoveId.MEGA_HAMMER, PokemonType.NORMAL, MoveCategory.PHYSICAL, 120, 85, 15, -1, 0, 224).hammerMove(),
+    new AttackMove(MoveId.MEGA_HAMMER, PokemonType.NORMAL, MoveCategory.PHYSICAL, 150, 90, 5, -1, 0, 224)
+      .hammerMove()
+      .condition((user, target, move) => {
+        const turnMove = user.getLastXMoves(1);
+        return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
+      }),
     new AttackMove(
       MoveId.ANCHOR_HAMMER,
       PokemonType.WATER,
@@ -20830,7 +20842,7 @@ export function initMoves() {
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr)
       .attr(DefDefAttr),
-    new AttackMove(MoveId.OCEAN_WRATH, PokemonType.WATER, MoveCategory.SPECIAL, 130, 100, 5, -1, 0, 224)
+    new AttackMove(MoveId.OCEAN_WRATH, PokemonType.WATER, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 224)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr),
   );

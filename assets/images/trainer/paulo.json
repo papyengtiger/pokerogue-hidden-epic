@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "paulo.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "paulo.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:4bab237c13bb62f7d80c1cfe32d6f511:5c598940cdc75c10126b01e18630c8ff:07b962d41476ce8f9eefd2fe16a39bf7$"
+	}
+}

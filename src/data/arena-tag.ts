@@ -1455,7 +1455,7 @@ class TailwindTag extends SerializableArenaTag {
       return;
     }
 
-    for (const pokemon of source.getAlliesGenerator()) {
+    for (const pokemon of source.getAlliedField().filter(p => p.isActive(true))) {
       // Apply the CHARGED tag to party members with the WIND_POWER ability
       // TODO: This should not be handled here
       if (pokemon.hasAbility(AbilityId.WIND_POWER) && !pokemon.getTag(BattlerTagType.CHARGED)) {
@@ -1519,7 +1519,7 @@ class RiptideTag extends SerializableArenaTag {
     /*
      * 순풍과 같은 아군 대상 특성 연동
      */
-    for (const pokemon of source.getAlliesGenerator()) {
+    for (const pokemon of source.getAlliedField().filter(p => p.isActive(true))) {
       if (pokemon.hasAbility(AbilityId.WIND_POWER) && !pokemon.getTag(BattlerTagType.CHARGED)) {
         pokemon.addTag(BattlerTagType.CHARGED);
 

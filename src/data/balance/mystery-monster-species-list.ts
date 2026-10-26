@@ -34,12 +34,12 @@ export const allMysteryMonsters: MysteryMonsterSpecies[] = [
     AbilityId.NONE,
     AbilityId.NONE,
 
-    100, // HP
-    100, // 공격
-    100, // 방어
-    100, // 특수공격
-    100, // 특수방어
-    100, // 스피드
+    80, // HP
+    80, // 공격
+    80, // 방어
+    80, // 특수공격
+    80, // 특수방어
+    80, // 스피드
 
     "mysterian",
     52,
@@ -54,7 +54,7 @@ export const allMysteryMonsters: MysteryMonsterSpecies[] = [
   AbilityId.NONE,
   AbilityId.NONE,
 
-  150, 150, 150, 150, 150, 150, // 임시 능력치
+  200, 200, 200, 200, 200, 200, // 임시 능력치
 
   "demonstery",
   128,

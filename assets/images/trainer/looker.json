@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "looker.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "looker.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e8be1500969fce6b443e7a877d296e6e:d2f9a0e24469af8466a9ead46f947ab4:b9d0829bfedb63bee848b2045e4d8e72$"
+	}
+}

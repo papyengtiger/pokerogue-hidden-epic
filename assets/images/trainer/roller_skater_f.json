@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "roller_skater_f.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 54,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "roller_skater_f.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 52,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 52,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 52,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:998063b9822714a8cfebe1709fd0fe20:a2a850a4428eeeac5b9c24565e59687c:4250669e17aa9666c851a2267d7d3b45$"
+	}
+}

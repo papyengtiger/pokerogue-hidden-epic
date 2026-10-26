@@ -1,7 +1,9 @@
 // biome-ignore-start lint/correctness/noUnusedImports: TSDoc imports
 import type { PositionalTag } from "#data/positional-tags/positional-tag";
+
 // biome-ignore-end lint/correctness/noUnusedImports: TSDoc imports
 
+import { blocksFieldCreationByAbsoluteZone, getActiveLawAbilityHolder } from "#abilities/ability";
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { globalScene } from "#app/global-scene";
 import Overrides from "#app/overrides";
@@ -73,8 +75,12 @@ export class Arena {
   constructor(biome: BiomeId, playerFaints = 0) {
     this.biomeType = isValidBiomeId(biome) ? biome : BiomeId.TOWN;
     this.bgm = getBiomeKey(this.biomeType);
+    const trainerPoolSource = biomeTrainerPools[this.biomeType] ?? biomeTrainerPools[BiomeId.PLAINS] ?? {};
+    if (!biomeTrainerPools[this.biomeType]) {
+      console.warn("[ARENA_TRAINER_POOL_FALLBACK]", BiomeId[this.biomeType]);
+    }
     this.trainerPool = Object.fromEntries(
-      Object.entries(biomeTrainerPools[this.biomeType]).map(([tier, trainers]) => [tier, [...trainers]]),
+      Object.entries(trainerPoolSource).map(([tier, trainers]) => [tier, [...trainers]]),
     ) as BiomeTierTrainerPools;
     this.updatePoolsForTimeOfDay();
     this.playerFaints = playerFaints;
@@ -99,10 +105,13 @@ export class Arena {
     const timeOfDay = this.getTimeOfDay();
     if (timeOfDay !== this.lastTimeOfDay) {
       this.pokemonPool = {};
-      for (const tier of Object.keys(biomePokemonPools[this.biomeType])) {
-        this.pokemonPool[tier] = Object.assign([], biomePokemonPools[this.biomeType][tier][TimeOfDay.ALL]).concat(
-          biomePokemonPools[this.biomeType][tier][timeOfDay],
-        );
+      const pokemonPoolSource = biomePokemonPools[this.biomeType] ?? biomePokemonPools[BiomeId.PLAINS] ?? {};
+      if (!biomePokemonPools[this.biomeType]) {
+        console.warn("[ARENA_POKEMON_POOL_FALLBACK]", BiomeId[this.biomeType]);
+      }
+      for (const tier of Object.keys(pokemonPoolSource)) {
+        const timePools = pokemonPoolSource[tier];
+        this.pokemonPool[tier] = [...(timePools?.[TimeOfDay.ALL] ?? []), ...(timePools?.[timeOfDay] ?? [])];
       }
       this.lastTimeOfDay = timeOfDay;
     }
@@ -223,7 +232,7 @@ export class Arena {
   }
 
   randomTrainerType(waveIndex: number, isBoss = false): TrainerType {
-    const sourcePool = biomeTrainerPools[this.biomeType];
+    const sourcePool = biomeTrainerPools[this.biomeType] ?? biomeTrainerPools[BiomeId.PLAINS] ?? {};
     const activePool = this.trainerPool;
 
     console.log("[TRAINER_POOL_SOURCE]", {
@@ -279,7 +288,7 @@ export class Arena {
       biome: BiomeId[this.biomeType],
       biomeId: this.biomeType,
       pool: biomeTrainerPools[this.biomeType],
-      poolKeys: Object.keys(biomeTrainerPools[this.biomeType] ?? {}),
+      poolKeys: Object.keys(sourcePool),
       commonTier: BiomePoolTier.COMMON,
       bossTier: BiomePoolTier.BOSS,
       plainsPool: biomeTrainerPools[BiomeId.PLAINS],
@@ -365,6 +374,11 @@ export class Arena {
    * @returns true if new weather set, false if no weather provided or attempting to set the same weather as currently in use
    */
   trySetWeather(weather: WeatherType, user?: Pokemon): boolean {
+    // Only an opposing Pokemon is blocked. An undefined user is an engine/weather-reset event.
+    // The field-holder lookup is live, so a switched-out/fainted Zone user no longer blocks weather.
+    if (user && blocksFieldCreationByAbsoluteZone(user)) {
+      return false;
+    }
     if (Overrides.WEATHER_OVERRIDE) {
       return this.trySetWeatherOverride(Overrides.WEATHER_OVERRIDE);
     }
@@ -429,6 +443,9 @@ export class Arena {
   }
 
   trySetExclusiveWeather(weather: WeatherType, ignoreAnim = false, user?: Pokemon, force = false): boolean {
+    if (!force && user && blocksFieldCreationByAbsoluteZone(user)) {
+      return false;
+    }
     if (!force && !this.canSetWeather(weather)) {
       return false;
     }
@@ -532,6 +549,9 @@ export class Arena {
    * @returns true if new terrain set, false if no terrain provided or attempting to set the same terrain as currently in use
    */
   trySetTerrain(terrain: TerrainType, ignoreAnim = false, user?: Pokemon): boolean {
+    if (user && blocksFieldCreationByAbsoluteZone(user)) {
+      return false;
+    }
     if (!this.canSetTerrain(terrain)) {
       return false;
     }
@@ -580,6 +600,9 @@ export class Arena {
   }
 
   trySetExclusiveTerrain(terrain: TerrainType, ignoreAnim = false, user?: Pokemon, force = false): boolean {
+    if (!force && user && blocksFieldCreationByAbsoluteZone(user)) {
+      return false;
+    }
     if (!force && !this.canSetTerrain(terrain)) {
       return false;
     }
@@ -916,9 +939,20 @@ export class Arena {
     side: ArenaTagSide = ArenaTagSide.BOTH,
     quiet = false,
   ): boolean {
+    const tagSource = sourceId != null ? globalScene.getPokemonById(sourceId) : undefined;
+    if (tagSource && blocksFieldCreationByAbsoluteZone(tagSource)) {
+      return false;
+    }
     const existingTag = this.getTagOnSide(tagType, side);
 
     if (existingTag) {
+      // 절대공간으로 보호 중인 룸 효과를 재사용으로 해제하는 것을 막는다.
+      if (
+        this.isAbsoluteZoneProtectedTag(existingTag)
+        && [ArenaTagType.TRICK_ROOM, ArenaTagType.MAGIC_ROOM, ArenaTagType.WONDER_ROOM].includes(tagType)
+      ) {
+        return false;
+      }
       existingTag.onOverlap(sourceId != null ? globalScene.getPokemonById(sourceId) : undefined);
 
       // ✅ 여기!
@@ -1040,9 +1074,38 @@ export class Arena {
     );
   }
 
+  /**
+   * 절대공간으로 보호되는 지속형 필드 태그인지 검사한다.
+   * 장판은 피해를 받는 진영(side)이 아닌 설치자(sourceId) 진영으로 판정한다.
+   * 1턴 보호기/단발성 효과는 무기한 지속시키지 않는다.
+   */
+  private isAbsoluteZoneProtectedTag(tag: ArenaTag): boolean {
+    const holder = getActiveLawAbilityHolder("AbsoluteZoneAbAttr");
+    if (!holder || tag.maxDuration === 1) {
+      return false;
+    }
+
+    if (tag.sourceId != null) {
+      const source = globalScene.getPokemonById(tag.sourceId);
+      if (source) {
+        return source.isPlayer() === holder.isPlayer();
+      }
+    }
+
+    if (tag.side === ArenaTagSide.BOTH) {
+      return true;
+    }
+    return tag.side === (holder.isPlayer() ? ArenaTagSide.PLAYER : ArenaTagSide.ENEMY);
+  }
+
   lapseTags(): void {
     this.tags
-      .filter(t => !t.lapse(this))
+      .filter(t => {
+        if (this.isAbsoluteZoneProtectedTag(t)) {
+          return false;
+        }
+        return !t.lapse(this);
+      })
       .forEach(t => {
         t.onRemove(this);
         this.tags.splice(this.tags.indexOf(t), 1);
@@ -1055,6 +1118,9 @@ export class Arena {
     const tags = this.tags;
     const tag = tags.find(t => t.tagType === tagType);
     if (tag) {
+      if (this.isAbsoluteZoneProtectedTag(tag)) {
+        return false;
+      }
       tag.onRemove(this);
       tags.splice(tags.indexOf(tag), 1);
 
@@ -1066,6 +1132,9 @@ export class Arena {
   removeTagOnSide(tagType: ArenaTagType, side: ArenaTagSide, quiet = false): boolean {
     const tag = this.getTagOnSide(tagType, side);
     if (tag) {
+      if (this.isAbsoluteZoneProtectedTag(tag)) {
+        return false;
+      }
       tag.onRemove(this, quiet);
       this.tags.splice(this.tags.indexOf(tag), 1);
 

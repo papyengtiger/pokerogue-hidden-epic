@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tamer.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 83,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tamer.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 81,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 81,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 81,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:706631958d7b795e27e942aca659b8bb:5d4dbdfe374193c5b52843622e281df6:d81835c72d14ae3053e47e6f0a9f4844$"
+	}
+}

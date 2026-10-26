@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lucy.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 86
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lucy.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 84
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 84
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 84
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fcc3c2f2335787d561d319653b7cf880:876ccdea93d19294860c7d9a33bf6e50:07659fb7730975ef507690de25a5c8ed$"
+	}
+}

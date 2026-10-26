@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tina.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 44,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tina.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 42,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 42,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 42,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d9b022d5dfa6e0e780e6a72506a9382e:ddb2ce240ec4d9146f051d3c569c36d1:5804fb526a7aac7b9043cc8b54f09acb$"
+	}
+}

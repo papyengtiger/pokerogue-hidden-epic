@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "klara.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "klara.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5b8e9fa8f2e62314c252d3f8b07aeb66:d667cb36be16ccd1b940509638e37026:f0e1e98a3013e637699268ea59d82bab$"
+	}
+}

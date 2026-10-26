@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sonia.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sonia.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:29fea2c119be08eefdb91960fef133d3:32853fcb96046631c1a051402cd2371c:15412cdec7113c33d545192a9f5e2796$"
+	}
+}

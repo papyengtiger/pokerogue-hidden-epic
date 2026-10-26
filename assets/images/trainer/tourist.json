@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tourist.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tourist.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ace0976d9b8d81af978d834c300e9d0f:ffa2e1a4ae5f712ed193bd3747623412:8c8a948df63155e127b2aabd00d43a26$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sina.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sina.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2c5bf4eeb7286d1f6083924eac343cf0:f7a1a387ef202cbe896eb9af56e91f2d:e5723c38bc6da243cd8e829675928635$"
+	}
+}

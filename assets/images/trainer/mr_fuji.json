@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mr_fuji.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 71
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mr_fuji.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 69
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 69
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 69
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:d7d652e4a62afe42ca23759b0fea7271:5b338dd1cb7fcba084816e201404153e:76dad194afad431e028346187b7e8fe8$"
+	}
+}

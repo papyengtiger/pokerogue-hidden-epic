@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "willem.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 71
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "willem.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 69
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 69
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 69
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:876f5f99d547d23f645887e06d1963b4:75e97d92c54a502ef8e4382bfad35813:bf95fc6c1851200b2e152e38e43716f4$"
+	}
+}

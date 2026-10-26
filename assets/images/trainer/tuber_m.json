@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tuber_m.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 62,
+				"h": 56
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tuber_m.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 60,
+						"h": 54
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 60,
+						"h": 54
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 60,
+						"h": 54
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:88c4a1cb56a1d0ee6aff178343e72ab0:6aad9de0f5472aabd78653c8d015ccfe:b66b04d8602a64bbff64db7123022c30$"
+	}
+}

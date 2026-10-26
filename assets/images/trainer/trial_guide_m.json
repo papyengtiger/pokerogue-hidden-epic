@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "trial_guide_m.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "trial_guide_m.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:6236003e9a7b548764392cafbaf48633:a53d368495932f20108cc45a23659048:518252b13472bc24f58b5aedd6da25e8$"
+	}
+}

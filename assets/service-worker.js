@@ -3,12 +3,10 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-only
 
-self.addEventListener("install", () => {
-  console.log("Service worker installing...");
-
-  self.skipWaiting();
+self.addEventListener('install', function () {
+  console.log('Service worker installing...');
 });
 
-self.addEventListener("activate", event => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
-});
+})

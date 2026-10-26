@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tucker.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 64,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tucker.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 62,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e03e0b4cf8765eb6b8b763a6665dbea6:b83cf3fce5454c7a7c7b5aa719765c94:9d4fc1141e4addceeedef5c80164a9c8$"
+	}
+}

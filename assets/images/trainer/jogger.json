@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "jogger.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "jogger.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:808b02cc8d2866105c7722e1999a2690:7e94259020b80a10a8e060490654b5c1:34d5baaa9a1b9c870edf7e9af2c230bd$"
+	}
+}

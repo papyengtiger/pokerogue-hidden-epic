@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "idol.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "idol.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:dc0f11692839cf997f02c43c9bea177b:cb55977583162249d69c76f6d5376e77:1200beef1c14d0b10f0d350492ac31cd$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ultra_kartenvoy.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ultra_kartenvoy.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a264e21779e5c9edd67c28fc1eada641:712e7aad15d4c1f32fd0dc483d988be5:3f3b9d9220a37658a25e9ae0d1538902$"
+	}
+}

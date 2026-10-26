@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "soapberry.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 42,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "soapberry.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 40,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:59333f90448160c9cc06e622f7ea40c9:601ab78527d935c9f54c3d28d596756c:ad88c0a60df242bfa8635e9169232a0c$"
+	}
+}

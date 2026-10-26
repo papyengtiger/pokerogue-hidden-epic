@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "slavatore.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 29,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "slavatore.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 27,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 27,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 27,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:32e21d500529602a1b14500763f8d1a6:04574e1ac8bea1d6043b6344003273b2:c48cacf766a7cab1b853365c3880734a$"
+	}
+}

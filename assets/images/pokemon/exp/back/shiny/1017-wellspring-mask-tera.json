@@ -1,0 +1,167 @@
+{
+	"textures": [
+		{
+			"image": "1017-wellspring-mask-tera.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 99,
+				"h": 665
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 3,
+						"w": 97,
+						"h": 94
+					},
+					"frame": {
+						"x": 1,
+						"y": 197,
+						"w": 97,
+						"h": 94
+					}
+				},
+				{
+					"filename": "0002.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 5,
+						"w": 97,
+						"h": 92
+					},
+					"frame": {
+						"x": 1,
+						"y": 388,
+						"w": 97,
+						"h": 92
+					}
+				},
+				{
+					"filename": "0003.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 7,
+						"w": 97,
+						"h": 90
+					},
+					"frame": {
+						"x": 1,
+						"y": 482,
+						"w": 97,
+						"h": 90
+					}
+				},
+				{
+					"filename": "0004.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 7,
+						"w": 97,
+						"h": 90
+					},
+					"frame": {
+						"x": 1,
+						"y": 574,
+						"w": 97,
+						"h": 90
+					}
+				},
+				{
+					"filename": "0005.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 4,
+						"w": 97,
+						"h": 93
+					},
+					"frame": {
+						"x": 1,
+						"y": 293,
+						"w": 97,
+						"h": 93
+					}
+				},
+				{
+					"filename": "0006.png",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 2,
+						"w": 97,
+						"h": 95
+					},
+					"frame": {
+						"x": 1,
+						"y": 100,
+						"w": 97,
+						"h": 95
+					}
+				},
+				{
+					"filename": "0007.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 97,
+						"h": 97
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 97,
+						"h": 97
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 97,
+						"h": 97
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a790006e7faa05ab5820b965a0cf8ee6:05ebe97fe84fe439b88b625a1de33a5c:f4f8b58743ad897a5774e4ca3d3eff03$"
+	}
+}

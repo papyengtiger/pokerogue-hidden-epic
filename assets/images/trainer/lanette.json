@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lanette.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 71
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lanette.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 69
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 69
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 69
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0ab8bf1ca7499dbd81db4bc472561708:da0a3b2953f4cb5177c99aa0cd422fa2:b03b67e03373989e499ad8ec8d9efe13$"
+	}
+}

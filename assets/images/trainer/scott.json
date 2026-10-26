@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "scott.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 69
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "scott.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 67
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 67
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 67
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:b6a75cd6b1c77cfacd5ed2e125222dde:0437cda85a9bb3a3ac8240f4ad611bb1:7d1c4d2a2744109124947ecf5ab51dd2$"
+	}
+}

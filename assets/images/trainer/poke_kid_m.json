@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "poke_kid_m.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 50
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "poke_kid_m.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 48
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 48
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 48
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:c704e0974f8b4c458dfc4b7f79b6b790:22d4085c3c4a724b8a620c53578788b1:fce84ca0b15e59833ef948a84db17c75$"
+	}
+}

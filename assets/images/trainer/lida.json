@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lida.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 35,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lida.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 33,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 33,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 33,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8ee13618bf15ff205995c69bfd3fde51:7bf9911b778e8acd10a9a787a177edea:559635db5205670a2ec9b22b42225119$"
+	}
+}

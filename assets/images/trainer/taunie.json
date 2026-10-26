@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "taunie.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "taunie.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7f9e2f93a8f39413725684609dc79c17:f6fcd79a82b824f35f3093c1f9e2d8bc:561d1bb7ad1110965882b6c52ba8eee2$"
+	}
+}

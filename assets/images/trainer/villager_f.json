@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "villager_f.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "villager_f.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:857cc835517f09e2966cdbe2b9a990a9:e12bfd03769700474e4e230882267d00:2a011ac7eb426bba97a04a596c944a72$"
+	}
+}

@@ -193,9 +193,15 @@ export class TitlePhase extends Phase {
           // ========================================
           if (gameData.isUnlocked(Unlockables.ANOTHER_MODE)) {
             options.push({
-              label: GameMode.getModeName(GameModes.ANOTHER),
+              label: "어나더 (추후 업데이트 예정)",
               handler: () => {
-                setModeAndEnd(GameModes.ANOTHER);
+                globalScene.ui.setMode(UiMode.MESSAGE);
+                globalScene.ui.showText("어나더 모드는 추후 업데이트에서 공개됩니다.", null, () => {
+                  globalScene.ui.setMode(UiMode.OPTION_SELECT, {
+                    options,
+                    maxOptions: 7,
+                  });
+                });
                 return true;
               },
             });

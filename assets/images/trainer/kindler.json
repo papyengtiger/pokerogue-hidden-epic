@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "kindler.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 68,
+				"h": 83
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "kindler.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 66,
+						"h": 81
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 66,
+						"h": 81
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 66,
+						"h": 81
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:80f1efd38c0a976492da84e378c9c2b2:1b18bcdd1388593a0407a6d2b1b069c2:577d02f8865973833e011692aec76f0e$"
+	}
+}

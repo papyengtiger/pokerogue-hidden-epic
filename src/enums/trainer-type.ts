@@ -29,8 +29,7 @@ export enum TrainerType {
   GUITARIST,
   HARLEQUIN,
   HEX_MANIAC,
-  HIKER_F,
-  HIKER_M,
+  HIKER,
   HOOLIGANS,
   HOOPSTER,
   INFIELDER,
@@ -274,7 +273,7 @@ export enum TrainerType {
   BENI,
   GAERIC,
   EMMA,
-  PHILIPPE,
+  PHILLIPE,
   // #endregion Gym Leaders
 
   // #region Elite Four

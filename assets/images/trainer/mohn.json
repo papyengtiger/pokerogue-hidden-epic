@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mohn.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mohn.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8689dc205aba7c5ced2f54d0c7cc837e:c814981aae45ba391addf749665577ad:caaa94fd999168548b52a30f73ff2792$"
+	}
+}

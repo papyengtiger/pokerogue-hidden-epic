@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "morgan.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 49,
+				"h": 84
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "morgan.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 47,
+						"h": 82
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 47,
+						"h": 82
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 47,
+						"h": 82
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:84c93866913bf0b725f6e25749a04965:76884e9b26ef7fb8027ab19977b104fa:605473b897c366ab519c315dc49a84f1$"
+	}
+}

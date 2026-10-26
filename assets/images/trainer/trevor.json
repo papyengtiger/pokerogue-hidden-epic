@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "trevor.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 66
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "trevor.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 64
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 64
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:e6e5f639861f4c47508803e971b14030:9ccf731abd24a75dc5c9ff1b279b4a2f:d6b37f1621e2a7e9051b3ea19bc19136$"
+	}
+}

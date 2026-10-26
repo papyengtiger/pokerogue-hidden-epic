@@ -1,3 +1,4 @@
+import { blocksAbilityByDistortedWorld } from "#abilities/ability";
 import { globalScene } from "#app/global-scene";
 import type { AbAttrBaseParams, AbAttrParamMap, AbAttrString, CallableAbAttrString } from "#types/ability-types";
 
@@ -8,6 +9,10 @@ function applySingleAbAttrs<T extends AbAttrString>(
   messages: string[] = [],
 ) {
   const { simulated = false, passive = false, pokemon } = params;
+  // Hidden Epic: Distorted World prevents opponents' active and passive ability attributes.
+  if (pokemon && blocksAbilityByDistortedWorld(pokemon)) {
+    return;
+  }
   if (!pokemon.canApplyAbility(passive) || (passive && pokemon.getPassiveAbility().id === pokemon.getAbility().id)) {
     return;
   }

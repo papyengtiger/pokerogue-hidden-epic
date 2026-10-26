@@ -1,4 +1,9 @@
-import type { Ability, PreAttackModifyDamageAbAttrParams } from "#abilities/ability";
+import {
+  type Ability,
+  blocksAbilityByDistortedWorld,
+  getActiveLawAbilityHolder,
+  type PreAttackModifyDamageAbAttrParams,
+} from "#abilities/ability";
 import { applyAbAttrs, applyOnGainAbAttrs, applyOnLoseAbAttrs } from "#abilities/apply-ab-attrs";
 import type { AnySound, BattleScene } from "#app/battle-scene";
 import { EVOLVE_MOVE, PLAYER_PARTY_MAX_SIZE, RARE_CANDY_FRIENDSHIP_CAP, RELEARN_MOVE } from "#app/constants";
@@ -3149,6 +3154,9 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
    * @returns Whether this {@linkcode Pokemon} has the given ability
    */
   public hasAbility(ability: AbilityId, canApply = true, ignoreOverride = false): boolean {
+    if (canApply && blocksAbilityByDistortedWorld(this)) {
+      return false;
+    }
     if (this.getAbility(ignoreOverride).id === ability && (!canApply || this.canApplyAbility())) {
       return true;
     }
@@ -3164,6 +3172,9 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
    * @returns Whether this Pokemon has an ability with the given {@linkcode AbAttr}.
    */
   public hasAbilityWithAttr(attrType: AbAttrString, canApply = true, ignoreOverride = false): boolean {
+    if (canApply && blocksAbilityByDistortedWorld(this)) {
+      return false;
+    }
     if ((!canApply || this.canApplyAbility()) && this.getAbility(ignoreOverride).hasAttr(attrType)) {
       return true;
     }
@@ -3705,7 +3716,24 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       typeMultiplier.value = 0;
     }
 
-    return (!cancelledHolder.value ? typeMultiplier.value : 0) as TypeDamageMultiplier;
+    if (cancelledHolder.value) {
+      return 0;
+    }
+
+    // 뒤틀린세계: 보유자가 받는 공격은 원래 무효(0배)이면 그대로 무효,
+    // 무효가 아닌 공격만 0.5배로 통일한다. 보유자의 공격은 0배를 1배로 관통한다.
+    // 방어/상태기와 다른 별도 취소(방어, 아이템 차단 등)는 건드리지 않는다.
+    const distortedWorldHolder = getActiveLawAbilityHolder("DistortedWorldAbAttr");
+    if (distortedWorldHolder && move.category !== MoveCategory.STATUS) {
+      if (this === distortedWorldHolder && source !== this) {
+        return (typeMultiplier.value === 0 ? 0 : 0.5) as TypeDamageMultiplier;
+      }
+      if (source === distortedWorldHolder && typeMultiplier.value === 0) {
+        return 1 as TypeDamageMultiplier;
+      }
+    }
+
+    return typeMultiplier.value as TypeDamageMultiplier;
   }
 
   /**
@@ -3726,6 +3754,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     move?: Move,
     useIllusion = false,
   ): TypeDamageMultiplier {
+    const distortedWorldHolder = getActiveLawAbilityHolder("DistortedWorldAbAttr");
     if (moveType === PokemonType.STELLAR) {
       return this.isTerastallized ? 2 : 1;
     }
@@ -3843,6 +3872,12 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       if (!simulated) {
         globalScene.phaseManager.queueMessage(i18next.t("weather:strongWindsEffectMessage"));
       }
+    }
+    if (distortedWorldHolder && source && this === distortedWorldHolder && source !== this) {
+      return (multiplier === 0 ? 0 : 0.5) as TypeDamageMultiplier;
+    }
+    if (distortedWorldHolder && source === distortedWorldHolder && multiplier === 0) {
+      return 1 as TypeDamageMultiplier;
     }
     return multiplier as TypeDamageMultiplier;
   }
@@ -8907,6 +8942,11 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
    * info container.
    */
   leaveField(clearEffects = true, hideInfo = true, destroy = false) {
+    // The departing Absolute Zone holder releases the lock on opposing weather abilities.
+    // Save its identity before removing it from the field, since the live lookup will then return nothing.
+    const wasAbsoluteZoneHolder =
+      this.getAbility().hasAttr("AbsoluteZoneAbAttr")
+      || this.getPassiveAbility()?.hasAttr("AbsoluteZoneAbAttr") === true;
     this.resetSprite();
     this.resetTurnData();
     globalScene
@@ -8926,6 +8966,18 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     this.setSwitchOutStatus(true);
     globalScene.triggerPokemonFormChange(this, SpeciesFormChangeActiveTrigger, true);
     globalScene.field.remove(this, destroy);
+
+    // PostSummonWeatherChangeAbAttr normally runs only on entry. If it was blocked
+    // by Absolute Zone while its owner was already on the field, simply removing
+    // Palkia cannot restart it. Retry weather effects once the blocker is gone.
+    // Do NOT run all PostSummon attributes: those can cause unrelated entrance effects.
+    if (wasAbsoluteZoneHolder && !getActiveLawAbilityHolder("AbsoluteZoneAbAttr")) {
+      for (const other of globalScene.getField(true)) {
+        if (other.isActive(true) && other.isPlayer() !== this.isPlayer()) {
+          applyAbAttrs("PostSummonWeatherChangeAbAttr", { pokemon: other });
+        }
+      }
+    }
   }
 
   destroy(): void {

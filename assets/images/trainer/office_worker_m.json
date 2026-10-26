@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "office_worker_m.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "office_worker_m.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:78de36e248404e18e58981bc9b613704:fccff02b5d42f3a1104f72069717a54d:9357012d3a617df913c2b3e04810e356$"
+	}
+}

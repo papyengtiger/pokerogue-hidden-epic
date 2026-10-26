@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "shauna.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 42,
+				"h": 71
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "shauna.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 40,
+						"h": 69
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 40,
+						"h": 69
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 40,
+						"h": 69
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:1d4ab9e82ea63b911915148263095140:7c87f1b2e9182af05f32095ff43ed107:041bb077d511431e2127b1d8396a8f96$"
+	}
+}

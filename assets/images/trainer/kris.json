@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "kris.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 66
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "kris.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 64
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 64
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 64
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:7f6cdf5db7ccc1a3ab5b0cd438b3134d:c768c6fd7c914d40e95a74c9f1c5b9e6:723a07cce1fd702f0c2e384212a9b34a$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tao_hua.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tao_hua.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:450a5f98e9a0838096a3763f309c8b62:70a44d4aa4e3f7d1c3e297342defe0b2:f51a7ea29da751c2cb48271bc31744ab$"
+	}
+}

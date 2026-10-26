@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "palmer.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 56,
+				"h": 82
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "palmer.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 54,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 54,
+						"h": 80
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 54,
+						"h": 80
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:3d684f2519515c1dbde9aba8d2e3ac2c:05b4f8c6bdf2c583ea77f62dccf17ecc:1f715249a63addaf631e9399b489158f$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "postman.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "postman.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:31ff5739af4f87f79b87231e3e6677cb:39282b9cb765bfad07dfd0ee576cdded:aae4fda288cd5df565e826e591666c61$"
+	}
+}

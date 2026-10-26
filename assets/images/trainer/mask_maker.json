@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mask_maker.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 27,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mask_maker.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 25,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 25,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 25,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:94cf1ef4d12321ff786609df7fb1fda2:55d5608249b4045ca8572632f9811af5:f14bfb170073d1478cc6ba968836fe75$"
+	}
+}

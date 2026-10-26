@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "wally.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 68
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "wally.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 66
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 66
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 66
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:597acd8a4005fafcc3861d598a7b7b6f:3f334f29aeeae5fd63f61ce0ecd72636:7eee9673401865aa3d11840595944246$"
+	}
+}

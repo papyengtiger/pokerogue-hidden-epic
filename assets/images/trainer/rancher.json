@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "rancher.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 41,
+				"h": 78
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "rancher.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 39,
+						"h": 76
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 39,
+						"h": 76
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 39,
+						"h": 76
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:353f16e2118ee3367efa03c429292aa7:ad7c84d37635ccbe45544d35d17ab5f8:c35252ba48cf1f89aa54a0351c9b8549$"
+	}
+}

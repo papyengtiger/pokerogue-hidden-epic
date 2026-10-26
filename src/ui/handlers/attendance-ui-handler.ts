@@ -165,6 +165,7 @@ export class AttendanceUiHandler extends MessageUiHandler {
   private rewardStatusTexts: Phaser.GameObjects.Text[] = [];
 
   private helpText: Phaser.GameObjects.Text;
+  private attendanceClaimInProgress = false;
 
   constructor() {
     super(UiMode.ATTENDANCE);
@@ -448,6 +449,10 @@ export class AttendanceUiHandler extends MessageUiHandler {
   }
 
   private async claimAttendance(): Promise<void> {
+    if (this.attendanceClaimInProgress) {
+      return;
+    }
+
     const gameData = globalScene.gameData;
     const today = getDailyResetDate();
 
@@ -456,51 +461,47 @@ export class AttendanceUiHandler extends MessageUiHandler {
       return;
     }
 
-    gameData.attendanceCount = (gameData.attendanceCount ?? 0) + 1;
-
-    gameData.lastAttendanceDate = today;
-
-    const cycleDay = ((gameData.attendanceCount - 1) % 31) + 1;
-
+    const nextCount = (gameData.attendanceCount ?? 0) + 1;
+    const cycleDay = ((nextCount - 1) % 31) + 1;
     const reward = ATTENDANCE_REWARDS[cycleDay - 1];
 
-    console.log("[ATTENDANCE_REWARD]", reward);
-
     if (!reward) {
-      console.error("[ATTENDANCE] 보상 데이터 없음", {
-        cycleDay,
-      });
-
+      console.error("[ATTENDANCE] 보상 데이터 없음", { cycleDay });
       this.getUi().playError();
       return;
     }
 
-    if (reward.type === "ROGUE_POINTS") {
-      console.log("[ROGUE_POINTS_REWARD]", reward.amount);
+    this.attendanceClaimInProgress = true;
+    try {
+      console.log("[ATTENDANCE_REWARD]", reward);
 
-      gameData.addRoguePoints(reward.amount);
-    } else if (reward.delivery === "STORAGE") {
-      console.log("[STORAGE_REWARD]", reward.modifierKey, reward.amount);
-
-      console.log("[STORAGE_AFTER]", {
-        modifierKey: reward.modifierKey,
-        storedItem: gameData.storageItems.find(item => item.itemId === reward.modifierKey),
-      });
-
-      const existingItem = gameData.storageItems.find(item => item.itemId === reward.modifierKey);
-
-      if (existingItem) {
-        existingItem.quantity += reward.amount;
+      if (reward.type === "ROGUE_POINTS") {
+        gameData.addRoguePoints(reward.amount);
+      } else if (reward.delivery === "STORAGE") {
+        gameData.addToStorage(reward.modifierKey, reward.amount);
       } else {
-        gameData.storageItems.push({
-          itemId: reward.modifierKey,
-          quantity: reward.amount,
-        });
+        await this.grantDirectAttendanceModifier(reward.modifierKey, reward.amount);
       }
-    } else {
-      console.log("[DIRECT_REWARD]", reward.modifierKey, reward.amount);
 
-      await this.grantDirectAttendanceModifier(reward.modifierKey, reward.amount);
+      gameData.attendanceCount = nextCount;
+      gameData.lastAttendanceDate = today;
+
+      // 출석 상태와 지급된 보상을 같은 시스템 저장 데이터에 기록한다.
+      const saved = await gameData.saveSystem();
+      if (!saved) {
+        // 서버 저장 실패 시 재수령을 허용하면 중복 보상이 발생할 수 있다.
+        // 현재 실행의 출석 상태는 유지하고 오류를 기록한다.
+        console.error("[ATTENDANCE] 시스템 저장 실패. 서버 연결 상태를 확인하세요.");
+        this.getUi().playError();
+      } else {
+        console.log("[ATTENDANCE] 저장 완료", { today, attendanceCount: nextCount });
+      }
+    } catch (error) {
+      console.error("[ATTENDANCE] 출석 처리 중 오류", error);
+      this.getUi().playError();
+    } finally {
+      this.attendanceClaimInProgress = false;
+      this.refresh();
     }
   }
 }

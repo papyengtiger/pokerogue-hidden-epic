@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "thorton.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "thorton.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2745884c0a61abfeaa49836e2d84b5d5:981300c5344a0c74229853b415c11c98:d424fadbd60cf1214f25a88980ecc596$"
+	}
+}

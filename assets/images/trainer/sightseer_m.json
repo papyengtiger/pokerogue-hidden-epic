@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sightseer_m.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 51,
+				"h": 70
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sightseer_m.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 49,
+						"h": 68
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 49,
+						"h": 68
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 49,
+						"h": 68
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:baefb416ddb0043e93c61739c135e717:6dc9bb9dde8a61d01ad908b8e360281e:c88754aa37d33c23cc301ff402d93385$"
+	}
+}

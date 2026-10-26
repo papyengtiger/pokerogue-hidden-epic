@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "ruffian.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 36,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "ruffian.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 34,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 34,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 34,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f67518fd058b9221a1b2ad8c8bea1915:8fed00d26b741c79d4dc254e75dc8735:83abc956da9b7b3d06834cbdfd42e1ee$"
+	}
+}

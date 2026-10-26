@@ -1,3 +1,4 @@
+import { getActiveLawAbilityHolder } from "#abilities/ability";
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import type { TurnCommand } from "#app/battle";
 import { globalScene } from "#app/global-scene";
@@ -178,6 +179,19 @@ export class TurnStartPhase extends FieldPhase {
 
     // ✅ 정렬
     moveOrder.sort((a, b) => {
+      // Absolute Zone: opposing commands cannot precede its holder.
+      // This is enforced before normal priority/Quick Claw/Trick Room ordering.
+      const zoneHolder = getActiveLawAbilityHolder("AbsoluteZoneAbAttr");
+      if (zoneHolder) {
+        const ha = battlerToPokemon.get(a);
+        const hb = battlerToPokemon.get(b);
+        if (ha?.id === zoneHolder.id && hb && hb.isPlayer() !== zoneHolder.isPlayer()) {
+          return -1;
+        }
+        if (hb?.id === zoneHolder.id && ha && ha.isPlayer() !== zoneHolder.isPlayer()) {
+          return 1;
+        }
+      }
       const aCommand = globalScene.currentBattle.turnCommands[a];
       const bCommand = globalScene.currentBattle.turnCommands[b];
 

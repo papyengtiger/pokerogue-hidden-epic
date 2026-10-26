@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "teammates.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 64,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "teammates.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 62,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:29d24f21a0c15546526bd3ac540bdf48:ad019b6b2c85a8b76fac78df251e3ad2:4b27318263ba9e7c8236f651d08b0789$"
+	}
+}

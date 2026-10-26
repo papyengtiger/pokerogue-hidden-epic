@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "sky_trainer_m.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 50,
+				"h": 81
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "sky_trainer_m.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 48,
+						"h": 79
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 48,
+						"h": 79
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 48,
+						"h": 79
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:a359102b3e3492add090664f33c2f9ba:383f5c40fd9c83c7cc8137f0a8303b3c:c3568912a315ff9792aafdf09017f684$"
+	}
+}

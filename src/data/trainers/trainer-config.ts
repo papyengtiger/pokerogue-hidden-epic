@@ -1769,55 +1769,10 @@ export const trainerConfigs: TrainerConfigs = {
       trainerPartyTemplates.TWO_STRONG,
     )
     .setSpeciesFilter(s => s.isOfType(PokemonType.GHOST) || s.isOfType(PokemonType.PSYCHIC)),
-  [TrainerType.HIKER_F]: new TrainerConfig(++t)
+  [TrainerType.HIKER]: new TrainerConfig(++t)
     .setEncounterBgm(TrainerType.BACKPACKER)
     .setHasGenders("Hiker Female")
-    .setPartyTemplates(
-      trainerPartyTemplates.TWO_AVG_SAME_ONE_AVG,
-      trainerPartyTemplates.TWO_AVG_SAME_ONE_STRONG,
-      trainerPartyTemplates.TWO_AVG,
-      trainerPartyTemplates.FOUR_WEAK,
-      trainerPartyTemplates.ONE_STRONG,
-    )
-    .setSpeciesPools({
-      [TrainerPoolTier.COMMON]: [
-        SpeciesId.SANDSHREW,
-        SpeciesId.DIGLETT,
-        SpeciesId.GEODUDE,
-        SpeciesId.MACHOP,
-        SpeciesId.ARON,
-        SpeciesId.ROGGENROLA,
-        SpeciesId.DRILBUR,
-        SpeciesId.NACLI,
-      ],
-      [TrainerPoolTier.UNCOMMON]: [
-        SpeciesId.ZUBAT,
-        SpeciesId.RHYHORN,
-        SpeciesId.ONIX,
-        SpeciesId.CUBONE,
-        SpeciesId.WOOBAT,
-        SpeciesId.SWINUB,
-        SpeciesId.NOSEPASS,
-        SpeciesId.HIPPOPOTAS,
-        SpeciesId.DWEBBLE,
-        SpeciesId.KLAWF,
-        SpeciesId.TOEDSCOOL,
-      ],
-      [TrainerPoolTier.RARE]: [
-        SpeciesId.TORKOAL,
-        SpeciesId.TRAPINCH,
-        SpeciesId.BARBOACH,
-        SpeciesId.GOLETT,
-        SpeciesId.ALOLA_DIGLETT,
-        SpeciesId.ALOLA_GEODUDE,
-        SpeciesId.GALAR_STUNFISK,
-        SpeciesId.PALDEA_WOOPER,
-      ],
-      [TrainerPoolTier.SUPER_RARE]: [SpeciesId.MAGBY, SpeciesId.LARVITAR],
-    }),
-  [TrainerType.HIKER_M]: new TrainerConfig(++t)
-    .setHasGenders("Hiker Male")
-    .setEncounterBgm(TrainerType.BACKPACKER)
+    .setHasDouble("Hiker Duo")
     .setPartyTemplates(
       trainerPartyTemplates.TWO_AVG_SAME_ONE_AVG,
       trainerPartyTemplates.TWO_AVG_SAME_ONE_STRONG,
@@ -4054,7 +4009,7 @@ export const trainerConfigs: TrainerConfigs = {
     .setSpeciesFilter(p => p.isOfType(PokemonType.GHOST))
     .setSpecialtyType(PokemonType.GHOST)
     .setMixedBattleBgm("battle_kalos_za_royale_trainer"),
-  [TrainerType.PHILIPPE]: new TrainerConfig(TrainerType.PHILIPPE)
+  [TrainerType.PHILLIPE]: new TrainerConfig(TrainerType.PHILLIPE)
     .setBoss()
     .setStaticParty()
     .setPartyTemplates(trainerPartyTemplates.SIX_WEAK)

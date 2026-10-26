@@ -1,3 +1,4 @@
+import { bypassChargeOrRechargeByAbsoluteTime, getActiveLawAbilityHolder } from "#abilities/ability";
 import { applyAbAttrs } from "#abilities/apply-ab-attrs";
 import { MOVE_COLOR } from "#app/constants/colors";
 import { globalScene } from "#app/global-scene";
@@ -291,6 +292,34 @@ export class MovePhase extends PokemonPhase {
     this.resolveRedirectTarget();
     this.resolveCounterAttackTarget();
 
+    // 연습모드: 적 대타인형의 단일 공격이 자기 자신/아군을 겨냥했을 때만 보정.
+    // 근본적인 적 AI 대상 선택 로직은 별도로 점검해야 한다.
+    if ((globalScene.currentBattle as any)?.isPracticeBattle && !user.isPlayer()) {
+      const attackMove = this.move.getMove();
+      const enemyDirected = [
+        MoveTarget.NEAR_ENEMY,
+        MoveTarget.RANDOM_NEAR_ENEMY,
+        MoveTarget.NEAR_OTHER,
+        MoveTarget.OTHER,
+      ].includes(attackMove.moveTarget);
+      if (enemyDirected && attackMove.category !== MoveCategory.STATUS) {
+        const chosen = globalScene.getField(true).find(p => this.targets.includes(p.getBattlerIndex()));
+        if (!chosen || !chosen.isPlayer()) {
+          const opponents = globalScene.getPlayerField().filter(p => p.isActive(true) && !p.isFainted());
+          if (opponents.length > 0) {
+            const before = [...this.targets];
+            this.targets = [opponents[0].getBattlerIndex()];
+            console.warn("[PRACTICE_DOLL_TARGET_FIXED]", {
+              user: user.getName(),
+              move: attackMove.name,
+              before,
+              after: this.targets,
+            });
+          }
+        }
+      }
+    }
+
     // ========================================
     // 동료 포켓몬의 잘못된 아군 타깃 최종 보정
     // ========================================
@@ -483,7 +512,8 @@ export class MovePhase extends PokemonPhase {
     this.resolveCounterAttackTarget();
 
     const isChargingMove = move.isChargingMove();
-    const charging = isChargingMove && !user.getTag(BattlerTagType.CHARGING);
+    const charging =
+      isChargingMove && !user.getTag(BattlerTagType.CHARGING) && !bypassChargeOrRechargeByAbsoluteTime(user);
     const releasing = isChargingMove && !charging;
 
     if (!move.hasAttr("CopyMoveAttr") && !isReflected(useMode)) {
@@ -579,6 +609,7 @@ export class MovePhase extends PokemonPhase {
       || this.checkFreeze()
       || this.checkPP()
       || this.checkValidity()
+      || this.checkAbsoluteTimeOpponentAction()
       || this.checkTagCancel(BattlerTagType.TRUANT)
       || this.checkPreUseInterrupt()
       || this.checkTagCancel(BattlerTagType.FLINCHED)
@@ -769,6 +800,52 @@ export class MovePhase extends PokemonPhase {
    * @param tagType - The `BattlerTagType` to trigger; will be lapsed with `BattlerTagLapseType.PRE_MOVE`
    * @returns Whether the move was cancelled due to a `BattlerTag` effect
    */
+  /**
+   * Absolute Time: an opposing Pokemon can only act on alternating turns.
+   * The cycle begins with an allowed action on its first turn under this holder.
+   * Only normal move actions are restricted, so forced follow-ups and item/switch
+   * commands are not accidentally cancelled by this move-phase hook.
+   */
+  private checkAbsoluteTimeOpponentAction(): boolean {
+    if (this.useMode !== MoveUseMode.NORMAL) {
+      return false;
+    }
+
+    const pokemon = this.pokemon;
+    const holder = getActiveLawAbilityHolder("AbsoluteTimeAbAttr");
+    const state = pokemon.summonData as typeof pokemon.summonData & {
+      _absoluteTimeActionCycle?: { holderId: number; anchorTurn: number };
+    };
+
+    if (!holder || holder.isPlayer() === pokemon.isPlayer()) {
+      delete state._absoluteTimeActionCycle;
+      return false;
+    }
+
+    const turn = globalScene.currentBattle.turn;
+    if (
+      !state._absoluteTimeActionCycle
+      || state._absoluteTimeActionCycle.holderId !== holder.id
+      || turn < state._absoluteTimeActionCycle.anchorTurn
+    ) {
+      state._absoluteTimeActionCycle = { holderId: holder.id, anchorTurn: turn };
+    }
+
+    // Allowed on first turn, blocked on second, repeating while the holder stays active.
+    if ((turn - state._absoluteTimeActionCycle.anchorTurn) % 2 === 0) {
+      return false;
+    }
+
+    console.log("[ABSOLUTE_TIME_OPPONENT_SKIP]", {
+      pokemon: pokemon.name,
+      holder: holder.name,
+      turn,
+    });
+    globalScene.phaseManager.queueMessage(`${pokemon.name}은(는) 절대시간의 영향으로 움직일 수 없다!`);
+    this.cancel();
+    return true;
+  }
+
   private checkTagCancel(tag: BattlerTagType): boolean {
     this.pokemon.lapseTag(tag, BattlerTagLapseType.PRE_MOVE);
     return this.cancelled;

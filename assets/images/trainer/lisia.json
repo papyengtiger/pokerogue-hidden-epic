@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "lisia.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 46,
+				"h": 77
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "lisia.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 44,
+						"h": 75
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 44,
+						"h": 75
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 44,
+						"h": 75
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5181091c148178db602e5e1c6f637749:e832f3c0f0f0ad7a73a4a7f74074e88d:76d430e84450f1576cc28ac79016dc7c$"
+	}
+}

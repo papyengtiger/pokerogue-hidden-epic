@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "mr_briney.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "mr_briney.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8805ed50e5abf2cca3e657c96b56c7b3:8b63f799cd3a00b2cd5aa0ee213e45bd:64fb81598459dd4269d448bbb47be80e$"
+	}
+}

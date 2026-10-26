@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tierno.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 39,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tierno.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 37,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 37,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 37,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:c44bda869d46c318ec6ff4775e7ac73b:7fcf2044abe631b8ea52dad01aaae7ee:8a923bcc5f754d7b0deff52b58955e2d$"
+	}
+}

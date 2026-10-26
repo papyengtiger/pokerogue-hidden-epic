@@ -1971,12 +1971,11 @@ export class PokemonTypeChangeAbAttr extends PreAttackAbAttr {
   override canApply({ move, pokemon }: AugmentMoveInteractionAbAttrParams): boolean {
     if (
       pokemon.isTerastallized
-      || move.id === MoveId.STRUGGLE
-      || /*
+      || move.id === MoveId.STRUGGLE /*
        * Skip moves that call other moves because these moves generate a following move that will trigger this ability attribute
        * See: https://bulbapedia.bulbagarden.net/wiki/Category:Moves_that_call_other_moves
        */
-      move.hasAttr("CallMoveAttr")
+      || move.hasAttr("CallMoveAttr")
       || move.hasAttr("NaturePowerAttr") // TODO: remove this line when nature power is made to extend from `CallMoveAttr`
     ) {
       return false;
@@ -3422,7 +3421,12 @@ export class PostSummonWeatherChangeAbAttr extends PostSummonAbAttr {
     this.weatherType = weatherType;
   }
 
-  override canApply(_params: AbAttrBaseParams): boolean {
+  override canApply({ pokemon }: AbAttrBaseParams): boolean {
+    // The ability should not trigger while an opposing Absolute Zone holder is active.
+    // Once it leaves the field the live lookup becomes false automatically.
+    if (blocksFieldCreationByAbsoluteZone(pokemon)) {
+      return false;
+    }
     const weatherReplaceable =
       this.weatherType === WeatherType.HEAVY_RAIN
       || this.weatherType === WeatherType.HARSH_SUN
@@ -7428,7 +7432,29 @@ export class PostDamageForceSwitchAbAttr extends PostDamageAbAttr {
 /**
  * Map of all ability attribute constructors, for use with the `.is` method.
  */
+/** Hidden Epic law abilities: marker attrs consumed by field-wide engine hooks. */
+export class AbsoluteTimeAbAttr extends AbAttr {
+  constructor() {
+    super(false);
+  }
+}
+
+export class AbsoluteZoneAbAttr extends AbAttr {
+  constructor() {
+    super(false);
+  }
+}
+
+export class DistortedWorldAbAttr extends AbAttr {
+  constructor() {
+    super(false);
+  }
+}
+
 const AbilityAttrs = Object.freeze({
+  AbsoluteTimeAbAttr,
+  AbsoluteZoneAbAttr,
+  DistortedWorldAbAttr,
   BlockRecoilDamageAttr,
   DoubleBattleChanceAbAttr,
   ShinyChanceAbAttr,
@@ -7687,6 +7713,74 @@ function getPokemonWithWeatherBasedForms() {
         (p.hasAbility(AbilityId.FORECAST) && p.species.speciesId === SpeciesId.CASTFORM)
         || (p.hasAbility(AbilityId.FLOWER_GIFT) && p.species.speciesId === SpeciesId.CHERRIM),
     );
+}
+
+/**
+ * Hidden Epic: field-wide law abilities.
+ * These predicates are consumed by battle/action/arena code. They deliberately
+ * do not cache state, so switching, fainting and suppression take effect at once.
+ *
+ * IMPORTANT: A special-ability suppression rule (DISTORTED_WORLD) should be
+ * enforced by the central ability dispatcher, not through these functions.
+ */
+export type LawAbAttrName = "AbsoluteTimeAbAttr" | "AbsoluteZoneAbAttr" | "DistortedWorldAbAttr";
+
+/** Check both active and passive ability attributes without recursively invoking the dispatcher. */
+export function getActiveLawAbilityHolder(attrName: LawAbAttrName): Pokemon | undefined {
+  return globalScene
+    .getField(true)
+    .find(
+      p =>
+        p.isActive(true)
+        && !p.isFainted()
+        && ((p.getAbility().hasAttr(attrName) && p.canApplyAbility(false))
+          || (p.getPassiveAbility()?.hasAttr(attrName) && p.canApplyAbility(true))),
+    );
+}
+
+export function isLawAbilityAlly(pokemon: Pokemon, holder: Pokemon): boolean {
+  return pokemon.isPlayer() === holder.isPlayer();
+}
+
+/** Allied charging/recharging constraints are bypassed while Absolute Time is active. */
+export function bypassChargeOrRechargeByAbsoluteTime(pokemon: Pokemon): boolean {
+  const holder = getActiveLawAbilityHolder("AbsoluteTimeAbAttr");
+  return holder !== undefined && isLawAbilityAlly(pokemon, holder);
+}
+
+/** Opponent side must not bypass charging using other effects. */
+export function blocksInstantChargeByAbsoluteTime(pokemon: Pokemon): boolean {
+  const holder = getActiveLawAbilityHolder("AbsoluteTimeAbAttr");
+  return holder !== undefined && !isLawAbilityAlly(pokemon, holder);
+}
+
+/** Enemies are affected by Absolute Time's Truant-like action gate. */
+export function affectedByAbsoluteTimeLoafing(pokemon: Pokemon): boolean {
+  return blocksInstantChargeByAbsoluteTime(pokemon);
+}
+
+/** Allied weather/terrain/screens/hazards cannot expire or be removed. */
+export function isAbsoluteZoneProtectedSide(isPlayerSide: boolean): boolean {
+  const holder = getActiveLawAbilityHolder("AbsoluteZoneAbAttr");
+  return holder !== undefined && holder.isPlayer() === isPlayerSide;
+}
+
+/** Enemy weather/terrain/screens/hazards cannot be placed. */
+export function blocksFieldCreationByAbsoluteZone(pokemon: Pokemon): boolean {
+  const holder = getActiveLawAbilityHolder("AbsoluteZoneAbAttr");
+  return holder !== undefined && !isLawAbilityAlly(pokemon, holder);
+}
+
+/** Returns true if attacker must not act earlier than the Absolute Zone holder. */
+export function blocksActingBeforeAbsoluteZoneHolder(pokemon: Pokemon): boolean {
+  const holder = getActiveLawAbilityHolder("AbsoluteZoneAbAttr");
+  return holder !== undefined && !isLawAbilityAlly(pokemon, holder);
+}
+
+/** Other-side abilities may not trigger, including passive abilities. */
+export function blocksAbilityByDistortedWorld(pokemon: Pokemon): boolean {
+  const holder = getActiveLawAbilityHolder("DistortedWorldAbAttr");
+  return holder !== undefined && !isLawAbilityAlly(pokemon, holder);
 }
 
 // biome-ignore format: prevent biome from removing the newlines (e.g. prevent `new Ability(...).attr(...)`)
@@ -9051,5 +9145,22 @@ export function initAbilities() {
   .attr(MovePowerBoostAbAttr, (_user, _target, move) => move.hasFlag(MoveFlags2.LIGHT_MOVE), 1.5),
  new Ability(AbilityId.POWERFUL_TAIL, 224)
   .attr(MovePowerBoostAbAttr, (_user, _target, move) => move.hasFlag(MoveFlags2.TAIL_MOVE), 1.5),
+ // These three abilities are enforced by central battle-engine hooks.
+ // Register them here so they are visible in the ability registry.
+ new Ability(AbilityId.ABSOLUTE_TIME, 224)
+  .attr(AbsoluteTimeAbAttr)
+  .unsuppressable()
+  .uncopiable()
+  .unreplaceable(),
+ new Ability(AbilityId.ABSOLUTE_ZONE, 224)
+  .attr(AbsoluteZoneAbAttr)
+  .unsuppressable()
+  .uncopiable()
+  .unreplaceable(),
+ new Ability(AbilityId.DISTORTED_WORLD, 224)
+  .attr(DistortedWorldAbAttr)
+  .unsuppressable()
+  .uncopiable()
+  .unreplaceable(),
   );
 }

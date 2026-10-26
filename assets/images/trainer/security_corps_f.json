@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "security_corps_f.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 34,
+				"h": 80
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "security_corps_f.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 32,
+						"h": 78
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 32,
+						"h": 78
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 32,
+						"h": 78
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:2497b15b952e0738102efe68f8b3f6f7:7d62488f053c274643c6ce2c08838f21:1d03105ff0aeb09d87a34301175b5322$"
+	}
+}

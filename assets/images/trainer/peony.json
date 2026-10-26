@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "peony.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "peony.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:03d0750e146b05a2f2115e8a2e0274c0:a628db48f534f53d088211c11fe754dc:0d8412ccdf2cdbb6faab481fed5e564a$"
+	}
+}

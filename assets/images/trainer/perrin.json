@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "perrin.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 26,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "perrin.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 24,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 24,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 24,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:ada0351d7c0295c3355d4c79ceec2b0b:a5a6930c90ad890c1fcdae5a9d418875:71a44a3b3a4b61fd1b6034d6246bdaad$"
+	}
+}

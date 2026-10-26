@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "rei.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 43,
+				"h": 67
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "rei.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 41,
+						"h": 65
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 41,
+						"h": 65
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 41,
+						"h": 65
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:0a19c5e363711a30b917b80763842190:2300a522f5a44b9e9f257fdd8a71f358:7adc76092553dec6a7ce3e190fb0f489$"
+	}
+}

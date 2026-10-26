@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "reporter.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 28,
+				"h": 73
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "reporter.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 26,
+						"h": 71
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 26,
+						"h": 71
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 26,
+						"h": 71
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5fe0f8e1da40c54e88f3b3ebb1a457f2:832e1b768fcf9f3a2aaaa24adf414cc1:0a93ba780e3c9957f93c4c201b27bca5$"
+	}
+}

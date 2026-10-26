@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "hop.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 72
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "hop.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 70
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 70
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 70
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:8784adc0d67000ee34c9ab07194008b5:8afc5962fa87d88bf245be74cb5df13b:7452941e40fc8c5c9fa383772bf4f154$"
+	}
+}

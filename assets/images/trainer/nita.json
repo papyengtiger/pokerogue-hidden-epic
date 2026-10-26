@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "nita.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 49,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "nita.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 47,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 47,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 47,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:55319c979ad1fcb5e1687edb41f4cd69:dc9894a839be6d2705958c0054ac9323:7d614c058511290c696358baac8529ae$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "suit_actor.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 52,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "suit_actor.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 50,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 50,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 50,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:111317ca66ac6b7ec670d59b867d510b:1246bd33b1c869d8a24d9e21d822c462:0088f80c1975a62506e35831e8e3d221$"
+	}
+}

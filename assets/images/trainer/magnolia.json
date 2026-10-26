@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "magnolia.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 37,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "magnolia.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 35,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 35,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 35,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:f4c06a656af01e20e78d9e103ec51b85:a6009d10560915bde3a0574e1ace92be:1d16b64669f35cf2089f09d2fd13ecff$"
+	}
+}

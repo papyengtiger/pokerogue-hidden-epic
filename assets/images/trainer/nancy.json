@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "nancy.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 38,
+				"h": 74
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "nancy.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 36,
+						"h": 72
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 36,
+						"h": 72
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 36,
+						"h": 72
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:59b09f8b394d9a87182d6f931265a77e:116db03d13363d22830922d9228cf1d9:9c17caf0cdea1ae8b03c160a26567854$"
+	}
+}

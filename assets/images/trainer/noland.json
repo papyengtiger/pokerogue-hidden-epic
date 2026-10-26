@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "noland.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 79
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "noland.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 77
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 77
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 77
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:c3a969005d59356c8ab1481a6fc65534:8b84da0ec9a3fdcbe8c2e14b2be30de1:6b68872cc4220784a644d027e496f3a1$"
+	}
+}

@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "spenser.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 47,
+				"h": 75
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "spenser.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 45,
+						"h": 73
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 45,
+						"h": 73
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 45,
+						"h": 73
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:5bbeef763e429aee3f0ac1aad7b83ca4:bdda3cd8a55d20e7553fd0c5facb28d9:7c91eee38ce85f7b4da044a3b636049e$"
+	}
+}

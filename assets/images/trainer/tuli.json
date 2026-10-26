@@ -1,0 +1,41 @@
+{
+	"textures": [
+		{
+			"image": "tuli.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 40,
+				"h": 76
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "tuli.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 38,
+						"h": 74
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 38,
+						"h": 74
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 38,
+						"h": 74
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:16a2346d311386235e085010179392f0:404c1dec99da8f9ddbe2efb1f83e8101:d5ed9aa2dd53cc94e5239d9205ad1274$"
+	}
+}
