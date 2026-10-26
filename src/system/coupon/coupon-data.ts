@@ -81,15 +81,38 @@ export const coupons: Record<string, CouponData> = {
     ],
   },
 
-  BANKTEST1: {
-    code: "BANKTEST1",
-    name: "은행 골드 테스트",
-
+  HIDDENEPICBETA: {
+    code: "HIDDENEPICBETA",
+    name: "히든 에픽 공개 베타 출시 기념",
+    startAt: "2026-10-26T00:00:00+09:00",
     rewards: [
-      {
-        type: "BANK_GOLD",
-        amount: 30000,
-      },
+      { type: "ROGUE_POINTS", amount: 5000 },
+      { type: "BANK_GOLD", amount: 10000 },
+      { type: "STORAGE_ITEM", itemId: "GOLDEN_EGG", amount: 2 },
+    ],
+  },
+
+  HALLOWEEN2026: {
+    code: "HALLOWEEN2026",
+    name: "2026 할로윈 특전",
+    startAt: "2026-10-26T00:00:00+09:00",
+    endAt: "2026-11-07T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 3000 },
+      { type: "BANK_GOLD", amount: 5000 },
+      { type: "STORAGE_ITEM", itemId: "SHINY_CHARM", amount: 1 },
+      { type: "STORAGE_ITEM", itemId: "MARK_CHARM", amount: 1 },
+    ],
+  },
+
+  THANKYOU2026: {
+    code: "THANKYOU2026",
+    name: "히든 에픽 서비스 감사 쿠폰",
+    startAt: "2026-10-26T00:00:00+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 2000 },
+      { type: "BANK_GOLD", amount: 10000 },
+      { type: "STORAGE_ITEM", itemId: "LUCKY_EGG", amount: 3 },
     ],
   },
 };
