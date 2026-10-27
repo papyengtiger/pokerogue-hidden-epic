@@ -36,7 +36,7 @@ enum MenuOptions {
 }
 
 let wikiUrl = "https://wiki.pokerogue.net/start";
-const discordUrl = "https://discord.gg/pokerogue";
+const discordUrl = "https://discord.gg/bxk4QMT98t";
 const githubUrl = "https://github.com/pagefaultgames/pokerogue";
 const redditUrl = "https://www.reddit.com/r/pokerogue";
 const donateUrl = "https://github.com/sponsors/pagefaultgames";
