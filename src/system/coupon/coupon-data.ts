@@ -115,4 +115,19 @@ export const coupons: Record<string, CouponData> = {
       { type: "STORAGE_ITEM", itemId: "LUCKY_EGG", amount: 3 },
     ],
   },
+  /** 2026-10-27 저장 데이터 롤백 방지 패치 사과 보상 */
+  SAVEFIX2026: {
+    code: "SAVEFIX2026",
+    name: "히든 에픽 저장 데이터 안정화 사과 보상",
+    startAt: "2026-10-27T00:00:00+09:00",
+    endAt: "2026-11-10T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 10000 },
+      { type: "BANK_GOLD", amount: 20000 },
+      { type: "STORAGE_ITEM", itemId: "GOLDEN_EGG", amount: 5 },
+      { type: "STORAGE_ITEM", itemId: "LUCKY_EGG", amount: 10 },
+      { type: "STORAGE_ITEM", itemId: "SHINY_CHARM", amount: 3 },
+      { type: "STORAGE_ITEM", itemId: "MARK_CHARM", amount: 3 },
+    ],
+  },
 };
