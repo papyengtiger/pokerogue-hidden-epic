@@ -7,7 +7,7 @@ SPDX-License-Identifier: CC-BY-NC-SA-4.0
 <div align="center"><picture><img src="https://github.com/pagefaultgames/pokerogue-assets/blob/beta/images/logo.png?raw=true" width="300" alt="PokéRogue"></picture>
 
 [![PokéRogue Discord](https://img.shields.io/badge/Pok%C3%A9Rogue-Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/pokerogue)
-[![Hidden Epic Discord](https://img.shields.io/badge/Hidden_Epic-Official_Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/JxD769Rmm6)
+[![Hidden Epic Discord](https://img.shields.io/badge/Hidden_Epic-Official_Discord-5865F2?logo=discord&logoColor=white)](https://discord.gg/bxk4QMT98t)
 [![Docs Coverage Static Badge](https://pagefaultgames.github.io/pokerogue/beta/coverage.svg)](https://pagefaultgames.github.io/pokerogue/beta)
 [![Testing Badge](https://github.com/pagefaultgames/pokerogue/actions/workflows/tests.yml/badge.svg)](https://github.com/pagefaultgames/pokerogue/actions/workflows/tests.yml)
 [![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
