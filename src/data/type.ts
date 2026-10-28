@@ -11,6 +11,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
     case PokemonType.NORMAL:
       switch (attackType) {
         case PokemonType.FIGHTING:
+        case PokemonType.DARK:
+        case PokemonType.FAIRY:
           return 2;
         case PokemonType.GHOST:
           return 0;
@@ -22,10 +24,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.FLYING:
         case PokemonType.PSYCHIC:
         case PokemonType.FAIRY:
+        case PokemonType.POISON:
           return 2;
         case PokemonType.ROCK:
-        case PokemonType.BUG:
         case PokemonType.DARK:
+        case PokemonType.GHOST:
+        case PokemonType.ICE:
           return 0.5;
         default:
           return 1;
@@ -35,10 +39,11 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.ROCK:
         case PokemonType.ELECTRIC:
         case PokemonType.ICE:
+        case PokemonType.POISON:
           return 2;
         case PokemonType.FIGHTING:
-        case PokemonType.BUG:
-        case PokemonType.GRASS:
+        case PokemonType.DARK:
+        case PokemonType.NORMAL:
           return 0.5;
         case PokemonType.GROUND:
           return 0;
@@ -49,11 +54,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
       switch (attackType) {
         case PokemonType.GROUND:
         case PokemonType.PSYCHIC:
+        case PokemonType.FLYING:
+        case PokemonType.ROCK:
+        case PokemonType.WATER:
           return 2;
         case PokemonType.FIGHTING:
-        case PokemonType.POISON:
         case PokemonType.BUG:
-        case PokemonType.GRASS:
         case PokemonType.FAIRY:
           return 0.5;
         default:
@@ -64,9 +70,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.WATER:
         case PokemonType.GRASS:
         case PokemonType.ICE:
+        case PokemonType.STEEL:
           return 2;
         case PokemonType.POISON:
         case PokemonType.ROCK:
+        case PokemonType.DARK:
+        case PokemonType.GROUND:
           return 0.5;
         case PokemonType.ELECTRIC:
           return 0;
@@ -76,14 +85,14 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
     case PokemonType.ROCK:
       switch (attackType) {
         case PokemonType.FIGHTING:
-        case PokemonType.GROUND:
         case PokemonType.STEEL:
         case PokemonType.WATER:
         case PokemonType.GRASS:
+        case PokemonType.GROUND:
           return 2;
         case PokemonType.NORMAL:
         case PokemonType.FLYING:
-        case PokemonType.POISON:
+        case PokemonType.GHOST:
         case PokemonType.FIRE:
           return 0.5;
         default:
@@ -94,10 +103,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.FLYING:
         case PokemonType.ROCK:
         case PokemonType.FIRE:
+        case PokemonType.BUG:
           return 2;
         case PokemonType.FIGHTING:
         case PokemonType.GROUND:
-        case PokemonType.GRASS:
+        case PokemonType.PSYCHIC:
+        case PokemonType.WATER:
           return 0.5;
         default:
           return 1;
@@ -106,9 +117,11 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
       switch (attackType) {
         case PokemonType.GHOST:
         case PokemonType.DARK:
+        case PokemonType.FIRE:
+        case PokemonType.PSYCHIC:
           return 2;
         case PokemonType.POISON:
-        case PokemonType.BUG:
+        case PokemonType.FAIRY:
           return 0.5;
         case PokemonType.NORMAL:
         case PokemonType.FIGHTING:
@@ -121,15 +134,14 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.FIGHTING:
         case PokemonType.GROUND:
         case PokemonType.FIRE:
+        case PokemonType.ELECTRIC:
           return 2;
         case PokemonType.NORMAL:
         case PokemonType.FLYING:
         case PokemonType.ROCK:
         case PokemonType.BUG:
-        case PokemonType.STEEL:
         case PokemonType.GRASS:
         case PokemonType.PSYCHIC:
-        case PokemonType.ICE:
         case PokemonType.DRAGON:
         case PokemonType.FAIRY:
           return 0.5;
@@ -143,12 +155,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.GROUND:
         case PokemonType.ROCK:
         case PokemonType.WATER:
+        case PokemonType.ICE:
           return 2;
         case PokemonType.BUG:
         case PokemonType.STEEL:
         case PokemonType.FIRE:
         case PokemonType.GRASS:
-        case PokemonType.ICE:
         case PokemonType.FAIRY:
           return 0.5;
         default:
@@ -158,6 +170,8 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
       switch (attackType) {
         case PokemonType.GRASS:
         case PokemonType.ELECTRIC:
+        case PokemonType.POISON:
+        case PokemonType.GROUND:
           return 2;
         case PokemonType.STEEL:
         case PokemonType.FIRE:
@@ -170,10 +184,10 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
     case PokemonType.GRASS:
       switch (attackType) {
         case PokemonType.FLYING:
-        case PokemonType.POISON:
+        case PokemonType.STEEL:
         case PokemonType.BUG:
         case PokemonType.FIRE:
-        case PokemonType.ICE:
+        case PokemonType.DARK:
           return 2;
         case PokemonType.GROUND:
         case PokemonType.WATER:
@@ -186,10 +200,15 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
     case PokemonType.ELECTRIC:
       switch (attackType) {
         case PokemonType.GROUND:
+        case PokemonType.GRASS:
+        case PokemonType.ROCK:
+        case PokemonType.PSYCHIC:
+        case PokemonType.GHOST:
           return 2;
         case PokemonType.FLYING:
         case PokemonType.STEEL:
         case PokemonType.ELECTRIC:
+        case PokemonType.BUG:
           return 0.5;
         default:
           return 1;
@@ -199,9 +218,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.BUG:
         case PokemonType.GHOST:
         case PokemonType.DARK:
+        case PokemonType.POISON:
           return 2;
         case PokemonType.FIGHTING:
         case PokemonType.PSYCHIC:
+        case PokemonType.NORMAL:
+        case PokemonType.FAIRY:
           return 0.5;
         default:
           return 1;
@@ -212,8 +234,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.ROCK:
         case PokemonType.STEEL:
         case PokemonType.FIRE:
+        case PokemonType.WATER:
           return 2;
         case PokemonType.ICE:
+        case PokemonType.POISON:
+        case PokemonType.ELECTRIC:
+        case PokemonType.GROUND:
           return 0.5;
         default:
           return 1;
@@ -237,9 +263,11 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
         case PokemonType.FIGHTING:
         case PokemonType.BUG:
         case PokemonType.FAIRY:
+        case PokemonType.ELECTRIC:
           return 2;
         case PokemonType.GHOST:
         case PokemonType.DARK:
+        case PokemonType.POISON:
           return 0.5;
         case PokemonType.PSYCHIC:
           return 0;
@@ -250,10 +278,12 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
       switch (attackType) {
         case PokemonType.POISON:
         case PokemonType.STEEL:
+        case PokemonType.PSYCHIC:
+        case PokemonType.ELECTRIC:
           return 2;
-        case PokemonType.FIGHTING:
-        case PokemonType.BUG:
         case PokemonType.DARK:
+        case PokemonType.ICE:
+        case PokemonType.FLYING:
           return 0.5;
         case PokemonType.DRAGON:
           return 0;

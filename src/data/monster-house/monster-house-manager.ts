@@ -158,6 +158,15 @@ export class MonsterHouseManager {
   }
 
   public restore(data: MonsterHouseSaveData, members: any[]): void {
+    // 이전 버전의 저장 데이터도 클래식 최종 구간에서는 소굴을 복구하지 않는다.
+    if (globalScene.gameMode.isClassic && data.waveIndex !== null
+      && data.waveIndex >= 190 && data.waveIndex <= 200) {
+      console.warn("[MONSTER_HOUSE_RESTORE_BLOCKED_CLASSIC_FINAL_WAVES]", { wave: data.waveIndex });
+      this.reset();
+      this.syncBattleState();
+      return;
+    }
+
     this.active = data.active;
     this.waveIndex = data.waveIndex;
 
@@ -711,6 +720,16 @@ export class MonsterHouseManager {
   }
 
   public checkSpawn(context: MonsterHouseSpawnContext): boolean {
+    // 강제 등장 요청이 있더라도 클래식 190~200층에는 소굴을 배치하지 않는다.
+    if (globalScene.gameMode.isClassic && context.waveIndex >= 190 && context.waveIndex <= 200) {
+      if (this.active) {
+        this.reset();
+        this.syncBattleState();
+      }
+      console.log("[MONSTER_HOUSE_BLOCKED_CLASSIC_FINAL_WAVES]", { wave: context.waveIndex });
+      return false;
+    }
+
     /*
      * 이미 같은 wave의 소굴이 복원되어 있다면
      * 새 등장 판정을 다시 하지 않는다.

@@ -1,5 +1,6 @@
 import { globalScene } from "#app/global-scene";
 import { GameModes } from "#enums/game-modes";
+import { ClassicFixedBossWaves } from "#enums/fixed-boss-waves";
 import { MarkId } from "#enums/mark-id";
 
 /**
@@ -146,24 +147,48 @@ export class MysteryTimeManager {
   }
 
   /**
-   * 미스터리타임 마지막 층 계산.
-   *
-   * 예:
-   * 32층 시작 -> 40층
-   * 43층 시작 -> 원래 50층이지만
-   *              50층은 기존 중요 전투층이므로 49층
-   *
-   * 10의 배수 구간 끝을 기본 종료층으로 삼되,
-   * 50의 배수는 피한다.
+   * 클래식의 스토리/고정 트레이너전 및 50층 단위 주요 전투를 보호한다.
+   * 실제 classicFixedBattles가 사용하는 ClassicFixedBossWaves 값과 동일한 기준이다.
+   */
+  private isProtectedClassicWave(waveIndex: number): boolean {
+    if (!globalScene.gameMode.isClassic) {
+      return false;
+    }
+
+    if (waveIndex % 50 === 0) {
+      return true;
+    }
+
+    return Object.values(ClassicFixedBossWaves).some(wave => typeof wave === "number" && wave === waveIndex);
+  }
+
+  /**
+   * 기존 10층 구간의 끝을 기본 종료층으로 삼되, 클래식 중요 전투층은 포함하지 않는다.
+   * 중요 전투층이 중간에 있으면 그 직전 층에서 미스터리타임을 끝낸다.
+   * 예: 111층 시작 → 112층 보호 → 111층 종료(시작 불가),
+   *     141층 시작 → 145층 보호 → 144층 종료.
    */
   private calculateEndWave(startWave: number): number {
     let endWave = Math.floor((startWave - 1) / 10) * 10 + 10;
+
+    // 클래식 최종 구간(190~200층)에는 미스터리타임이 이어지지 않도록 한다.
+    if (globalScene.gameMode.isClassic) {
+      endWave = Math.min(endWave, 189);
+    }
 
     if (endWave % 50 === 0) {
       endWave -= 1;
     }
 
-    return Math.max(startWave, endWave);
+    if (globalScene.gameMode.isClassic) {
+      for (let wave = startWave; wave <= endWave; wave++) {
+        if (this.isProtectedClassicWave(wave)) {
+          return wave - 1;
+        }
+      }
+    }
+
+    return endWave;
   }
 
   private getMinimumSpawnWave(): number {
@@ -175,6 +200,11 @@ export class MysteryTimeManager {
    */
   public start(waveIndex = globalScene.currentBattle.waveIndex, rank: MysteryTimeRank = MysteryTimeRank.RANK_1): void {
     const minimumSpawnWave = this.getMinimumSpawnWave();
+
+    if (globalScene.gameMode.isClassic && waveIndex >= 190 && waveIndex <= 200) {
+      console.log("[MYSTERY_TIME_BLOCKED_CLASSIC_FINAL_WAVES]", { wave: waveIndex });
+      return;
+    }
 
     if (waveIndex < minimumSpawnWave) {
       console.warn("[MYSTERY_TIME_START_BLOCKED_EARLY_WAVE]", {
@@ -188,10 +218,17 @@ export class MysteryTimeManager {
       return;
     }
 
+    const endWave = this.calculateEndWave(waveIndex);
+    // 보스층까지 최소 두 층이 필요하다. 중요 전투에 걸치는 짧은 구간은 시작하지 않는다.
+    if (endWave <= waveIndex) {
+      console.warn("[MYSTERY_TIME_START_BLOCKED_PROTECTED_WAVE]", { wave: waveIndex, endWave });
+      return;
+    }
+
     this.active = true;
 
     this.startWave = waveIndex;
-    this.endWave = this.calculateEndWave(waveIndex);
+    this.endWave = endWave;
 
     this.rank = rank;
 
@@ -226,6 +263,10 @@ export class MysteryTimeManager {
    * 현재 층이 미스터리타임 구간인지 확인.
    */
   public isMysteryTimeWave(waveIndex: number): boolean {
+    if (globalScene.gameMode.isClassic && waveIndex >= 190 && waveIndex <= 200) {
+      return false;
+    }
+
     if (!this.active || this.startWave === null || this.endWave === null) {
       return false;
     }
@@ -383,6 +424,10 @@ export class MysteryTimeManager {
 
     const wave = globalScene.currentBattle.waveIndex;
 
+    if (globalScene.gameMode.isClassic && wave >= 190 && wave <= 200) {
+      return false;
+    }
+
     // ========================================
     // 최소 등장층 제한
     // ========================================
@@ -404,7 +449,7 @@ export class MysteryTimeManager {
     const prospectiveEndWave = this.calculateEndWave(wave);
 
     if (wave >= prospectiveEndWave) {
-      console.log("[MYSTERY_TIME_BLOCKED_FINAL_WAVE]", {
+      console.log("[MYSTERY_TIME_BLOCKED_FINAL_OR_PROTECTED_WAVE]", {
         wave,
         prospectiveEndWave,
       });
@@ -501,14 +546,40 @@ export class MysteryTimeManager {
       return;
     }
 
+    // 과거 세이브에서 최종 구간에 활성화된 미스터리타임을 복구하지 않는다.
+    if (globalScene.gameMode.isClassic && data.active && data.startWave !== null && data.startWave >= 190) {
+      console.warn("[MYSTERY_TIME_RESTORE_BLOCKED_CLASSIC_FINAL_WAVES]", { startWave: data.startWave });
+      this.reset();
+      return;
+    }
+
     this.active = data.active;
 
     this.startWave = data.startWave;
     this.endWave = data.endWave;
 
+    // 이전 버전에서 저장한 미스터리타임이 클래식 고정 전투층을 침범하지 않게 보정.
+    if (this.active && this.startWave !== null && this.endWave !== null && globalScene.gameMode.isClassic) {
+      const safeEndWave = this.calculateEndWave(this.startWave);
+      this.endWave = Math.min(this.endWave, safeEndWave);
+      if (this.endWave <= this.startWave) {
+        console.warn("[MYSTERY_TIME_RESTORE_BLOCKED_PROTECTED_WAVE]", {
+          startWave: this.startWave,
+          savedEndWave: data.endWave,
+        });
+        this.reset();
+        return;
+      }
+    }
+
     this.rank = data.rank ?? MysteryTimeRank.RANK_1;
 
     this.ominousSpawnWave = data.ominousSpawnWave ?? null;
+    if (this.active && this.startWave !== null && this.endWave !== null
+      && this.ominousSpawnWave !== null
+      && (this.ominousSpawnWave < this.startWave || this.ominousSpawnWave >= this.endWave)) {
+      this.ominousSpawnWave = this.startWave;
+    }
 
     this.ominousSpawned = data.ominousSpawned ?? false;
 
