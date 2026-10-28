@@ -1,7 +1,34 @@
-# .dockerignore
-node_modules
-*.log
-*.md
+
+# Git
+.git
 .gitignore
-Dockerfile
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Local environment
 .env
+.env.local
+.env.development
+.env.development.local
+*.bak
+
+# Native applications and generated outputs
+android/
+desktop/
+release/
+dist/
+build/
+
+# Logs and temporary files
+*.log
+build-log.txt
+type-errors.txt
+*.tsbuildinfo
+
+# Documents
+*.md
+
+# Unused Docker files
+Dockerfile
