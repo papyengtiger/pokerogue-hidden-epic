@@ -32,7 +32,20 @@ export class NewBattlePhase extends BattlePhase {
 
     if (globalScene.gameMode.isClassic && isValidWave) {
       console.warn("[DEBUG_WAVE_JUMP]", { from: beforeWave, to: requestedWave });
-      globalScene.newBattle(requestedWave);
+      // newBattle(waveIndex)를 직접 호출하면 battle-scene.ts의
+      // `if (!waveIndex && lastBattle)` 분기가 실행되지 않아
+      // NextEncounterPhase가 등록되지 않는다.
+      // 기존 배틀을 다음 층 직전으로 맞춘 뒤 인수 없이 호출한다.
+      const previousBattle = globalScene.currentBattle;
+      const previousWave = previousBattle.waveIndex;
+      previousBattle.waveIndex = requestedWave! - 1;
+      try {
+        globalScene.newBattle();
+      } catch (error) {
+        // 다음 전투 생성이 실패했을 때 기존 전투의 웨이브 정보 복구
+        previousBattle.waveIndex = previousWave;
+        throw error;
+      }
     } else {
       globalScene.newBattle();
     }
