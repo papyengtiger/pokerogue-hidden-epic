@@ -832,6 +832,34 @@ export class EncounterPhase extends BattlePhase {
       globalScene.field.add(mysteryEncounter.introVisuals!);
     }
 
+    // 의뢰 도구(WILD_HELD) 대상은 더블배틀로 등장하지 않도록 싱글로 고정한다.
+    // 적 생성/필드 배치 전에 적용해야 기술 선택 UI도 싱글 기준으로 초기화된다.
+    const heldItemQuest = questManager.getActiveHeldItemFindQuest(battle.waveIndex);
+    if (
+      battle.battleType === BattleType.WILD
+      && !battle.isBattleMysteryEncounter()
+      && !monsterHouseManager.isActive()
+      && !mysteryTimeManager.isMysteryTimeWave(battle.waveIndex)
+      && heldItemQuest?.targetItemId
+    ) {
+      if (battle.double) {
+        console.log("[QUEST_ITEM_FORCE_SINGLE]", {
+          wave: battle.waveIndex,
+          questId: heldItemQuest.id,
+          loaded: this.loaded,
+          previousEnemyLevels: battle.enemyLevels?.length ?? 0,
+        });
+      }
+
+      (battle as any).double = false;
+
+      // 새 조우는 중복 생성 자체를 막되, 로드된 포켓몬 데이터는 보존한다.
+      if (!this.loaded && battle.enemyLevels && battle.enemyLevels.length > 1) {
+        (battle as any).enemyLevels = [battle.enemyLevels[0]];
+        battle.enemyParty.length = 0;
+      }
+    }
+
     let totalBst = 0;
 
     let encounterEnemyLevels = battle.enemyLevels ? [...battle.enemyLevels] : [];
