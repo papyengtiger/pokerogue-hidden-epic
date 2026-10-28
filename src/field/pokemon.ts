@@ -4204,6 +4204,48 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   }
 
   /**
+   * 트레이너 설정 호환: 기존 기술을 지정 기술로 교체합니다.
+   * 교체 대상 기술이 없다면 기술배치를 변경하지 않습니다.
+   */
+  replaceInMoveset(oldMoveId: MoveId, newMoveId: MoveId): void {
+    if (newMoveId === MoveId.NONE || oldMoveId === newMoveId) {
+      return;
+    }
+
+    const index = this.getMoveset().findIndex(move => move.moveId === oldMoveId);
+    if (index < 0) {
+      return;
+    }
+    this.setMove(index, newMoveId);
+  }
+
+  /**
+   * 트레이너 설정 호환: 해당 기술(또는 조건에 맞는 기술)이 없는 경우 지정 칸에 추가합니다.
+   * 조건 함수는 allMoves의 기술 데이터(Move)를 받습니다.
+   */
+  addIfNotInMoveset(
+    moveId: MoveId,
+    moveIndex: number,
+    condition?: (move: Move) => boolean,
+  ): void {
+    if (moveId === MoveId.NONE || !Number.isInteger(moveIndex) || moveIndex < 0 || moveIndex >= 4) {
+      return;
+    }
+
+    const moveset = this.getMoveset();
+    if (moveset.some(move => move.moveId === moveId)) {
+      return;
+    }
+    if (condition && moveset.some(move => condition(allMoves[move.moveId]))) {
+      return;
+    }
+
+    // 보유 기술이 4개 미만일 때는 기존 기술을 덮어쓰지 않고 빈 칸을 활용합니다.
+    const index = moveset.length < 4 ? moveset.length : moveIndex;
+    this.setMove(index, moveId);
+  }
+
+  /**
    * Function that tries to set a Pokemon shiny based on the trainer's trainer ID and secret ID.
    * Endless Pokemon in the end biome are unable to be set to shiny
    *
