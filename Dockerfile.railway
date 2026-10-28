@@ -1,22 +1,20 @@
-FROM node:24-alpine
-
+# Stage 1: build Hidden Epic
+FROM node:24-alpine AS builder
 WORKDIR /app
-
-RUN apk add --no-cache git rsync
-
-RUN corepack enable
-
+RUN apk add --no-cache git rsync && corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
-
 COPY . .
-
 ARG VITE_SERVER_URL
 ARG VITE_BYPASS_LOGIN
 ARG VITE_BYPASS_TUTORIAL
-
 RUN pnpm build
 
+# Stage 2: serve the built static app only
+FROM node:24-alpine
+WORKDIR /app
+RUN npm install --global sirv-cli@2.0.2
+COPY --from=builder /app/dist ./dist
+ENV NODE_ENV=production
 EXPOSE 8000
-
-CMD ["sh", "-c", "pnpm exec vite preview --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "sirv dist --single --host 0.0.0.0 --port ${PORT:-8000}"]
