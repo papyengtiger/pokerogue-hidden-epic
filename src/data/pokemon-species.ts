@@ -204,48 +204,37 @@ export abstract class PokemonSpeciesForm {
    * @returns The id of the ability
    */
   getPassiveAbility(formIndex?: number, passiveIndex = 0): AbilityId {
-  if (formIndex == null) {
-    formIndex = this.formIndex;
-  }
+    // 실버디는 메모리에 따른 타입 변경만 적용하고 패시브는 모든 폼이 공유한다.
+    const requestedFormIndex = this.speciesId === SpeciesId.SILVALLY ? 0 : (formIndex ?? this.formIndex);
+    let starterSpeciesId = this.speciesId;
+    let fallbackPassive: AbilityId | AbilityId[] | undefined;
 
-  let starterSpeciesId = this.speciesId;
-
-  while (
-    !(starterSpeciesId in starterPassiveAbilities)
-    || !(formIndex in starterPassiveAbilities[starterSpeciesId])
-  ) {
-    if (pokemonPrevolutions.hasOwnProperty(starterSpeciesId)) {
-      starterSpeciesId = pokemonPrevolutions[starterSpeciesId];
-    } else {
-      // 폼 전용 패시브가 없으면 form 0 사용
-      if (0 in starterPassiveAbilities[starterSpeciesId]) {
-        const passive = starterPassiveAbilities[starterSpeciesId][0];
-
-        if (Array.isArray(passive)) {
-          return passive[passiveIndex] ?? passive[0];
+    while (true) {
+      const speciesPassives = starterPassiveAbilities[starterSpeciesId];
+      if (speciesPassives) {
+        // 폼 전용 설정을 우선하고, 없으면 기본 폼의 설정을 후보로 보관한다.
+        const passive = speciesPassives[requestedFormIndex];
+        if (passive !== undefined) {
+          return Array.isArray(passive) ? (passive[passiveIndex] ?? passive[0]) : passive;
         }
-
-        return passive;
+        fallbackPassive ??= speciesPassives[0];
       }
 
-      console.log(
-        "No passive ability found for %s, using run away",
-        this.speciesId,
-      );
-
-      return AbilityId.RUN_AWAY;
+      if (!pokemonPrevolutions.hasOwnProperty(starterSpeciesId)) {
+        break;
+      }
+      starterSpeciesId = pokemonPrevolutions[starterSpeciesId];
     }
+
+    if (fallbackPassive !== undefined) {
+      return Array.isArray(fallbackPassive)
+        ? (fallbackPassive[passiveIndex] ?? fallbackPassive[0])
+        : fallbackPassive;
+    }
+
+    console.warn("No passive ability found for %s, using run away", this.speciesId);
+    return AbilityId.RUN_AWAY;
   }
-
-  const passive =
-    starterPassiveAbilities[starterSpeciesId][formIndex];
-
-  if (Array.isArray(passive)) {
-    return passive[passiveIndex] ?? passive[0];
-  }
-
-  return passive;
-}
 
   getLevelMoves(): LevelMoves {
     if (
@@ -450,6 +439,13 @@ export abstract class PokemonSpeciesForm {
   }
 
   getCryKey(formIndex?: number): string {
+  // 실버디와 아르세우스는 타입별 폼의 울음소리를 구분하지 않음
+  if (
+    this.speciesId === SpeciesId.SILVALLY ||
+    this.speciesId === SpeciesId.ARCEUS
+  ) {
+    return `cry/${this.speciesId}`;
+  }
     let speciesId = this.speciesId;
     if (this.speciesId > 2000) {
       switch (this.speciesId) {
