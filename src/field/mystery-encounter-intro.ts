@@ -250,18 +250,23 @@ export class MysteryEncounterIntroVisuals extends Phaser.GameObjects.Container {
           }
 
           const originalWarn = console.warn;
+          let frameNames: ReturnType<typeof globalScene.anims.generateFrameNames> = [];
 
-          // Ignore warnings for missing frames, because there will be a lot
-          console.warn = () => {};
-          const frameNames = globalScene.anims.generateFrameNames(config.spriteKey, {
-            zeroPad: 4,
-            suffix: ".png",
-            start: 1,
-            end: 128,
-          });
+          // 없는 프레임에 관한 경고만 일시적으로 억제하고 반드시 복구합니다.
+          try {
+            console.warn = () => {};
+            frameNames = globalScene.anims.generateFrameNames(config.spriteKey, {
+              zeroPad: 4,
+              suffix: ".png",
+              start: 1,
+              end: 128,
+            });
+          } finally {
+            console.warn = originalWarn;
+          }
 
-          console.warn = originalWarn;
-          if (!globalScene.anims.exists(config.spriteKey)) {
+          // 정지 이미지인 트레이너의 경우 빈 애니메이션을 등록하지 않습니다.
+          if (!globalScene.anims.exists(config.spriteKey) && frameNames.length > 0) {
             globalScene.anims.create({
               key: config.spriteKey,
               frames: frameNames,
@@ -342,15 +347,30 @@ export class MysteryEncounterIntroVisuals extends Phaser.GameObjects.Container {
 
       return false;
     }
-    // Don't try to play an animation when there isn't one
-    if (sprite.texture.frameTotal <= 1) {
-      console.warn(`No animation found for '${animConfig.key}'. Is this intentional?`);
-
+    // 텍스처가 여러 프레임이어도 실제 애니메이션이 비어 있을 수 있습니다.
+    // 이런 트레이너는 정지 이미지로 유지하고 조우를 계속 진행합니다.
+    const animation = globalScene.anims.get(animConfig.key);
+    if (!animation || !animation.frames?.length) {
+      console.warn(`[MYSTERY_INTRO] 재생 가능한 애니메이션 없음: ${animConfig.key}`, {
+        texture: sprite.texture.key,
+        textureFrames: sprite.texture.frameTotal,
+        animationFrames: animation?.frames?.length ?? 0,
+      });
       return false;
     }
 
-    sprite.play(animConfig);
-    tintSprite.play(animConfig);
+    // 시작 프레임이 범위를 벗어나면 첫 프레임부터 재생합니다.
+    const requestedStartFrame = animConfig.startFrame ?? 0;
+    const startFrame =
+      Number.isInteger(requestedStartFrame) &&
+      requestedStartFrame >= 0 &&
+      requestedStartFrame < animation.frames.length
+        ? requestedStartFrame
+        : 0;
+    const safeAnimConfig = { ...animConfig, startFrame };
+
+    sprite.play(safeAnimConfig);
+    tintSprite.play(safeAnimConfig);
 
     return true;
   }

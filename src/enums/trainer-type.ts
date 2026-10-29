@@ -260,7 +260,6 @@ export enum TrainerType {
   GRISELLE,
   GRISHAM,
   IVOR,
-  LEBANNE,
   MAI,
   RYE,
   SABI,
@@ -274,6 +273,7 @@ export enum TrainerType {
   GAERIC,
   EMMA,
   PHILLIPE,
+  LEBANNE,
   // #endregion Gym Leaders
 
   // #region Elite Four
