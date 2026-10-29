@@ -715,7 +715,32 @@ export class LoadingScene extends SceneBase {
 
   async create() {
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.handleDestroy());
-    this.scene.start("battle");
+
+    // Railway 등에서 초기 이미지 요청이 일시적으로 실패했을 때,
+    // 배틀 화면으로 넘어가기 전에 핵심 이미지를 한 번 더 불러옵니다.
+    // 기본 이미지가 이미 정상 등록되어 있다면 추가 요청은 하지 않습니다.
+    const essentialImages = ["logo", "logo_fake", "snow"];
+    const missingImages = essentialImages.filter(key => !this.textures.exists(key));
+
+    if (missingImages.length === 0) {
+      this.scene.start("battle");
+      return;
+    }
+
+    console.warn("[LOADING_SCENE] Retrying missing images:", missingImages);
+    for (const key of missingImages) {
+      // 공통 loadImage() 경로/캐시 처리와 별도로, 실제 확인된 절대 경로로 재시도합니다.
+      this.load.image(key, `/images/${key}.png`);
+    }
+
+    this.load.once(this.LOAD_EVENTS.COMPLETE, () => {
+      const stillMissing = missingImages.filter(key => !this.textures.exists(key));
+      if (stillMissing.length > 0) {
+        console.warn("[LOADING_SCENE] Images still missing after retry:", stillMissing);
+      }
+      this.scene.start("battle");
+    });
+    this.load.start();
   }
 
   handleDestroy() {
