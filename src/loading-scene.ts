@@ -727,6 +727,13 @@ export class LoadingScene extends SceneBase {
       return;
     }
 
+    // 최초 로딩 완료 시 loadLoadingScreen()이 진행률 텍스트와 그래픽을 파괴했습니다.
+    // 재시도 로더가 해당 이벤트를 다시 발생시키면 파괴된 텍스트를 갱신하면서
+    // Phaser Text.updateText()에서 drawImage null 오류가 발생하므로 이벤트를 해제합니다.
+    this.load.off(this.LOAD_EVENTS.PROGRESS);
+    this.load.off(this.LOAD_EVENTS.FILE_COMPLETE);
+    this.load.off(this.LOAD_EVENTS.COMPLETE);
+
     console.warn("[LOADING_SCENE] Retrying missing images:", missingImages);
     for (const key of missingImages) {
       // 공통 loadImage() 경로/캐시 처리와 별도로, 실제 확인된 절대 경로로 재시도합니다.
