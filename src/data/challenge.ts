@@ -494,6 +494,17 @@ export class SingleGenerationChallenge extends Challenge {
   }
 
   applyFixedBattle(waveIndex: number, battleConfig: FixedBattleConfig): boolean {
+    // 세대 제한 챌린지는 1~9세대 값만 허용한다.
+    // 비정상적인 저장 데이터로 인해 정의되지 않은 트레이너 풀이 선택되는 것을 방지한다.
+    if (!Number.isInteger(this.value) || this.value < 1 || this.value > 9) {
+      console.warn("[FIXED_BATTLE_INVALID_CHALLENGE]", {
+        waveIndex,
+        challengeId: this.id,
+        value: this.value,
+      });
+      return false;
+    }
+
     let trainerTypes: (TrainerType | TrainerType[])[] = [];
     const evilTeamWaves: number[] = [
       ClassicFixedBossWaves.EVIL_GRUNT_1,
@@ -643,7 +654,7 @@ export class SingleGenerationChallenge extends Challenge {
           TrainerType.AARON,
           TrainerType.SHAUNTAL,
           TrainerType.MALVA,
-          randSeedItem([TrainerType.HALA, TrainerType.MOLAYNE]),
+          randSeedItem([TrainerType.HALA_ELITE, TrainerType.MOLAYNE]),
           TrainerType.MARNIE_ELITE,
           TrainerType.RIKA,
         ];
@@ -656,7 +667,7 @@ export class SingleGenerationChallenge extends Challenge {
           TrainerType.BERTHA,
           TrainerType.MARSHAL,
           TrainerType.SIEBOLD,
-          TrainerType.OLIVIA,
+          TrainerType.OLIVIA_ELITE,
           TrainerType.NESSA_ELITE,
           TrainerType.POPPY,
         ];
@@ -693,7 +704,7 @@ export class SingleGenerationChallenge extends Challenge {
           randSeedItem([TrainerType.RED, TrainerType.LANCE_CHAMPION]),
           randSeedItem([TrainerType.STEVEN, TrainerType.WALLACE]),
           TrainerType.CYNTHIA,
-          randSeedItem([TrainerType.ALDER, TrainerType.IRIS]),
+          randSeedItem([TrainerType.ALDER, TrainerType.IRIS_CHAMPION]),
           TrainerType.DIANTHA,
           randSeedItem([TrainerType.KUKUI, TrainerType.HAU]),
           randSeedItem([TrainerType.LEON, TrainerType.MUSTARD]),
