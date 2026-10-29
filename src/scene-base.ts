@@ -36,7 +36,9 @@ export class SceneBase extends Phaser.Scene {
     if (!filename) {
       filename = `${key}.png`;
     }
-    this.load.image(key, this.getCachedUrl(`images/${folder}/${filename}`));
+    // 빈 폴더에서도 images//logo.png처럼 이중 슬래시가 생기지 않도록 처리
+    const imagePath = `images/${folder ? `${folder}/` : ""}${filename}`;
+    this.load.image(key, this.getCachedUrl(imagePath));
     if (folder.startsWith("ui")) {
       legacyCompatibleImages.push(key);
       folder = folder.replace("ui", "ui/legacy");
@@ -45,7 +47,8 @@ export class SceneBase extends Phaser.Scene {
   }
 
   loadSpritesheet(key: string, folder: string, size: number, filename = `${key}.png`) {
-    this.load.spritesheet(key, this.getCachedUrl(`images/${folder}/${filename}`), {
+    const imagePath = `images/${folder ? `${folder}/` : ""}${filename}`;
+    this.load.spritesheet(key, this.getCachedUrl(imagePath), {
       frameWidth: size,
       frameHeight: size,
     });
