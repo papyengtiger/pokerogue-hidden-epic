@@ -632,11 +632,47 @@ export function getRandomTrainerFunc(
   seedOffset = 0,
 ): GetTrainerFunc {
   return () => {
-    /** The chosen entry in the pool */
-    let choice = randSeedItem(trainerPool);
+    // 유효하지 않은 TrainerType이 들어오면 randSeedItem(undefined)가 호출될 수 있으므로
+    // 실제 선택 전에 트레이너 목록과 등록된 설정을 검사한다.
+    const isValidTrainer = (type: unknown): type is TrainerType =>
+      typeof type === "number" && Number.isInteger(type) && trainerConfigs[type] != null;
 
-    if (typeof choice !== "number") {
+    const safePool: (TrainerType | TrainerType[])[] = [];
+    if (Array.isArray(trainerPool)) {
+      for (const entry of trainerPool) {
+        if (Array.isArray(entry)) {
+          const safeGroup = entry.filter(isValidTrainer);
+          if (safeGroup.length > 0) {
+            safePool.push(safeGroup);
+          }
+          if (safeGroup.length !== entry.length) {
+            console.warn("[FIXED_TRAINER_INVALID_GROUP]", { entry, safeGroup, seedOffset });
+          }
+        } else if (isValidTrainer(entry)) {
+          safePool.push(entry);
+        } else {
+          console.warn("[FIXED_TRAINER_INVALID_ENTRY]", { entry, seedOffset });
+        }
+      }
+    } else {
+      console.error("[FIXED_TRAINER_INVALID_POOL]", { trainerPool, seedOffset });
+    }
+
+    // 잘못된 데이터가 있어도 고정 배틀 생성 자체가 중단되지는 않게 한다.
+    // 정상적인 목록은 원래 추첨 확률과 seedOffset 처리 방식을 유지한다.
+    if (safePool.length === 0) {
+      console.error("[FIXED_TRAINER_EMPTY_POOL]", { trainerPool, seedOffset });
+      return new Trainer(TrainerType.YOUNGSTER, TrainerVariant.DEFAULT);
+    }
+
+    let choice: TrainerType | readonly TrainerType[] = randSeedItem(safePool);
+    if (Array.isArray(choice)) {
       choice = seedOffset === 0 ? randSeedItem(choice) : randSeedUniqueItem(choice, seedOffset);
+    }
+
+    if (!isValidTrainer(choice)) {
+      console.error("[FIXED_TRAINER_INVALID_CHOICE]", { choice, trainerPool, seedOffset });
+      return new Trainer(TrainerType.YOUNGSTER, TrainerVariant.DEFAULT);
     }
 
     let trainerGender = TrainerVariant.DEFAULT;
