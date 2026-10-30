@@ -205,6 +205,14 @@ export class KecleonShopManager {
    * 다음 단계에서 gameMode / arena 정보를 보고 추가하는 것을 권장.
    */
   public shouldSpawnShop(waveIndex = globalScene.currentBattle.waveIndex): boolean {
+    // 클래식 180층부터는 캘리몬 상점 신규 등장 금지. 추격 종료 정리는 유지한다.
+    if (globalScene.gameMode.isClassic && waveIndex >= 180) {
+      if (this.theftBattleActive && this.theftEndWave >= 0 && waveIndex > this.theftEndWave) {
+        this.finishTheftChase();
+      }
+      return false;
+    }
+
     // 추격 종료층을 이미 벗어났는데 상태가 남아 있다면
     // 추격 상태를 완전히 종료한다.
     if (this.theftBattleActive && this.theftEndWave >= 0 && waveIndex > this.theftEndWave) {
@@ -268,6 +276,11 @@ export class KecleonShopManager {
     waveIndex = globalScene.currentBattle.waveIndex,
     itemCount?: number,
   ): ModifierTypeOption[] {
+    // 외부에서 직접 상품 생성을 요청해도 클래식 최종 구간은 차단한다.
+    if (globalScene.gameMode.isClassic && waveIndex >= 180) {
+      this.clearShop();
+      return [];
+    }
     const party = globalScene.getPlayerParty();
 
     this.shopOptions = [];
@@ -541,7 +554,9 @@ export class KecleonShopManager {
   }
 
   public loadSaveData(data?: KecleonShopSaveData): void {
-    this.clearShop();
+    // 저장 데이터를 불러오기 전에 이전 플레이의 추격 및 상점 상태를 제거한다.
+    // 단, 아래에서 현재 저장 데이터의 추격 상태는 정상 복원한다.
+    this.resetRunState();
 
     if (!data) {
       console.log("[KECLEON_SHOP_LOAD_NONE]");
@@ -680,6 +695,19 @@ export class KecleonShopManager {
     });
 
     return item;
+  }
+
+  /**
+   * 새 게임 시작/기존 게임 삭제 시 호출하는 완전 초기화.
+   * clearShop()은 층 이동에도 사용되므로 추격 상태를 건드리지 않는다.
+   */
+  public resetRunState(): void {
+    this.clearShop(true);
+    this.finishTheftChase();
+    this.pendingLegacyRegenerate = false;
+    this.pendingLegacyItemCount = 0;
+
+    console.log("[KECLEON_RUN_STATE_RESET]");
   }
 
   public clearShop(resetLastShopWave = false): void {

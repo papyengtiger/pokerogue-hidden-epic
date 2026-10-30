@@ -25,12 +25,11 @@ import {
   RecoilAttr,
 } from "#app/data/moves/move";
 import { WeatherType } from "#app/enums/weather-type";
-import { Pokemon } from "#app/field/pokemon";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
 import Overrides from "#app/overrides";
 import { ChangeAbilityPhase, type ChangeAbilityType } from "#app/phases/change-ability-phase";
-import { RegisterAbilityPhase, type RegisterAbilityType } from "#app/phases/register-ability-phase";
+import { RegisterAbilityPhase, RegisterAbilityType } from "#app/phases/register-ability-phase";
 import { StatStageChangePhase } from "#app/phases/stat-stage-change-phase";
 import { FusionSpeciesFormEvolution, pokemonEvolutions } from "#balance/pokemon-evolutions";
 import { FRIENDSHIP_GAIN_FROM_RARE_CANDY } from "#balance/starters";
@@ -55,17 +54,15 @@ import { ModifierTier } from "#enums/modifier-tier";
 import { MoveCategory } from "#enums/move-category";
 import { MoveFlags } from "#enums/move-flags";
 import { MoveFlags2 } from "#enums/move-flags-2";
-import type { MoveId } from "#enums/move-id";
 import { MoveId } from "#enums/move-id";
 import { MoveUseMode } from "#enums/move-use-mode";
 import type { Nature } from "#enums/nature";
 import type { PokeballType } from "#enums/pokeball";
-import type { PokemonType } from "#enums/pokemon-type";
 import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesFormKey } from "#enums/species-form-key";
 import { SpeciesId } from "#enums/species-id";
 import type { EffectiveStat } from "#enums/stat";
-import { BATTLE_STATS, type BattleStat, EFFECTIVE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat, Stat } from "#enums/stat";
+import { BATTLE_STATS, type BattleStat, EFFECTIVE_STATS, type PermanentStat, Stat, TEMP_BATTLE_STATS, type TempBattleStat } from "#enums/stat";
 import { StatusEffect } from "#enums/status-effect";
 import { TextStyle } from "#enums/text-style";
 import type { PlayerPokemon, Pokemon } from "#field/pokemon";
@@ -86,12 +83,12 @@ import type {
 import type { Move } from "#moves/move";
 import { recordRecycleSnapshot } from "#moves/recycle-snapshot";
 import type { VoucherType } from "#system/voucher";
-import type { ModifierInstanceMap, ModifierString, SpeciesStatBoosterItem } from "#types/modifier-types";
+import type { ModifierInstanceMap, ModifierString, } from "#types/modifier-types";
 import { addTextObject } from "#ui/text";
 import { BooleanHolder, hslToHex, NumberHolder, randSeedFloat, toDmgValue } from "#utils/common";
 import { getModifierType } from "#utils/modifier-utils";
 import i18next from "i18next";
-import {PERMANENT_STATS} from "/src/enums/stat";
+import { PERMANENT_STATS } from "#enums/stat";
 
 export type ModifierPredicate = (modifier: Modifier) => boolean;
 
@@ -271,6 +268,7 @@ const displayModifiers = hideHeldItems
 
     displayModifiers.forEach((modifier: PersistentModifier, i: number) => {
       const icon = modifier.getIcon();
+      if (!icon) { return; }
       if (i >= iconOverflowIndex) {
         icon.setVisible(false);
       }
@@ -581,8 +579,9 @@ export abstract class LapsingPersistentModifier extends PersistentModifier {
     return this.battleCount > 0;
   }
 
-  getIcon(): Phaser.GameObjects.Container {
+  getIcon(): Phaser.GameObjects.Container | null {
     const container = super.getIcon();
+    if (!container) { return null; }
 
     // Linear interpolation on hue
     const hue = Math.floor(120 * (this.battleCount / this.maxBattles) + 5);
@@ -720,7 +719,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
   }
 
   /** ✅ 전투 시작 시 날씨 설정 */
-  override onBattleStart(): void {
+  onBattleStart(): void {
     const arena = globalScene.arena;
     if (!arena) { return; }
 
@@ -759,7 +758,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
   }
 
   /** ✅ 턴 종료 시 자동으로 턴 수 감소 및 종료 처리 */
-  override onTurnEnd(): void {
+  onTurnEnd(): void {
     const arena = globalScene.arena;
     if (!arena?.weather || arena.weather.weatherType !== this.weatherType) { return; }
 
@@ -776,7 +775,7 @@ export class WeatherRockTrainerModifier extends LapsingPersistentModifier {
       const weatherName = WeatherType[this.weatherType];
       console.log(`[WeatherRockTrainerModifier] ${weatherName} 종료 → 날씨 초기화 및 Modifier 제거`);
 
-      const endMessages: Record<WeatherType, string> = {
+      const endMessages: Partial<Record<WeatherType, string>> = {
         [WeatherType.SUNNY]: i18next.t("weather:sunnyEndMessage"),
         [WeatherType.RAIN]: i18next.t("weather:rainEndMessage"),
         [WeatherType.SANDSTORM]: i18next.t("weather:sandstormEndMessage"),
@@ -845,7 +844,7 @@ export class TerrainSeedTrainerModifier extends LapsingPersistentModifier {
   }
 
   /** ✅ 전투 시작 시 필드 설정 */
-  override onBattleStart(): void {
+  onBattleStart(): void {
     const arena = globalScene.arena;
     if (!arena) { return; }
 
@@ -882,7 +881,7 @@ export class TerrainSeedTrainerModifier extends LapsingPersistentModifier {
   }
 
   /** ✅ 턴 종료 시 자동 감소 및 해제 처리 */
-  override onTurnEnd(): void {
+  onTurnEnd(): void {
     const arena = globalScene.arena;
     if (!arena?.terrain || arena.terrain.terrainType !== this.terrainType) { return; }
 
@@ -1185,7 +1184,7 @@ private isGlobalCommensalActive(): boolean {
     ...globalScene.getEnemyField().filter(p => p?.isActive()),
   ] as Pokemon[];
 
-  return fieldMons.some(p => p.isOnField() && p.hasAbilityWithAttr("AllyHeldItemShareAbAttr" as AbAttrString, true));
+  return fieldMons.some(p => p.isOnField() && p.hasAbilityWithAttr("AllyHeldItemShareAbAttr" as any, true));
 }
 
 private isPokemonLike(x: any): x is Pokemon {
@@ -1287,7 +1286,7 @@ if (!owner) { return false; }
   if (!isOwnerTarget && !isSharedToAlly) { return false; }
 
     // 서투름
-if (this.isGlobalKlutzActive() && this.type.id !== ModifierType.MOLD_BREAKER_BELT) {
+if (this.isGlobalKlutzActive() && this.type.id !== "MOLD_BREAKER_BELT") {
   return false;
 }
 
@@ -1300,7 +1299,7 @@ if (magicRoom) {
 }
 
 // 금제
-if (this.isEmbargoActiveOn(target) && this.type.id !== ModifierType.MOLD_BREAKER_BELT) {
+if (this.isEmbargoActiveOn(target) && this.type.id !== "MOLD_BREAKER_BELT") {
   return false;
 }
 
@@ -1330,7 +1329,7 @@ if (!cancelled.value) {
       const getter = (mod as any).getAbilityAttrs;
       if (typeof getter !== "function") { continue; }
 
-      const attrs = getter.call(mod, "HeldItemBypassAbAttr") as AbAttr[];
+      const attrs = getter.call(mod, "HeldItemBypassAbAttr") as any[];
       for (const attr of attrs) {
         if (cancelled.value) { break; }
 
@@ -1881,7 +1880,7 @@ export class EvolutionStatBoosterModifier extends StatBoosterModifier {
 
     if (pokemon.isFusion() && pokemon.getFusionSpeciesForm(true).speciesId in pokemonEvolutions !== isUnevolved) {
       // Half boost applied if pokemon is fused and either part of fusion is fully evolved
-      statValue.value *= 1 + (this.multiplier - 1) / 2;
+      statValue.value *= 1 + this.boostMultiplier / 2;
       return true;
     }
     if (isUnevolved) {
@@ -1905,7 +1904,7 @@ export class EvolutionIncenseModifier extends StatBoosterModifier {
   override shouldApply(pokemon: Pokemon, stat: Stat, statValue: NumberHolder): boolean {
     // Only apply to specific stats and if not Dynamaxed
     return (
-      (stat === Stat.ATK || stat === Stat.SPA || stat === Stat.SPE) &&
+      (stat === Stat.ATK || stat === Stat.SPATK || stat === Stat.SPD) &&
       super.shouldApply(pokemon, stat, statValue) &&
       !pokemon.isMax()
     );
@@ -1920,7 +1919,7 @@ export class EvolutionIncenseModifier extends StatBoosterModifier {
 
       // Half boost if only one of the fusion members is unevolved
       if (isFusionUnevolved !== isUnevolved) {
-        statValue.value *= 1 + (this.multiplier - 1) / 2;
+        statValue.value *= 1 + this.boostMultiplier / 2;
         return true;
       }
     }
@@ -1955,7 +1954,7 @@ export class SpeciesStatBoosterModifier extends StatBoosterModifier {
   private guaranteedPoisonOnHit?: boolean;
   private guaranteedPoisonType?: StatusEffect;
 
-  private key?: SpeciesStatBoosterItem;
+  private key?: string;
 
   // ✅ 추가: 회피(=상대 명중률 감소) 퍼센트. 예: 10, 20, 30 ...
   private evasiveAccDebuffPercent?: number;
@@ -2022,7 +2021,7 @@ export class SpeciesStatBoosterModifier extends StatBoosterModifier {
     this.type,
     this.pokemonId,
     this.stats,
-    this.multiplier,
+    this.boostMultiplier * 100,
     this.species,
     this.postSummon,
     this.windMoveMult,
@@ -5949,7 +5948,7 @@ console.log("[BOOST_ENERGY_ABILITY_CHECK]", {
 return true;
   }
 
-  override onTurnEnd(): void {
+  onTurnEnd(): void {
     const pokemon = this.getPokemon();
     if (!pokemon || this.boostedStats.length === 0) { return; }
 
@@ -6383,7 +6382,7 @@ static getAngelAuraMultiplier(owner: Pokemon): number {
     });
   }
 
-  override apply({ pokemon: source, auraOwner, simulated, power }: any): void {
+  override apply({ pokemon: source, auraOwner, simulated, power }: any): boolean {
   const realOwner = auraOwner ?? source; // ✅ 오라 제공자 우선
   const mult = this.multFn(realOwner);
   power.value *= mult;
@@ -6391,6 +6390,7 @@ static getAngelAuraMultiplier(owner: Pokemon): number {
   if (!simulated) {
     console.log("[ANGE_AURA_DYNAMIC_APPLY]", realOwner.name, "mult=", mult);
   }
+  return true;
 }
 
   getMaxHeldItemCount(_pokemon: Pokemon): number {
@@ -6588,7 +6588,7 @@ if (!preserve.value) {
     return true; // 성공적으로 적용됨
   }
 
-  override onTurnEnd(): void {
+  onTurnEnd(): void {
     const pokemon = this.getPokemon();
     if (!pokemon || this.copiedStats.length === 0) { return; }
 
@@ -10295,8 +10295,9 @@ export class WishingStarModifier extends PokemonHeldItemModifier {
   }
 
   /** 아이콘 + 남은 배틀 수 표시 */
-  override getIcon(): Phaser.GameObjects.Container {
+  override getIcon(): Phaser.GameObjects.Container | null {
     const container = super.getIcon();
+    if (!container) { return null; }
     const hue = Math.floor(120 * (this.battleCount / this.maxBattles) + 5);
     const typeHex = hslToHex(hue, 0.5, 0.9);
     const strokeHex = hslToHex(hue, 0.7, 0.3);
@@ -10882,6 +10883,7 @@ export class MaxAllIvModifier extends ConsumablePokemonModifier {
 
 export class ChangeAbilityModifier extends ConsumablePokemonModifier {
   public readonly changeAbilityType: ChangeAbilityType;
+  public onSelectionComplete?: (confirmed: boolean) => void;
 
   constructor(type: ModifierType, pokemonId: number, changeAbilityType: ChangeAbilityType) {
     super(type, pokemonId);
@@ -10892,8 +10894,9 @@ export class ChangeAbilityModifier extends ConsumablePokemonModifier {
     globalScene.phaseManager.unshiftPhase(
       new ChangeAbilityPhase(
         globalScene.getPlayerParty().indexOf(playerPokemon),
-        this.changeAbilityType, // 여기도 this로 변경!
+        this.changeAbilityType,
         cost,
+        this.onSelectionComplete,
       ),
     );
 
@@ -10901,23 +10904,22 @@ export class ChangeAbilityModifier extends ConsumablePokemonModifier {
   }
 }
 
+/** 특성패치: 선택한 포켓몬 계열의 패시브만 영구 해금 (현재 배틀 특성은 변경하지 않음). */
 export class RegisterAbilityModifier extends ConsumablePokemonModifier {
-  public readonly registerAbilityType: RegisterAbilityType;
-
-  constructor(type: ModifierType, pokemonId: number, registerAbilityType: RegisterAbilityType) {
+  public onSelectionComplete?: (confirmed: boolean) => void;
+  constructor(type: ModifierType, pokemonId: number, _registerAbilityType?: RegisterAbilityType) {
     super(type, pokemonId);
-    this.registerAbilityType = registerAbilityType;
   }
 
-  override apply(playerPokemon: PlayerPokemon, cost?: number): boolean {
+  override apply(playerPokemon: PlayerPokemon): boolean {
     globalScene.phaseManager.unshiftPhase(
       new RegisterAbilityPhase(
         globalScene.getPlayerParty().indexOf(playerPokemon),
-        this.registerAbilityType, // 여기도 this로 변경!
-        cost,
+        RegisterAbilityType.ABILITY_PATCH,
+        -1,
+        this.onSelectionComplete,
       ),
     );
-
     return true;
   }
 }

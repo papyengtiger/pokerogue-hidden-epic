@@ -300,6 +300,9 @@ export class TrainerConfig {
       case TrainerType.LANCE_CHAMPION:
         trainerType = TrainerType.LANCE;
         break;
+      case TrainerType.IRIS_CHAMPION:
+        trainerType = TrainerType.IRIS;
+        break;
       case TrainerType.LARRY_ELITE:
         trainerType = TrainerType.LARRY;
         break;
@@ -332,6 +335,12 @@ export class TrainerConfig {
         break;
       case TrainerType.PENNY_2:
         trainerType = TrainerType.PENNY;
+        break;
+      case TrainerType.HALA_ELITE:
+        trainerType = TrainerType.HALA;
+        break;
+      case TrainerType.OLIVIA_ELITE:
+        trainerType = TrainerType.OLIVIA;
         break;
       case TrainerType.MARNIE_ELITE:
         trainerType = TrainerType.MARNIE;
@@ -3849,11 +3858,11 @@ export const trainerConfigs: TrainerConfigs = {
   [TrainerType.MINA]: new TrainerConfig(++t)
     .initForGymLeader(signatureSpecies["MINA"], true, PokemonType.FAIRY, true, -1)
     .setMixedBattleBgm("battle_alola_trial_captain"),
-  [TrainerType.HALA_CAPTAIN]: new TrainerConfig(++t)
-    .initForGymLeader(signatureSpecies["HALA_CAPTAIN"], true, PokemonType.FIGHTING, true, -1)
+  [TrainerType.HALA]: new TrainerConfig(++t)
+    .initForGymLeader(signatureSpecies["HALA"], true, PokemonType.FIGHTING, true, -1)
     .setMixedBattleBgm("battle_alola_kahuna"),
-  [TrainerType.OLIVIA_CAPTAIN]: new TrainerConfig(++t)
-    .initForGymLeader(signatureSpecies["OLIVIA_CAPTAIN"], true, PokemonType.ROCK, true, -1)
+  [TrainerType.OLIVIA]: new TrainerConfig(++t)
+    .initForGymLeader(signatureSpecies["OLIVIA"], true, PokemonType.ROCK, true, -1)
     .setMixedBattleBgm("battle_alola_kahuna"),
   [TrainerType.NANU]: new TrainerConfig(++t)
     .initForGymLeader(signatureSpecies["NANU"], true, PokemonType.DARK, true, -1)
@@ -5651,7 +5660,7 @@ export const trainerConfigs: TrainerConfigs = {
   [TrainerType.ALDER]: new TrainerConfig(++t)
     .initForChampion(true)
     .setHasDouble("alder_iris_double")
-    .setDoubleTrainerType(TrainerType.IRIS_CHAMPION)
+    .setDoubleTrainerType(TrainerType.IRIS)
     .setDoubleTitle("champion_double")
     .setBattleBgm("battle_champion_alder")
     .setMixedBattleBgm("battle_champion_alder")
@@ -6224,7 +6233,6 @@ export const trainerConfigs: TrainerConfigs = {
     .setBattleBgm("battle_rival_2")
     .setMixedBattleBgm("battle_rival_2")
     .setPartyTemplates(trainerPartyTemplates.RIVAL_4)
-    .setModifierRewardFuncs(() => modifierTypes.TERA_ORB)
     .setPartyMemberFunc(0, getRandomRivalPartyMemberFunc(RIVAL_4_POOL, 0))
     .setPartyMemberFunc(1, getRandomRivalPartyMemberFunc(RIVAL_4_POOL, 1))
     .setPartyMemberFunc(2, getRandomRivalPartyMemberFunc(RIVAL_4_POOL, 2))

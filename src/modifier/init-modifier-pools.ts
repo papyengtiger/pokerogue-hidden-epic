@@ -800,12 +800,12 @@ function initGreatModifierPool() {
     ),
     new WeightedModifierType(
       modifierTypes.MEGA_BRACELET,
-      () => Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9,
+      () => globalScene.gameMode.isClassic ? 0 : Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9,
       36,
     ),
     new WeightedModifierType(
       modifierTypes.DYNAMAX_BAND,
-      () => Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9,
+      () => globalScene.gameMode.isClassic ? 0 : Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9,
       36,
     ),
     new WeightedModifierType(
@@ -1068,7 +1068,7 @@ function initGreatModifierPool() {
       },
       8,
     ),
-    new WeightedModifierType(modifierTypes.MAP, skipInLastClassicWaveOrDefault(10)),
+    new WeightedModifierType(modifierTypes.MAP, () => (globalScene.gameMode.isClassic ? 0 : 10)),
     new WeightedModifierType(modifierTypes.SOOTHE_BELL, 2),
     new WeightedModifierType(modifierTypes.TM_GREAT, 14),
     new WeightedModifierType(modifierTypes.AIR_BALLOON, 7),
@@ -2795,7 +2795,7 @@ function initRogueModifierPool() {
     new WeightedModifierType(modifierTypes.SHEER_FORCE_BAND, 4),
     new WeightedModifierType(modifierTypes.LIFE_ORB, 4),
     new WeightedModifierType(modifierTypes.SHELL_BELL, 3),
-    new WeightedModifierType(modifierTypes.ABILITY_PATCH, 4),
+    new WeightedModifierType(modifierTypes.ABILITY_PATCH, 7),
     new WeightedModifierType(modifierTypes.SCRAPPY_BELT, 4),
     new WeightedModifierType(modifierTypes.SMOKE_BALL, 4),
     new WeightedModifierType(modifierTypes.FOCUS_SASH, 4),

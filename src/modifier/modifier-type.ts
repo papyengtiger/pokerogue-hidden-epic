@@ -1,3 +1,4 @@
+import { ChangeAbilityType } from "#app/phases/change-ability-phase";
 import { TYPE_BOOST_ITEM_BOOST_PERCENT } from "#app/constants";
 import { maxmovesSpecies, trPoolTiers } from "#app/data/balance/trs";
 import { getSpeciesZMoves, isExclusiveZCrystal, zmovesSpecies } from "#app/data/balance/zmoves";
@@ -14,6 +15,7 @@ import { getDailyEventSeedLuck } from "#data/daily-seed/daily-run";
 import { allMoves, modifierTypes } from "#data/data-lists";
 import { SpeciesFormChangeItemTrigger } from "#data/form-change-triggers";
 import { getNatureName, getNatureStatMultiplier } from "#data/nature";
+import { getStarterPassiveAbilities } from "#balance/passives";
 import { getPokeballCatchMultiplier, getPokeballName } from "#data/pokeball";
 import { pokemonFormChanges, SpeciesFormChangeCondition } from "#data/pokemon-forms";
 import { getStatusEffectDescriptor } from "#data/status-effect";
@@ -237,6 +239,7 @@ import {
   ZCrystalMoveModifier
 } from "#modifiers/modifier";
 import type { PokemonMove } from "#moves/pokemon-move";
+import type { Move } from "#moves/move";
 import { trainerCardManager } from "#system/trainer-card-manager";
 import { getVoucherTypeIcon, getVoucherTypeName, VoucherType } from "#system/voucher";
 import type { ModifierTypeFunc, WeightedModifierTypeWeightFunc } from "#types/modifier-types";
@@ -248,10 +251,13 @@ import { BooleanHolder, formatMoney, NumberHolder, padInt, randSeedInt, randSeed
 import { getModifierPoolForType, getModifierType } from "#utils/modifier-utils";
 import { toCamelCase } from "#utils/strings";
 import i18next from "i18next";
-import {getStatKey, PERMANENT_STATS} from "/src/enums/stat";
+import { getStatKey, PERMANENT_STATS } from "#enums/stat";
 
 const outputModifierData = false;
 const useMaxWeightForOutput = false;
+
+type Moves = MoveId;
+type Species = SpeciesId;
 
 type NewModifierFunc = (type: ModifierType, args: any[]) => Modifier;
 
@@ -1445,24 +1451,13 @@ export class ChangeAbilityModifierType extends PokemonModifierType {
     super(
       localeKey,
       iconImage,
-      (type, args) => {
-        if (!args[0]) {
-          throw new Error("ChangeAbilityModifierType: 포켓몬이 선택되지 않았습니다.");
-        }
-        return new ChangeAbilityModifier(type, (args[0] as PlayerPokemon).id);
-      },
+      (type, args) => new ChangeAbilityModifier(type, (args[0] as PlayerPokemon).id, ChangeAbilityType.ABILITY_CAPSULE),
       (_pokemon: PlayerPokemon): string | null => null,
       group,
     );
   }
-
-  get name(): string {
-    return i18next.t("modifierType:ModifierType.ChangeAbilityModifierType.name");
-  }
-
-  getDescription(): string {
-    return i18next.t("modifierType:ModifierType.ChangeAbilityModifierType.description");
-  }
+  get name(): string { return i18next.t("modifierType:ModifierType.ChangeAbilityModifierType.name"); }
+  getDescription(): string { return i18next.t("modifierType:ModifierType.ChangeAbilityModifierType.description"); }
 }
 
 export class RegisterAbilityModifierType extends PokemonModifierType {
@@ -1470,27 +1465,24 @@ export class RegisterAbilityModifierType extends PokemonModifierType {
     super(
       localeKey,
       iconImage,
-      // Modifier 생성 함수
-      (type, args) => new RegisterAbilityModifier(type, (args[0] as PlayerPokemon).id, args[1] as ChangeAbilityType),
-
-      // isDisabled 함수: 항상 적용 가능하게 설정
-      (_pokemon: PlayerPokemon): string | null => null,
-
+      (type, args) => new RegisterAbilityModifier(type, (args[0] as PlayerPokemon).id),
+      (pokemon: PlayerPokemon): string | null => {
+        const rootId = pokemon.species.getRootSpeciesId(true);
+        const entry = globalScene.gameData.starterData[rootId];
+        if (!entry) return "등록할 포켓몬 데이터가 없습니다.";
+        const passives = getStarterPassiveAbilities(rootId, pokemon.formIndex);
+        if (!passives.length) return "사용 가능한 패시브가 없습니다.";
+        // 비활성화된 개체라면 기존 해금 패시브를 다시 활성화할 수 있다.
+        if (!pokemon.passive) return null;
+        // 활성화된 개체는 다른 패시브 슬롯으로 전환 가능할 때만 사용한다.
+        return passives.some((_, index) => index !== (pokemon.passiveIndex ?? 0))
+          ? null : "변경할 다른 패시브가 없습니다.";
+      },
       group,
     );
   }
-
-  get name(): string {
-    // i18next.t()로 로컬라이징된 텍스트가 제대로 반환되는지 로그로 확인
-    const localizedName = i18next.t("modifierType:ModifierType.RegisterAbilityModifierType.name");
-    return localizedName;
-  }
-
-  getDescription(): string {
-    // i18next.t()로 로컬라이징된 설명이 제대로 반환되는지 로그로 확인
-    const localizedDescription = i18next.t("modifierType:ModifierType.RegisterAbilityModifierType.description");
-    return localizedDescription;
-  }
+  get name(): string { return i18next.t("modifierType:ModifierType.RegisterAbilityModifierType.name"); }
+  getDescription(): string { return i18next.t("modifierType:ModifierType.RegisterAbilityModifierType.description"); }
 }
 
 export class DoubleBattleChanceBoosterModifierType extends ModifierType {
@@ -3457,7 +3449,7 @@ export class ZCrystalMoveModifierTypeGenerator extends ModifierTypeGenerator {
     super((party: Pokemon[], pregenArgs?: any[]) => {
       // 명시적 moveId가 들어온 경우
       if (pregenArgs && pregenArgs.length === 1 && typeof pregenArgs[0] === "number") {
-        const moveId = pregenArgs[0] as Moves;
+        const moveId = pregenArgs[0] as MoveId;
         return isExclusive
           ? new ZExclusiveCrystalMoveModifierType(moveId)
           : new ZGenericCrystalMoveModifierType(moveId);
@@ -3736,7 +3728,7 @@ export class MoveAbilityBypassModifierType extends PokemonHeldItemModifierType {
         new MoveAbilityBypassModifier(
           type,
           (args[0] as Pokemon).id,
-          args[1] as (pokemon: Pokemon, move: Move) => boolean, // 선택적으로 커스터마이징
+          1, // 최대 1개; 실제 생성자는 stackCount를 요구함
         ),
       group,
       soundName,
@@ -3944,7 +3936,7 @@ const modifierTypeInitObj = Object.freeze({
   Z_GENERIC: () =>
     new ModifierTypeGenerator((party: Pokemon[], pregenArgs?: any[]) => {
       if (pregenArgs && pregenArgs.length === 1 && typeof pregenArgs[0] === "number") {
-        return new ZGenericCrystalMoveModifierType(pregenArgs[0] as Moves);
+        return new ZGenericCrystalMoveModifierType(pregenArgs[0] as MoveId);
       }
 
       // Z링 보유 여부 확인
@@ -3956,7 +3948,7 @@ const modifierTypeInitObj = Object.freeze({
       // 파티 타입 추출
       const partyTypes = party
         .map(p => p.getSpeciesForm().type1)
-        .concat(party.map(p => p.getSpeciesForm().type2))
+        .concat(party.map(p => p.getSpeciesForm().type2).filter((t): t is PokemonType => t != null))
         .filter((t): t is PokemonType => t !== undefined && t !== PokemonType.UNKNOWN);
 
       // 하나의 타입만 있다면 제외
@@ -4054,21 +4046,21 @@ const modifierTypeInitObj = Object.freeze({
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.AIR_BALLOON",
       "air_balloon",
-      (type, args) => new TypeImmunityModifier(type, (args[0] as Pokemon).id, PokemonType.GROUND),
+      (type, args) => new TypeImmunityModifier(type, (args[0] as Pokemon).id),
     ),
 
   BOOSTER_ENERGY: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.BOOSTER_ENERGY",
       "booster_energy",
-      (type, args) => new BoostEnergyModifier(type, (args[0] as Pokemon).id),
+      (type, args) => new BoostEnergyModifier(type, (args[0] as Pokemon).id, 1),
     ),
 
   POWER_UP_DISK: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_UP_DISK",
       "indigo_disk",
-      (type, args) => new PowerUpDiskModifier(type, (args[0] as Pokemon).id),
+      (type, args) => new PowerUpDiskModifier(type, (args[0] as Pokemon).id, 1),
     ),
 
   ULTRA_ENERGY: () =>
@@ -4082,7 +4074,7 @@ const modifierTypeInitObj = Object.freeze({
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.VICTORY_SYMBOL",
       "victory_symbol",
-      (type, args) => new VictoryBadgeModifier(type, (args[0] as Pokemon).id),
+      (type, args) => new VictoryBadgeModifier(type, (args[0] as Pokemon).id, 1),
     ),
 
   ANGE_ORB: () =>
@@ -4175,9 +4167,9 @@ CURSED_BEAD: () =>
   ELIXIR: () => new PokemonAllMovePpRestoreModifierType("modifierType:ModifierType.ELIXIR", "elixir", 10),
   MAX_ELIXIR: () => new PokemonAllMovePpRestoreModifierType("modifierType:ModifierType.MAX_ELIXIR", "max_elixir", -1),
 
-  Z_DRINK: () => new PokemonZMovePpRestoreModifierType("modifierType:ModifierType.Z_DRINK", "z_drink", -1),
+  Z_DRINK: () => new PokemonZMovePpRestoreModifierType(),
 
-  MAX_DRINK: () => new PokemonMaxMovePpRestoreModifierType("modifierType:ModifierType.MAX_DRINK", "gigantamix", -1),
+  MAX_DRINK: () => new PokemonMaxMovePpRestoreModifierType(),
 
   PP_UP: () => new PokemonPpUpModifierType("modifierType:ModifierType.PP_UP", "pp_up", 1),
   PP_MAX: () => new PokemonPpUpModifierType("modifierType:ModifierType.PP_MAX", "pp_max", 3),
@@ -4259,28 +4251,7 @@ CURSED_BEAD: () =>
     new ChangeAbilityModifierType("modifierType:ModifierType.ChangeAbilityModifierType", "ability_capsule"),
 
   ABILITY_PATCH: () =>
-    new ModifierTypeGenerator((_party: Pokemon[], pregenArgs?: any[]) => {
-      const selectedPokemon = _party[0] as PlayerPokemon;
-      const abilities: Ability[] = [];
-
-      // 선택된 포켓몬의 능력치 추가
-      if (selectedPokemon.species.ability) { abilities.push(selectedPokemon.species.ability); }
-      if (selectedPokemon.species.ability2) { abilities.push(selectedPokemon.species.ability2); }
-
-      // 특성 패치에서 바꿀 특성을 선택
-      const targetAbility =
-        (pregenArgs?.[0] as Ability) ?? abilities.find(a => a.index !== selectedPokemon.abilityIndex);
-      if (!targetAbility) {
-        return null; // 변경할 특성이 없다면 null 반환
-      }
-
-      // 특성 패치를 위한 ModifierType 생성
-      return new RegisterAbilityModifierType(
-        "RegisterAbilityModifierType.name." + targetAbility.name, // 이름 로컬라이징
-        "ability_patch", // 아이콘 이미지 또는 텍스트
-        targetAbility.index, // 특성 인덱스
-      );
-    }),
+    new RegisterAbilityModifierType("modifierType:ModifierType.RegisterAbilityModifierType", "ability_patch"),
 
   MYSTICAL_ROCK: () =>
     new PokemonHeldItemModifierType(
@@ -4354,7 +4325,7 @@ CURSED_BEAD: () =>
       if (globalScene.getModifiers(MaxMoveAccessModifier).length === 0) {
         return null;
       }
-      const generator = new TrModifierTypeGenerator(ModifierTier.RARE);
+      const generator = new TrModifierTypeGenerator(ModifierTier.GREAT);
       return generator.generateType(party, pregenArgs);
     }),
 
@@ -4512,7 +4483,7 @@ WISE_GLASSES: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.EVOLUTION_INCENSE",
       "sea_incense",
-      (type, args) => new EvolutionIncenseModifier(type, (args[0] as Pokemon).id, [Stat.ATK, Stat.SPA, Stat.SPE], 1.5),
+      (type, args) => new EvolutionIncenseModifier(type, (args[0] as Pokemon).id, [Stat.ATK, Stat.SPATK, Stat.SPD], 1.5),
     ),
 
   MIND_ORB: () =>
@@ -4723,210 +4694,210 @@ WISE_GLASSES: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.PROTECTIVE_PADS",
       "protective_pads",
-      (type, args) => new IgnoreContactItemModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new IgnoreContactItemModifier(type, (args[0] as Pokemon).id),
     ),
 
   PUNCHING_GLOVE: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.PUNCHING_GLOVE",
       "punching_glove",
-      (type, args) => new PunchingGloveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new PunchingGloveModifier(type, (args[0] as Pokemon).id),
     ),
 
   SHARPNESS_SWORD: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.SHARPNESS_SWORD",
       "sword_1",
-      (type, args) => new SlicingMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new SlicingMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_TEETH: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_TEETH",
       "gold_teeth",
-      (type, args) => new BitingMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new BitingMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_HELMET: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_HELMET",
       "helmet",
-      (type, args) => new HeadMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new HeadMoveModifier(type, (args[0] as Pokemon).id),
     ),
   
   HORN_HELMET: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.HORN_HELMET",
       "biking_helmet",
-      (type, args) => new HornMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new HornMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_PROTECTOR: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_PROTECTOR",
       "power_protector",
-      (type, args) => new KickMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new KickMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   SPIKE_SPEAR: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.SPIKE_SPEAR",
       "sharp_spear",
-      (type, args) => new SpearMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new SpearMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_FEATHER: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_FEATHER",
       "pretty_wing",
-      (type, args) => new WingMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new WingMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   MIGHTY_HAMMER: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.MIGHTY_HAMMER",
       "mighty_hammer",
-      (type, args) => new HammerMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new HammerMoveModifier(type, (args[0] as Pokemon).id),
     ),
  
   POWER_CLAW: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_CLAW",
       "power_claw",
-      (type, args) => new ClawMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new ClawMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_PINCH: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_PINCH",
       "power_pinch",
-      (type, args) => new PinchMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new PinchMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   HARDEN_BEAK: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.HARDEN_BEAK",
       "harden_beak",
-      (type, args) => new BeakMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new BeakMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   FAST_BOOTS: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.FAST_BOOTS",
       "fast_boots",
-      (type, args) => new DashMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new DashMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   SPIN_TOP: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.SPIN_TOP",
       "spin_top",
-      (type, args) => new SpinMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new SpinMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_DRILL: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_DRILL",
       "power_drill",
-      (type, args) => new DrillMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new DrillMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_ROPE: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_ROPE",
       "power_rope",
-      (type, args) => new WhipMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new WhipMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_WHEEL: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_WHEEL",
       "power_wheel",
-      (type, args) => new WheelMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new WheelMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_TAIL: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_TAIL",
       "power_tail",
-      (type, args) => new TailMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new TailMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_BOW: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_BOW",
       "power_bow",
-      (type, args) => new ArrowMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new ArrowMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_BEADS: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_BEADS",
       "power_beads",
-      (type, args) => new BallBombMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new BallBombMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_BOOMERANG: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_BOOMERANG",
       "power_boomerang",
-      (type, args) => new BoomerangMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new BoomerangMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   THROW_GLOVE: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.THROW_GLOVE",
       "throw_glove",
-      (type, args) => new ThrowMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new ThrowMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   PULSE_ORB: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.PULSE_ORB",
       "pulse_orb",
-      (type, args) => new PulseMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new PulseMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   RAZORPOINTER: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.RAZORPOINTER",
       "razorpointer",
-      (type, args) => new BeamMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new BeamMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_LANTERN: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_LANTERN",
       "power_lantern",
-      (type, args) => new LightMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new LightMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   PUNK_MIKE: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.PUNK_MIKE",
       "standmike",
-      (type, args) => new SoundMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new SoundMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   POWER_FAN: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.POWER_FAN",
       "power_fan",
-      (type, args) => new WindMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new WindMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   HULAHULA_SKIRT: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.HULAHULA_SKIRT",
       "hulahula_skirt",
-      (type, args) => new DanceMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new DanceMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   BIG_ROOT: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.BIG_ROOT",
       "big_root",
-      (type, args) => new DrainMoveModifier(type, (args[0] as Pokemon).id, 1),
+      (type, args) => new DrainMoveModifier(type, (args[0] as Pokemon).id),
     ),
 
   COVERT_CLOAK: () =>
@@ -4989,7 +4960,7 @@ WISE_GLASSES: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.MOLD_BREAKER_BRACER",
       "power_bracer",
-      (type, args) => new MoveAbilityBypassModifier(type, (args[0] as Pokemon).id),
+      (type, args) => new MoveAbilityBypassModifier(type, (args[0] as Pokemon).id, 1),
     ),
 
   POWER_UP_WEIGHT: () =>
@@ -5099,12 +5070,7 @@ SCHOLAR_TOME: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.GOLDEN_INCENSE",
       "luck_incense",
-      (type, args) =>
-        new GoldenBodyItemModifier(
-          type,
-          (args[0] as Pokemon).id,
-          (move: Move) => move.category === MoveCategory.STATUS || move.category === MoveCategory.CHANGE,
-        ),
+      (type, args) => new GoldenBodyItemModifier(type, (args[0] as Pokemon).id),
     ),
 
   AROMA_INCENSE: () =>
@@ -5133,13 +5099,7 @@ SCHOLAR_TOME: () =>
     "modifierType:ModifierType.CLEAR_BELL",
     "clear_bell",
     (type, args) =>
-      new SturdyMealModifier(
-        type,
-        (args[0] as Pokemon).id,
-        [
-          SpeciesId.HO_OH
-        ]
-      ),
+      new SturdyMealModifier(type, (args[0] as Pokemon).id),
   ),
 
   SCRAPPY_BELT: () =>
@@ -5154,7 +5114,6 @@ SCHOLAR_TOME: () =>
       "modifierType:ModifierType.SHEER_FORCE_BAND",
       "blue_scarf",
       (type, args) => new SheerForceItemModifier(type, (args[0] as Pokemon).id),
-      1.3,
     ),
 
   ADAPTABILITY_BAND: () =>
@@ -5207,7 +5166,7 @@ SCHOLAR_TOME: () =>
     new PokemonHeldItemModifierType(
       "modifierType:ModifierType.SAFETY_GOGGLES",
       "safety_goggles",
-      (type, args) => new OvercoatModifier(type, (args[0] as Pokemon).id, true, true),
+      (type, args) => new OvercoatModifier(type, (args[0] as Pokemon).id, true, true, [WeatherType.SANDSTORM, WeatherType.SNOW]),
     ),
 
   SHINY_CHARM: () =>

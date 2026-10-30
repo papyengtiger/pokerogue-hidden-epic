@@ -2451,6 +2451,10 @@ export class GameData {
     return new Promise<boolean>(resolve => {
       if (bypassLogin) {
         localStorage.removeItem(`sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`);
+        // 현재 플레이 중인 슬롯을 삭제할 때만 캘리몬 추격 상태를 초기화한다.
+        if (globalScene.sessionSlotId === slotId) {
+          kecleonShopManager.resetRunState();
+        }
         return resolve(true);
       }
 
@@ -2472,6 +2476,9 @@ export class GameData {
             }
 
             localStorage.removeItem(`sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`);
+            if (globalScene.sessionSlotId === slotId) {
+              kecleonShopManager.resetRunState();
+            }
             resolve(true);
           }
         });
@@ -2516,6 +2523,9 @@ export class GameData {
 
     if (bypassLogin) {
       localStorage.removeItem(`sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`);
+      if (globalScene.sessionSlotId === slotId) {
+        kecleonShopManager.resetRunState();
+      }
       result = [true, true];
     } else {
       const sessionData = this.getSessionSaveData();
@@ -2531,6 +2541,9 @@ export class GameData {
           loggedInUser!.lastSessionSlot = -1;
         }
         localStorage.removeItem(`sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`);
+        if (globalScene.sessionSlotId === slotId) {
+          kecleonShopManager.resetRunState();
+        }
       } else {
         if (jsonResponse?.error?.startsWith("session out of date")) {
           globalScene.phaseManager.clearPhaseQueue();

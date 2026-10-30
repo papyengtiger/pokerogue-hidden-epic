@@ -59,7 +59,7 @@ export class ModifierSelectUiHandler extends AwaitableUiHandler {
   private lastRewardCursor = 0;
 
   constructor() {
-    super(UiMode.CONFIRM);
+    super(UiMode.MODIFIER_SELECT);
 
     this.options = [];
     this.shopOptionsRows = [];

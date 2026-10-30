@@ -149,8 +149,51 @@ export const TrashToTreasureEncounter: MysteryEncounter = MysteryEncounterBuilde
           },
         ],
       })
+      .withPreOptionPhase(async () => {
+        // Dig through the garbage and play sound effects.
+        doGarbageDig();
+      })
       .withOptionPhase(async () => {
-        // Investigate garbage, battle Gmax Garbodor
+        // Dig for valuables: grant held items, then apply the shop cost penalty.
+        await transitionMysteryEncounterIntroVisuals();
+        await tryApplyDigRewardItems();
+
+        const blackSludge = generateModifierType(modifierTypes.MYSTERY_ENCOUNTER_BLACK_SLUDGE, [
+          SHOP_ITEM_COST_MULTIPLIER,
+        ]);
+        const modifier = blackSludge?.newModifier();
+        if (modifier) {
+          await globalScene.addModifier(modifier, false, false, false, true);
+          globalScene.playSound("battle_anims/PRSFX- Venom Drench", {
+            volume: 2,
+          });
+          await showEncounterText(
+            i18next.t("battle:rewardGain", {
+              modifierName: modifier.type.name,
+            }),
+            null,
+            undefined,
+            true,
+          );
+        }
+
+        leaveEncounterWithoutBattle(true);
+      })
+      .build(),
+  )
+  .withOption(
+    MysteryEncounterOptionBuilder.newOptionWithMode(MysteryEncounterOptionMode.DEFAULT)
+      .withDialogue({
+        buttonLabel: `${namespace}:option.2.label`,
+        buttonTooltip: `${namespace}:option.2.tooltip`,
+        selected: [
+          {
+            text: `${namespace}:option.2.selected`,
+          },
+        ],
+      })
+      .withOptionPhase(async () => {
+        // Investigate the source of the garbage and battle Gmax Garbodor.
         globalScene.setFieldScale(0.75);
         await showEncounterText(`${namespace}:option.1.selected2`);
         await transitionMysteryEncounterIntroVisuals();
@@ -177,49 +220,6 @@ export const TrashToTreasureEncounter: MysteryEncounter = MysteryEncounterBuilde
           },
         );
         await initBattleWithEnemyConfig(encounter.enemyPartyConfigs[0]);
-      })
-      .build(),
-  )
-  .withOption(
-    MysteryEncounterOptionBuilder.newOptionWithMode(MysteryEncounterOptionMode.DEFAULT)
-      .withDialogue({
-        buttonLabel: `${namespace}:option.2.label`,
-        buttonTooltip: `${namespace}:option.2.tooltip`,
-        selected: [
-          {
-            text: `${namespace}:option.2.selected`,
-          },
-        ],
-      })
-      .withPreOptionPhase(async () => {
-        // Play Dig2 and then Venom Drench sfx
-        doGarbageDig();
-      })
-      .withOptionPhase(async () => {
-        // Gain 1 Leftovers and 1 Shell Bell
-        await transitionMysteryEncounterIntroVisuals();
-        await tryApplyDigRewardItems();
-
-        const blackSludge = generateModifierType(modifierTypes.MYSTERY_ENCOUNTER_BLACK_SLUDGE, [
-          SHOP_ITEM_COST_MULTIPLIER,
-        ]);
-        const modifier = blackSludge?.newModifier();
-        if (modifier) {
-          await globalScene.addModifier(modifier, false, false, false, true);
-          globalScene.playSound("battle_anims/PRSFX- Venom Drench", {
-            volume: 2,
-          });
-          await showEncounterText(
-            i18next.t("battle:rewardGain", {
-              modifierName: modifier.type.name,
-            }),
-            null,
-            undefined,
-            true,
-          );
-        }
-
-        leaveEncounterWithoutBattle(true);
       })
       .build(),
   )

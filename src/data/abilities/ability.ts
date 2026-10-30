@@ -1927,14 +1927,10 @@ export class MoveTypeChangeAbAttr extends PreAttackAbAttr {
    * - The user is not Terastallized and using Tera Blast
    * - The user is not a Terastallized Terapagos using Stellar-type Tera Starstorm
    */
-  override apply({ pokemon, moveType, power, passive }: MoveTypeChangeAbAttrParams): void {
-    // 현재 기술 타입을 임시 move 로 생성
-    const moveData = {
-      type: moveType.value,
-    };
-
-    // 픽셀레이트/스카이스킨류 조건 체크
-    if (this.condition && !this.condition(pokemon, null as any, moveData as any)) {
+  override apply({ pokemon, move, moveType, power, passive }: MoveTypeChangeAbAttrParams): void {
+    // 실제 Move 객체를 사용해야 hasFlag 등의 메서드가 정상 작동합니다.
+    // 기술 정보 화면에서도 조건을 안전하게 확인합니다.
+    if (this.condition && (!move || !this.condition(pokemon, null as any, move))) {
       return;
     }
 

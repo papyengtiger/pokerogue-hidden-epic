@@ -9511,6 +9511,12 @@ export class PlayerPokemon extends Pokemon {
       this.handleSpecialEvolutions(evolution);
       const isFusion = evolution instanceof FusionSpeciesFormEvolution;
       if (!isFusion) {
+        // 캡슐로 선택한 특성은 진화 시 이전 종의 ID가 아닌 특성 슬롯을 계승한다.
+        // 다른 이벤트/개체 고유 특성 오버라이드는 건드리지 않는다.
+        const oldSlotAbility = this.getSpeciesForm().getAbility(this.abilityIndex);
+        if (this.customPokemonData.ability === oldSlotAbility) {
+          delete this.customPokemonData.ability;
+        }
         this.species = getPokemonSpecies(evolution.speciesId);
       } else {
         this.fusionSpecies = getPokemonSpecies(evolution.speciesId);

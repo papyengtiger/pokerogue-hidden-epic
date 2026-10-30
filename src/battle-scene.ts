@@ -1567,6 +1567,10 @@ export class BattleScene extends SceneBase {
 
   // TODO: Break up function - this does far too much in 1 sitting
   reset(clearScene = false, clearData = false, reloadI18n = false): void {
+    // 새로운 플레이로 전환할 때 이전 캘리몬 분노/추격 상태를 제거한다.
+    // 저장판 이어하기는 game-data.ts의 loadSaveData()에서 다시 복원한다.
+    kecleonShopManager.resetRunState();
+
     if (clearData) {
       this.gameData = new GameData();
     }

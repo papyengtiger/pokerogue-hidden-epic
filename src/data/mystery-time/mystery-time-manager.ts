@@ -171,9 +171,9 @@ export class MysteryTimeManager {
   private calculateEndWave(startWave: number): number {
     let endWave = Math.floor((startWave - 1) / 10) * 10 + 10;
 
-    // 클래식 최종 구간(190~200층)에는 미스터리타임이 이어지지 않도록 한다.
+    // 클래식 최종 구간(180층 이후)에는 미스터리타임이 이어지지 않도록 한다.
     if (globalScene.gameMode.isClassic) {
-      endWave = Math.min(endWave, 189);
+      endWave = Math.min(endWave, 179);
     }
 
     if (endWave % 50 === 0) {
@@ -201,7 +201,7 @@ export class MysteryTimeManager {
   public start(waveIndex = globalScene.currentBattle.waveIndex, rank: MysteryTimeRank = MysteryTimeRank.RANK_1): void {
     const minimumSpawnWave = this.getMinimumSpawnWave();
 
-    if (globalScene.gameMode.isClassic && waveIndex >= 190 && waveIndex <= 200) {
+    if (globalScene.gameMode.isClassic && waveIndex >= 180) {
       console.log("[MYSTERY_TIME_BLOCKED_CLASSIC_FINAL_WAVES]", { wave: waveIndex });
       return;
     }
@@ -263,7 +263,7 @@ export class MysteryTimeManager {
    * 현재 층이 미스터리타임 구간인지 확인.
    */
   public isMysteryTimeWave(waveIndex: number): boolean {
-    if (globalScene.gameMode.isClassic && waveIndex >= 190 && waveIndex <= 200) {
+    if (globalScene.gameMode.isClassic && waveIndex >= 180) {
       return false;
     }
 
@@ -424,7 +424,7 @@ export class MysteryTimeManager {
 
     const wave = globalScene.currentBattle.waveIndex;
 
-    if (globalScene.gameMode.isClassic && wave >= 190 && wave <= 200) {
+    if (globalScene.gameMode.isClassic && wave >= 180) {
       return false;
     }
 
@@ -547,7 +547,7 @@ export class MysteryTimeManager {
     }
 
     // 과거 세이브에서 최종 구간에 활성화된 미스터리타임을 복구하지 않는다.
-    if (globalScene.gameMode.isClassic && data.active && data.startWave !== null && data.startWave >= 190) {
+    if (globalScene.gameMode.isClassic && data.active && data.startWave !== null && data.startWave >= 180) {
       console.warn("[MYSTERY_TIME_RESTORE_BLOCKED_CLASSIC_FINAL_WAVES]", { startWave: data.startWave });
       this.reset();
       return;

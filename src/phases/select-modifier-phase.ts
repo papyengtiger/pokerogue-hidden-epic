@@ -1,4 +1,6 @@
 import { globalScene } from "#app/global-scene";
+import { ChangeAbilityPhase, ChangeAbilityType } from "#app/phases/change-ability-phase";
+import { RegisterAbilityPhase, RegisterAbilityType } from "#app/phases/register-ability-phase";
 import Overrides from "#app/overrides";
 import type { BerryType } from "#enums/berry-type";
 import { GameModes } from "#enums/game-modes";
@@ -8,6 +10,8 @@ import { TrainerCardId } from "#enums/trainer-card-id";
 import { UiMode } from "#enums/ui-mode";
 import type { Modifier } from "#modifiers/modifier";
 import {
+  ChangeAbilityModifier,
+  RegisterAbilityModifier,
   ExtraModifierModifier,
   HealShopCostModifier,
   PokemonHeldItemModifier,
@@ -142,11 +146,7 @@ export class SelectModifierPhase extends BattlePhase {
             () => {
               globalScene.ui.revertMode();
               globalScene.ui.setMode(UiMode.MESSAGE);
-              if (this.remainingRewardChoices < this.initialRewardChoices) {
-                this.finishRewardSelection();
-              } else {
-                super.end();
-              }
+              this.finishRewardSelection();
             },
             () => {
               globalScene.ui.revertMode(); // 핵심
@@ -221,8 +221,12 @@ export class SelectModifierPhase extends BattlePhase {
               return false;
           }
 
-        // Pick an option from the rewards
+        // Pick a reward, or proceed if the encounter provided no reward choices.
         case 1:
+          if (this.typeOptions.length === 0) {
+            this.finishRewardSelection();
+            return true;
+          }
           return this.selectRewardModifierOption(cursor, modifierSelectCallback);
         // Pick an option from the shop
         default: {
@@ -623,6 +627,49 @@ export class SelectModifierPhase extends BattlePhase {
    * @param playSound - Whether the 'obtain modifier' sound should be played when adding the modifier.
    */
   private applyModifier(modifier: Modifier, cost = -1, playSound = false): void {
+    // 캡슐/패치는 선택 확정 후에만 보상/구매를 처리한다.
+    // 취소는 기술머신과 같이 기존 보상 목록/상점으로 돌아간다.
+    if (modifier instanceof ChangeAbilityModifier || modifier instanceof RegisterAbilityModifier) {
+      const pendingOption = this.pendingRewardOption;
+      const callback = this.rewardSelectCallback;
+      modifier.onSelectionComplete = (confirmed: boolean) => {
+        if (!confirmed) {
+          if (cost === -1) this.pendingRewardOption = undefined;
+          if (callback) this.returnToModifierSelect(callback);
+          return;
+        }
+        const itemId = modifier.type?.id;
+        if (cost === -1) {
+          if (itemId) questManager.onItemObtained(itemId, 1);
+          const gainedRp = this.getModifierTierRoguePoints(modifier.type?.tier);
+          if (gainedRp > 0) globalScene.gameData.addRoguePoints(gainedRp);
+          if (pendingOption && callback) this.completeRewardSelection(pendingOption, callback);
+          else this.finishRewardSelection();
+        } else {
+          if (!Overrides.WAIVE_ROLL_FEE_OVERRIDE) {
+            globalScene.money -= cost;
+            globalScene.updateMoneyText();
+            globalScene.animateMoneyChanged(false);
+          }
+          globalScene.playSound("se/buy");
+          if (callback) this.returnToModifierSelect(callback);
+        }
+      };
+      // 기존 addModifier()는 phaseManager에 예약만 하므로 아이템 메뉴가
+      // 활성화된 동안 선택 화면이 열리지 않는다. 직접 UI를 열어 처리한다.
+      const partyIndex = globalScene.getPlayerParty().findIndex(p => p.id === modifier.pokemonId);
+      if (partyIndex < 0) {
+        globalScene.ui.playError();
+        if (callback) this.returnToModifierSelect(callback);
+        return;
+      }
+      if (modifier instanceof ChangeAbilityModifier) {
+        new ChangeAbilityPhase(partyIndex, modifier.changeAbilityType, cost, modifier.onSelectionComplete).showSelectionDirect();
+      } else {
+        new RegisterAbilityPhase(partyIndex, RegisterAbilityType.ABILITY_PATCH, cost, modifier.onSelectionComplete).showSelectionDirect();
+      }
+      return;
+    }
     const result = globalScene.addModifier(modifier, false, playSound, undefined, undefined, cost);
 
     if (result && cost === -1) {
@@ -779,22 +826,40 @@ export class SelectModifierPhase extends BattlePhase {
           ? PartyUiMode.REMEMBER_MOVE_MODIFIER
           : PartyUiMode.MODIFIER;
     const tmMoveId = isTmModifier ? (modifierType as TmModifierType).moveId : undefined;
-    globalScene.ui.setModeWithoutClear(
+    // 캡슐/패치는 선택을 확정하기 전까지 보상은 유지하지만,
+    // 화면 자체는 반드시 닫아야 한다. setModeWithoutClear는 보상 UI를 남긴다.
+    const isAbilityItem = modifierType.id === "ABILITY_CAPSULE" || modifierType.id === "ABILITY_PATCH";
+    const openParty = isAbilityItem
+      ? globalScene.ui.setMode.bind(globalScene.ui)
+      : globalScene.ui.setModeWithoutClear.bind(globalScene.ui);
+    openParty(
       UiMode.PARTY,
       partyUiMode,
       -1,
       (slotIndex: number, option: PartyOption) => {
-        if (slotIndex < 6) {
-          globalScene.ui.setMode(UiMode.MODIFIER_SELECT, this.isPlayer()).then(() => {
+        // Cancelling a TM/TR or move-selection menu must not consume the item.
+        if (slotIndex >= 0 && slotIndex < party.length && option !== PartyOption.CANCEL) {
+          // 특성캡슐/패치: 아이템 선택창을 다시 켜지 않고 PARTY를 닫은 뒤
+          // OPTION_SELECT를 표시한다. MODIFIER_SELECT를 활성화하면 두 화면이 겹친다.
+          const abilityItem = modifierType.id === "ABILITY_CAPSULE" || modifierType.id === "ABILITY_PATCH";
+          const nextMode = abilityItem ? UiMode.MESSAGE : UiMode.MODIFIER_SELECT;
+          // PARTY (교체 확인창 포함) 전환이 완료된 후 옵션 화면 표시
+          globalScene.ui.clearText();
+          globalScene.ui.setMode(nextMode, ...(abilityItem ? [] : [this.isPlayer()])).then(() => {
             const modifier = !isMoveModifier
               ? !isRememberMoveModifier
                 ? modifierType.newModifier(party[slotIndex])
                 : modifierType.newModifier(party[slotIndex], option as number)
               : modifierType.newModifier(party[slotIndex], option - PartyOption.MOVE_1);
-            this.applyModifier(modifier!, cost, true); // TODO: is the bang correct?
+            if (!modifier) {
+              this.returnToModifierSelect(modifierSelectCallback);
+              return;
+            }
+            this.applyModifier(modifier, cost, true);
           });
         } else {
-          this.resetModifierSelect(modifierSelectCallback);
+          // Leave PARTY first so the modifier selection is shown with a fresh callback.
+          this.returnToModifierSelect(modifierSelectCallback);
         }
       },
       pokemonModifierType.selectFilter,
@@ -831,6 +896,16 @@ export class SelectModifierPhase extends BattlePhase {
     }
 
     return modifierCountHolder.value;
+  }
+
+  /** Restore the reward screen after cancelling a party or move-item selection. */
+  private returnToModifierSelect(modifierSelectCallback: ModifierSelectCallback): void {
+    globalScene.ui.clearText();
+    globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+      if (!this.rewardCompleted) {
+        this.resetModifierSelect(modifierSelectCallback);
+      }
+    });
   }
 
   // Function that resets the reward selection screen,

@@ -146,6 +146,33 @@ export class VictoryPhase extends PokemonPhase {
         globalScene.phaseManager.pushNew("EggLapsePhase");
         globalScene.phaseManager.pushNew("BerryPlanterLapsePhase");
         if (gameMode.isClassic) {
+          // 히든에픽 클래식: 특정 라이벌 승리 시 전용 도구 확정 지급
+          // 이미 보유한 도구는 건너뛴다. 실제 지급은 ModifierRewardPhase에서 처리한다.
+          if (globalScene.currentBattle.battleType === BattleType.TRAINER) {
+            const queueUniqueReward = (type: typeof modifierTypes.MAP): void => {
+              if (!globalScene.findModifier(m => m.type?.id === type.id)) {
+                globalScene.phaseManager.pushNew("ModifierRewardPhase", type);
+              }
+            };
+
+            switch (currentWaveIndex) {
+              case 8:
+                queueUniqueReward(modifierTypes.MAP);
+                break;
+              case 25:
+                queueUniqueReward(modifierTypes.TERA_ORB);
+                break;
+              case 55:
+                queueUniqueReward(modifierTypes.MEGA_BRACELET);
+                queueUniqueReward(modifierTypes.DYNAMAX_BAND);
+                break;
+              case 95:
+                queueUniqueReward(modifierTypes.Z_RING);
+                queueUniqueReward(modifierTypes.Z_POWER_RING);
+                break;
+            }
+          }
+
           switch (currentWaveIndex) {
             case ClassicFixedBossWaves.RIVAL_1:
             case ClassicFixedBossWaves.RIVAL_2:
