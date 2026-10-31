@@ -13771,11 +13771,8 @@ export function initMoves() {
        * Should not apply abilities or held items if user is off the field
        */
       .edgeCase(),
-    new AttackMove(MoveId.ROCK_SMASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 40, 100, 15, 100, 0, 2).attr(
-      StatStageChangeAttr,
-      [Stat.DEF],
-      -2,
-    ),
+    new AttackMove(MoveId.ROCK_SMASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 40, 100, 15, 100, 0, 2)
+      .attr(StatStageChangeAttr, [Stat.DEF], -2),
     new AttackMove(MoveId.WHIRLPOOL, PokemonType.WATER, MoveCategory.SPECIAL, 35, 85, 15, -1, 0, 2)
       .spinMove()
       .attr(TrapAttr, BattlerTagType.WHIRLPOOL)
@@ -14719,10 +14716,7 @@ export function initMoves() {
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(FlinchAttr)
       .soundBased()
-      .condition((user, target, move) => {
-        const turnMove = user.getLastXMoves(1);
-        return turnMove.length === 0 || turnMove[0].move !== move.id || turnMove[0].result !== MoveResult.SUCCESS;
-      }),
+      .attr(RechargeAttr),
     new AttackMove(MoveId.SPACIAL_REND, PokemonType.DRAGON, MoveCategory.SPECIAL, 130, -1, 5, -1, 0, 4)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(HighCritAttr),
@@ -14784,7 +14778,8 @@ export function initMoves() {
       .attr(ZStatStageChangeAttr, [Stat.SPDEF], 1, true)
       .attr(AddArenaTagAttr, ArenaTagType.WONDER_ROOM, 5)
       .target(MoveTarget.BOTH_SIDES),
-    new AttackMove(MoveId.PSYSHOCK, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 5).attr(DefDefAttr),
+    new AttackMove(MoveId.PSYSHOCK, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 5)
+      .attr(DefDefAttr),
     new AttackMove(MoveId.VENOSHOCK, PokemonType.POISON, MoveCategory.SPECIAL, 65, 100, 10, -1, 0, 5).attr(
       MovePowerMultiplierAttr,
       (user, target, move) =>
@@ -16271,9 +16266,8 @@ export function initMoves() {
       .attr(CutHpStatStageBoostAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, 3)
       .soundBased()
       .danceMove(),
-    new AttackMove(MoveId.BODY_PRESS, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 8).attr(
-      DefAtkAttr,
-    ),
+    new AttackMove(MoveId.BODY_PRESS, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 8)
+      .attr(DefAtkAttr),
     new StatusMove(MoveId.DECORATE, PokemonType.FAIRY, -1, 15, -1, 0, 8)
       .attr(StatStageChangeAttr, [Stat.ATK, Stat.SPATK], 2)
       .ignoresProtect(),
@@ -20845,5 +20839,82 @@ export function initMoves() {
     new AttackMove(MoveId.OCEAN_WRATH, PokemonType.WATER, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 224)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(PhotonGeyserCategoryAttr),
+    new AttackMove(MoveId.WRATH_OF_TIME, PokemonType.STEEL, MoveCategory.SPECIAL, 180, -1, 5, 30, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(ConfuseAttr)
+      .attr(RechargeAttr),
+    new ChargingSelfStatusMove(MoveId.TIME_REBIND, PokemonType.STEEL, -1, 5, -1, 0, 224)
+      .chargeText(i18next.t("moveTriggers:isChargingPower", { pokemonName: "{USER}" }))
+      .chargeAttr(StatStageChangeAttr, [Stat.DEF, Stat.SPDEF], 3, true)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 2, true)
+      .chargeAttr(InstantChargeAttr, (user, move) => {
+        return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier);
+      })
+      .attr(HealAttr, 1.0)
+      .attr(HealStatusEffectAttr, true, [
+        StatusEffect.PARALYSIS,
+        StatusEffect.POISON,
+        StatusEffect.TOXIC,
+        StatusEffect.BURN,
+        StatusEffect.FROSTBITE,
+      ]),
+    new AttackMove(MoveId.DIAMOND_CLUSTER, PokemonType.STEEL, MoveCategory.SPECIAL, 150, 90, 5, 40, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(StatStageChangeAttr, [Stat.DEF, Stat.SPDEF], 2, true)
+      .attr(RechargeAttr),
+    new AttackMove(MoveId.BRILLIANT_CHARGE, PokemonType.DRAGON, MoveCategory.SPECIAL, 150, 90, 5, 40, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(StatStageChangeAttr, [Stat.ATK, Stat.SPATK], 2, true)
+      .attr(RechargeAttr),
+    new AttackMove(MoveId.ORIGIN_TIME, PokemonType.DRAGON, MoveCategory.SPECIAL, 150, 90, 5, 40, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(StatStageChangeAttr, [Stat.SPD], 4, true)
+      .attr(RechargeAttr),
+    new AttackMove(MoveId.SPACIAL_WAVE, PokemonType.WATER, MoveCategory.SPECIAL, 130, -1, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .ignoresProtect(),
+    new AttackMove(MoveId.GLACIATED_ZONE, PokemonType.ICE, MoveCategory.SPECIAL, 130, -1, 5, 50, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(MultiStatusEffectAttr, [StatusEffect.FROSTBITE, StatusEffect.FREEZE]),
+    new AttackMove(MoveId.PEARL_CLUSTER, PokemonType.WATER, MoveCategory.SPECIAL, 100, -1, 5, 50, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(DefDefAttr),
+    new ChargingSelfStatusMove(MoveId.SHINING_BOOST, PokemonType.DRAGON, -1, 10, -1, 0, 224)
+      .chargeText(i18next.t("moveTriggers:isChargingPower", { pokemonName: "{USER}" }))
+      .chargeAttr(HealAttr, 0.5)
+      .attr(ZStatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, true)
+      .target(MoveTarget.USER)
+      .chargeAttr(HealStatusEffectAttr, true, [
+        StatusEffect.PARALYSIS,
+        StatusEffect.POISON,
+        StatusEffect.TOXIC,
+        StatusEffect.BURN,
+      ])
+      .chargeAttr(InstantChargeAttr, (user, move) => {
+        return user.getHeldItems().some(item => item instanceof InstantChargeItemModifier);
+      })
+      .attr(StatStageChangeAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 2, true),
+    new AttackMove(MoveId.GENESIS_ZONE, PokemonType.DRAGON, MoveCategory.SPECIAL, 130, 100, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(HitHealAttr, 0.5),
+    new AttackMove(MoveId.DISTORTED_WRATH, PokemonType.DRAGON, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(PhotonGeyserCategoryAttr),
+    new AttackMove(MoveId.DISTORTION_ENERGY, PokemonType.GHOST, MoveCategory.SPECIAL, 140, 90, 5, 40, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(FlinchAttr)
+      .attr(PhotonGeyserCategoryAttr),
+    new AttackMove(MoveId.PLATINUM_FORCE, PokemonType.GHOST, MoveCategory.SPECIAL, 140, 90, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(RemoveScreensAttr)
+      .attr(PhotonGeyserCategoryAttr),
+    new AttackMove(MoveId.SPARKLING_FORCE, PokemonType.DRAGON, MoveCategory.SPECIAL, 140, 100, 5, -1, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(HitHealAttr, 0.75)
+      .attr(PhotonGeyserCategoryAttr),
+    new AttackMove(MoveId.ABSOLUTE_WORLD, PokemonType.DRAGON, MoveCategory.SPECIAL, 160, 85, 5, 40, 0, 224)
+      .target(MoveTarget.ALL_NEAR_ENEMIES)
+      .attr(StatStageChangeAttr, [Stat.DEF, Stat.SPDEF], -12)
+      .attr(PhotonGeyserCategoryAttr)
   );
 }

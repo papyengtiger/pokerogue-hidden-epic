@@ -593,9 +593,9 @@ export class MonsterHouseManager {
       }
 
       // 우두머리는 해금되기 전까지 공격 대상에서 제외
-      if (!bossReleased && index === bossIndex) {
-        return false;
-      }
+      if (!bossReleased && monsterHouseManager.isBossPokemon(pokemon)) {
+  return false;
+}
 
       return true;
     });

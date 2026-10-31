@@ -292,7 +292,7 @@ export class TitlePhase extends Phase {
       {
         label: i18next.t("menu:loadGame"),
         handler: () => {
-          globalScene.ui.setOverlayMode(UiMode.SAVE_SLOT, SaveSlotUiMode.LOAD, (slotId: number) => {
+          globalScene.ui.setMode(UiMode.SAVE_SLOT, SaveSlotUiMode.LOAD, (slotId: number) => {
             if (slotId === NO_SAVE_SLOT) {
               console.warn("Attempted to load save slot of -1 through load game menu!");
               return this.showOptions(slotId);
@@ -348,8 +348,9 @@ export class TitlePhase extends Phase {
 
   // TODO: Make callers actually wait for the save slot to load
   private async loadSaveSlot(slotId: number): Promise<void> {
-    // TODO: Do we need to `await` this?
-    globalScene.ui.setMode(UiMode.MESSAGE);
+    // 저장 슬롯 화면을 닫은 후 메시지 UI로 전환한다.
+    // 전환이 완료되기 전에 세션을 불러오면 타이틀/저장 슬롯 UI가 겹칠 수 있다.
+    await globalScene.ui.setMode(UiMode.MESSAGE);
     globalScene.ui.resetModeChain();
     try {
       const success = await globalScene.gameData.loadSession(slotId);

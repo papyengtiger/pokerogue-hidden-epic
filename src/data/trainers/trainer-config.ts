@@ -342,6 +342,9 @@ export class TrainerConfig {
       case TrainerType.OLIVIA_ELITE:
         trainerType = TrainerType.OLIVIA;
         break;
+      case TrainerType.BEDE_ELITE:
+        trainerType = TrainerType.BEDE;
+        break;
       case TrainerType.MARNIE_ELITE:
         trainerType = TrainerType.MARNIE;
         break;
@@ -4058,7 +4061,7 @@ export const trainerConfigs: TrainerConfigs = {
     .setSpeciesFilter(p => p.isOfType(PokemonType.GHOST))
     .setSpecialtyType(PokemonType.GHOST)
     .setMixedBattleBgm("battle_kalos_za_royale_trainer"),
-  [TrainerType.PHILLIPE]: new TrainerConfig(TrainerType.PHILLIPE)
+  [TrainerType.PHILIPPE]: new TrainerConfig(TrainerType.PHILIPPE)
     .setBoss()
     .setStaticParty()
     .setPartyTemplates(trainerPartyTemplates.SIX_WEAK)

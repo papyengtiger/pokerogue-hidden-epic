@@ -291,6 +291,13 @@ class AnimTimedSoundEvent extends AnimTimedEvent {
     const soundConfig = { rate: this.pitch * 0.01, volume: this.volume * 0.01 };
     if (this.resourceName) {
       try {
+        console.log("[ANIM_SOUND_PLAY]", {
+  resourceName: this.resourceName,
+  key: `battle_anims/${this.resourceName}`,
+  cached: globalScene.cache.audio.exists(
+    `battle_anims/${this.resourceName}`
+  )
+});
         globalScene.playSound(`battle_anims/${this.resourceName}`, soundConfig);
       } catch (err) {
         console.error(err);
@@ -678,6 +685,7 @@ function loadAnimAssets(anims: AnimConfig[], startLoad?: boolean): Promise<void>
         globalScene.loadSpritesheet(a.graphic, "battle_anims", 96);
       }
     }
+    // 배경 리소스와 효과음 리소스를 각각 한 번씩 로딩합니다.
     for (const bg of backgrounds) {
       globalScene.loadImage(bg, "battle_anims");
     }

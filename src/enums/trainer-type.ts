@@ -272,7 +272,7 @@ export enum TrainerType {
   BENI,
   GAERIC,
   EMMA,
-  PHILLIPE,
+  PHILIPPE,
   LEBANNE,
   // #endregion Gym Leaders
 

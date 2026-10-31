@@ -10265,17 +10265,19 @@ export class WishingStarModifier extends PokemonHeldItemModifier {
   }
 
   /** 기가맥스 여부 판정 */
-  private isGigantamaxForm(pokemon: any): boolean {
-    if (!(pokemon instanceof Pokemon)) { return false; }
-
-    const formKey = pokemon.getFormKey();
-    return (
-      formKey === SpeciesFormKey.GIGANTAMAX ||
-      formKey === SpeciesFormKey.GIGANTAMAX_SINGLE ||
-      formKey === SpeciesFormKey.GIGANTAMAX_RAPID ||
-      formKey === SpeciesFormKey.ETERNAMAX
-    );
+  private isGigantamaxForm(pokemon: Pokemon): boolean {
+  if (!pokemon || typeof pokemon.getFormKey !== "function") {
+    return false;
   }
+
+  const formKey = pokemon.getFormKey();
+  return (
+    formKey === SpeciesFormKey.GIGANTAMAX ||
+    formKey === SpeciesFormKey.GIGANTAMAX_SINGLE ||
+    formKey === SpeciesFormKey.GIGANTAMAX_RAPID ||
+    formKey === SpeciesFormKey.ETERNAMAX
+  );
+}
 
   /** 남은 배틀 수 감소 및 자동 해제 */
   lapse(): boolean {
