@@ -319,6 +319,11 @@ export class Battle {
         const mysteryMonster = pokemon as MysteryMonster;
 
         switch (mysteryMonster.mysterySpecies.id) {
+          case MysteryMonsterId.ROBOKID:
+            return "dangerous_enemy";
+          case MysteryMonsterId.MFO:
+          case MysteryMonsterId.MNO248:
+            return "battle_mystery_flying_object";
           case MysteryMonsterId.DEMONSTERY:
             return "battle_weird_monster";
         }

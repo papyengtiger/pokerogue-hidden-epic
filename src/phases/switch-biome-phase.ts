@@ -1,5 +1,6 @@
 import { globalScene } from "#app/global-scene";
-import type { BiomeId } from "#enums/biome-id";
+import { BiomeId } from "#enums/biome-id";
+import { GameModes } from "#enums/game-modes";
 import { getBiomeKey } from "#field/arena";
 import { BattlePhase } from "#phases/battle-phase";
 import { questManager } from "#system/quest-manager";
@@ -11,7 +12,11 @@ export class SwitchBiomePhase extends BattlePhase {
   constructor(nextBiome: BiomeId) {
     super();
 
-    this.nextBiome = nextBiome;
+    // 디 아더 290~300층 전용 아더 바이옴.
+    // 289층에서 다음 층(290층) 바이옴을 미리 정하는 경우도 포함.
+    const wave = globalScene.currentBattle?.waveIndex ?? 0;
+    this.nextBiome =
+      globalScene.gameMode?.modeId === GameModes.THEOTHER && wave >= 289 && wave <= 300 ? BiomeId.OTHER : nextBiome;
   }
 
   start() {

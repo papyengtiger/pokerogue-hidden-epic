@@ -142,9 +142,93 @@ export class VictoryPhase extends PokemonPhase {
       const gameMode = globalScene.gameMode;
       const currentWaveIndex = globalScene.currentBattle.waveIndex;
 
+      // 디 아더 미스터리몬스터 야생 보스 클리어 골드 보상.
+      // 25·55층 트레이너전은 trainer-config.ts의 moneyMultiplier로 처리합니다.
+      // 적 파티를 모두 쓰러뜨린 시점에서만 실행되므로 중간 격파에는 지급하지 않습니다.
+      // 트레이너전은 TrainerVictoryPhase에서 이미 골드를 지급하므로 중복 지급을 막습니다.
+      if (gameMode.modeId === GameModes.THEOTHER && globalScene.currentBattle.battleType === BattleType.WILD) {
+        const bossGoldMultipliers: Partial<Record<number, number>> = {
+          8: 2,
+          95: 8,
+          145: 12,
+          195: 20,
+        };
+        const goldMultiplier = bossGoldMultipliers[currentWaveIndex];
+        if (goldMultiplier !== undefined) {
+          globalScene.phaseManager.pushNew("MoneyRewardPhase", goldMultiplier);
+          console.log("[THEOTHER_BOSS_GOLD_REWARD_QUEUED]", {
+            wave: currentWaveIndex,
+            multiplier: goldMultiplier,
+          });
+        }
+      }
+
+      // 디 아더 300층: 피아나 → 레쿠쟈 1페이즈 → 레쿠쟈 2페이즈.
+      // 각 전투는 완전 승리 후 다음 전투로 넘어가며 2페이즈 종료 시에만 클리어 처리.
+      if (gameMode.modeId === GameModes.THEOTHER && currentWaveIndex === 300 && globalScene.theOther300Stage < 2) {
+        globalScene.theOther300Stage = (globalScene.theOther300Stage + 1) as 1 | 2;
+        console.log("[THEOTHER_300_STAGE_ADVANCE]", globalScene.theOther300Stage);
+        globalScene.phaseManager.pushNew("NewBattlePhase");
+        this.end();
+        return;
+      }
+
       if (gameMode.isEndless || !gameMode.isWaveFinal(currentWaveIndex)) {
         globalScene.phaseManager.pushNew("EggLapsePhase");
         globalScene.phaseManager.pushNew("BerryPlanterLapsePhase");
+        // 디 아더 전용 스토리 보상. 클래식의 지급 로직과 분리하여 다른 모드에 영향을 주지 않습니다.
+        // EXP_SHARE(학습장치), EXP_CHARM(경험부적), SUPER_EXP_CHARM(좋은경험부적).
+        if (gameMode.modeId === GameModes.THEOTHER) {
+          const giveReward = (type: typeof modifierTypes.MAP, count = 1): void => {
+            for (let i = 0; i < count; i++) {
+              globalScene.phaseManager.pushNew("ModifierRewardPhase", type);
+            }
+          };
+          // 해금성 도구는 이미 갖고 있다면 중복 지급하지 않습니다.
+          const giveUniqueReward = (type: typeof modifierTypes.MAP): void => {
+            if (!globalScene.findModifier(m => m.type?.id === type.id)) {
+              giveReward(type);
+            }
+          };
+
+          switch (currentWaveIndex) {
+            case 8:
+              // 로보키드는 야생 보스이므로 트레이너전 판정이 필요하지 않습니다.
+              giveReward(modifierTypes.EXP_SHARE);
+              giveUniqueReward(modifierTypes.MAP);
+              giveReward(modifierTypes.EXP_CHARM);
+              break;
+            case 25:
+              giveUniqueReward(modifierTypes.TERA_ORB);
+              giveReward(modifierTypes.SUPER_EXP_CHARM, 2);
+              giveReward(modifierTypes.EXP_CHARM);
+              giveReward(modifierTypes.EXP_SHARE);
+              break;
+            case 55:
+              giveUniqueReward(modifierTypes.MEGA_BRACELET);
+              giveUniqueReward(modifierTypes.DYNAMAX_BAND);
+              giveReward(modifierTypes.SUPER_EXP_CHARM, 3);
+              giveReward(modifierTypes.EXP_CHARM, 3);
+              giveReward(modifierTypes.EXP_SHARE);
+              break;
+            case 95:
+              giveUniqueReward(modifierTypes.Z_RING);
+              giveUniqueReward(modifierTypes.Z_POWER_RING);
+              giveReward(modifierTypes.EXP_SHARE);
+              giveReward(modifierTypes.EXP_CHARM, 3);
+              giveReward(modifierTypes.SUPER_EXP_CHARM, 3);
+              break;
+            case 145:
+              // 디 아더 145층 M.F.O / N.O.2.4.8 보스전 승리 보상.
+              if (globalScene.currentBattle.battleType === BattleType.TRAINER) {
+                giveReward(modifierTypes.EXP_SHARE);
+                giveReward(modifierTypes.SUPER_EXP_CHARM, 5);
+                giveReward(modifierTypes.EXP_CHARM, 5);
+              }
+              break;
+          }
+        }
+
         if (gameMode.isClassic) {
           // 히든에픽 클래식: 특정 라이벌 승리 시 전용 도구 확정 지급
           // 이미 보유한 도구는 건너뛴다. 실제 지급은 ModifierRewardPhase에서 처리한다.

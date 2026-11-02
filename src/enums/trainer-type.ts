@@ -378,4 +378,10 @@ export enum TrainerType {
   JULIANA,
 
   // #endregion Recruitable Protagonists
+
+  // #region The Other story trainers
+  ZINNIA = 650,
+  MFO = 651, // 디 아더 25층 로보키드 3대
+  MFO_55 = 652, // 디 아더 55층 로보키드 6대 (MFO와 스프라이트 공유)
+  // #endregion The Other story trainers
 }

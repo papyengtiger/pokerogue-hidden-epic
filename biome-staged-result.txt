@@ -1,0 +1,85 @@
+reporter/format ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i The following files need to be formatted:
+  
+  - capacitor.config.ts
+  - desktop\main.cjs
+  - src\battle-scene.ts
+  - src\data\moves\move.ts
+  - src\data\trainers\fixed-battle-configs.ts
+  - src\data\trainers\trainer-config.ts
+  - src\enums\biome-id.ts
+  - src\enums\game-modes.ts
+  - src\enums\z-move-effect.ts
+  - src\field\pokemon.ts
+  - src\game-mode.ts
+  - src\modifier\init-modifier-pools.ts
+  - src\phases\damage-anim-phase.ts
+  - src\phases\encounter-phase.ts
+  - src\phases\faint-phase.ts
+  - src\phases\game-over-phase.ts
+  - src\phases\switch-biome-phase.ts
+  - src\phases\title-phase.ts
+  - src\phases\trainer-victory-phase.ts
+  - src\phases\victory-phase.ts
+  - src\ui\handlers\rogue-shop-ui-handler.ts
+  
+reporter/violations ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Some lint rules or assist actions reported some violations.
+  
+  i The following files have violations:
+  
+  - desktop\main.cjs (8 errors)
+  - src\battle-scene.ts (25 errors)
+  - src\data\balance\biomes.ts (1 error)
+  - src\data\kecleon-shop\kecleon-shop-manager.ts (2 errors)
+  - src\data\moves\move.ts (956 errors)
+  - src\data\trainers\trainer-config.ts (1 error)
+  - src\field\pokemon.ts (25 errors)
+  - src\game-mode.ts (1 error)
+  - src\modifier\init-modifier-pools.ts (22 errors)
+  - src\phases\damage-anim-phase.ts (14 errors)
+  - src\phases\encounter-phase.ts (37 errors)
+  - src\phases\faint-phase.ts (3 errors)
+  - src\phases\game-over-phase.ts (7 errors)
+  - src\phases\new-battle-phase.ts (1 error)
+  - src\ui\handlers\rogue-shop-ui-handler.ts (15 errors)
+  
+  i The following lint rules have violations:
+  
+  Rule Name                                                 Diagnostics
+  
+  lint/correctness/noUnusedFunctionParameters               911 (911 errors)
+  lint/suspicious/noFallthroughSwitchClause                 2 (2 errors)
+  lint/suspicious/noDuplicateClassMembers                   1 (1 error)
+  lint/correctness/useSingleJsDocAsterisk                   6 (6 errors)
+  lint/correctness/noUndeclaredVariables                    48 (48 errors)
+  lint/suspicious/noDuplicateObjectKeys                     1 (1 error)
+  lint/complexity/noUselessStringConcat                     3 (3 errors)
+  lint/complexity/noUselessConstructor                      8 (8 errors)
+  lint/style/noUnusedTemplateLiteral                        5 (5 errors)
+  lint/correctness/noUnusedVariables                        33 (33 errors)
+  lint/style/useConsistentArrayType                         33 (33 errors)
+  lint/correctness/noVoidTypeReturn                         1 (1 error)
+  lint/suspicious/useErrorMessage                           1 (1 error)
+  lint/correctness/noUnreachable                            3 (3 errors)
+  lint/suspicious/noGlobalIsNan                             2 (2 errors)
+  lint/style/useBlockStatements                             29 (29 errors)
+  lint/complexity/noBannedTypes                             1 (1 error)
+  assist/source/organizeImports                             9 (9 errors)
+  lint/style/useThrowOnlyError                              1 (1 error)
+  lint/complexity/useArrayFind                              2 (2 errors)
+  lint/style/useCollapsedIf                                 2 (2 errors)
+  lint/performance/noDelete                                 7 (7 errors)
+  lint/style/useAtIndex                                     6 (6 errors)
+  lint/style/useForOf                                       2 (2 errors)
+  lint/style/noSubstr                                       1 (1 error)
+
+Checked 35 files in 4s. No fixes applied.
+Found 1139 errors.
+check ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

@@ -1,4 +1,6 @@
 import { globalScene } from "#app/global-scene";
+import { ClassicFixedBossWaves } from "#enums/fixed-boss-waves";
+import { GameModes } from "#enums/game-modes";
 import { ModifierPoolType } from "#enums/modifier-pool-type";
 import { ModifierTier } from "#enums/modifier-tier";
 import type { PersistentModifier } from "#modifiers/modifier";
@@ -66,6 +68,35 @@ const DEFAULT_CONFIG: KecleonShopConfig = {
  * - 바이옴별 등장 제한
  * - 특성/아이템에 따른 등장률 보정
  */
+// fixed-battle-configs.ts의 클래식 고정 트레이너전과 동일한 층 목록입니다.
+// 고정 이벤트가 캘리몬 상점으로 대체되지 않도록 신규 상점 생성을 차단합니다.
+const CLASSIC_KECLEON_BLOCKED_WAVES = new Set<number>([
+  ClassicFixedBossWaves.TOWN_YOUNGSTER,
+  ClassicFixedBossWaves.RIVAL_1,
+  ClassicFixedBossWaves.RIVAL_2,
+  ClassicFixedBossWaves.EVIL_GRUNT_1,
+  ClassicFixedBossWaves.RIVAL_3,
+  ClassicFixedBossWaves.EVIL_GRUNT_2,
+  ClassicFixedBossWaves.EVIL_GRUNT_3,
+  ClassicFixedBossWaves.EVIL_ADMIN_1,
+  ClassicFixedBossWaves.RIVAL_4,
+  ClassicFixedBossWaves.EVIL_GRUNT_4,
+  ClassicFixedBossWaves.EVIL_ADMIN_2,
+  ClassicFixedBossWaves.EVIL_BOSS_1,
+  ClassicFixedBossWaves.RIVAL_5,
+  ClassicFixedBossWaves.EVIL_ADMIN_3,
+  ClassicFixedBossWaves.EVIL_BOSS_2,
+  ClassicFixedBossWaves.ELITE_FOUR_1,
+  ClassicFixedBossWaves.ELITE_FOUR_2,
+  ClassicFixedBossWaves.ELITE_FOUR_3,
+  ClassicFixedBossWaves.ELITE_FOUR_4,
+  ClassicFixedBossWaves.CHAMPION,
+  ClassicFixedBossWaves.RIVAL_6,
+]);
+
+// fixed-battle-configs.ts에 숫자로 정의된 월간 사천왕/챔피언 층입니다.
+const MONTHLY_KECLEON_BLOCKED_WAVES = new Set<number>([192, 194, 196, 198, 199]);
+
 export class KecleonShopManager {
   private readonly config: KecleonShopConfig;
   private shopOptions: ModifierTypeOption[] = [];
@@ -197,13 +228,16 @@ export class KecleonShopManager {
     };
   }
 
-  /**
-   * 현재 층에서 캘리몬 상점이 등장할지 결정한다.
-   *
-   * 주의:
-   * 특수층/보스층 예외는 아직 넣지 않았다.
-   * 다음 단계에서 gameMode / arena 정보를 보고 추가하는 것을 권장.
-   */
+  /** 현재 게임 모드의 고정 배틀 층이면 상점을 생성하지 않습니다. */
+  private isFixedBattleShopBlocked(waveIndex: number): boolean {
+    const modeId = globalScene.gameMode.modeId;
+    if (globalScene.gameMode.isClassic && CLASSIC_KECLEON_BLOCKED_WAVES.has(waveIndex)) {
+      return true;
+    }
+    return modeId === GameModes.MONTHLY && MONTHLY_KECLEON_BLOCKED_WAVES.has(waveIndex);
+  }
+
+  /** 신규 상점 등장 여부. 기존 추격 상태 정리는 먼저 수행합니다. */
   public shouldSpawnShop(waveIndex = globalScene.currentBattle.waveIndex): boolean {
     // 클래식 180층부터는 캘리몬 상점 신규 등장 금지. 추격 종료 정리는 유지한다.
     if (globalScene.gameMode.isClassic && waveIndex >= 180) {
@@ -223,6 +257,12 @@ export class KecleonShopManager {
       });
 
       this.finishTheftChase();
+    }
+
+    // 고정 트레이너전의 층은 캘리몬 상점으로 변경하지 않습니다.
+    if (this.isFixedBattleShopBlocked(waveIndex)) {
+      console.log("[KECLEON_SHOP_FIXED_BATTLE_SKIP]", { wave: waveIndex, mode: globalScene.gameMode.modeId });
+      return false;
     }
 
     // 실제 추격전 진행 중일 때만 상점 금지
@@ -276,8 +316,8 @@ export class KecleonShopManager {
     waveIndex = globalScene.currentBattle.waveIndex,
     itemCount?: number,
   ): ModifierTypeOption[] {
-    // 외부에서 직접 상품 생성을 요청해도 클래식 최종 구간은 차단한다.
-    if (globalScene.gameMode.isClassic && waveIndex >= 180) {
+    // 직접 호출 또는 구버전 저장 데이터 재생성에서도 고정층을 보호합니다.
+    if (this.isFixedBattleShopBlocked(waveIndex) || (globalScene.gameMode.isClassic && waveIndex >= 180)) {
       this.clearShop();
       return [];
     }

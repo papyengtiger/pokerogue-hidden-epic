@@ -20,7 +20,7 @@ import { GameDifficulty } from "#enums/game-difficulty";
 import { GameModes } from "#enums/game-modes";
 import { SpeciesId } from "#enums/species-id";
 import type { Arena } from "#field/arena";
-import { classicFixedBattles, type FixedBattleConfigs } from "#trainers/fixed-battle-configs";
+import { classicFixedBattles, type FixedBattleConfigs, theOtherFixedBattles } from "#trainers/fixed-battle-configs";
 import { applyChallenges } from "#utils/challenge-utils";
 import { BooleanHolder, randSeedInt, randSeedItem } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
@@ -582,7 +582,7 @@ export class GameMode implements GameModeConfig {
       case GameModes.CHALLENGE:
       case GameModes.MONTHLY:
         return waveIndex === 200;
-      case GameModes.ANOTHER:
+      case GameModes.THEOTHER:
         return waveIndex === 300;
       case GameModes.ENDLESS:
       case GameModes.SPLICED_ENDLESS:
@@ -802,6 +802,16 @@ export function getGameMode(gameMode: GameModes): GameMode {
         GameModes.CLASSIC,
         { isClassic: true, hasTrainers: true, hasMysteryEncounters: true },
         classicFixedBattles,
+      );
+    case GameModes.THEOTHER:
+      return new GameMode(
+        GameModes.THEOTHER,
+        {
+          isClassic: false,
+          hasTrainers: true,
+          hasMysteryEncounters: true,
+        },
+        theOtherFixedBattles,
       );
     case GameModes.ANOTHER:
       return new GameMode(GameModes.ANOTHER, {

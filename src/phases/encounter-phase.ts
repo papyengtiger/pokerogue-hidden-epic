@@ -14,6 +14,7 @@ import { MonsterHouseIntroVisuals } from "#data/monster-house/monster-house-intr
 import { monsterHouseManager } from "#data/monster-house/monster-house-manager";
 import { mysteryTimeManager } from "#data/mystery-time/mystery-time-manager";
 import { getNatureName } from "#data/nature";
+import { theOther300Story } from "#data/theother/theother-300-story";
 import { getRandomWeatherType } from "#data/weather";
 import { ArenaTagSide } from "#enums/arena-tag-side";
 import { ArenaTagType } from "#enums/arena-tag-type";
@@ -60,14 +61,13 @@ import { randSeedInt, randSeedItem } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
-const ROBOKID_BOSS_SEGMENTS: Record<number, number> = {
-  25: 1,
-  55: 2,
-  95: 3,
-  145: 4,
-  195: 5,
-  245: 6,
-  295: 7,
+// 디 아더 스토리 보스 층수별 첫 등장 종족.
+// 25층 3대/55층 6대 및 전투 중 폭주·외피 파괴는 별도 전투 로직이 필요합니다.
+const THEOTHER_MONSTER_WAVES: Partial<Record<number, MysteryMonsterId>> = {
+  8: MysteryMonsterId.ROBOKID,
+  95: MysteryMonsterId.MFO,
+  145: MysteryMonsterId.MFO,
+  195: MysteryMonsterId.MNO248,
 };
 
 export class EncounterPhase extends BattlePhase {
@@ -75,6 +75,19 @@ export class EncounterPhase extends BattlePhase {
   public readonly phaseName: "EncounterPhase" | "NextEncounterPhase" | "NewBiomeEncounterPhase" = "EncounterPhase";
   private loaded: boolean;
   private tutorialIntroShown = false;
+  private tutorialStoryShown = false;
+  private classicPrologueShown = false;
+  private theOtherPrologueShown = false;
+  private theOtherRobokidIntroShown = false;
+  private theOtherMfoIntroShown = false;
+  private theOtherMfo55IntroShown = false;
+  private theOtherMfo95IntroShown = false;
+  private theOtherMno248195IntroShown = false;
+  private theOtherMfo145IntroShown = false;
+  private theOtherZinnia245IntroShown = false;
+  private theOtherZinnia295IntroShown = false;
+  private theOtherZinnia300IntroShown = false;
+  private theOtherMfo55OutroShown = false;
 
   private monsterHouseIntroVisuals: MonsterHouseIntroVisuals | null = null;
 
@@ -665,6 +678,66 @@ export class EncounterPhase extends BattlePhase {
 
     const loadEnemyAssets: Promise<void>[] = [];
 
+    // 디 아더 8층: 로보키드 대화 초상화 리소스 준비.
+    // 파일 위치: public/images/cg/robokid.png, public/images/cg/robokid_reckless.png
+    // 폭주 그림은 이후 HP 50% 이하 이벤트에서 사용할 수 있도록 함께 등록합니다.
+    if (globalScene.gameMode.modeId === GameModes.THEOTHER && wave === 8 && !this.loaded) {
+      const portraits: [string, string][] = [
+        ["theother_robokid_portrait", "/images/cg/robokid.png"],
+        ["theother_robokid_reckless_portrait", "/images/cg/robokid_reckless.png"],
+      ];
+      const missing = portraits.filter(([key]) => !globalScene.textures.exists(key));
+      if (missing.length > 0) {
+        loadEnemyAssets.push(
+          new Promise<void>(resolve => {
+            globalScene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+            for (const [key, path] of missing) {
+              globalScene.load.image(key, path);
+            }
+            if (!globalScene.load.isLoading()) {
+              globalScene.load.start();
+            }
+          }),
+        );
+      }
+    }
+
+    // 디 아더 25층 M.F.O 첫 등장 CG (public/images/cg/m_f_o.png).
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && (wave === 25 || wave === 55 || wave === 95 || wave === 145)
+      && !this.loaded
+    ) {
+      const portraitKey = "theother_mfo_portrait";
+      if (!globalScene.textures.exists(portraitKey)) {
+        loadEnemyAssets.push(
+          new Promise<void>(resolve => {
+            globalScene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+            globalScene.load.image(portraitKey, "/images/cg/m_f_o.png");
+            if (!globalScene.load.isLoading()) {
+              globalScene.load.start();
+            }
+          }),
+        );
+      }
+    }
+
+    // 145층 변신 및 승리 후 사용할 N.O.2.4.8 초상화 미리 로드.
+    if (globalScene.gameMode.modeId === GameModes.THEOTHER && (wave === 145 || wave === 195) && !this.loaded) {
+      const portraitKey = "theother_mno248_portrait";
+      if (!globalScene.textures.exists(portraitKey)) {
+        loadEnemyAssets.push(
+          new Promise<void>(resolve => {
+            globalScene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+            globalScene.load.image(portraitKey, "/images/cg/m_n_o_2_4_8.png");
+            if (!globalScene.load.isLoading()) {
+              globalScene.load.start();
+            }
+          }),
+        );
+      }
+    }
+
     const battle = globalScene.currentBattle;
 
     // ========================================
@@ -860,6 +933,17 @@ export class EncounterPhase extends BattlePhase {
       }
     }
 
+    // 디 아더 25층: M.F.O가 투입한 로보키드 3대를 한 마리씩 상대합니다.
+    // 전투 시작 전에 전체 적 파티를 만들되, 필드에는 선두 한 마리만 등장합니다.
+    if (globalScene.gameMode.modeId === GameModes.THEOTHER && battle.waveIndex === 25 && !this.loaded) {
+      const firstLevel = battle.enemyLevels?.[0];
+      if (firstLevel !== undefined) {
+        (battle as any).enemyLevels = [firstLevel, firstLevel, firstLevel];
+        battle.enemyParty.length = 0;
+        console.log("[THEOTHER_MFO_DEPLOY_ROBOKIDS]", { wave: 25, count: 3, level: firstLevel });
+      }
+    }
+
     let totalBst = 0;
 
     let encounterEnemyLevels = battle.enemyLevels ? [...battle.enemyLevels] : [];
@@ -919,24 +1003,43 @@ export class EncounterPhase extends BattlePhase {
         // ========================================
         // 어나더 모드: 로보키드 고정 보스
         // ========================================
-        const robokidSegments =
-          globalScene.gameMode.modeId === GameModes.ANOTHER ? ROBOKID_BOSS_SEGMENTS[battle.waveIndex] : undefined;
+        const otherMonsterId =
+          globalScene.gameMode.modeId === GameModes.THEOTHER ? THEOTHER_MONSTER_WAVES[battle.waveIndex] : undefined;
 
-        if (robokidSegments !== undefined) {
-          const mysterySpecies = getMysteryMonster(MysteryMonsterId.ROBOKID);
-
-          const robokid = globalScene.addMysteryMonster(mysterySpecies, level, TrainerSlot.NONE, true);
-
-          robokid.setBoss(true, robokidSegments);
-          robokid.initBattleInfo();
-          robokid.mark = MarkId.NONE;
-
-          battle.enemyParty[e] = robokid;
-
-          console.log("[ANOTHER_ROBOKID_BOSS]", {
-            wave: battle.waveIndex,
+        if (
+          globalScene.gameMode.modeId === GameModes.THEOTHER
+          && battle.waveIndex === 300
+          && globalScene.theOther300Stage > 0
+        ) {
+          const enemy = globalScene.addEnemyPokemon(
+            getPokemonSpecies(SpeciesId.RAYQUAZA),
             level,
-            bossSegments: robokid.bossSegments,
+            TrainerSlot.NONE,
+            true,
+          );
+          enemy.setTheOtherRayquazaPhase(globalScene.theOther300Stage as 1 | 2);
+          enemy.setBoss(true);
+          enemy.initBattleInfo();
+          battle.enemyParty[e] = enemy;
+          console.log("[THEOTHER_RAYQUAZA_SPAWN]", {
+            stage: globalScene.theOther300Stage,
+            shiny: enemy.shiny,
+            variant: enemy.variant,
+            ivs: enemy.ivs,
+          });
+        } else if (otherMonsterId !== undefined) {
+          const mysterySpecies = getMysteryMonster(otherMonsterId);
+          const storyMonster = globalScene.addMysteryMonster(mysterySpecies, level, TrainerSlot.NONE, true);
+
+          // 보스 HP 세그먼트는 개체 수나 페이즈 개수와 다릅니다.
+          storyMonster.setBoss(true, battle.waveIndex === 25 ? 1 : 2);
+          storyMonster.initBattleInfo();
+          storyMonster.mark = MarkId.NONE;
+          battle.enemyParty[e] = storyMonster;
+          console.log("[THEOTHER_MONSTER_SPAWN]", {
+            wave: battle.waveIndex,
+            species: mysterySpecies.name,
+            level,
           });
         }
 
@@ -1648,7 +1751,1130 @@ export class EncounterPhase extends BattlePhase {
         });
   }
 
+  // 히든 에픽 스토리: 특정 층의 안내책자/여정 대사를 전투 전에 한 번만 표시합니다.
+  private showTutorialWaveStory(wave: number, onComplete: () => void): void {
+    const key = `tutorialStory:wave${String(wave).padStart(2, "0")}`;
+    const pages = i18next.t(key).split("\n");
+    const showPage = (index: number): void => {
+      if (index >= pages.length) {
+        onComplete();
+        return;
+      }
+      globalScene.ui.showText(pages[index], null, () => showPage(index + 1), 0, true);
+    };
+    showPage(0);
+  }
+
+  /** 클래식 신규 1층: 튜토리얼을 마친 주인공의 탐사대 합류 심사. */
+  private showClassicPrologue(onComplete: () => void): void {
+    const femalePlayer = globalScene.gameData.gender === PlayerGender.FEMALE;
+    // 미로는 남성 팀장, 미지는 여성 팀장. 남자 주인공: 미지·아이비 / 여자 주인공: 미로·핀.
+    const leaderName = femalePlayer ? "미로" : "미지";
+    const rivalName = femalePlayer ? "핀" : "아이비";
+    const englishLeaderName = femalePlayer ? "Miro" : "Miji";
+    const englishRivalName = femalePlayer ? "Finn" : "Ivy";
+    const isKorean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+
+    // 캡틴R의 비서는 현재 가칭 '페더'입니다. 별도 트레이너 스프라이트는 아직 사용하지 않습니다.
+    const ko: [string, string][] = [
+      ["캡틴R", "자네가 직접 이곳까지 찾아온 신입이군. 우선 어떤 일이 있었는지 들려주겠나?"],
+      ["주인공", "눈을 떠 보니 낯선 곳이었어요. 포켓몬이라는 것도 처음 보는 거였고요."],
+      ["페더", "포켓몬을 처음 본다고요? 정말 믿기 어려운 이야기네요."],
+      ["캡틴R", "지금까지 구조한 사람들은 대개 이상현상에 휘말려 왔지. 그런데 자네는 스스로 이곳까지 왔다는 건가!"],
+      ["페더", "안내서 하나에 의지해 여기까지 오다니, 경험이 부족하더라도 실력만큼은 확실하겠군요."],
+      ["캡틴R", "나도 그렇게 생각하네. 마침 최근에 꾸려진 팀이 하나 있지. 아직 팀원이 둘뿐이야."],
+      ["페더", `${leaderName}와 ${rivalName}의 팀 말씀이시죠?`],
+      ["캡틴R", "맞네. 이 신입도 그 팀의 동료로 받아들이면 좋겠군. 두 사람을 불러 주겠나?"],
+      [
+        leaderName,
+        femalePlayer ? "캡틴! 부르셨나요? 어, 처음 보는 얼굴인데?" : "캡틴, 부르셨어요? 어라, 처음 보는 분이네요!",
+      ],
+      ["캡틴R", `그래. ${leaderName}, ${rivalName}. 이 친구를 자네들 팀에 합류시키려고 하네.`],
+      [
+        leaderName,
+        femalePlayer ? "새로운 동료요? 좋죠! 우리 팀에 온 걸 환영해!" : "새로운 동료라니 반가워요! 앞으로 잘 부탁해요!",
+      ],
+      [rivalName, "자, 잠깐만요! 팀원 추가는 저희와 먼저 상의하셨어야 하는 것 아닌가요?"],
+      ["캡틴R", "음, 일리 있는 말이군. 그렇다면 자네에게 결정권을 맡기겠네."],
+      [rivalName, "……저에게요?"],
+      ["캡틴R", "이 신입이 함께 탐사할 만한 실력을 지녔는지, 직접 판단해 주게."],
+      [rivalName, "알겠습니다. 그럼 제가 먼저 미지지방으로 떠나겠어요. 직접 확인해 볼게요."],
+      [
+        leaderName,
+        femalePlayer
+          ? "핀, 잠깐! 그렇게 서둘러 떠날 필요는 없잖아!"
+          : "아이비, 잠깐! 그렇게 서둘러 떠날 필요는 없잖아!",
+      ],
+      [rivalName, "탐사는 장난이 아니니까. 신입, 정말 실력이 있다면 미지지방에서 만나자."],
+      ["페더", "기어이 먼저 출발했네요. 신입에게 너무 부담이 되지 않았으면 좋겠는데……."],
+      ["캡틴R", "허허, 좋은 시험이 되겠군. 다만 무리는 하지 말게. 도움이 필요하면 언제든 탐사대에 연락하고."],
+      [
+        leaderName,
+        femalePlayer
+          ? "나도 함께할게! 이제부터 잘 부탁해. 우리도 출발하자!"
+          : "나도 함께할게요. 자, 우리도 힘내서 출발해 볼까요?",
+      ],
+    ];
+    const en: [string, string][] = [
+      ["Captain R", "So you're the newcomer who reached us on your own. Tell me what happened."],
+      ["You", "I woke up somewhere unfamiliar. I'd never even seen a Pokemon before."],
+      ["Feather", "You've never seen a Pokemon? That's extraordinary."],
+      ["Captain R", "Most people we rescue were swept up in strange phenomena. Yet you found your own way here!"],
+      ["Feather", "To make it here with just a guidebook takes remarkable potential."],
+      ["Captain R", "Indeed. A new exploration team was recently formed, and it only has two members."],
+      ["Feather", `${englishLeaderName} and ${englishRivalName}, you mean?`],
+      ["Captain R", "Exactly. I'd like this newcomer to join them. Please call them in."],
+      [englishLeaderName, "Captain! You wanted to see us? Oh, who's this?"],
+      ["Captain R", `${englishLeaderName}, ${englishRivalName}, I'd like this newcomer to join your team.`],
+      [englishLeaderName, "A new teammate? Wonderful! Welcome aboard!"],
+      [englishRivalName, "W-wait! Shouldn't you have discussed adding a member with us first?"],
+      ["Captain R", "A fair point. In that case, I'll leave the decision to you."],
+      [englishRivalName, "...To me?"],
+      ["Captain R", "See for yourself whether our newcomer is ready to explore alongside you."],
+      [englishRivalName, "Understood. I'll head for the Unknown Region first and test their skills myself."],
+      [englishLeaderName, `${englishRivalName}! You don't have to rush off like that!`],
+      [englishRivalName, "Exploration isn't a game. Newcomer, if you're ready, meet me out there."],
+      ["Feather", "Off they go. I hope the newcomer won't feel too pressured..."],
+      ["Captain R", "Ha! It should be a fine test. Just don't overdo it, and call us if you need help."],
+      [englishLeaderName, "I'll come along too! Let's get going, teammate!"],
+    ];
+    const lines = isKorean ? ko : en;
+    const next = (index: number): void => {
+      if (index >= lines.length) {
+        onComplete();
+        return;
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => next(index + 1));
+    };
+    next(0);
+  }
+
+  /** 디 아더 신규 1층: 이미 접수한 초코 구조 의뢰를 점검하고 수색에 착수합니다. */
+  private showTheOtherPrologue(onComplete: () => void): void {
+    const femalePlayer = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const isKorean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+
+    // 남자 주인공: 미로(플레이어)·미지·아이비 / 여자 주인공: 미지(플레이어)·미로·핀
+    // 의뢰 접수는 이전 장면에서 끝났으므로 여기서는 현장 수색 계획만 확인합니다.
+    const ko: [string, string][] = femalePlayer
+      ? [
+          ["미로", "좋아! 이제 본격적으로 출발해 볼까?"],
+          ["핀", "응! 바닐라가 부탁한 나옹, 초코를 찾는 거였지?"],
+          ["미지", "맞아. 아직 어디에 있는지는 모르니까, 작은 단서라도 놓치지 말자."],
+          ["미로", "그래. 괜히 서두르다가 중요한 걸 놓치면 안 되니까."],
+          ["핀", "초코가 무사히 있었으면 좋겠다. 바닐라도 많이 걱정하고 있었잖아."],
+          ["미지", "반드시 찾아보자. 우리 셋이 함께라면 할 수 있을 거야!"],
+          ["미로", "좋아! 로그탐사대, 출발!"],
+        ]
+      : [
+          ["미지", "자, 이제 본격적으로 출발하는 거네! 다들 준비됐지?"],
+          ["아이비", "응. 바닐라가 부탁한 나옹, 초코를 찾는 거였지?"],
+          ["미로", "그래. 아직 어디에 있는지도 모르니까 우선 단서부터 찾아보자."],
+          ["미지", "그러게. 초코가 혼자 얼마나 무서워하고 있을지 걱정이야."],
+          ["아이비", "걱정만 한다고 달라지는 건 없잖아? 얼른 움직이자."],
+          ["미로", "좋아. 혹시 수상한 걸 발견하면 바로 알려줘."],
+          ["미지", "알았어! 이번에도 셋이서 힘을 합쳐 보자!"],
+        ];
+    const en: [string, string][] = femalePlayer
+      ? [
+          ["Miro", "All right! Ready to get going?"],
+          ["Finn", "Yeah! We're looking for Choco, the Meowth Vanilla asked us to find, right?"],
+          ["Miji", "Right. We don't know where Choco is yet, so let's keep our eyes open for clues."],
+          ["Miro", "Exactly. No point rushing past something important."],
+          ["Finn", "I hope Choco's safe. Vanilla looked really worried."],
+          ["Miji", "We'll find Choco. We can do this together!"],
+          ["Miro", "Okay! Exploration team, let's go!"],
+        ]
+      : [
+          ["Miji", "All right, we're finally heading out! Everyone ready?"],
+          ["Ivy", "Yep. We're looking for Choco, the Meowth Vanilla asked us to find."],
+          ["Miro", "Right. We don't know where Choco is, so let's look for clues first."],
+          ["Miji", "I know. I hope Choco isn't too scared out there."],
+          ["Ivy", "Worrying won't find Choco. Come on, let's move."],
+          ["Miro", "Okay. Tell us right away if you spot anything strange."],
+          ["Miji", "Got it! Let's work together, just like always!"],
+        ];
+
+    const lines = isKorean ? ko : en;
+    const showLine = (index: number): void => {
+      if (index >= lines.length) {
+        console.log("[THEOTHER_1F_STORY_END]", { gender: globalScene.gameData.gender });
+        onComplete();
+        return;
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => showLine(index + 1));
+    };
+    console.log("[THEOTHER_1F_STORY_START]", { gender: globalScene.gameData.gender });
+    showLine(0);
+  }
+
+  /** 디 아더 8층: 정체불명의 로보키드와 첫 조우. 전투 중 폭주/승리 후 대사는 별도 페이즈에서 처리. */
+  private showTheOtherRobokidIntro(onComplete: () => void): void {
+    const femalePlayer = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const isKorean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    const ko: [string, string][] = femalePlayer
+      ? [
+          ["미로", "잠깐, 미지! 저 앞에 뭔가 있어!"],
+          ["핀", "어? 저건 뭐지? 처음 보는 포켓몬인데……."],
+          ["미지", "포켓몬이 맞긴 한 걸까? 아무래도 기계처럼 생겼어."],
+          ["미로", "누가 만든 건지는 몰라도, 분위기가 영 심상치 않은데."],
+          ["핀", "자, 잠깐! 이쪽으로 오고 있어!"],
+          ["로보키드", "삐빅…… 목표 확인. 전투 모드 가동."],
+          ["미지", "조심해! 공격해 온다!"],
+        ]
+      : [
+          ["미지", "잠깐! 미로, 저기 뭔가 있어!"],
+          ["아이비", "뭐야, 저건? 포켓몬……은 아닌 것 같은데?"],
+          ["미로", "처음 보는 녀석이네. 움직이는 걸 보니 기계 같은데……."],
+          ["미지", "혹시 누가 조종하고 있는 걸까?"],
+          ["아이비", "모르겠어. 그런데 아무래도 우리를 노리는 것 같아."],
+          ["로보키드", "삐빅…… 목표 확인. 전투 모드 가동."],
+          ["미로", "온다! 다들 조심해!"],
+        ];
+    const en: [string, string][] = femalePlayer
+      ? [
+          ["Miro", "Wait, Miji! Something's up ahead!"],
+          ["Finn", "Huh? What's that? I've never seen a Pokemon like it..."],
+          ["Miji", "Is it even a Pokemon? It looks more like a machine."],
+          ["Miro", "I don't know who made it, but I've got a bad feeling about this."],
+          ["Finn", "W-wait! It's coming this way!"],
+          ["Robokid", "Beep... Target confirmed. Battle mode engaged."],
+          ["Miji", "Watch out! It's attacking!"],
+        ]
+      : [
+          ["Miji", "Wait! Miro, there's something over there!"],
+          ["Ivy", "What is that? It doesn't look like a Pokemon..."],
+          ["Miro", "Never seen anything like it. Looks mechanical..."],
+          ["Miji", "Do you think someone's controlling it?"],
+          ["Ivy", "No idea. But I think it's targeting us."],
+          ["Robokid", "Beep... Target confirmed. Battle mode engaged."],
+          ["Miro", "Here it comes! Everyone, be careful!"],
+        ];
+
+    const lines = isKorean ? ko : en;
+
+    // 클래식 라이벌 등장과 같은 암전 오버레이 + 캐릭터 일러스트 연출.
+    // fieldUI는 화면 하단에 기준점이 있으므로 Y는 음수 좌표를 사용합니다.
+    // 이미지 자체를 전투 포켓몬으로 교체하거나 크기를 변경하지 않습니다.
+    const portraitKey = "theother_robokid_portrait";
+    let portrait: Phaser.GameObjects.Image | undefined;
+
+    const showLine = (index: number): void => {
+      if (index >= lines.length) {
+        // 캐릭터를 먼저 퇴장시키고 클래식 라이벌과 동일하게 암전을 해제합니다.
+        if (portrait) {
+          globalScene.tweens.add({
+            targets: portrait,
+            alpha: 0,
+            x: portrait.x + 24,
+            duration: 250,
+            onComplete: () => portrait?.destroy(),
+          });
+        }
+        globalScene.hideFieldOverlay(250).then(() => {
+          console.log("[THEOTHER_8F_ROBOKID_INTRO_END]");
+          onComplete();
+        });
+        return;
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => showLine(index + 1));
+    };
+
+    console.log("[THEOTHER_8F_ROBOKID_INTRO_START]", { gender: globalScene.gameData.gender });
+    globalScene.showFieldOverlay(500).then(() => {
+      if (globalScene.textures.exists(portraitKey)) {
+        // fieldOverlay보다 위에 있도록 동일한 fieldUI 컨테이너에 추가합니다.
+        portrait = globalScene.add.image(globalScene.scaledCanvas.width * 0.71, -104, portraitKey);
+        portrait.setOrigin(0.5, 0.5);
+        portrait.setScale(1.05);
+        portrait.setAlpha(0);
+        globalScene.fieldUI.add(portrait);
+        globalScene.tweens.add({ targets: portrait, alpha: 1, duration: 300 });
+      } else {
+        console.warn("[THEOTHER_8F_ROBOKID_PORTRAIT_MISSING]", portraitKey);
+      }
+      showLine(0);
+    });
+  }
+
+  /** 디 아더 25층: M.F.O 첫 등장과 로보키드 3기 출격 전 대화. */
+  private showTheOtherMfoIntro(onComplete: () => void): void {
+    const femalePlayer = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    const ko: [string, string][] = femalePlayer
+      ? [
+          ["시스템", "일행의 앞에 정체불명의 존재가 나타났다."],
+          ["미로", "어? 저 앞에 누가 있는데?"],
+          ["핀", "뭐지? 처음 보는 녀석이야……."],
+          ["미지", "일단 조심하자. 우리를 기다리고 있었던 것 같아."],
+          ["M.F.O", "………."],
+          ["M.F.O", "외부 개체 접근 확인."],
+          ["M.F.O", "해당 구역의 탐색은 허가되지 않았다."],
+          ["미지", "넌 누구야? 여기서 뭘 하고 있는 거지?"],
+          ["핀", "혹시 초코가 어디 있는지 알아?"],
+          ["미로", "영 대답할 생각이 없어 보이는데."],
+          ["M.F.O", "탐색 지속 의사 확인."],
+          ["M.F.O", "방해 개체 제거 절차를 실행한다."],
+          ["시스템", "M.F.O의 뒤에서 낯익은 기계들이 나타났다!"],
+          ["핀", "어!? 저 녀석들 어디서 본 것 같은데!?"],
+          ["미로", "8층에서 싸웠던 그 기계들이야! 세 대나 있잖아!"],
+          ["미지", "저 녀석이 기계들을 움직이고 있는 걸까……?"],
+          ["M.F.O", "로보키드 3기, 가동."],
+          ["M.F.O", "목표를 제압하라."],
+          ["미지", "온다! 다들 조심해!"],
+          ["시스템", "M.F.O가 로보키드 3대를 내보냈다!"],
+        ]
+      : [
+          ["시스템", "일행의 앞에 정체불명의 존재가 나타났다."],
+          ["미지", "잠깐! 저 앞에 누가 있어!"],
+          ["아이비", "뭐야? 저 녀석도 처음 보는 녀석인데……."],
+          ["미로", "조심해. 왠지 분위기가 심상치 않아."],
+          ["M.F.O", "………."],
+          ["M.F.O", "외부 개체 접근 확인."],
+          ["M.F.O", "해당 구역의 탐색은 허가되지 않았다."],
+          ["미로", "넌 누구지? 여기서 뭘 하고 있는 거야?"],
+          ["미지", "혹시 초코에 대해 아는 거라도 있어?"],
+          ["아이비", "대답할 생각이 없는 것 같은데."],
+          ["M.F.O", "탐색 지속 의사 확인."],
+          ["M.F.O", "방해 개체 제거 절차를 실행한다."],
+          ["시스템", "M.F.O의 뒤에서 낯익은 기계들이 나타났다!"],
+          ["미지", "어!? 저 녀석들……!"],
+          ["아이비", "8층에서 싸웠던 그 기계잖아! 그것도 세 대나 있어!"],
+          ["미로", "그렇다면 저 녀석이 기계들을 조종하는 건가……?"],
+          ["M.F.O", "로보키드 3기, 가동."],
+          ["M.F.O", "목표를 제압하라."],
+          ["미로", "온다! 다들 준비해!"],
+          ["시스템", "M.F.O가 로보키드 3대를 내보냈다!"],
+        ];
+    const en: [string, string][] = femalePlayer
+      ? [
+          ["System", "An unidentified figure appeared before the team."],
+          ["Miro", "Huh? There's someone up ahead."],
+          ["Finn", "Who is that? I've never seen them before..."],
+          ["Miji", "Careful. It looks like it was waiting for us."],
+          ["M.F.O", "........."],
+          ["M.F.O", "External entities detected."],
+          ["M.F.O", "Exploration of this sector is not authorized."],
+          ["Miji", "Who are you? What are you doing here?"],
+          ["Finn", "Do you know where Choco is?"],
+          ["Miro", "Doesn't look like it wants to answer."],
+          ["M.F.O", "Intent to continue exploration confirmed."],
+          ["M.F.O", "Initiating removal procedure."],
+          ["System", "Familiar machines appeared behind M.F.O!"],
+          ["Finn", "Huh!? Haven't we seen those before!?"],
+          ["Miro", "They're the machines we fought on floor eight! Three of them!"],
+          ["Miji", "Could that thing be controlling them...?"],
+          ["M.F.O", "Activating three Robokid units."],
+          ["M.F.O", "Subdue the targets."],
+          ["Miji", "Here they come! Everyone, be careful!"],
+          ["System", "M.F.O deployed three Robokids!"],
+        ]
+      : [
+          ["System", "An unidentified figure appeared before the team."],
+          ["Miji", "Wait! There's someone up ahead!"],
+          ["Ivy", "What? I've never seen that one before..."],
+          ["Miro", "Be careful. Something feels off."],
+          ["M.F.O", "........."],
+          ["M.F.O", "External entities detected."],
+          ["M.F.O", "Exploration of this sector is not authorized."],
+          ["Miro", "Who are you? What are you doing here?"],
+          ["Miji", "Do you know anything about Choco?"],
+          ["Ivy", "Doesn't seem interested in answering."],
+          ["M.F.O", "Intent to continue exploration confirmed."],
+          ["M.F.O", "Initiating removal procedure."],
+          ["System", "Familiar machines appeared behind M.F.O!"],
+          ["Miji", "Huh!? Those things...!"],
+          ["Ivy", "The machines from floor eight! There are three of them!"],
+          ["Miro", "Does that mean it controls those machines...?"],
+          ["M.F.O", "Activating three Robokid units."],
+          ["M.F.O", "Subdue the targets."],
+          ["Miro", "Here they come! Everyone, get ready!"],
+          ["System", "M.F.O deployed three Robokids!"],
+        ];
+    const lines = korean ? ko : en;
+    const key = "theother_mfo_portrait";
+    let portrait: Phaser.GameObjects.Image | undefined;
+    const showLine = (index: number): void => {
+      if (index >= lines.length) {
+        if (portrait) {
+          globalScene.tweens.add({
+            targets: portrait,
+            alpha: 0,
+            x: portrait.x + 24,
+            duration: 250,
+            onComplete: () => portrait?.destroy(),
+          });
+        }
+        globalScene.hideFieldOverlay(250).then(onComplete);
+        return;
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => showLine(index + 1));
+    };
+    globalScene.showFieldOverlay(500).then(() => {
+      if (globalScene.textures.exists(key)) {
+        portrait = globalScene.add.image(globalScene.scaledCanvas.width * 0.71, -104, key);
+        portrait.setOrigin(0.5, 0.5);
+        // 원본 CG는 가로 182px이므로 기존 로보키드 연출보다 약간 확대합니다.
+        portrait.setScale(1.3);
+        portrait.setAlpha(0);
+        globalScene.fieldUI.add(portrait);
+        globalScene.tweens.add({ targets: portrait, alpha: 1, duration: 300 });
+      } else {
+        console.warn("[THEOTHER_25F_MFO_PORTRAIT_MISSING]", key);
+      }
+      showLine(0);
+    });
+  }
+
+  /** 디 아더 55층: M.F.O 두 번째 조우 / 로보키드 6기. */
+  private showTheOtherMfo55Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const ko = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    const commonStart: [string, string][] = [
+      ["시스템", "익숙한 기계음이 들려왔다……."],
+      ["M.F.O", "………."],
+      ["M.F.O", "대상 재확인. 이전 교전 기록과 일치."],
+    ];
+    const partners: [string, string][] = female
+      ? [
+          ["핀", "어!? 저 녀석, 전에 만났던 녀석이잖아!"],
+          ["미로", "또 우리 앞을 가로막다니. 이번엔 뭐야?"],
+          ["미지", "왜 계속 우리를 공격하는 거지?"],
+        ]
+      : [
+          ["미지", "어!? 저 녀석, 25층에서 봤던……!"],
+          ["아이비", "또 나타났네. 이번에도 우릴 방해할 생각이야?"],
+          ["미로", "이번엔 무슨 볼일이지?"],
+        ];
+    const surprise: [string, string][] = female
+      ? [
+          ["핀", "서, 설마 이번에도 로보키드가 나오는 거야!?"],
+          ["미로", "여섯 대나 있어!? 지난번보다 훨씬 많잖아!"],
+          ["미지", "침착해! 하나씩 상대하면 돼!"],
+        ]
+      : [
+          ["미지", "잠깐, 설마 또 그 로봇들이야!?"],
+          ["아이비", "하나, 둘, 셋…… 여섯 대!? 지난번의 두 배잖아!"],
+          ["미로", "숫자가 늘었다고 물러설 순 없지. 다들 준비해!"],
+        ];
+    const lines: [string, string][] = [
+      ...commonStart,
+      ...partners,
+      ["M.F.O", "이전 전투 결과 분석 완료."],
+      ["M.F.O", "대상의 전투 능력은 예상 기준을 초과했다."],
+      ["M.F.O", "대응 전력을 증강한다."],
+      ["시스템", "M.F.O의 주위에서 여섯 개의 기계음이 울려 퍼졌다!"],
+      ...surprise,
+      ["M.F.O", "로보키드 6기, 가동."],
+      ["M.F.O", "전투 결과를 재검증한다."],
+    ];
+    const en: [string, string][] = [
+      ["System", "A familiar mechanical noise echoed nearby..."],
+      ["M.F.O", "........."],
+      ["M.F.O", "Targets reacquired. Previous engagement records matched."],
+      ...(female
+        ? ([
+            ["Finn", "It's that thing we met before!"],
+            ["Miro", "Blocking our path again? What now?"],
+            ["Miji", "Why do you keep attacking us?"],
+          ] as [string, string][])
+        : ([
+            ["Miji", "It's the one from floor 25!"],
+            ["Ivy", "You're back? Trying to stop us again?"],
+            ["Miro", "What do you want this time?"],
+          ] as [string, string][])),
+      ["M.F.O", "Previous battle results analyzed."],
+      ["M.F.O", "Target combat ability exceeded projections."],
+      ["M.F.O", "Increasing response strength."],
+      ["System", "Six mechanical sounds rang out around M.F.O!"],
+      ...(female
+        ? ([
+            ["Finn", "D-don't tell me more Robokids!?"],
+            ["Miro", "Six of them!? That's twice as many!"],
+            ["Miji", "Stay calm! Take them one at a time!"],
+          ] as [string, string][])
+        : ([
+            ["Miji", "Not those robots again!?"],
+            ["Ivy", "One, two... six!? Twice as many as last time!"],
+            ["Miro", "More of them won't stop us. Get ready!"],
+          ] as [string, string][])),
+      ["M.F.O", "Activating six Robokid units."],
+      ["M.F.O", "Revalidating combat results."],
+    ];
+    this.showTheOtherMfo55Dialogue(ko ? lines : en, onComplete);
+  }
+
+  /** 55층 격파 뒤 이어지는 56층 진입 시의 후일담. 55층 전투 중에는 실행하지 않습니다. */
+  private showTheOtherMfo55Outro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const ko = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    const lines: [string, string][] = [
+      ["M.F.O", "………."],
+      ["M.F.O", "로보키드 6기, 전투 불능."],
+      ["M.F.O", "재검증 실패. 대상 전투 능력 재평가."],
+      ...(female
+        ? ([
+            ["핀", "하아…… 이번엔 진짜 힘들었어!"],
+            ["미로", "여섯 대를 상대했는데도 아직 부족하다는 거야?"],
+            ["미지", "우리를 계속 시험하는 이유가 뭐지?"],
+          ] as [string, string][])
+        : ([
+            ["미지", "하아…… 여섯 대나 상대하려니 정말 힘들었어."],
+            ["아이비", "이 정도면 저 녀석도 포기할 때가 되지 않았어?"],
+            ["미로", "넌 대체 뭘 확인하려는 거야?"],
+          ] as [string, string][])),
+      ["M.F.O", "현재 전력으로는 목표 달성 불가."],
+      ["M.F.O", "다음 교전에서는 직접 대응한다."],
+      ["시스템", "M.F.O는 다시 모습을 감췄다."],
+      ...(female
+        ? ([
+            ["미로", "다음에는 직접 싸우겠다는 뜻인가?"],
+            ["핀", "으으…… 벌써부터 불길한데."],
+            ["미지", "경계하면서 움직이자. 초코도 계속 찾아야 하니까."],
+          ] as [string, string][])
+        : ([
+            ["아이비", "직접 대응한다고……? 설마 다음엔 저 녀석이 싸우려는 거야?"],
+            ["미지", "어쩐지 점점 더 위험해지는 것 같아……."],
+            ["미로", "그래도 초코를 찾는 게 먼저야. 계속 가자."],
+          ] as [string, string][])),
+      ["시스템", "그러나 일행이 미처 눈치채지 못한 곳에서, 누군가가 그 광경을 지켜보고 있었다."],
+      ["피아나", "………."],
+      ["피아나", "저 녀석들…… 생각보다 제법인데?"],
+      ["피아나", "후후, 재미있어지겠어."],
+      ["시스템", "피아나는 아무런 기척도 남기지 않은 채 자리를 떠났다."],
+    ];
+    const en: [string, string][] = [
+      ["M.F.O", "........."],
+      ["M.F.O", "Six Robokid units incapacitated."],
+      ["M.F.O", "Revalidation failed. Reassessing target capabilities."],
+      ...(female
+        ? ([
+            ["Finn", "Phew... That was tough!"],
+            ["Miro", "Six weren't enough either?"],
+            ["Miji", "Why do you keep testing us?"],
+          ] as [string, string][])
+        : ([
+            ["Miji", "Phew... Six was exhausting!"],
+            ["Ivy", "Isn't it time that thing gave up?"],
+            ["Miro", "What are you trying to find out?"],
+          ] as [string, string][])),
+      ["M.F.O", "Current forces insufficient."],
+      ["M.F.O", "Next encounter: direct engagement."],
+      ["System", "M.F.O disappeared again."],
+      ...(female
+        ? ([
+            ["Miro", "So next time it'll fight us itself?"],
+            ["Finn", "That sounds ominous..."],
+            ["Miji", "Stay alert. We still need to find Choco."],
+          ] as [string, string][])
+        : ([
+            ["Ivy", "Direct engagement...? Does that mean it'll fight us next time?"],
+            ["Miji", "Things are getting dangerous..."],
+            ["Miro", "Let's keep going. Finding Choco comes first."],
+          ] as [string, string][])),
+      ["System", "Unnoticed by the team, someone had been observing everything from the shadows."],
+      ["Zinnia", "........."],
+      ["Zinnia", "Those kids... better than I expected."],
+      ["Zinnia", "Heh. Now this is getting interesting."],
+      ["System", "Zinnia slipped away without a trace."],
+    ];
+    this.showTheOtherMfo55Dialogue(ko ? lines : en, onComplete);
+  }
+
+  /** 25층 CG를 55층에도 재사용. 대화가 종료되면 원래 조우 흐름으로 복귀. */
+  private showTheOtherMfo55Dialogue(lines: [string, string][], onComplete: () => void): void {
+    const key = "theother_mfo_portrait";
+    let portrait: Phaser.GameObjects.Image | undefined;
+    const advance = (i: number): void => {
+      if (i >= lines.length) {
+        portrait?.destroy();
+        globalScene.hideFieldOverlay(250).then(onComplete);
+        return;
+      }
+      const [speaker, message] = lines[i];
+      // 피아나 등장 시 M.F.O 초상화는 숨기고, 관찰자 정체는 대사로만 알려줍니다.
+      if ((speaker === "피아나" || speaker === "Zinnia") && portrait) {
+        portrait.setVisible(false);
+      }
+      globalScene.ui.showDialogue(message, speaker, null, () => advance(i + 1));
+    };
+    globalScene.showFieldOverlay(500).then(() => {
+      if (globalScene.textures.exists(key)) {
+        portrait = globalScene.add.image(globalScene.scaledCanvas.width * 0.71, -104, key);
+        portrait.setOrigin(0.5);
+        portrait.setScale(1.3);
+        globalScene.fieldUI.add(portrait);
+      }
+      advance(0);
+    });
+  }
+
+  /** 디 아더 95층: M.F.O와 첫 직접 대결. */
+  private showTheOtherMfo95Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    type Line = [string, string];
+    const ko: Line[] = [
+      ["시스템", "익숙한 기계음이 울려 퍼졌다."],
+      ["M.F.O", "………."],
+      ["M.F.O", "대상 발견. 세 번째 접촉을 확인했다."],
+      ...(female
+        ? ([
+            ["핀", "저 목소리…… 또 나타났어!"],
+            ["미로", "이번에는 로보키드를 몇 대나 데려온 거야?"],
+            ["미지", "지난번에 직접 싸우겠다고 했었지?"],
+          ] as Line[])
+        : ([
+            ["미지", "저 목소리…… 설마 또!?"],
+            ["아이비", "역시 너였네. 이번엔 로보키드를 몇 대나 데려왔어?"],
+            ["미로", "지난번에 직접 상대하겠다고 했었지."],
+          ] as Line[])),
+      ["M.F.O", "로보키드의 추가 투입은 불필요하다."],
+      ["M.F.O", "두 차례의 교전 결과, 일반 전력으로는 제압할 수 없다고 판단했다."],
+      ["M.F.O", "따라서 이번에는 내가 직접 상대한다."],
+      ...(female
+        ? ([
+            ["핀", "뭐!? 이번에는 네가 직접 싸우겠다고!?"],
+            ["미로", "로보키드를 보내는 건 그만뒀나 보네."],
+            ["미지", "왜 계속 우리를 막아서는 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "드디어 직접 나서겠다는 거야!?"],
+            ["아이비", "좋아. 오히려 잘됐네. 더는 부하들 뒤에 숨을 필요 없잖아?"],
+            ["미로", "우리를 계속 방해하는 이유부터 말해!"],
+          ] as Line[])),
+      ["M.F.O", "질문에 응답할 의무는 없다."],
+      ["M.F.O", "전투 데이터 수집을 개시한다."],
+      ["M.F.O", "직접 제압 절차…… 실행."],
+    ];
+    const en: Line[] = [
+      ["System", "A familiar mechanical noise echoed."],
+      ["M.F.O", "........."],
+      ["M.F.O", "Targets found. Third contact confirmed."],
+      ...(female
+        ? ([
+            ["Finn", "That voice... It's back!"],
+            ["Miro", "How many Robokids this time?"],
+            ["Miji", "You said you'd fight us yourself, didn't you?"],
+          ] as Line[])
+        : ([
+            ["Miji", "That voice... Again!?"],
+            ["Ivy", "It's you. How many Robokids did you bring?"],
+            ["Miro", "You said you'd confront us yourself."],
+          ] as Line[])),
+      ["M.F.O", "Further Robokid deployment is unnecessary."],
+      ["M.F.O", "Two encounters show conventional forces cannot subdue you."],
+      ["M.F.O", "Therefore I will engage you directly."],
+      ...(female
+        ? ([
+            ["Finn", "What!? You're fighting us yourself!?"],
+            ["Miro", "No more hiding behind Robokids, then."],
+            ["Miji", "Why do you keep stopping us?"],
+          ] as Line[])
+        : ([
+            ["Miji", "You're finally going to fight!?"],
+            ["Ivy", "Good. No more hiding behind your minions."],
+            ["Miro", "Tell us why you keep interfering!"],
+          ] as Line[])),
+      ["M.F.O", "I am under no obligation to answer."],
+      ["M.F.O", "Beginning combat data collection."],
+      ["M.F.O", "Direct suppression procedure... execute."],
+    ];
+    this.showTheOtherMfo55Dialogue(korean ? ko : en, onComplete);
+  }
+
+  /** 디 아더 145층: 재구축된 M.F.O 재등장. */
+  private showTheOtherMfo145Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    type Line = [string, string];
+    const ko: Line[] = [
+      ["시스템", "일행의 앞에 익숙한 기계음과 함께 M.F.O가 나타났다."],
+      ["M.F.O", "………."],
+      ["M.F.O", "대상 확인. 전투 데이터 분석 완료."],
+      ...(female
+        ? ([
+            ["핀", "으악! 또 저 녀석이야!?"],
+            ["미로", "지난번에 분명 쓰러뜨렸는데……."],
+            ["미지", "아직도 우리를 방해하려는 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "또 너야!? 정말 끈질기네!"],
+            ["아이비", "이번에도 우리를 막으려고?"],
+            ["미로", "지난번엔 패배했잖아. 아직도 싸울 생각이야?"],
+          ] as Line[])),
+      ["M.F.O", "이전 교전에서 발생한 전술적 결함 수정 완료."],
+      ["M.F.O", "전투 알고리즘 최적화. 출력 제한 일부 해제."],
+      ["M.F.O", "이번 교전에서의 패배 가능성…… 허용 범위 이내."],
+      ...(female
+        ? ([
+            ["미로", "결국 더 강해져서 돌아왔다는 거네."],
+            ["핀", "아아…… 역시 쉽게 지나가게 해주진 않는구나!"],
+            ["미지", "몇 번을 나타나든 결과는 같을 거야."],
+          ] as Line[])
+        : ([
+            ["아이비", "말은 여전히 어렵게 하네."],
+            ["미지", "지난번보다 강해졌다는 뜻이지!?"],
+            ["미로", "그렇다고 우리가 물러설 것 같아?"],
+          ] as Line[])),
+      ["M.F.O", "대상의 저항 의사 확인."],
+      ["M.F.O", "강화 전투 절차를 실행한다."],
+    ];
+    const en: Line[] = [
+      ["System", "A familiar mechanical sound echoed as M.F.O appeared before the team."],
+      ["M.F.O", "........."],
+      ["M.F.O", "Targets confirmed. Combat data analysis complete."],
+      ...(female
+        ? ([
+            ["Finn", "Aah! That thing again!?"],
+            ["Miro", "We defeated it last time..."],
+            ["Miji", "Are you still trying to stop us?"],
+          ] as Line[])
+        : ([
+            ["Miji", "You again!? You're persistent!"],
+            ["Ivy", "Here to stop us again?"],
+            ["Miro", "You lost last time. Still want to fight?"],
+          ] as Line[])),
+      ["M.F.O", "Tactical deficiencies from previous engagement corrected."],
+      ["M.F.O", "Combat algorithm optimized. Output restrictions partially lifted."],
+      ["M.F.O", "Probability of defeat... within acceptable parameters."],
+      ...(female
+        ? ([
+            ["Miro", "So you've come back stronger."],
+            ["Finn", "Of course you won't let us pass!"],
+            ["Miji", "The outcome won't change."],
+          ] as Line[])
+        : ([
+            ["Ivy", "Still talking in riddles, huh?"],
+            ["Miji", "You're stronger than last time!?"],
+            ["Miro", "You think that'll make us retreat?"],
+          ] as Line[])),
+      ["M.F.O", "Targets intend to resist."],
+      ["M.F.O", "Commencing enhanced combat protocol."],
+    ];
+    this.showTheOtherMfo55Dialogue(korean ? ko : en, onComplete);
+  }
+
+  /** 디 아더 195층: N.O.2.4.8 재등장 (25% 폭주 이전). */
+  private showTheOtherMno248195Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    type Line = [string, string];
+    const ko: Line[] = [
+      ["시스템", "거친 기계음과 함께 N.O.2.4.8이 일행의 앞을 가로막았다."],
+      ["N.O.2.4.8", "대상 재포착. 최종 대응 프로토콜 활성화."],
+      ...(female
+        ? ([
+            ["핀", "저 녀석이 또 나타났어!?"],
+            ["미로", "145층에서 변신했던 그 녀석이잖아."],
+            ["미지", "이번엔 또 뭘 하려는 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "또 나타났어!?"],
+            ["아이비", "지난번에 변신했던 그 기계야."],
+            ["미로", "더는 우릴 방해하지 마!"],
+          ] as Line[])),
+      ["N.O.2.4.8", "이전 교전 기록 검토 완료."],
+      ["N.O.2.4.8", "이번 교전에서 모든 가용 전력을 투입한다."],
+      ["N.O.2.4.8", "목표 제압 절차…… 최종 실행."],
+    ];
+    const en: Line[] = [
+      ["System", "A harsh mechanical noise sounded as N.O.2.4.8 blocked the team's path."],
+      ["N.O.2.4.8", "Targets reacquired. Final response protocol enabled."],
+      ...(female
+        ? ([
+            ["Finn", "It's back again!?"],
+            ["Miro", "It transformed back on floor 145."],
+            ["Miji", "What are you planning now?"],
+          ] as Line[])
+        : ([
+            ["Miji", "It's back!?"],
+            ["Ivy", "That machine transformed last time."],
+            ["Miro", "Stop getting in our way!"],
+          ] as Line[])),
+      ["N.O.2.4.8", "Previous engagement records evaluated."],
+      ["N.O.2.4.8", "Deploying all available force in this engagement."],
+      ["N.O.2.4.8", "Final suppression procedure... execute."],
+    ];
+    const lines = korean ? ko : en;
+    const key = "theother_mno248_portrait";
+    let portrait: Phaser.GameObjects.Image | undefined;
+    const finish = () => {
+      portrait?.destroy();
+      globalScene.hideFieldOverlay(250).then(onComplete);
+    };
+    const advance = (i: number) => {
+      if (i >= lines.length) {
+        return finish();
+      }
+      const [speaker, message] = lines[i];
+      globalScene.ui.showDialogue(message, speaker, null, () => advance(i + 1));
+    };
+    globalScene.showFieldOverlay(500).then(() => {
+      if (globalScene.textures.exists(key)) {
+        portrait = globalScene.add.image(globalScene.scaledCanvas.width * 0.71, -104, key);
+        portrait.setOrigin(0.5).setScale(1.15);
+        globalScene.fieldUI.add(portrait);
+      }
+      advance(0);
+    });
+  }
+
+  /** 디 아더 245층: 피아나와의 첫 정식 대면. 별도 CG를 요구하지 않습니다. */
+  private showTheOtherZinnia245Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    type Line = [string, string];
+    const ko: Line[] = [
+      ["시스템", "길을 따라가던 일행의 앞에 낯선 여성이 모습을 드러냈다."],
+      ["피아나", "어머, 여기까지 온 거야? 후후, 꽤 하는걸?"],
+      ...(female
+        ? ([
+            ["핀", "엇? 누구세요?"],
+            ["미로", "우리한테 볼일이라도 있어?"],
+            ["미지", "혹시 이 근처에서 특별한 나옹을 본 적 있어?"],
+          ] as Line[])
+        : ([
+            ["미지", "어? 누구세요?"],
+            ["아이비", "우릴 기다리고 있었던 거야?"],
+            ["미로", "혹시 이 근처에서 특별한 나옹을 본 적 있어?"],
+          ] as Line[])),
+      ["피아나", "나옹? 글쎄~ 그런 이야기는 나중에 하자고."],
+      ["피아나", "그보다 너희, 제법 재미있는 여행을 하고 있네."],
+      ...(female
+        ? ([
+            ["핀", "우리 여행이 재미있다고?"],
+            ["미지", "우리에 대해 뭘 아는 거야?"],
+          ] as Line[])
+        : ([
+            ["아이비", "무슨 뜻이지?"],
+            ["미로", "우리한테 관심을 갖는 이유가 뭐야?"],
+          ] as Line[])),
+      ["피아나", "그냥 호기심이야. 너희가 얼마나 강한지 직접 보고 싶어졌거든."],
+      ["피아나", "자, 한 판 어때? 내 이름은 피아나. 잘 부탁해!"],
+      ...(female
+        ? ([
+            ["미로", "승부라면 피할 이유는 없지."],
+            ["미지", "좋아. 대신 끝나면 질문에 대답해 줘!"],
+          ] as Line[])
+        : ([
+            ["미지", "갑자기 승부라니…… 그래도 물러설 순 없겠네!"],
+            ["미로", "좋아. 승부가 끝나면 우리 질문에 답해 줘!"],
+          ] as Line[])),
+      ["피아나", "후후! 어디, 실력 좀 보여 줘!"],
+    ];
+    const en: Line[] = [
+      ["System", "A mysterious woman stepped into the team's path."],
+      ["Zinnia", "Oh, you've made it this far? Not bad at all!"],
+      ...(female
+        ? ([
+            ["Finn", "Huh? Who are you?"],
+            ["Miro", "Need something from us?"],
+            ["Miji", "Have you seen a special Meowth around here?"],
+          ] as Line[])
+        : ([
+            ["Miji", "Who are you?"],
+            ["Ivy", "Were you waiting for us?"],
+            ["Miro", "Have you seen a special Meowth around here?"],
+          ] as Line[])),
+      ["Zinnia", "A Meowth? Hmm... Let's talk about that later."],
+      ["Zinnia", "You're on quite an interesting adventure."],
+      ...(female
+        ? ([
+            ["Finn", "Interesting?"],
+            ["Miji", "What do you know about us?"],
+          ] as Line[])
+        : ([
+            ["Ivy", "What's that supposed to mean?"],
+            ["Miro", "Why are you interested in us?"],
+          ] as Line[])),
+      ["Zinnia", "Just curious. I want to see how strong you really are."],
+      ["Zinnia", "How about a battle? Name's Zinnia. Nice to meet you!"],
+      ...(female
+        ? ([
+            ["Miro", "No reason to turn down a battle."],
+            ["Miji", "Fine. But answer our questions afterward!"],
+          ] as Line[])
+        : ([
+            ["Miji", "A battle, out of nowhere? Fine!"],
+            ["Miro", "Then answer our questions afterward!"],
+          ] as Line[])),
+      ["Zinnia", "Hehe! Show me what you've got!"],
+    ];
+    const lines = korean ? ko : en;
+    const advance = (index: number): void => {
+      if (index >= lines.length) {
+        return onComplete();
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => advance(index + 1));
+    };
+    advance(0);
+  }
+
+  /** 디 아더 295층: 피아나와의 재회. 별도 CG 없이 기존 대화창을 사용합니다. */
+  private showTheOtherZinnia295Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    type Line = [string, string];
+    const ko: Line[] = [
+      ["시스템", "익숙한 목소리가 일행의 발걸음을 멈춰 세웠다."],
+      ["피아나", "어라? 다시 만났네! 후후, 여기까지 올 줄 알았어."],
+      ...(female
+        ? ([
+            ["핀", "앗! 245층에서 만났던 그 사람이야!"],
+            ["미로", "피아나였지? 또 승부하러 온 거야?"],
+            ["미지", "우릴 기다리고 있었던 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "어!? 전에 만났던 피아나잖아!"],
+            ["아이비", "설마 또 우리랑 싸우려고?"],
+            ["미로", "우릴 기다리고 있었던 거야?"],
+          ] as Line[])),
+      ["피아나", "기다렸다기보단…… 너희가 어디까지 해낼지 궁금했거든."],
+      ["피아나", "그때보다 훨씬 단단해진 눈빛이네. 좋아, 이번엔 나도 진심으로 가 볼까?"],
+      ...(female
+        ? ([
+            ["핀", "저번에도 충분히 강했는데, 이번엔 진심이라고!?"],
+            ["미로", "어쩐지 분위기가 달라졌어."],
+            ["미지", "좋아. 우리도 전력을 다할게."],
+          ] as Line[])
+        : ([
+            ["미지", "저번에도 엄청 강했는데, 더 강해진다고!?"],
+            ["아이비", "이번엔 농담하는 분위기가 아닌데."],
+            ["미로", "좋아. 우리도 전력을 다하겠어."],
+          ] as Line[])),
+      ["피아나", "아, 그리고 너희가 찾는 그 나옹 말인데……."],
+      ...(female
+        ? ([["미지", "초코에 대해 뭔가 알아낸 거야?"]] as Line[])
+        : ([["미로", "초코에 대해 뭔가 알고 있는 거야?"]] as Line[])),
+      ["피아나", "지금은 답을 주기보다, 너희가 직접 끝까지 가서 확인했으면 해."],
+      ["피아나", "그러려면 먼저 나부터 넘어야겠지? 자, 시작하자!"],
+    ];
+    const en: Line[] = [
+      ["System", "A familiar voice brought the team to a halt."],
+      ["Zinnia", "Well, look who it is! Hehe, I thought you'd make it this far."],
+      ...(female
+        ? ([
+            ["Finn", "It's the woman we met on floor 245!"],
+            ["Miro", "Zinnia, right? Another battle?"],
+            ["Miji", "Were you waiting for us?"],
+          ] as Line[])
+        : ([
+            ["Miji", "It's Zinnia again!"],
+            ["Ivy", "Are you here to fight us again?"],
+            ["Miro", "Were you waiting for us?"],
+          ] as Line[])),
+      ["Zinnia", "I was curious to see how far you could go."],
+      ["Zinnia", "You've grown since last time. This time, I'll give it my all!"],
+      ...(female
+        ? ([
+            ["Finn", "You weren't serious last time!?"],
+            ["Miro", "She feels different now."],
+            ["Miji", "Then we'll give it everything too."],
+          ] as Line[])
+        : ([
+            ["Miji", "You were already so strong!"],
+            ["Ivy", "She's not joking this time."],
+            ["Miro", "Then we'll fight with everything we've got."],
+          ] as Line[])),
+      ["Zinnia", "Oh, and about that Meowth you're looking for..."],
+      ...(female
+        ? ([["Miji", "You found out something about Choco?"]] as Line[])
+        : ([["Miro", "You know something about Choco?"]] as Line[])),
+      ["Zinnia", "I'd rather you reach the end and find your own answers."],
+      ["Zinnia", "But first, you'll have to get past me. Let's go!"],
+    ];
+    const lines = korean ? ko : en;
+    const advance = (index: number): void => {
+      if (index >= lines.length) {
+        onComplete();
+        return;
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => advance(index + 1));
+    };
+    advance(0);
+  }
+
+  /** 디 아더 300층: 피아나 최종전 도입. 레쿠쟈 연속전은 별도 전투 전환 연결이 필요합니다. */
+  private showTheOtherZinnia300Intro(onComplete: () => void): void {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+    type Line = [string, string];
+    const ko: Line[] = [
+      ["시스템", "마침내 길의 끝에 도착했다. 그곳에는 피아나가 기다리고 있었다."],
+      ["피아나", "왔구나. 약속대로 마지막에 다시 만났네!"],
+      ...(female
+        ? ([
+            ["핀", "정말 여기까지 왔어……!"],
+            ["미로", "피아나, 이제 정말 이야기를 해 줄 거야?"],
+            ["미지", "초코는 어디에 있어?"],
+          ] as Line[])
+        : ([
+            ["미지", "정말 끝에 도착했네……!"],
+            ["아이비", "피아나, 이제 숨기는 게 뭔지 말해 줘."],
+            ["미로", "초코는 어디에 있는 거야?"],
+          ] as Line[])),
+      ["피아나", "너희가 얼마나 간절하게 찾아왔는지는 알아."],
+      ["피아나", "하지만 마지막 답을 듣기 전에…… 나와 한 번만 더 승부해 줘."],
+      ...(female
+        ? ([
+            ["핀", "또 승부!?"],
+            ["미로", "이번엔 분위기가 완전히 달라."],
+            ["미지", "좋아. 이번에야말로 끝을 보겠어!"],
+          ] as Line[])
+        : ([
+            ["미지", "이제 마지막 승부구나!"],
+            ["아이비", "평소보다 훨씬 진지해 보여."],
+            ["미로", "좋아. 우리가 여기까지 온 이유를 보여 줄게!"],
+          ] as Line[])),
+      ["피아나", "후후…… 좋아. 너희의 모든 걸 보여 줘!"],
+    ];
+    const en: Line[] = [
+      ["System", "At the end of the path, Zinnia was waiting."],
+      ["Zinnia", "You made it. Just like we promised!"],
+      ...(female
+        ? ([
+            ["Finn", "We really made it!"],
+            ["Miro", "Will you finally tell us?"],
+            ["Miji", "Where is Choco?"],
+          ] as Line[])
+        : ([
+            ["Miji", "We reached the end!"],
+            ["Ivy", "Stop hiding things, Zinnia."],
+            ["Miro", "Where is Choco?"],
+          ] as Line[])),
+      ["Zinnia", "I know how hard you've searched."],
+      ["Zinnia", "But before you hear the final answer... battle me one last time."],
+      ...(female
+        ? ([
+            ["Finn", "Again!?"],
+            ["Miro", "She's completely serious."],
+            ["Miji", "Then let's finish this!"],
+          ] as Line[])
+        : ([
+            ["Miji", "Our final battle!"],
+            ["Ivy", "She seems serious."],
+            ["Miro", "We'll show you why we came this far!"],
+          ] as Line[])),
+      ["Zinnia", "Hehe... Show me everything you've got!"],
+    ];
+    const lines = korean ? ko : en;
+    const advance = (index: number): void => {
+      if (index >= lines.length) {
+        onComplete();
+        return;
+      }
+      const [speaker, message] = lines[index];
+      globalScene.ui.showDialogue(message, speaker, null, () => advance(index + 1));
+    };
+    advance(0);
+  }
+
   doEncounterCommon(showEncounterMessage = true) {
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 300
+      && globalScene.theOther300Stage > 0
+      && !this.loaded
+      && !this.theOtherZinnia300IntroShown
+    ) {
+      this.theOtherZinnia300IntroShown = true;
+      const lines =
+        globalScene.theOther300Stage === 1 ? theOther300Story.rayquazaIntro : theOther300Story.rayquazaPhaseTwo;
+      const play = (idx: number): void => {
+        if (idx >= lines.length) {
+          this.doEncounterCommon(showEncounterMessage);
+          return;
+        }
+        const [speaker, message] = lines[idx];
+        globalScene.ui.showDialogue(message, speaker, null, () => play(idx + 1));
+      };
+      play(0);
+      return;
+    }
+
+    // 300층 피아나 최종전: 새 전투에서 한 번만 전용 도입 대사 출력.
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 300
+      && !this.loaded
+      && globalScene.theOther300Stage === 0
+      && !this.theOtherZinnia300IntroShown
+    ) {
+      this.theOtherZinnia300IntroShown = true;
+      this.showTheOtherZinnia300Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 295
+      && !this.loaded
+      && !this.theOtherZinnia295IntroShown
+    ) {
+      this.theOtherZinnia295IntroShown = true;
+      this.showTheOtherZinnia295Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 245
+      && !this.loaded
+      && !this.theOtherZinnia245IntroShown
+    ) {
+      this.theOtherZinnia245IntroShown = true;
+      this.showTheOtherZinnia245Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 195
+      && !this.loaded
+      && !this.theOtherMno248195IntroShown
+    ) {
+      this.theOtherMno248195IntroShown = true;
+      this.showTheOtherMno248195Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 145
+      && !this.loaded
+      && !this.theOtherMfo145IntroShown
+    ) {
+      this.theOtherMfo145IntroShown = true;
+      this.showTheOtherMfo145Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 95
+      && !this.loaded
+      && !this.theOtherMfo95IntroShown
+    ) {
+      this.theOtherMfo95IntroShown = true;
+      this.showTheOtherMfo95Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 55
+      && !this.loaded
+      && !this.theOtherMfo55IntroShown
+    ) {
+      this.theOtherMfo55IntroShown = true;
+      this.showTheOtherMfo55Intro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
     const isTutorialIntro =
       globalScene.gameMode.modeId === GameModes.TUTORIAL
       && globalScene.currentBattle.waveIndex === 1
@@ -1679,6 +2905,68 @@ export class EncounterPhase extends BattlePhase {
       };
 
       showIntroMessage(0);
+      return;
+    }
+
+    // 스토리 장면은 신규 진입 시에만 재생합니다. 로드한 전투에서는 건너뜁니다.
+    const tutorialWave = globalScene.currentBattle.waveIndex;
+    const tutorialStoryWaves = [5, 8, 10, 15, 16, 20, 22, 25, 26, 30, 32, 35, 36, 40, 45, 46, 48, 49];
+    if (
+      globalScene.gameMode.modeId === GameModes.TUTORIAL
+      && !this.loaded
+      && !this.tutorialStoryShown
+      && tutorialStoryWaves.includes(tutorialWave)
+    ) {
+      this.tutorialStoryShown = true;
+      this.showTutorialWaveStory(tutorialWave, () => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    // 클래식 모드의 신규 시작(1층)에만 재생; 저장된 1층 전투를 로드하면 반복하지 않습니다.
+    if (
+      globalScene.gameMode.modeId === GameModes.CLASSIC
+      && globalScene.currentBattle.waveIndex === 1
+      && !this.loaded
+      && !this.classicPrologueShown
+    ) {
+      this.classicPrologueShown = true;
+      this.showClassicPrologue(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    // 디 아더 신규 1층 스토리. 저장 데이터 로드 시 재생하지 않습니다.
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 1
+      && !this.loaded
+      && !this.theOtherPrologueShown
+    ) {
+      this.theOtherPrologueShown = true;
+      this.showTheOtherPrologue(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    // 디 아더 8층 로보키드 첫 조우: 신규 진입에서만 대화 후 기존 전투 흐름으로 복귀합니다.
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 8
+      && !this.loaded
+      && !this.theOtherRobokidIntroShown
+    ) {
+      this.theOtherRobokidIntroShown = true;
+      this.showTheOtherRobokidIntro(() => this.doEncounterCommon(showEncounterMessage));
+      return;
+    }
+
+    // 디 아더 25층 M.F.O 첫 등장: 전투 자체는 기존 3연전 구성을 유지합니다.
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 25
+      && !this.loaded
+      && !this.theOtherMfoIntroShown
+    ) {
+      this.theOtherMfoIntroShown = true;
+      this.showTheOtherMfoIntro(() => this.doEncounterCommon(showEncounterMessage));
       return;
     }
 

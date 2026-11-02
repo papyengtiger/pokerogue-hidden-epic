@@ -1,0 +1,142 @@
+
+> pokemon-rogue-hidden-epic@5.1.2 build:app C:\Game\pokerogue-hidden-epic
+> vite build --mode app && node scripts/sync-dist-assets.js
+
+[36mvite v7.2.7 [32mbuilding client environment for app...[36m[39m
+Collect namespaces
+transforming...
+
+./fonts/pokemon-emerald-pro.ttf referenced in ./fonts/pokemon-emerald-pro.ttf didn't resolve at build time, it will remain unchanged to be resolved at runtime
+
+./fonts/pkmnems.ttf referenced in ./fonts/pkmnems.ttf didn't resolve at build time, it will remain unchanged to be resolved at runtime
+[33m[plugin vite:resolve] Module "path" has been externalized for browser compatibility, imported by "C:/Game/pokerogue-hidden-epic/src/plugins/utils-plugins.ts". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.[39m
+[33m[plugin vite:esbuild] src/ui/handlers/rogue-shop-ui-handler.ts: [33mDuplicate member "moveListCursor" in class body[33m
+3488 |    }
+3489 |  
+3490 |    private moveListCursor(delta: number): boolean {
+     |            ^
+3491 |      const maxIndex = this.getCurrentList().length - 1;
+3492 |      if (maxIndex < 0) {
+[39m
+[33m[plugin vite:esbuild] src/data/abilities/ability-detail.ts: [33mThis case clause will never be evaluated because it duplicates an earlier case clause[33m
+1695 |        return "ê¸°ìˆ ì˜ ëŒ€ìƒì´ ë‹¤ë¥¸ í¬ì¼“ëª¬ì—ê²Œ ë³€ê²½ë˜ì§€ ì•ŠìŠµë‹ˆë‹¤.";
+1696 |  
+1697 |      case "PostSummonUserFieldRemoveStatusEffectAbAttr":
+     |           ^
+1698 |        return "ë“±ìž¥í–ˆì„ ë•Œ ê°™ì€ íŽ¸ì˜ íŠ¹ì • ìƒíƒœì´ìƒì„ ì¹˜ë£Œí•©ë‹ˆë‹¤.";
+1699 |  
+[39m
+[33m[plugin vite:esbuild] src/data/abilities/ability-detail.ts: [33mThis case clause will never be evaluated because it duplicates an earlier case clause[33m
+1698 |        return "ë“±ìž¥í–ˆì„ ë•Œ ê°™ì€ íŽ¸ì˜ íŠ¹ì • ìƒíƒœì´ìƒì„ ì¹˜ë£Œí•©ë‹ˆë‹¤.";
+1699 |  
+1700 |      case "UserFieldStatusEffectImmunityAbAttr":
+     |           ^
+1701 |        return "ê°™ì€ íŽ¸ì´ íŠ¹ì • ìƒíƒœì´ìƒì— ê±¸ë¦¬ì§€ ì•Šê²Œ í•©ë‹ˆë‹¤.";
+1702 |  
+[39m
+[33m[plugin vite:esbuild] src/data/abilities/ability-detail.ts: [33mThis case clause will never be evaluated because it duplicates an earlier case clause[33m
+1704 |        return "ë”ë¸”ë°°í‹€ì—ì„œ íŠ¹ì • ì•„êµ°ì„ ì§€íœ˜í•˜ëŠ” ìƒíƒœê°€ ë©ë‹ˆë‹¤.";
+1705 |  
+1706 |      case "DoubleBattleChanceAbAttr":
+     |           ^
+1707 |        return "ë”ë¸”ë°°í‹€ì—ì„œ ë°œë™í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.";
+1708 |  
+[39m
+[32mâœ“[39m 2842 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                           [39m[1m[2m    7.40 kB[22m[1m[22m[2m â”‚ gzip:   2.13 kB[22m
+[2mdist/[22m[35massets/index-BnAwyMG9.css            [39m[1m[2m    7.00 kB[22m[1m[22m[2m â”‚ gzip:   1.63 kB[22m
+[2mdist/[22m[36massets/RoundRectangle-4F_GV_dw.js    [39m[1m[2m    8.16 kB[22m[1m[22m[2m â”‚ gzip:   2.96 kB[22m
+[2mdist/[22m[36massets/browser-ponyfill-DP_sJOum.js  [39m[1m[2m   10.84 kB[22m[1m[22m[2m â”‚ gzip:   3.78 kB[22m
+[2mdist/[22m[36massets/index-BlMJTpVP.js             [39m[1m[2m  929.55 kB[22m[1m[22m[2m â”‚ gzip: 237.62 kB[22m
+[2mdist/[22m[36massets/touch-controls-CkJXuukX.js    [39m[1m[2m1,409.19 kB[22m[1m[22m[2m â”‚ gzip: 386.56 kB[22m
+[2mdist/[22m[36massets/battle-scene-CR8jBdk8.js      [39m[1m[2m1,485.64 kB[22m[1m[22m[2m â”‚ gzip: 400.13 kB[22m
+[2mdist/[22m[36massets/loading-scene-9MRqY12F.js     [39m[1m[2m4,321.87 kB[22m[1m[22m[2m â”‚ gzip: 930.43 kB[22m
+[32mâœ“ built in 21.69s[39m
+Minifying JSON files...
+Path C:\Game\pokerogue-hidden-epic\dist\images does not exist!
+Path C:\Game\pokerogue-hidden-epic\dist\battle-anims does not exist!
+Finished minifying JSON files!
+Running: robocopy assets dist /NFL /NDL /E /XD .git LICENSES .github /XF REUSE.toml .git* LICENSE README.md package.json pnpm-lock.yaml
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Windows¿ë °ß°íÇÑ ÆÄÀÏ º¹»ç                              
+-------------------------------------------------------------------------------
+
+  ½ÃÀÛµÊ: 2026³â 10¿ù 28ÀÏ ¼ö¿äÀÏ ¿ÀÈÄ 5:10:36
+        ¿øº» : C:\Game\pokerogue-hidden-epic\assets\
+        ´ë»ó : C:\Game\pokerogue-hidden-epic\dist\
+
+        ÆÄÀÏ : *.*
+	    
+    Exc ÆÄÀÏ : REUSE.toml
+	    LICENSE
+	    README.md
+	    package.json
+	    pnpm-lock.yaml
+	    .git*
+	    
+Exc µð·ºÅÍ¸® : .git
+	    LICENSES
+	    .github
+	    
+        ¿É¼Ç : *.* /NDL /NFL /S /E /DCOPY:DA /COPY:DAT /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+
+                  ÀüÃ¼       º¹»çµÊ      °Ç³Ê ¶Ü       ºÒÀÏÄ¡        ½ÇÆÐ        Ãß°¡
+    µð·ºÅÍ¸® :       248       245         3         0         0         1
+      ÆÄÀÏ :     38028     38018        10         0         0         1
+     ¹ÙÀÌÆ® :   1.088 g   1.088 g   350.4 k         0         0     7.2 k
+      ½Ã°£ :   0:01:05   0:01:04                       0:00:00   0:00:00
+
+
+      ¼Óµµ :           18,095,469 ¹ÙÀÌÆ®/ÃÊ
+      ¼Óµµ :            1,035.431 ¸Þ°¡¹ÙÀÌÆ®/ºÐ
+   Á¾·áµÊ: 2026³â 10¿ù 28ÀÏ ¼ö¿äÀÏ ¿ÀÈÄ 5:11:41
+
+Running: robocopy locales dist\locales /NFL /NDL /E /XD .git LICENSES .github /XF REUSE.toml .git* LICENSE README.md package.json pnpm-lock.yaml
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Windows¿ë °ß°íÇÑ ÆÄÀÏ º¹»ç                              
+-------------------------------------------------------------------------------
+
+  ½ÃÀÛµÊ: 2026³â 10¿ù 28ÀÏ ¼ö¿äÀÏ ¿ÀÈÄ 5:11:41
+        ¿øº» : C:\Game\pokerogue-hidden-epic\locales\
+        ´ë»ó : C:\Game\pokerogue-hidden-epic\dist\locales\
+
+        ÆÄÀÏ : *.*
+	    
+    Exc ÆÄÀÏ : REUSE.toml
+	    LICENSE
+	    README.md
+	    package.json
+	    pnpm-lock.yaml
+	    .git*
+	    
+Exc µð·ºÅÍ¸® : .git
+	    LICENSES
+	    .github
+	    
+        ¿É¼Ç : *.* /NDL /NFL /S /E /DCOPY:DA /COPY:DAT /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+
+                  ÀüÃ¼       º¹»çµÊ      °Ç³Ê ¶Ü       ºÒÀÏÄ¡        ½ÇÆÐ        Ãß°¡
+    µð·ºÅÍ¸® :        37        36         1         0         0         0
+      ÆÄÀÏ :      1357      1355         2         0         0         0
+     ¹ÙÀÌÆ® :    7.65 m    7.62 m    34.9 k         0         0         0
+      ½Ã°£ :   0:00:02   0:00:01                       0:00:00   0:00:00
+
+
+      ¼Óµµ :           4,081,182 ¹ÙÀÌÆ®/ÃÊ
+      ¼Óµµ :             233.527 ¸Þ°¡¹ÙÀÌÆ®/ºÐ
+   Á¾·áµÊ: 2026³â 10¿ù 28ÀÏ ¼ö¿äÀÏ ¿ÀÈÄ 5:11:43
+

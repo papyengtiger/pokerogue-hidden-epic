@@ -1,0 +1,7 @@
+{
+  "name": "hidden-epic-desktop",
+  "version": "5.1.2",
+  "private": true,
+  "main": "main.cjs",
+  "description": "Hidden Epic offline Windows desktop launcher"
+}

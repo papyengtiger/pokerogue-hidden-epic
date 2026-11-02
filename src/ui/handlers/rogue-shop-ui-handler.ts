@@ -12,22 +12,23 @@ import { Button } from "#enums/buttons";
 import { ExchangeCurrencyType } from "#enums/exchange-currency-type";
 import { GameModes } from "#enums/game-modes";
 import { ModifierTier } from "#enums/modifier-tier";
+import { PlayerGender } from "#enums/player-gender";
 import { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
-import { PlayerGender } from "#enums/player-gender";
 import type { SpeciesId } from "#enums/species-id";
 import { TextStyle } from "#enums/text-style";
 import { TrainerType } from "#enums/trainer-type";
 import { TrainerVariant } from "#enums/trainer-variant";
 import { UiMode } from "#enums/ui-mode";
+import { Unlockables } from "#enums/unlockables";
 import { PokemonHeldItemModifier } from "#modifiers/modifier";
 import type { ModifierTypeOption } from "#modifiers/modifier-type";
 import { getModifierTypeById, type ModifierType, type ModifierTypeGenerator } from "#modifiers/modifier-type";
-import { companionManager, getTrainerKnowhow } from "#system/companion-manager";
-import { TrainerConfig } from "#trainers/trainer-config";
 import { buildRogueShopListings } from "#modifiers/rogue-shop-utils";
+import { companionManager, getTrainerKnowhow } from "#system/companion-manager";
 import { type QuestEntry, questManager } from "#system/quest-manager";
 import { VoucherType } from "#system/voucher";
+import { TrainerConfig } from "#trainers/trainer-config";
 import type { PracticePresetData, Starter } from "#types/save-data";
 import { MessageUiHandler } from "#ui/message-ui-handler";
 import { PracticePresetSlotUiMode } from "#ui/practice-preset-slot-select-ui-handler";
@@ -44,7 +45,9 @@ export type RogueShopTab =
   | "WORKSHOP"
   | "MINE"
   | "MEETING"
-  | "CAFE";
+  | "CAFE"
+  | "BRIEFING"
+  | "HEADQUARTERS";
 
 export interface RogueShopBankData {
   roguePoints: number;
@@ -179,16 +182,18 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
   private uiArgs: RogueShopUiArgs | null = null;
   private enabledTabs: RogueShopTab[] = [
-  "SHOP",
-  "BANK",
-  "STORAGE",
-  "QUEST",
-  "PRACTICE",
-  "WORKSHOP",
-  "MINE",
-  "MEETING",
-  "CAFE",
-];
+    "SHOP",
+    "BANK",
+    "STORAGE",
+    "QUEST",
+    "PRACTICE",
+    "WORKSHOP",
+    "MINE",
+    "MEETING",
+    "CAFE",
+    "BRIEFING",
+    "HEADQUARTERS",
+  ];
 
   private selectingTarget = false;
   private pendingTargetListing: RogueShopListing | null = null;
@@ -226,6 +231,38 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
   private pendingShopListing: RogueShopListing | null = null;
   private selectingShopDestination = false;
+
+  // 회의실/본부는 기존 만남의광장(MEETING)과 별개입니다.
+  private briefingStep = 0;
+
+  private getBriefingLines(): Array<{ name: string; description: string }> {
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const leader = female ? "미로" : "미지";
+    const rival = female ? "핀" : "아이비";
+    return [
+      {
+        name: `${leader} · ${rival}`,
+        description: "클래식에서 보여준 활약을 인정하고, 주인공의 정식 합류를 축하한다.",
+      },
+      { name: "캡틴", description: "정식 로그탐사대원으로서 새로운 출발을 축하한다." },
+      {
+        name: "캡틴 — 시스템 안내",
+        description: "터몽도감과 트레이닝 카드 슬롯을 소개한다. 실제 지급 및 해금 로직은 후속 단계에서 연결한다.",
+      },
+      {
+        name: "페더 — 긴급 의뢰",
+        description: "바닐라가 실종된 에픽 이로치 나옹 '초코'를 찾아달라고 요청했다. 실종 장소는 아직 밝혀지지 않았다.",
+      },
+      {
+        name: "페더 — 동료 안내",
+        description: "동료가 탐사 중 전투를 지원하는 방법을 설명한다. 실제 동료 튜토리얼은 후속 단계에서 연결한다.",
+      },
+      {
+        name: "탐사 출발 준비",
+        description: "프롤로그 안내를 마쳤습니다. 타이틀의 '새 게임 → 디 아더'를 선택하여 탐사를 시작할 수 있습니다.",
+      },
+    ];
+  }
 
   private readonly workshopEntries: RogueWorkshopEntry[] = [
     {
@@ -309,31 +346,17 @@ export class RogueShopUiHandler extends MessageUiHandler {
       this.tabTexts.push(tabText);
     }
 
-    this.companionPortrait = globalScene.add
-  .sprite(174, 133, "trainer_m")
-  .setOrigin(0.5, 1)
-  .setVisible(false);
+    this.companionPortrait = globalScene.add.sprite(174, 133, "trainer_m").setOrigin(0.5, 1).setVisible(false);
 
-this.companionKnowhowTitleText = addTextObject(
-  202,
-  65,
-  "",
-  TextStyle.SUMMARY,
-).setVisible(false);
+    this.companionKnowhowTitleText = addTextObject(202, 65, "", TextStyle.SUMMARY).setVisible(false);
 
-this.companionKnowhowBodyText = addTextObject(
-  202,
-  80,
-  "",
-  TextStyle.WINDOW,
-  {
-    fontSize: 60,
-    wordWrap: {
-      width: 420,
-      useAdvancedWrap: true,
-    },
-  },
-).setVisible(false);
+    this.companionKnowhowBodyText = addTextObject(202, 80, "", TextStyle.WINDOW, {
+      fontSize: 60,
+      wordWrap: {
+        width: 420,
+        useAdvancedWrap: true,
+      },
+    }).setVisible(false);
 
     this.tabCursorObj = globalScene.add.image(10, 23, "select_cursor").setOrigin(0);
     this.listCursorObj = globalScene.add.image(8, 44, "select_cursor").setOrigin(0);
@@ -395,32 +418,32 @@ this.companionKnowhowBodyText = addTextObject(
     this.starterIconsContainer.add(this.starterIconCursorObj);
 
     this.rootContainer.add([
-  bg,
-  this.moneyWindow,
-  this.tabWindow,
-  this.mainListWindow,
-  this.detailWindow,
-  this.helpWindow,
-  this.titleText,
-  this.valueRoguePointText,
-  this.valueGoldText,
-  ...this.tabTexts,
-  this.tabCursorObj,
-  this.listCursorObj,
-  ...this.listTextObjects,
-  this.detailTitleText,
-  this.detailBodyText,
+      bg,
+      this.moneyWindow,
+      this.tabWindow,
+      this.mainListWindow,
+      this.detailWindow,
+      this.helpWindow,
+      this.titleText,
+      this.valueRoguePointText,
+      this.valueGoldText,
+      ...this.tabTexts,
+      this.tabCursorObj,
+      this.listCursorObj,
+      ...this.listTextObjects,
+      this.detailTitleText,
+      this.detailBodyText,
 
-  this.companionPortrait,
-  this.companionKnowhowTitleText,
-  this.companionKnowhowBodyText,
+      this.companionPortrait,
+      this.companionKnowhowTitleText,
+      this.companionKnowhowBodyText,
 
-  this.footerHelpText,
-  this.questFooterText,
-  this.starterPanelWindow,
-  this.starterPanelTitleText,
-  this.starterIconsContainer,
-]);
+      this.footerHelpText,
+      this.questFooterText,
+      this.starterPanelWindow,
+      this.starterPanelTitleText,
+      this.starterIconsContainer,
+    ]);
   }
 
   show(args: any[]): boolean {
@@ -436,10 +459,8 @@ this.companionKnowhowBodyText = addTextObject(
     });
 
     this.rootContainer.setVisible(true);
-    companionManager.ensureDefaultPlayerCompanion(
-  globalScene.gameData.gender,
-);
-    
+    companionManager.ensureDefaultPlayerCompanion(globalScene.gameData.gender);
+
     this.shopListings = buildRogueShopListings();
     console.table(
       this.shopListings
@@ -592,7 +613,7 @@ this.companionKnowhowBodyText = addTextObject(
     const allowWorkshop = this.uiArgs?.allowWorkshop ?? true;
 
     const enabledTabs: RogueShopTab[] = [];
-
+    const isTitleCenter = (this.uiArgs?.source ?? "TITLE") === "TITLE";
     if (allowShop) {
       enabledTabs.push("SHOP");
     }
@@ -602,19 +623,21 @@ this.companionKnowhowBodyText = addTextObject(
     if (allowStorage) {
       enabledTabs.push("STORAGE");
     }
-    if (allowQuest) {
-      enabledTabs.push("QUEST");
+
+    if (isTitleCenter) {
+      // 클래식 이후 첫 개방 시설 5개. 나머지는 별도 해금 조건 설정 후 개방.
+      enabledTabs.push("BRIEFING", "HEADQUARTERS");
+    } else {
+      // 전투/스타팅 메뉴에서 사용하는 기존 로그센터 기능은 그대로 유지.
+      if (allowQuest) {
+        enabledTabs.push("QUEST");
+      }
+      enabledTabs.push("PRACTICE");
+      if (allowWorkshop) {
+        enabledTabs.push("WORKSHOP");
+      }
+      enabledTabs.push("MINE", "MEETING", "CAFE");
     }
-
-    enabledTabs.push("PRACTICE");
-
-    if (allowWorkshop) {
-      enabledTabs.push("WORKSHOP");
-    }
-
-    enabledTabs.push("MINE");
-    enabledTabs.push("MEETING");
-    enabledTabs.push("CAFE");
 
     this.enabledTabs = enabledTabs.length > 0 ? enabledTabs : ["PRACTICE"];
 
@@ -2422,6 +2445,10 @@ this.companionKnowhowBodyText = addTextObject(
         return this.handleWorkshopConfirm();
       case "MINE":
         return this.handleMineConfirm();
+      case "BRIEFING":
+        return this.handleBriefingConfirm();
+      case "HEADQUARTERS":
+        return this.handleHeadquartersConfirm();
       case "MEETING":
         return this.handleMeetingConfirm();
       case "CAFE":
@@ -2431,123 +2458,115 @@ this.companionKnowhowBodyText = addTextObject(
     }
   }
 
+  /** 회의실 전용 대화 연출: 로그센터 UI와 분리해서 일반 스토리 대화창을 사용합니다. */
+  private handleBriefingConfirm(): boolean {
+    if (globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER_BRIEFING_SEEN)) {
+      this.setNotice("현재 진행 중인 새로운 스토리가 없습니다.");
+      return true;
+    }
+
+    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+    const leader = female ? "미로" : "미지";
+    const rival = female ? "핀" : "아이비";
+    const rivalSprite = female ? "rival_m" : "rival_f";
+    const lines: Array<{ speaker: string; message: string; portrait?: string }> = [
+      {
+        speaker: leader,
+        message: "클래식에서 정말 대단한 활약을 보여줬어! 이제 우리와 정식으로 함께하게 된 걸 축하해!",
+      },
+      {
+        speaker: rival,
+        message: "나도 네 실력을 인정해. 앞으로는 정식 팀원으로서 함께 탐사하는 거야.",
+        portrait: rivalSprite,
+      },
+      { speaker: leader, message: `${rival}도 이렇게 말하니 든든하네! 셋이서 힘을 합쳐 보자!` },
+      { speaker: "캡틴", message: "하하하! 자네가 정식 로그탐사대원이 된 것을 진심으로 축하하네!" },
+      {
+        speaker: "캡틴",
+        message:
+          "새로운 탐사를 위한 터몽도감과 트레이닝 카드 슬롯도 준비했네. 자세한 사용법은 본부에서 확인할 수 있을 걸세.",
+      },
+      { speaker: "페더", message: "캡틴! 방금 긴급 구조 의뢰가 도착했습니다!" },
+      { speaker: "페더", message: "바닐라라는 트레이너가 초코라는 에픽 이로치 나옹을 찾아달라고 부탁했어요." },
+      { speaker: "페더", message: "초코가 사라진 경위는 아직 자세히 알려지지 않았다고 합니다." },
+      { speaker: leader, message: "그렇다면 우리가 가봐야겠네. 초코를 무사히 찾아주자!" },
+      { speaker: rival, message: "좋아. 준비를 마치고 출발하자!", portrait: rivalSprite },
+      {
+        speaker: "페더",
+        message: "출발 전에 동료 시스템도 설명해 드릴게요. 탐사 중에는 동료가 전투에서 여러분을 도와줄 수 있어요.",
+      },
+      { speaker: "페더", message: "준비가 끝나면 디 아더에서 초코의 행방을 찾아주세요!" },
+    ];
+
+    // 먼저 상점 화면을 숨기고 메시지 전용 UI로 이동합니다.
+    // 시설 화면 안의 상세 설명 영역에 스토리를 표시하지 않습니다.
+    this.rootContainer.setVisible(false);
+    void globalScene.ui
+      .setMode(UiMode.MESSAGE)
+      .then(async () => {
+        await globalScene.showFieldOverlay(350);
+
+        const finish = async (): Promise<void> => {
+          await globalScene.charSprite.hide();
+          await globalScene.hideFieldOverlay(350);
+          // 실제 도구 지급 및 디 아더 출발 처리 전까지는 완료 플래그를 저장하지 않습니다.
+          // 따라서 대화는 다시 볼 수 있습니다.
+          await globalScene.ui.setMode(UiMode.ROGUE_SHOP, this.uiArgs ?? {});
+        };
+
+        const next = async (index: number): Promise<void> => {
+          if (index >= lines.length) {
+            await finish();
+            return;
+          }
+          const line = lines[index];
+          // 현재 확인된 라이벌 일러스트만 표시합니다. 다른 인물 에셋은 이후 연결합니다.
+          if (line.portrait) {
+            await globalScene.charSprite.showCharacter(line.portrait, 0);
+          } else {
+            await globalScene.charSprite.hide();
+          }
+          globalScene.ui.showDialogue(line.message, line.speaker, null, () => {
+            void next(index + 1);
+          });
+        };
+        await next(0);
+      })
+      .catch(error => {
+        console.error("[BRIEFING_CUTSCENE_FAILED]", error);
+        void globalScene.hideFieldOverlay(0).then(() => globalScene.ui.setMode(UiMode.ROGUE_SHOP, this.uiArgs ?? {}));
+      });
+    return true;
+  }
+
+  private handleHeadquartersConfirm(): boolean {
+    const entry = this.getCurrentList()[this.listCursor] as RogueWorkshopEntry | undefined;
+    if (entry) {
+      this.setNotice(entry.description);
+    }
+    return true;
+  }
+
   private handleMeetingConfirm(): boolean {
-  const list = this.getCurrentList();
-  const entry =
-    list[this.listCursor] as RogueCompanionEntry;
+    const list = this.getCurrentList();
+    const entry = list[this.listCursor] as RogueCompanionEntry;
 
-  if (!entry || entry.trainerType == null) {
-    this.getUi().playError();
-    return false;
-  }
+    if (!entry || entry.trainerType == null) {
+      this.getUi().playError();
+      return false;
+    }
 
-  if (
-    companionManager.isRecruited(
-      entry.trainerType,
-    )
-  ) {
-    this.setNotice(
-      `${entry.name}은(는) 이미 동료입니다.`,
-    );
-    this.getUi().playError();
-    return true;
-  }
-
-  companionManager.recruit(entry.trainerType);
-
-globalScene.gameData.saveSystem();
-
-this.setNotice(
-  `${entry.name}이(가) 동료가 되었습니다!`,
-);
-
-  this.getUi().playSelect();
-
-  this.refreshList();
-  this.refreshDetail();
-
-  return true;
-}
-
-private handleCafeConfirm(): boolean {
-  const list = this.getCurrentList();
-  const entry =
-    list[this.listCursor] as RogueCompanionEntry;
-
-  if (!entry) {
-    this.getUi().playError();
-    return false;
-  }
-
-  if (entry.action === "SOLO") {
-  const previousKnowhow =
-    companionManager.getActiveKnowhow();
-
-  companionManager.clearActive();
-
-  console.log("[COMPANION_KNOWHOW_CLEARED]", {
-    previousKnowhowId: previousKnowhow?.id,
-    previousKnowhow: previousKnowhow?.name,
-  });
-
-  for (const pokemon of globalScene.getPlayerParty()) {
-    pokemon.calculateStats();
-  }
-
-  globalScene.gameData.saveSystem();
-
-    this.setNotice(
-      "이번 모험은 혼자 떠납니다.",
-    );
-
-    this.getUi().playSelect();
-
-    this.refreshList();
-    this.refreshDetail();
-
-    return true;
-  }
-
-  if (
-    entry.action === "SELECT"
-    && entry.trainerType != null
-  ) {
-    if (
-      !companionManager.isRecruited(
-        entry.trainerType,
-      )
-    ) {
-      this.setNotice(
-        `${entry.name}은(는) 아직 동료가 아닙니다.`,
-      );
-
+    if (companionManager.isRecruited(entry.trainerType)) {
+      this.setNotice(`${entry.name}은(는) 이미 동료입니다.`);
       this.getUi().playError();
       return true;
     }
 
-    const selected =
-  companionManager.setActive(entry.trainerType);
+    companionManager.recruit(entry.trainerType);
 
-if (selected) {
-  console.log("[COMPANION_KNOWHOW_ACTIVATED]", {
-    trainerType: entry.trainerType,
-    companion: entry.name,
-    knowhowId:
-      companionManager.getActiveKnowhowId(),
-    knowhow:
-      companionManager.getActiveKnowhow()?.name,
-  });
+    globalScene.gameData.saveSystem();
 
-  for (const pokemon of globalScene.getPlayerParty()) {
-    pokemon.calculateStats();
-  }
-}
-
-globalScene.gameData.saveSystem();
-
-this.setNotice(
-  `${entry.name}와 함께 모험을 떠납니다.`,
-);
+    this.setNotice(`${entry.name}이(가) 동료가 되었습니다!`);
 
     this.getUi().playSelect();
 
@@ -2557,8 +2576,78 @@ this.setNotice(
     return true;
   }
 
-  return false;
-}
+  private handleCafeConfirm(): boolean {
+    const list = this.getCurrentList();
+    const entry = list[this.listCursor] as RogueCompanionEntry;
+
+    if (!entry) {
+      this.getUi().playError();
+      return false;
+    }
+
+    if (entry.action === "SOLO") {
+      const previousKnowhow = companionManager.getActiveKnowhow();
+
+      companionManager.clearActive();
+
+      console.log("[COMPANION_KNOWHOW_CLEARED]", {
+        previousKnowhowId: previousKnowhow?.id,
+        previousKnowhow: previousKnowhow?.name,
+      });
+
+      for (const pokemon of globalScene.getPlayerParty()) {
+        pokemon.calculateStats();
+      }
+
+      globalScene.gameData.saveSystem();
+
+      this.setNotice("이번 모험은 혼자 떠납니다.");
+
+      this.getUi().playSelect();
+
+      this.refreshList();
+      this.refreshDetail();
+
+      return true;
+    }
+
+    if (entry.action === "SELECT" && entry.trainerType != null) {
+      if (!companionManager.isRecruited(entry.trainerType)) {
+        this.setNotice(`${entry.name}은(는) 아직 동료가 아닙니다.`);
+
+        this.getUi().playError();
+        return true;
+      }
+
+      const selected = companionManager.setActive(entry.trainerType);
+
+      if (selected) {
+        console.log("[COMPANION_KNOWHOW_ACTIVATED]", {
+          trainerType: entry.trainerType,
+          companion: entry.name,
+          knowhowId: companionManager.getActiveKnowhowId(),
+          knowhow: companionManager.getActiveKnowhow()?.name,
+        });
+
+        for (const pokemon of globalScene.getPlayerParty()) {
+          pokemon.calculateStats();
+        }
+      }
+
+      globalScene.gameData.saveSystem();
+
+      this.setNotice(`${entry.name}와 함께 모험을 떠납니다.`);
+
+      this.getUi().playSelect();
+
+      this.refreshList();
+      this.refreshDetail();
+
+      return true;
+    }
+
+    return false;
+  }
 
   private handleMineConfirm(): boolean {
     this.getUi().playSelect();
@@ -3513,28 +3602,71 @@ this.setNotice(
   }
 
   private getDefaultCompanionTrainerType(): TrainerType {
-  return globalScene.gameData.gender === PlayerGender.FEMALE
-    ? TrainerType.PLAYER_M_ALTERNATE
-    : TrainerType.PLAYER_F_ALTERNATE;
-}
+    return globalScene.gameData.gender === PlayerGender.FEMALE
+      ? TrainerType.PLAYER_M_ALTERNATE
+      : TrainerType.PLAYER_F_ALTERNATE;
+  }
 
-private getDefaultCompanionName(): string {
-  return globalScene.gameData.gender === PlayerGender.FEMALE
-    ? "남자 주인공"
-    : "여자 주인공";
-}
+  private getDefaultCompanionName(): string {
+    return globalScene.gameData.gender === PlayerGender.FEMALE ? "남자 주인공" : "여자 주인공";
+  }
 
   private getCurrentList(): Array<
-  | RogueShopListing
-  | RogueShopStorageEntry
-  | RogueBankActionEntry
-  | RogueBankCandySpeciesEntry
-  | RogueWorkshopEntry
-  | RogueCompanionEntry
-  | QuestEntry
-> {
+    | RogueShopListing
+    | RogueShopStorageEntry
+    | RogueBankActionEntry
+    | RogueBankCandySpeciesEntry
+    | RogueWorkshopEntry
+    | RogueCompanionEntry
+    | QuestEntry
+  > {
     if (this.selectingCandySpecies) {
       return this.candySpeciesList;
+    }
+
+    if (this.currentTab === "BRIEFING") {
+      if (globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER_BRIEFING_SEEN)) {
+        return [
+          {
+            recipeId: "briefing_done",
+            name: "회의 기록",
+            description: "첫 안내는 확인했습니다. 새로운 사건이 발생하면 회의실에 알림이 표시됩니다.",
+          },
+        ];
+      }
+      return [
+        {
+          recipeId: "briefing_story",
+          name: "정식 합류 기념 회의 !",
+          description:
+            "로그탐사대 정식 합류와 첫 구조 의뢰에 관한 이야기를 듣습니다. 선택하면 별도의 스토리 연출이 시작됩니다.",
+        },
+      ];
+    }
+
+    if (this.currentTab === "HEADQUARTERS") {
+      return [
+        {
+          recipeId: "hq_modes",
+          name: "게임 모드",
+          description: "튜토리얼, 클래식, 디 아더 등 각 모드의 진행 방식을 안내하는 시설입니다.",
+        },
+        {
+          recipeId: "hq_items",
+          name: "도구와 창고",
+          description: "로그센터 상점에서 도구를 구입하고 창고에서 보관하거나 꺼낼 수 있습니다.",
+        },
+        {
+          recipeId: "hq_companions",
+          name: "동료 시스템",
+          description: "동료는 탐사 중 전투를 지원합니다. 세부 설명은 정식 동료 튜토리얼에서 제공됩니다.",
+        },
+        {
+          recipeId: "hq_facilities",
+          name: "시설 해금",
+          description: "현재는 상점, 은행, 창고, 회의실, 본부를 이용할 수 있습니다.",
+        },
+      ];
     }
 
     if (this.currentTab === "SHOP") {
@@ -3594,30 +3726,23 @@ private getDefaultCompanionName(): string {
     }
 
     if (this.currentTab === "MEETING") {
-  return companionManager.getAvailableDefinitions().map(definition => ({
-    trainerType: definition.trainerType,
-    name: TrainerType[definition.trainerType],
-    description:
-      "조건을 달성하여 만남의광장에 찾아온 트레이너입니다.\n대화를 나누면 동료로 영입할 수 있습니다.",
-    action: "RECRUIT" as const,
-  }));
-}
+      return companionManager.getAvailableDefinitions().map(definition => ({
+        trainerType: definition.trainerType,
+        name: TrainerType[definition.trainerType],
+        description: "조건을 달성하여 만남의광장에 찾아온 트레이너입니다.\n대화를 나누면 동료로 영입할 수 있습니다.",
+        action: "RECRUIT" as const,
+      }));
+    }
 
-if (this.currentTab === "CAFE") {
-  const activeTrainerType =
-    companionManager.getActiveTrainerType();
+    if (this.currentTab === "CAFE") {
+      const activeTrainerType = companionManager.getActiveTrainerType();
 
-  const recruitedEntries: RogueCompanionEntry[] =
-    companionManager
-      .getRecruitedDefinitions()
-      .map(definition => {
-        const isActive =
-          activeTrainerType === definition.trainerType;
+      const recruitedEntries: RogueCompanionEntry[] = companionManager.getRecruitedDefinitions().map(definition => {
+        const isActive = activeTrainerType === definition.trainerType;
 
         return {
           trainerType: definition.trainerType,
-          name:
-            `${TrainerType[definition.trainerType]}${isActive ? " V" : ""}`,
+          name: `${TrainerType[definition.trainerType]}${isActive ? " V" : ""}`,
           description: isActive
             ? "현재 함께 모험 중인 동료입니다."
             : "영입한 동료입니다. 선택하면 함께 모험을 떠납니다.",
@@ -3625,20 +3750,17 @@ if (this.currentTab === "CAFE") {
         };
       });
 
-  const isSolo =
-    activeTrainerType === null;
+      const isSolo = activeTrainerType === null;
 
-  recruitedEntries.push({
-    trainerType: null,
-    name: `혼자 출발${isSolo ? " V" : ""}`,
-    description: isSolo
-      ? "현재 동료 없이 혼자 모험을 떠납니다."
-      : "이번 모험은 동료 없이 혼자 떠납니다.",
-    action: "SOLO",
-  });
+      recruitedEntries.push({
+        trainerType: null,
+        name: `혼자 출발${isSolo ? " V" : ""}`,
+        description: isSolo ? "현재 동료 없이 혼자 모험을 떠납니다." : "이번 모험은 동료 없이 혼자 떠납니다.",
+        action: "SOLO",
+      });
 
-  return recruitedEntries;
-}
+      return recruitedEntries;
+    }
 
     if (this.currentTab === "PRACTICE") {
       const cfg = globalScene.gameData.practiceDummyConfig ?? {};
@@ -3822,16 +3944,18 @@ if (this.currentTab === "CAFE") {
 
   private refreshTabTexts(): void {
     const labels: Record<RogueShopTab, string> = {
-  SHOP: "상점",
-  BANK: "은행",
-  STORAGE: "창고",
-  QUEST: "의뢰소",
-  PRACTICE: "연습",
-  WORKSHOP: "공방소",
-  MINE: "로그광산",
-  MEETING: "만남의광장",
-  CAFE: "동료카페",
-};
+      SHOP: "상점",
+      BANK: "은행",
+      STORAGE: "창고",
+      QUEST: "의뢰소",
+      PRACTICE: "연습",
+      WORKSHOP: "공방소",
+      MINE: "로그광산",
+      MEETING: "만남의광장",
+      CAFE: "동료카페",
+      BRIEFING: "회의실",
+      HEADQUARTERS: "본부",
+    };
 
     for (let i = 0; i < this.tabTexts.length; i++) {
       const visibleIndex = this.tabScroll + i;
@@ -3908,21 +4032,18 @@ if (this.currentTab === "CAFE") {
       }
 
       // 공방소
-      else if (this.currentTab === "WORKSHOP") {
+      else if (this.currentTab === "BRIEFING" || this.currentTab === "HEADQUARTERS") {
+        textObj.setText((row as RogueWorkshopEntry).name);
+      } else if (this.currentTab === "WORKSHOP") {
         const workshopEntry = row as RogueWorkshopEntry;
         textObj.setText(workshopEntry.name);
       } else if (this.currentTab === "MINE") {
         const mineEntry = row as RogueWorkshopEntry;
         textObj.setText(mineEntry.name);
+      } else if (this.currentTab === "MEETING" || this.currentTab === "CAFE") {
+        const companionEntry = row as RogueCompanionEntry;
+        textObj.setText(companionEntry.name);
       }
-
-      else if (
-  this.currentTab === "MEETING"
-  || this.currentTab === "CAFE"
-) {
-  const companionEntry = row as RogueCompanionEntry;
-  textObj.setText(companionEntry.name);
-}
 
       // 의뢰
       else if (this.currentTab === "QUEST") {
@@ -4103,7 +4224,7 @@ if (this.currentTab === "CAFE") {
       if (listing.specialAction === "COUPON") {
         this.detailTitleText.setText("쿠폰 교환소");
         this.detailBodyText.setText(
-          "이벤트 및 기념 쿠폰 코드를\n" + "입력하여 특별한 보상을\n" + "받을 수 있습니다.\n\n" + "[확인] 쿠폰 입력",
+          "이벤트 및 기념 쿠폰 코드를\n입력하여 특별한 보상을\n받을 수 있습니다.\n\n[확인] 쿠폰 입력",
         );
         return;
       }
@@ -4229,105 +4350,76 @@ if (this.currentTab === "CAFE") {
       return;
     }
 
+    if (this.currentTab === "BRIEFING" || this.currentTab === "HEADQUARTERS") {
+      const entry = selected as RogueWorkshopEntry;
+      this.detailTitleText.setText(entry.name);
+      this.detailBodyText.setText(entry.description);
+      this.companionPortrait.setVisible(false);
+      this.companionKnowhowTitleText.setVisible(false);
+      this.companionKnowhowBodyText.setVisible(false);
+      return;
+    }
+
     if (this.currentTab === "MEETING") {
-  const companionEntry =
-    selected as RogueCompanionEntry;
+      const companionEntry = selected as RogueCompanionEntry;
 
-  this.detailTitleText.setText(
-    companionEntry.name,
-  );
-  this.detailBodyText.setText(
-    companionEntry.description,
-  );
+      this.detailTitleText.setText(companionEntry.name);
+      this.detailBodyText.setText(companionEntry.description);
 
-  this.companionPortrait.setVisible(false);
-  this.companionKnowhowTitleText.setVisible(false);
-  this.companionKnowhowBodyText.setVisible(false);
+      this.companionPortrait.setVisible(false);
+      this.companionKnowhowTitleText.setVisible(false);
+      this.companionKnowhowBodyText.setVisible(false);
 
-  return;
-}
+      return;
+    }
 
-if (this.currentTab === "CAFE") {
-  const companionEntry =
-    selected as RogueCompanionEntry;
+    if (this.currentTab === "CAFE") {
+      const companionEntry = selected as RogueCompanionEntry;
 
-  this.detailTitleText.setText(
-    companionEntry.name,
-  );
+      this.detailTitleText.setText(companionEntry.name);
 
-  // 혼자 출발
-  if (companionEntry.trainerType === null) {
-    this.detailBodyText
-      .setText(companionEntry.description)
-      .setVisible(true);
+      // 혼자 출발
+      if (companionEntry.trainerType === null) {
+        this.detailBodyText.setText(companionEntry.description).setVisible(true);
 
-    this.companionPortrait.setVisible(false);
-    this.companionKnowhowTitleText.setVisible(false);
-    this.companionKnowhowBodyText.setVisible(false);
+        this.companionPortrait.setVisible(false);
+        this.companionKnowhowTitleText.setVisible(false);
+        this.companionKnowhowBodyText.setVisible(false);
 
-    return;
-  }
+        return;
+      }
 
-  const definition =
-    companionManager.getDefinition(
-      companionEntry.trainerType,
-    );
+      const definition = companionManager.getDefinition(companionEntry.trainerType);
 
-  const trainerConfig =
-  new TrainerConfig(companionEntry.trainerType);
+      const trainerConfig = new TrainerConfig(companionEntry.trainerType);
 
-const variant =
-  definition?.variant ?? TrainerVariant.DEFAULT;
+      const variant = definition?.variant ?? TrainerVariant.DEFAULT;
 
-const spriteKey =
-  definition?.frontSpriteKey
-  ?? trainerConfig.getSpriteKey(
-    variant === TrainerVariant.FEMALE,
-  );
+      const spriteKey = definition?.frontSpriteKey ?? trainerConfig.getSpriteKey(variant === TrainerVariant.FEMALE);
 
-trainerConfig.loadAssets(variant).then(() => {
-  this.companionPortrait
-    .setTexture(spriteKey);
+      trainerConfig.loadAssets(variant).then(() => {
+        this.companionPortrait.setTexture(spriteKey);
 
-  const frame =
-    this.companionPortrait.frame;
+        const frame = this.companionPortrait.frame;
 
-  const maxWidth = 42;
-  const maxHeight = 76;
+        const maxWidth = 42;
+        const maxHeight = 76;
 
-  const scale = Math.min(
-    maxWidth / frame.width,
-    maxHeight / frame.height,
-  );
+        const scale = Math.min(maxWidth / frame.width, maxHeight / frame.height);
 
-  this.companionPortrait
-    .setScale(scale)
-    .setVisible(true);
-});
+        this.companionPortrait.setScale(scale).setVisible(true);
+      });
 
-  const knowhow =
-    definition?.knowhowId !== undefined
-      ? getTrainerKnowhow(definition.knowhowId)
-      : undefined;
+      const knowhow = definition?.knowhowId !== undefined ? getTrainerKnowhow(definition.knowhowId) : undefined;
 
-  this.detailBodyText.setVisible(false);
+      this.detailBodyText.setVisible(false);
 
-  this.companionKnowhowTitleText
-    .setText(
-      knowhow
-        ? `노하우: ${knowhow.name}`
-        : "노하우: 없음",
-    )
-    .setVisible(true);
+      this.companionKnowhowTitleText.setText(knowhow ? `노하우: ${knowhow.name}` : "노하우: 없음").setVisible(true);
 
-  this.companionKnowhowBodyText
-    .setText(
-      knowhow?.description ?? "",
-    )
-    .setVisible(true);
+      this.companionKnowhowBodyText.setText(knowhow?.description ?? "").setVisible(true);
 
-  return;
-}
+      return;
+    }
 
     if (this.currentTab === "PRACTICE") {
       this.detailTitleText.setText("연습센터");
@@ -4408,6 +4500,8 @@ trainerConfig.loadAssets(variant).then(() => {
       this.footerHelpText.setText(`←→ 탭 이동  ↑↓ 설정 선택  Z 확인  ${exitLabel}`);
     } else if (this.currentTab === "WORKSHOP") {
       this.footerHelpText.setText(`←→ 탭 이동  ↑↓ 선택  Z 제작대 열기  ${exitLabel}`);
+    } else if (this.currentTab === "BRIEFING" || this.currentTab === "HEADQUARTERS") {
+      this.footerHelpText.setText(`←→ 시설 이동  ↑↓ 선택  Z 내용 확인  ${exitLabel}`);
     } else if (this.currentTab === "MINE") {
       this.footerHelpText.setText(`←→ 탭 이동  Z 로그광산 입장  ${exitLabel}`);
     } else {

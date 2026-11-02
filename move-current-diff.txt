@@ -1,0 +1,199 @@
+diff --git a/src/data/moves/move.ts b/src/data/moves/move.ts
+index 446559df..3a4c247b 100644
+--- a/src/data/moves/move.ts
++++ b/src/data/moves/move.ts
+@@ -189,7 +189,8 @@ export abstract class Move implements Localizable {
+   private readonly restrictions: MoveRestriction[] = [];
+   /** The move's {@linkcode MoveFlags} */
+   private flags = 0;
+-  private flags2 = 0;
++  // 확장 MoveFlags2는 비트마스크 대신 숫자 ID 목록으로 보관한다.
++  private flags2List = "";
+   private nameAppend = "";
+ 
+   /**
+@@ -536,7 +537,10 @@ export abstract class Move implements Localizable {
+         list.push(key);
+       }
+       if (!on) {
+-        list.splice(list.indexOf(key), 1);
++        const index = list.indexOf(key);
++        if (index !== -1) {
++          list.splice(index, 1);
++        }
+       }
+       this.flags2List = list.join(",");
+     }
+@@ -901,7 +905,7 @@ export abstract class Move implements Localizable {
+         const hasPunchingGlove =
+           existingPunchingGloveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(PunchingGloveModifier, this.player, user) as PunchingGloveModifier | null));
++            && (globalScene.applyModifier(PunchingGloveModifier, user.isPlayer(), user) as PunchingGloveModifier | null));
+ 
+         // 🔹 SlicingMoveModifier (베기기술용)
+         const existingSlicingMoveModifier = globalScene
+@@ -911,16 +915,16 @@ export abstract class Move implements Localizable {
+         const hasSlicingCharm =
+           existingSlicingMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(SlicingMoveModifier, this.player, user) as SlicingMoveModifier | null));
++            && (globalScene.applyModifier(SlicingMoveModifier, user.isPlayer(), user) as SlicingMoveModifier | null));
+ 
+         const existingBitingMoveModifier = globalScene
+           .getModifiers(BitingMoveModifier)
+           .find(mod => mod.pokemonId === user.id);
+ 
+         const hasPowerTeeth =
+-          existingSlicingMoveModifier
++          existingBitingMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(BitingMoveModifier, this.player, user) as BitingMoveModifier | null));
++            && (globalScene.applyModifier(BitingMoveModifier, user.isPlayer(), user) as BitingMoveModifier | null));
+ 
+         const existingHeadMoveModifier = globalScene
+           .getModifiers(HeadMoveModifier)
+@@ -929,7 +933,7 @@ export abstract class Move implements Localizable {
+         const hasPowerHelmet =
+           existingHeadMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(HeadMoveModifier, this.player, user) as HeadMoveModifier | null));
++            && (globalScene.applyModifier(HeadMoveModifier, user.isPlayer(), user) as HeadMoveModifier | null));
+ 
+         const existingHornMoveModifier = globalScene
+           .getModifiers(HornMoveModifier)
+@@ -938,7 +942,7 @@ export abstract class Move implements Localizable {
+         const hasHornHelmet =
+           existingHornMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(HornMoveModifier, this.player, user) as HornMoveModifier | null));
++            && (globalScene.applyModifier(HornMoveModifier, user.isPlayer(), user) as HornMoveModifier | null));
+ 
+         const existingKickMoveModifier = globalScene
+           .getModifiers(KickMoveModifier)
+@@ -947,7 +951,7 @@ export abstract class Move implements Localizable {
+         const hasPowerProtector =
+           existingKickMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(KickMoveModifier, this.player, user) as KickMoveModifier | null));
++            && (globalScene.applyModifier(KickMoveModifier, user.isPlayer(), user) as KickMoveModifier | null));
+ 
+         const existingSpearMoveModifier = globalScene
+           .getModifiers(SpearMoveModifier)
+@@ -956,7 +960,7 @@ export abstract class Move implements Localizable {
+         const hasSpikeSpear =
+           existingSpearMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(SpearMoveModifier, this.player, user) as SpearMoveModifier | null));
++            && (globalScene.applyModifier(SpearMoveModifier, user.isPlayer(), user) as SpearMoveModifier | null));
+ 
+         const existingWingMoveModifier = globalScene
+           .getModifiers(WingMoveModifier)
+@@ -965,7 +969,7 @@ export abstract class Move implements Localizable {
+         const hasPowerFeather =
+           existingWingMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(WingMoveModifier, this.player, user) as WingMoveModifier | null));
++            && (globalScene.applyModifier(WingMoveModifier, user.isPlayer(), user) as WingMoveModifier | null));
+ 
+         const existingHammerMoveModifier = globalScene
+           .getModifiers(HammerMoveModifier)
+@@ -974,7 +978,7 @@ export abstract class Move implements Localizable {
+         const hasMightyHammer =
+           existingHammerMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(HammerMoveModifier, this.player, user) as HammerMoveModifier | null));
++            && (globalScene.applyModifier(HammerMoveModifier, user.isPlayer(), user) as HammerMoveModifier | null));
+ 
+         const existingClawMoveModifier = globalScene
+           .getModifiers(ClawMoveModifier)
+@@ -983,7 +987,7 @@ export abstract class Move implements Localizable {
+         const hasPowerClaw =
+           existingClawMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(ClawMoveModifier, this.player, user) as ClawMoveModifier | null));
++            && (globalScene.applyModifier(ClawMoveModifier, user.isPlayer(), user) as ClawMoveModifier | null));
+ 
+         const existingPinchMoveModifier = globalScene
+           .getModifiers(PinchMoveModifier)
+@@ -992,7 +996,7 @@ export abstract class Move implements Localizable {
+         const hasPowerPinch =
+           existingPinchMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(PinchMoveModifier, this.player, user) as PinchMoveModifier | null));
++            && (globalScene.applyModifier(PinchMoveModifier, user.isPlayer(), user) as PinchMoveModifier | null));
+ 
+         const existingBeakMoveModifier = globalScene
+           .getModifiers(BeakMoveModifier)
+@@ -1001,7 +1005,7 @@ export abstract class Move implements Localizable {
+         const hasHardenBeak =
+           existingBeakMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(BeakMoveModifier, this.player, user) as BeakMoveModifier | null));
++            && (globalScene.applyModifier(BeakMoveModifier, user.isPlayer(), user) as BeakMoveModifier | null));
+ 
+         const existingDashMoveModifier = globalScene
+           .getModifiers(DashMoveModifier)
+@@ -1010,7 +1014,7 @@ export abstract class Move implements Localizable {
+         const hasFastBoots =
+           existingDashMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(DashMoveModifier, this.player, user) as DashMoveModifier | null));
++            && (globalScene.applyModifier(DashMoveModifier, user.isPlayer(), user) as DashMoveModifier | null));
+ 
+         const existingSpinMoveModifier = globalScene
+           .getModifiers(SpinMoveModifier)
+@@ -1019,7 +1023,7 @@ export abstract class Move implements Localizable {
+         const hasSpinTop =
+           existingSpinMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(SpinMoveModifier, this.player, user) as SpinMoveModifier | null));
++            && (globalScene.applyModifier(SpinMoveModifier, user.isPlayer(), user) as SpinMoveModifier | null));
+ 
+         const existingDrillMoveModifier = globalScene
+           .getModifiers(DrillMoveModifier)
+@@ -1028,7 +1032,7 @@ export abstract class Move implements Localizable {
+         const hasPowerDrill =
+           existingDrillMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(DrillMoveModifier, this.player, user) as DrillMoveModifier | null));
++            && (globalScene.applyModifier(DrillMoveModifier, user.isPlayer(), user) as DrillMoveModifier | null));
+ 
+         const existingWhipMoveModifier = globalScene
+           .getModifiers(WhipMoveModifier)
+@@ -1037,7 +1041,7 @@ export abstract class Move implements Localizable {
+         const hasPowerRope =
+           existingWhipMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(WhipMoveModifier, this.player, user) as WhipMoveModifier | null));
++            && (globalScene.applyModifier(WhipMoveModifier, user.isPlayer(), user) as WhipMoveModifier | null));
+ 
+         const existingWheelMoveModifier = globalScene
+           .getModifiers(WheelMoveModifier)
+@@ -1046,7 +1050,7 @@ export abstract class Move implements Localizable {
+         const hasPowerWheel =
+           existingWheelMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(WheelMoveModifier, this.player, user) as WheelMoveModifier | null));
++            && (globalScene.applyModifier(WheelMoveModifier, user.isPlayer(), user) as WheelMoveModifier | null));
+ 
+         const existingTailMoveModifier = globalScene
+           .getModifiers(TailMoveModifier)
+@@ -1055,7 +1059,7 @@ export abstract class Move implements Localizable {
+         const hasPowerTail =
+           existingTailMoveModifier
+           || (user.isPlayer()
+-            && (globalScene.applyModifier(TailMoveModifier, this.player, user) as TailMoveModifier | null));
++            && (globalScene.applyModifier(TailMoveModifier, user.isPlayer(), user) as TailMoveModifier | null));
+ 
+         // ✅ PunchingGlove 효과
+         if (hasPunchingGlove && user.currentMove && user.currentMove.hasFlag(MoveFlags.PUNCHING_MOVE)) {
+@@ -1149,7 +1153,7 @@ export abstract class Move implements Localizable {
+           console.log(`[DrillMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+         }
+ 
+-        if (hasPowerRope && user.currentMove && user.currentMove.hasFlag(MoveFlags2.ROPE_MOVE)) {
++        if (hasPowerRope && user.currentMove && user.currentMove.hasFlag(MoveFlags2.WHIP_MOVE)) {
+           user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+           user.increaseMovePower(1.3);
+           console.log(`[WhipMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);

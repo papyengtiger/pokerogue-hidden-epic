@@ -8,5 +8,6 @@ export enum GameModes {
   CHALLENGE,
   PRACTICE,
   TUTORIAL,
+  THEOTHER,
   ANOTHER,
 }

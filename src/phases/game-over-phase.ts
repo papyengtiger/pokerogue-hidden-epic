@@ -7,6 +7,7 @@ import { bypassLogin } from "#constants/app-constants";
 import { modifierTypes } from "#data/data-lists";
 import { getCharVariantFromDialogue } from "#data/dialogue";
 import type { PokemonSpecies } from "#data/pokemon-species";
+import { theOther300Story } from "#data/theother/theother-300-story";
 import { BattleType } from "#enums/battle-type";
 import { GameDifficulty } from "#enums/game-difficulty";
 import { GameModes } from "#enums/game-modes";
@@ -377,6 +378,148 @@ export class GameOverPhase extends BattlePhase {
               globalScene.phaseManager.unshiftPhase(endCardPhase);
               clear(endCardPhase);
             }
+          } else if (
+            this.isVictory
+            && !isQuestClear
+            && globalScene.gameMode.modeId === GameModes.TUTORIAL
+            && globalScene.currentBattle.waveIndex === 50
+          ) {
+            // 튜토리얼: 50층 마지막 전투를 이긴 뒤 환영 대사 → 전용 엔딩카드.
+            // 이전 웨이브의 진입 이벤트에서는 캡틴R을 등장시키지 않습니다.
+            const finishTutorialEnding = (): void => {
+              globalScene.ui.fadeOut(500).then(() => {
+                const endCardPhase = globalScene.phaseManager.create("EndCardPhase");
+                globalScene.phaseManager.unshiftPhase(endCardPhase);
+                void clear(endCardPhase);
+              });
+            };
+
+            const endingKeys = [
+              "ending01",
+              "ending02",
+              "ending03",
+              "ending04",
+              "ending05",
+              "ending06",
+              "ending07",
+              "ending08",
+              "ending09",
+            ];
+
+            const showEndingLine = (index: number): void => {
+              if (index >= endingKeys.length) {
+                finishTutorialEnding();
+                return;
+              }
+
+              const key = `tutorialStory:${endingKeys[index]}`;
+              if (!i18next.exists(key)) {
+                console.warn("[TUTORIAL_ENDING_MISSING]", key);
+                showEndingLine(index + 1);
+                return;
+              }
+              globalScene.ui.showText(i18next.t(key), null, () => showEndingLine(index + 1), 0, true);
+            };
+
+            globalScene.ui.fadeIn(500).then(() => showEndingLine(0));
+          } else if (
+            this.isVictory
+            && !isQuestClear
+            && globalScene.gameMode.modeId === GameModes.THEOTHER
+            && globalScene.currentBattle.waveIndex === 300
+          ) {
+            // 디 아더 최종전 승리 뒤에만 연출. 다른 모드 엔딩은 그대로 유지합니다.
+            const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+            const lines: readonly (readonly [string, string])[] = [
+              ...theOther300Story.rayquazaWin,
+              ...theOther300Story.legendsTalk,
+              ...(female ? theOther300Story.endingFemale : theOther300Story.endingMale),
+            ];
+            // 기존 모든 엔딩 대사가 끝나면 성별 전용 CG를 표시합니다.
+            // 이미지를 넘긴 후에만 기존 보상/저장 흐름(clear)을 재개합니다.
+            const showTheOtherEndingCg = (): void => {
+              const imageKey = female ? "theother_ending_female" : "theother_ending_male";
+              const imagePath = `/images/cg/${imageKey}.png`;
+
+              const displayImage = (): void => {
+                const texture = globalScene.textures.get(imageKey);
+                if (!texture || !globalScene.textures.exists(imageKey)) {
+                  console.warn("[THEOTHER_ENDING_CG_MISSING]", imagePath);
+                  void clear();
+                  return;
+                }
+
+                globalScene.ui.clearText();
+                const handler = globalScene.ui.getMessageHandler();
+                handler.bg.setVisible(false);
+                handler.nameBoxContainer.setVisible(false);
+
+                const cg = globalScene.add.image(0, 0, imageKey).setOrigin(0.5);
+                const frame = texture.get();
+                const width = frame.width || 1;
+                const height = frame.height || 1;
+                cg.setPosition(globalScene.scaledCanvas.width / 2, globalScene.scaledCanvas.height / 2);
+                cg.setScale(Math.min(globalScene.scaledCanvas.width / width, globalScene.scaledCanvas.height / height));
+                globalScene.field.add(cg);
+
+                let finished = false;
+                globalScene.ui.showText(
+                  "",
+                  null,
+                  () => {
+                    if (finished) {
+                      return;
+                    }
+                    finished = true;
+                    globalScene.ui.fadeOut(500).then(() => {
+                      cg.destroy();
+                      handler.bg.setVisible(true);
+                      handler.nameBoxContainer.setVisible(true);
+                      void clear();
+                    });
+                  },
+                  null,
+                  true,
+                );
+                void globalScene.ui.fadeIn(500);
+              };
+
+              if (globalScene.textures.exists(imageKey)) {
+                displayImage();
+                return;
+              }
+
+              // 로딩에 실패해도 게임 클리어/보상은 정상 진행되게 합니다.
+              const onSuccess = (): void => {
+                globalScene.load.off("loaderror", onError);
+                displayImage();
+              };
+              const onError = (file: { key?: string }): void => {
+                if (file.key !== imageKey) {
+                  return;
+                }
+                globalScene.load.off(`filecomplete-image-${imageKey}`, onSuccess);
+                globalScene.load.off("loaderror", onError);
+                console.warn("[THEOTHER_ENDING_CG_LOAD_FAILED]", imagePath);
+                void clear();
+              };
+              globalScene.load.once(`filecomplete-image-${imageKey}`, onSuccess);
+              globalScene.load.on("loaderror", onError);
+              globalScene.load.image(imageKey, imagePath);
+              if (!globalScene.load.isLoading()) {
+                globalScene.load.start();
+              }
+            };
+
+            const advance = (index: number): void => {
+              if (index >= lines.length) {
+                showTheOtherEndingCg();
+                return;
+              }
+              const [speaker, message] = lines[index];
+              globalScene.ui.showDialogue(message, speaker, null, () => advance(index + 1));
+            };
+            globalScene.ui.fadeIn(500).then(() => advance(0));
           } else {
             clear();
           }
@@ -459,6 +602,11 @@ export class GameOverPhase extends BattlePhase {
         globalScene.gameData.unlocks[Unlockables.ANOTHER_MODE] = true;
 
         console.log("[ANOTHER_MODE_UNLOCKED]");
+      }
+      // 로그센터는 클래식 클리어 시 함께 해금하며, 기존 해금 값은 유지합니다.
+      if (!globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER)) {
+        globalScene.gameData.unlocks[Unlockables.LOG_CENTER] = true;
+        console.log("[LOG_CENTER_UNLOCKED]");
       }
       if (
         globalScene.getPlayerParty().filter(p => p.fusionSpecies).length > 0

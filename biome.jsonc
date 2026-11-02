@@ -5,7 +5,7 @@
  */
 
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -21,26 +21,21 @@
   },
   "files": {
     "ignoreUnknown": true,
-    // Adding folders to the ignore list is GREAT for performance because it prevents biome from descending into them
-    // and having to verify whether each individual file is ignored
     "includes": [
       "**",
       "!!.github",
+      "!!android",
+      "!!release",
+      "!!biome-test",
       "!!assets",
       "!!coverage",
       "!!dist",
       "!!docs",
       "!!locales",
       "!!typedoc",
-      // TODO: lint css and html?
       "!!*.css",
       "!!*.html",
-      // this file is too big
       "!src/data/balance/tm-species-map.ts",
-      // there's some sort of bug when Biome parses this file
-      // relating to recursive variable assignment
-      // cf https://github.com/biomejs/biome/issues/8204
-      // TODO: remove this exclusion when the bug is fixed
       "!!test/test-utils/setup/test-end-log.ts"
     ]
   },
@@ -60,7 +55,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "noUndeclaredVariables": "error",
         "useParseIntRadix": "off",
@@ -74,7 +69,7 @@
         },
         "noUnusedFunctionParameters": "error",
         "noUnusedLabels": "error",
-        "noPrivateImports": "error",
+        "noPrivateImports": "off",
         "useSingleJsDocAsterisk": "error",
         "useJsonImportAttributes": "off" // "Import attributes are only supported when the '--module' option is set to 'esnext', 'node18', 'nodenext', or 'preserve'. ts(2823)"
       },
@@ -208,7 +203,11 @@
         "noConstantBinaryExpressions": "error",
         "noTsIgnore": "error",
         "useIterableCallbackReturn": "warn", // TODO: Refactor and change to error
-        "noNonNullAssertedOptionalChain": "warn" // TODO: Refactor and change to error
+        "noNonNullAssertedOptionalChain": "warn", // TODO: Refactor and change to error
+        "noProto": "error",
+        "noShadow": "warn",
+        "noDuplicateDependencies": "error",
+        "noImportCycles": "off"
       },
       "complexity": {
         "useWhile": "error",
@@ -223,7 +222,13 @@
         "noThisInStatic": "error",
         "noUselessThisAlias": "error",
         "noUselessTernary": "error",
-        "useIndexOf": "error"
+        "useIndexOf": "error",
+        "useArrayFind": "error",
+        "noUselessUndefined": "error",
+        "useMaxParams": {
+          "level": "info", // TODO: Change to "error"... eventually...
+          "options": { "max": 7 }
+        }
       },
       "performance": {
         "noNamespaceImport": "error",
@@ -231,18 +236,7 @@
         "noBarrelFile": "error"
       },
       "nursery": {
-        "noProto": "error",
-        "useFind": "error",
-        "noUselessUndefined": "error",
-        "useMaxParams": {
-          "level": "info", // TODO: Change to "error"... eventually...
-          "options": { "max": 7 }
-        },
-        "noShadow": "warn", // TODO: refactor and make "error"
-        "noDuplicateDependencies": "error",
-        "noImportCycles": "error",
-        // TODO: Change to error once promises are used properly
-        "noMisusedPromises": "info"
+        "noMisusedPromises": "off"
       }
     }
   },

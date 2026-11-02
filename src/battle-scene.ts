@@ -286,6 +286,8 @@ export class BattleScene extends SceneBase {
   public companionTrainerSprite: Phaser.GameObjects.Sprite | null = null;
   public lastEnemyTrainer: Trainer | null;
   public currentBattle: Battle;
+  /** 디 아더 300층: 0=피아나, 1=레쿠쟈 첫 대결, 2=레쿠쟈 최종 대결. */
+  public theOther300Stage: 0 | 1 | 2 = 0;
   public pokeballCounts: PokeballCounts;
   public money: number;
   public pokemonInfoContainer: PokemonInfoContainer;
@@ -1785,19 +1787,27 @@ export class BattleScene extends SceneBase {
 
     let battleConfig: FixedBattleConfig | null = null;
 
-    const isRobokidWave =
-      this.gameMode.modeId === GameModes.ANOTHER && [25, 55, 95, 145, 195, 245, 295].includes(newWaveIndex);
+    // 300층 피아나 승리 후에는 같은 층에서 레쿠쟈 야생 보스전으로 전환.
+    const isTheOtherRayquaza =
+      this.gameMode.modeId === GameModes.THEOTHER && newWaveIndex === 300 && this.theOther300Stage > 0;
+
+    // 디 아더 스토리 몬스터전. 피아나 고정 트레이너전(245, 295, 300)은 제외.
+    const isTheOtherMonsterWave =
+      this.gameMode.modeId === GameModes.THEOTHER && [8, 95, 145, 195].includes(newWaveIndex);
 
     this.resetSeed(newWaveIndex);
 
     const playerField = this.getPlayerField();
 
-    if (isRobokidWave) {
+    if (isTheOtherRayquaza) {
+      newBattleType = BattleType.WILD;
+      newDouble = false;
+    } else if (isTheOtherMonsterWave) {
       // 로보키드는 직접 싸우는 미스터리몬스터
       newBattleType = BattleType.WILD;
       newDouble = false;
 
-      console.log("[ANOTHER_ROBOKID_BATTLE_SELECTED]", {
+      console.log("[THEOTHER_MONSTER_BATTLE_SELECTED]", {
         wave: newWaveIndex,
       });
     } else if (this.gameMode.isFixedBattle(newWaveIndex) && trainerData === undefined) {
@@ -1917,7 +1927,7 @@ export class BattleScene extends SceneBase {
       // Check for mystery encounter
       // Can only occur in place of a standard (non-boss) wild battle, waves 10-180
       if (
-        !isRobokidWave
+        !isTheOtherMonsterWave
         && !Overrides.BATTLE_TYPE_OVERRIDE
         && (this.isWaveMysteryEncounter(newBattleType, newWaveIndex) || newBattleType === BattleType.MYSTERY_ENCOUNTER)
       ) {
@@ -5124,7 +5134,7 @@ export class BattleScene extends SceneBase {
       && this.mysteryEncounterSaveData.queuedEncounters.length > 0
     ) {
       let i = 0;
-      while (i < this.mysteryEncounterSaveData.queuedEncounters.length && !!encounter) {
+      while (i < this.mysteryEncounterSaveData.queuedEncounters.length && encounter) {
         const candidate = this.mysteryEncounterSaveData.queuedEncounters[i];
         const forcedChance = candidate.spawnPercent;
         if (randSeedInt(100) < forcedChance) {

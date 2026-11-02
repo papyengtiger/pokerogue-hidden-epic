@@ -501,3 +501,71 @@ export const monthlyFixedBattles: FixedBattleConfigs = {
       ]),
     ),
 };
+
+/**
+ * 디 아더(THEOTHER) 전용 고정 트레이너전.
+ * 클래식의 빌런전은 유지하지만, 라이벌전과 기존 사천왕/챔피언 층은
+ * 디 아더 스토리 및 190~200층 구간과 겹치므로 제거합니다.
+ * 5층 반바지꼬마/미니스커트는 클래식 설정을 그대로 유지합니다.
+ *
+ * 로보키드/M.F.O/N.O.2.4.8은 EncounterPhase에서 별도로 생성해야 합니다.
+ * 300층 피아나 승리 이후 레쿠쟈 연속 전투 또한 별도 페이즈에서 처리합니다.
+ */
+export const theOtherFixedBattles: FixedBattleConfigs = {
+  ...Object.fromEntries(
+    Object.entries(classicFixedBattles).filter(([key]) => {
+      const wave = Number(key);
+      const excludedStoryWaves = [
+        ClassicFixedBossWaves.RIVAL_1,
+        ClassicFixedBossWaves.RIVAL_2,
+        ClassicFixedBossWaves.RIVAL_3,
+        ClassicFixedBossWaves.RIVAL_4,
+        ClassicFixedBossWaves.RIVAL_5,
+        ClassicFixedBossWaves.RIVAL_6,
+        ClassicFixedBossWaves.ELITE_FOUR_1,
+        ClassicFixedBossWaves.ELITE_FOUR_2,
+        ClassicFixedBossWaves.ELITE_FOUR_3,
+        ClassicFixedBossWaves.ELITE_FOUR_4,
+        ClassicFixedBossWaves.CHAMPION,
+      ];
+      return wave <= 200 && !excludedStoryWaves.includes(wave);
+    }),
+  ),
+
+  // M.F.O는 트레이너 역할만 담당하며 로보키드 3/6대를 차례대로 내보냅니다.
+  25: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(() => new Trainer(TrainerType.MFO, TrainerVariant.DEFAULT)),
+  55: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(() => new Trainer(TrainerType.MFO_55, TrainerVariant.DEFAULT)),
+
+  // 1차 사천왕/챔피언 (190~200층)
+  190: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_1],
+  192: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_2],
+  194: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_3],
+  196: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_4],
+  200: classicFixedBattles[ClassicFixedBossWaves.CHAMPION],
+
+  // 피아나 1차전 — 실제 TrainerType.ZINNIA 등록 확인 필요
+  245: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(() => new Trainer(TrainerType.ZINNIA, TrainerVariant.DEFAULT)),
+
+  // 2차 사천왕/챔피언 (280~290층)
+  280: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_1],
+  282: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_2],
+  284: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_3],
+  286: classicFixedBattles[ClassicFixedBossWaves.ELITE_FOUR_4],
+  290: classicFixedBattles[ClassicFixedBossWaves.CHAMPION],
+
+  // 피아나 2차전
+  295: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(() => new Trainer(TrainerType.ZINNIA, TrainerVariant.DEFAULT)),
+
+  // 피아나 최종전. 이후 레쿠쟈는 별도 페이즈에서 연속 등장시켜야 합니다.
+  300: new FixedBattleConfig()
+    .setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(() => new Trainer(TrainerType.ZINNIA, TrainerVariant.DEFAULT)),
+};

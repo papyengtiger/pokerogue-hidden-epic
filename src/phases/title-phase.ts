@@ -60,6 +60,20 @@ export class TitlePhase extends Phase {
 
     console.log("[TITLE_PHASE] 출석체크 호출 완료");
 
+    // 이전 빌드에서 클래식을 이미 클리어한 사용자의 로그센터 해금을 보정합니다.
+    // 게임모드 enum 값 및 기존 해금 번호는 변경하지 않습니다.
+    if (
+      globalScene.gameData.isUnlocked(Unlockables.ANOTHER_MODE)
+      && !globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER)
+    ) {
+      globalScene.gameData.unlocks[Unlockables.LOG_CENTER] = true;
+      try {
+        await globalScene.gameData.saveSystem();
+      } catch (error) {
+        console.error("[LOG_CENTER_MIGRATION_SAVE_FAILED]", error);
+      }
+    }
+
     await this.showOptions(lastSlot);
   }
 
@@ -193,15 +207,10 @@ export class TitlePhase extends Phase {
           // ========================================
           if (gameData.isUnlocked(Unlockables.ANOTHER_MODE)) {
             options.push({
-              label: "어나더 (추후 업데이트 예정)",
+              label: "디 아더 (The Other)",
               handler: () => {
-                globalScene.ui.setMode(UiMode.MESSAGE);
-                globalScene.ui.showText("어나더 모드는 추후 업데이트에서 공개됩니다.", null, () => {
-                  globalScene.ui.setMode(UiMode.OPTION_SELECT, {
-                    options,
-                    maxOptions: 7,
-                  });
-                });
+                // 디 아더 전용 모드 ID로 시작해야 고정 트레이너전과 스토리 몬스터전이 적용됩니다.
+                setModeAndEnd(GameModes.THEOTHER);
                 return true;
               },
             });
@@ -319,8 +328,20 @@ export class TitlePhase extends Phase {
         keepOpen: true,
       },
       {
-        label: i18next.t("menu:logShop"),
+        // 첫 방문 알림은 2단계의 회의실 스토리 이벤트를 확인할 때 해제합니다.
+        label:
+          globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER)
+          && !globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER_BRIEFING_SEEN)
+            ? `${i18next.t("menu:logShop")} !`
+            : i18next.t("menu:logShop"),
         handler: () => {
+          if (!globalScene.gameData.isUnlocked(Unlockables.LOG_CENTER)) {
+            globalScene.ui.setMode(UiMode.MESSAGE);
+            globalScene.ui.showText("로그센터는 클래식 모드 클리어 후 이용할 수 있습니다.", null, () => {
+              void this.showOptions(lastSessionSlot);
+            });
+            return true;
+          }
           this.enteringRogueShop = true;
           globalScene.ui.setMode(UiMode.MESSAGE);
           globalScene.ui.clearText();

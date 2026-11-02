@@ -2,14 +2,16 @@ import { getRandomRivalPartyMemberFunc } from "#app/ai/rival-team-gen";
 import { globalScene } from "#app/global-scene";
 import { signatureSpecies } from "#balance/signature-species";
 import { tmSpecies } from "#balance/tm-species-map";
-import { allMoves, modifierTypes } from "#data/data-lists";
+import { getMysteryMonster } from "#data/balance/mystery-monster-species-list";
+import { allMoves, allSpecies, modifierTypes } from "#data/data-lists";
 import { doubleBattleDialogue } from "#data/double-battle-dialogue";
 import { Gender } from "#data/gender";
 import type { PokemonSpecies, PokemonSpeciesFilter } from "#data/pokemon-species";
 import { AbilityId } from "#enums/ability-id";
 import { ClassicFixedBossWaves } from "#enums/fixed-boss-waves";
-import { MoveId } from "#enums/move-id";
 import { MoveCategory } from "#enums/move-category";
+import { MoveId } from "#enums/move-id";
+import { MysteryMonsterId } from "#enums/mystery-monster-id";
 import { PartyMemberStrength } from "#enums/party-member-strength";
 import { PokeballType } from "#enums/pokeball";
 import { PokemonType } from "#enums/pokemon-type";
@@ -68,9 +70,11 @@ function addTrainerMoveIfMissing(
   slot: number,
   alternativeMoveFilter?: (move: (typeof allMoves)[number]) => boolean,
 ): void {
-  if (pokemon.moveset.some(move =>
-    move.moveId === moveId || (alternativeMoveFilter != null && alternativeMoveFilter(allMoves[move.moveId]))
-  )) {
+  if (
+    pokemon.moveset.some(
+      move => move.moveId === moveId || (alternativeMoveFilter != null && alternativeMoveFilter(allMoves[move.moveId])),
+    )
+  ) {
     return;
   }
 
@@ -290,6 +294,9 @@ export class TrainerConfig {
   getDerivedType(trainerTypeToDeriveFrom: TrainerType | null = null): TrainerType {
     let trainerType = trainerTypeToDeriveFrom ? trainerTypeToDeriveFrom : this.trainerType;
     switch (trainerType) {
+      case TrainerType.MFO_55:
+        trainerType = TrainerType.MFO;
+        break;
       case TrainerType.RIVAL_2:
       case TrainerType.RIVAL_3:
       case TrainerType.RIVAL_4:
@@ -1050,6 +1057,101 @@ export function getRandomPartyMemberFunc(
       undefined,
       postProcess,
     );
+  };
+}
+
+/** 디 아더 피아나 전용 파티. 메가폼은 폼키로 검색해 순서 변경에도 안전하게 적용합니다. */
+function getZinniaPartyMemberFunc(slot: number): PartyMemberFunc {
+  return (level: number, strength: PartyMemberStrength) => {
+    const wave = globalScene.currentBattle.waveIndex;
+    const first: SpeciesId[] = [
+      SpeciesId.GOODRA,
+      SpeciesId.NOIVERN,
+      SpeciesId.ALTARIA,
+      SpeciesId.TYRANTRUM,
+      SpeciesId.SALAMENCE,
+    ];
+    const second: SpeciesId[] = [
+      SpeciesId.HISUI_GOODRA,
+      SpeciesId.DRAGONITE,
+      SpeciesId.HYDRAPPLE,
+      SpeciesId.HYDREIGON,
+      SpeciesId.GARCHOMP,
+      SpeciesId.SALAMENCE,
+    ];
+    const third: SpeciesId[] = [
+      SpeciesId.HISUI_GOODRA,
+      SpeciesId.DRAGAPULT,
+      SpeciesId.GARCHOMP,
+      SpeciesId.KOMMO_O,
+      SpeciesId.BAXCALIBUR,
+      SpeciesId.SALAMENCE,
+    ];
+
+    let speciesId: SpeciesId;
+    if (wave >= 300) {
+      speciesId = third[slot];
+    } else if (wave >= 295) {
+      speciesId = second[slot];
+    } else if (slot < 5) {
+      speciesId = first[slot];
+    } else {
+      // 고정 5마리와 겹치지 않는 일반 드래곤 포켓몬 중 하나를 추첨합니다.
+      const candidates = allSpecies.filter(
+        species =>
+          species?.isOfType(PokemonType.DRAGON)
+          && !species.legendary
+          && !species.subLegendary
+          && !species.mythical
+          && !species.isTrainerForbidden()
+          && !first.includes(species.speciesId),
+      );
+      speciesId = randSeedItem(candidates).speciesId;
+    }
+
+    const desiredForm =
+      speciesId === SpeciesId.SALAMENCE
+        ? "mega"
+        : wave >= 300 && speciesId === SpeciesId.GARCHOMP
+          ? "mega-z"
+          : wave >= 300 && speciesId === SpeciesId.BAXCALIBUR
+            ? "mega"
+            : null;
+
+    // ignoreEvolution=true: 정해진 종족이 다른 종으로 자동 진화하지 않게 고정
+    return getRandomPartyMemberFunc([speciesId], TrainerSlot.TRAINER, true, pokemon => {
+      if (desiredForm != null) {
+        const targetIndex = pokemon.species.forms.findIndex(form => form.formKey === desiredForm);
+        if (targetIndex >= 0) {
+          pokemon.formIndex = targetIndex;
+          pokemon.generateName();
+          pokemon.generateAndPopulateMoveset(targetIndex);
+          pokemon.calculateStats();
+          pokemon.updateScale();
+        } else {
+          console.warn("[ZINNIA_FORM_NOT_FOUND]", { wave, speciesId, desiredForm });
+        }
+      }
+    })(level, strength);
+  };
+}
+
+/** 디 아더의 M.F.O가 운용하는 로보키드. 일반 포켓몬 생성 경로 대신 전용 몬스터 생성기를 사용합니다. */
+function getMfoRobokidPartyMemberFunc(): PartyMemberFunc {
+  return (level: number, _strength: PartyMemberStrength): EnemyPokemon => {
+    const monster = globalScene.addMysteryMonster(
+      getMysteryMonster(MysteryMonsterId.ROBOKID),
+      level,
+      TrainerSlot.TRAINER,
+      false,
+    );
+    console.log("[THEOTHER_MFO_TRAINER_ROBOKID]", {
+      wave: globalScene.currentBattle?.waveIndex ?? null,
+      name: monster.getName(),
+      level,
+      trainerSlot: monster.trainerSlot,
+    });
+    return monster;
   };
 }
 
@@ -4270,7 +4372,8 @@ export const trainerConfigs: TrainerConfigs = {
         // Tera Dragon Gyarados/Aerodactyl
         p.generateAndPopulateMoveset();
         // Check if Tera Blast or a Phys Dragon move is in the moveset, if not, replace the third move with Tera Blast.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.TERA_BLAST,
           2,
           m => m.type === PokemonType.DRAGON && m.category === MoveCategory.PHYSICAL,
@@ -4347,7 +4450,8 @@ export const trainerConfigs: TrainerConfigs = {
         // Tera Dark Gengar
         p.generateAndPopulateMoveset();
         // Check if Dark Pulse or a special Dark move is in the moveset, if not, replace the third move with Dark Pulse.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.DARK_PULSE,
           2,
           m => m.type === PokemonType.DARK && m.category === MoveCategory.SPECIAL,
@@ -4493,7 +4597,8 @@ export const trainerConfigs: TrainerConfigs = {
         p.abilityIndex = 1; // Sniper
         p.generateAndPopulateMoveset();
         // Check if X-Scissor or a Physical Bug move is in the moveset, if not, replace the third move with X-Scissor.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.X_SCISSOR,
           2,
           m => m.type === PokemonType.BUG && m.category === MoveCategory.PHYSICAL,
@@ -4540,7 +4645,8 @@ export const trainerConfigs: TrainerConfigs = {
         // Tera Fire Steelix/Lopunny
         p.generateAndPopulateMoveset();
         // Check if Tera Blast or a Physical Fire move is in the moveset, if not, replace the third move with Tera Blast.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.TERA_BLAST,
           2,
           m => m.type === PokemonType.FIRE && m.category === MoveCategory.PHYSICAL,
@@ -4706,7 +4812,8 @@ export const trainerConfigs: TrainerConfigs = {
         // Tera Steel Chesnaught
         p.generateAndPopulateMoveset();
         // Check if a physical Steel move is in the moveset, if not, replace the third move with Iron Head.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.IRON_HEAD,
           2,
           m => m.type === PokemonType.STEEL && m.category === MoveCategory.PHYSICAL,
@@ -4834,7 +4941,8 @@ export const trainerConfigs: TrainerConfigs = {
       getRandomPartyMemberFunc([SpeciesId.DHELMISE], TrainerSlot.TRAINER, true, p => {
         p.generateAndPopulateMoveset();
         // Check if Anchor Shot or a physical Steel move is in the moveset, if not, replace the third move with Anchor Shot.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.ANCHOR_SHOT,
           2,
           m => m.type === PokemonType.STEEL && m.category === MoveCategory.PHYSICAL,
@@ -4926,7 +5034,8 @@ export const trainerConfigs: TrainerConfigs = {
         p.abilityIndex = 1; // Magic Guard, Competitive
         p.generateAndPopulateMoveset();
         // Check if Tera Blast or a special Fairy move is in the moveset, if not, replace the third move with Tera Blast.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.TERA_BLAST,
           2,
           m => m.type === PokemonType.FAIRY && m.category === MoveCategory.SPECIAL,
@@ -5187,7 +5296,8 @@ export const trainerConfigs: TrainerConfigs = {
         // Tera Steel Reuniclus
         p.generateAndPopulateMoveset();
         // Check if Flash Cannon or a Special Steel move is in the moveset, if not, replace the third move with Flash Cannon.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.FLASH_CANNON,
           2,
           m => m.type === PokemonType.STEEL && m.category === MoveCategory.SPECIAL,
@@ -5235,7 +5345,8 @@ export const trainerConfigs: TrainerConfigs = {
         p.setBoss(true, 2);
         p.generateAndPopulateMoveset();
         // Check if Tera Blast or a Physical Fairy move is in the moveset, if not, replace the third move with Tera Blast.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.TERA_BLAST,
           2,
           m => m.type === PokemonType.FAIRY && m.category === MoveCategory.PHYSICAL,
@@ -5252,7 +5363,8 @@ export const trainerConfigs: TrainerConfigs = {
         // Tera Dragon Sceptile
         p.generateAndPopulateMoveset();
         // Check if Tera Blast or a damaging Dragon move is in the moveset, if not, replace the third move with Dual Chop.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.DUAL_CHOP,
           2,
           m => m.id === MoveId.TERA_BLAST || (m.type === PokemonType.DRAGON && m.power > 1),
@@ -6034,7 +6146,8 @@ export const trainerConfigs: TrainerConfigs = {
         p.teraType = PokemonType.FLYING;
         p.generateAndPopulateMoveset();
         // Check if Tera Blast or a Physical Flying move is in the moveset, if not, replace the third move with Tera Blast.
-        addTrainerMoveIfMissing(p, 
+        addTrainerMoveIfMissing(
+          p,
           MoveId.TERA_BLAST,
           2,
           m => m.type === PokemonType.FLYING && m.category === MoveCategory.PHYSICAL,
@@ -7562,4 +7675,52 @@ export const trainerConfigs: TrainerConfigs = {
     .setVictoryBgm("mystery_encounter_weird_dream")
     .setLocalizedName("Alternate Player  F")
     .setPartyTemplates(new TrainerPartyTemplate(6, PartyMemberStrength.STRONG)),
+  // 디 아더 25·55층: M.F.O가 로보키드 3/6대를 지휘합니다.
+  [TrainerType.MFO]: new TrainerConfig(TrainerType.MFO)
+    .setName("mfo")
+    .setBoss()
+    .setStaticParty()
+    .setMoneyMultiplier(3)
+    // Battle 생성 중 currentBattle은 null일 수 있으므로 층수를 읽지 않습니다.
+    .setPartyTemplates(new TrainerPartyTemplate(3, PartyMemberStrength.STRONG))
+    .setEncounterBgm("dangerous_enemy_encount")
+    .setBattleBgm("dangerous_enemy")
+    .setMixedBattleBgm("dangerous_enemy")
+    .setPartyMemberFunc(0, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(1, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(2, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(3, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(4, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(5, getMfoRobokidPartyMemberFunc()),
+  // 55층은 동일한 M.F.O 외형을 사용하지만 6대 고정 파티입니다.
+  [TrainerType.MFO_55]: new TrainerConfig(TrainerType.MFO_55)
+    .setName("mfo")
+    .setBoss()
+    .setStaticParty()
+    .setMoneyMultiplier(5)
+    .setPartyTemplates(new TrainerPartyTemplate(6, PartyMemberStrength.STRONG))
+    .setEncounterBgm("dangerous_enemy_encount")
+    .setBattleBgm("dangerous_enemy")
+    .setMixedBattleBgm("dangerous_enemy")
+    .setPartyMemberFunc(0, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(1, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(2, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(3, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(4, getMfoRobokidPartyMemberFunc())
+    .setPartyMemberFunc(5, getMfoRobokidPartyMemberFunc()),
+  // 디 아더 245/295/300층 피아나 — 전투별 6마리 고정, 1차전 한 자리만 랜덤
+  [TrainerType.ZINNIA]: new TrainerConfig(TrainerType.ZINNIA)
+    .setName("피아나")
+    .setBoss()
+    .setStaticParty()
+    .setPartyTemplates(new TrainerPartyTemplate(6, PartyMemberStrength.STRONG))
+    .setMoneyMultiplier(7)
+    .setBattleBgm("dangerous_enemy")
+    .setMixedBattleBgm("dangerous_enemy")
+    .setPartyMemberFunc(0, getZinniaPartyMemberFunc(0))
+    .setPartyMemberFunc(1, getZinniaPartyMemberFunc(1))
+    .setPartyMemberFunc(2, getZinniaPartyMemberFunc(2))
+    .setPartyMemberFunc(3, getZinniaPartyMemberFunc(3))
+    .setPartyMemberFunc(4, getZinniaPartyMemberFunc(4))
+    .setPartyMemberFunc(5, getZinniaPartyMemberFunc(5)),
 };

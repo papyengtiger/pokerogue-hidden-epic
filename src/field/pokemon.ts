@@ -29,6 +29,7 @@ import { tmSpecies } from "#balance/tm-species-map";
 import { reverseCompatibleTms, tmPoolTiers } from "#balance/tms";
 import type { SuppressAbilitiesTag } from "#data/arena-tag";
 import { NoCritTag, WeakenMoveScreenTag } from "#data/arena-tag";
+import { getMysteryMonster } from "#data/balance/mystery-monster-species-list";
 import {
   AutotomizedTag,
   BattlerTag,
@@ -106,6 +107,7 @@ import { MoveFlags2 } from "#enums/move-flags-2";
 import { MoveId } from "#enums/move-id";
 import { MoveTarget } from "#enums/move-target";
 import { isIgnorePP, isVirtual, MoveUseMode } from "#enums/move-use-mode";
+import { MysteryMonsterId } from "#enums/mystery-monster-id";
 import { Nature } from "#enums/nature";
 import { PokeballType } from "#enums/pokeball";
 import { PokemonAnimType } from "#enums/pokemon-anim-type";
@@ -1442,17 +1444,15 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   canTransformInto(target: Pokemon): boolean {
     return !(
       // Neither pokemon can be already transformed
-      (
-        this.isMysteryMonster()
-        || target.isMysteryMonster()
-        || this.isTransformed()
-        || target.isTransformed() // Neither pokemon can be behind an illusion
-        || target.summonData.illusion
-        || this.summonData.illusion // The target cannot be behind a substitute
-        || target.getTag(BattlerTagType.SUBSTITUTE) // Transforming to/from fusion pokemon causes various problems (crashes, etc.) // TODO: Consider lifting restriction once bug is fixed
-        || this.isFusion()
-        || target.isFusion()
-      )
+      this.isMysteryMonster()
+      || target.isMysteryMonster()
+      || this.isTransformed()
+      || target.isTransformed() // Neither pokemon can be behind an illusion
+      || target.summonData.illusion
+      || this.summonData.illusion // The target cannot be behind a substitute
+      || target.getTag(BattlerTagType.SUBSTITUTE) // Transforming to/from fusion pokemon causes various problems (crashes, etc.) // TODO: Consider lifting restriction once bug is fixed
+      || this.isFusion()
+      || target.isFusion()
     );
   }
 
@@ -4223,11 +4223,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
    * 트레이너 설정 호환: 해당 기술(또는 조건에 맞는 기술)이 없는 경우 지정 칸에 추가합니다.
    * 조건 함수는 allMoves의 기술 데이터(Move)를 받습니다.
    */
-  addIfNotInMoveset(
-    moveId: MoveId,
-    moveIndex: number,
-    condition?: (move: Move) => boolean,
-  ): void {
+  addIfNotInMoveset(moveId: MoveId, moveIndex: number, condition?: (move: Move) => boolean): void {
     if (moveId === MoveId.NONE || !Number.isInteger(moveIndex) || moveIndex < 0 || moveIndex >= 4) {
       return;
     }
@@ -4657,7 +4653,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       // Trainers get a weight decrease to multiturn moves
       movePool = movePool.map(m => [
         m[0],
-        m[1] * (!!allMoves[m[0]].isChargingMove() || !!allMoves[m[0]].hasAttr("RechargeAttr") ? 0.7 : 1),
+        m[1] * (allMoves[m[0]].isChargingMove() || allMoves[m[0]].hasAttr("RechargeAttr") ? 0.7 : 1),
       ]);
     }
 
@@ -9119,7 +9115,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
 }
 
 export class PlayerPokemon extends Pokemon {
-  protected declare battleInfo: PlayerBattleInfo;
+  declare protected battleInfo: PlayerBattleInfo;
   public compatibleTms: MoveId[];
   public compatibleZMoves: Moves[];
   public compatibleTrs: Moves[];
@@ -9790,7 +9786,7 @@ export class PlayerPokemon extends Pokemon {
 }
 
 export class EnemyPokemon extends Pokemon {
-  protected declare battleInfo: EnemyBattleInfo;
+  declare protected battleInfo: EnemyBattleInfo;
   public trainerSlot: TrainerSlot;
   public aiType: AiType;
   public bossSegments: number;
@@ -9890,6 +9886,25 @@ export class EnemyPokemon extends Pokemon {
       }
     }
 
+    // 디 아더 300층 최종보스 레쿠쟈 한정: 에픽 이로치 / 6V 확정.
+    // 적 개체에만 적용하며 일반 레쿠쟈, 플레이어의 레쿠쟈, 다른 모드는 변경하지 않습니다.
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle?.waveIndex === 300
+      && this.species.speciesId === SpeciesId.RAYQUAZA
+    ) {
+      this.shiny = true;
+      this.variant = 2; // Epic shiny
+      this.ivs = [31, 31, 31, 31, 31, 31];
+      this.luck = 3 + (this.fusionShiny ? this.fusionVariant + 1 : 0);
+      this.calculateStats();
+      console.log("[THEOTHER_300F_RAYQUAZA_6V_EPIC]", {
+        shiny: this.shiny,
+        variant: this.variant,
+        ivs: this.ivs,
+      });
+    }
+
     this.aiType = boss || this.hasTrainer() ? AiType.SMART : AiType.SMART_RANDOM;
   }
 
@@ -9967,8 +9982,37 @@ export class EnemyPokemon extends Pokemon {
     }
   }
 
+  /**
+   * 디 아더 300층 레쿠쟈 최종전의 페이즈별 기술을 확정합니다.
+   * 2페이즈 전환을 실제로 수행하는 전투 로직에서 setTheOtherRayquazaPhase(2)를 호출해야 합니다.
+   * 일반 레쿠쟈의 레벨업/기술배치는 변경하지 않습니다.
+   */
+  public theOtherRayquazaPhase: 1 | 2 = 1;
+
+  public setTheOtherRayquazaPhase(phase: 1 | 2): void {
+    if (
+      globalScene.gameMode.modeId !== GameModes.THEOTHER
+      || globalScene.currentBattle?.waveIndex !== 300
+      || this.species.speciesId !== SpeciesId.RAYQUAZA
+    ) {
+      return;
+    }
+    this.theOtherRayquazaPhase = phase;
+    this.generateAndPopulateMoveset();
+    console.log("[THEOTHER_RAYQUAZA_PHASE_MOVES]", { phase, moves: this.moveset.map(move => MoveId[move.moveId]) });
+  }
+
   generateAndPopulateMoveset(formIndex?: number): void {
     switch (true) {
+      case this.species.speciesId === SpeciesId.RAYQUAZA
+        && globalScene.gameMode.modeId === GameModes.THEOTHER
+        && globalScene.currentBattle?.waveIndex === 300:
+        this.moveset = (
+          this.theOtherRayquazaPhase === 2
+            ? [MoveId.SKY_LANCE, MoveId.DRAGON_IMPACT, MoveId.FREEZE_TORNADO, MoveId.GROUND_STREAM]
+            : [MoveId.DRAGON_ASCENT, MoveId.DRAGON_STREAM, MoveId.ORIGIN_PULSE, MoveId.PRECIPICE_BLADES]
+        ).map(moveId => new PokemonMove(moveId));
+        break;
       case this.species.speciesId === SpeciesId.SMEARGLE:
         this.moveset = [
           new PokemonMove(MoveId.SKETCH),
@@ -10565,7 +10609,9 @@ export class EnemyPokemon extends Pokemon {
 }
 
 export class MysteryMonster extends EnemyPokemon {
-  public readonly mysterySpecies: MysteryMonsterSpecies;
+  public mysterySpecies: MysteryMonsterSpecies;
+  /** 디 아더 보스의 HP 기반 폼 변환 중복 방지 */
+  private otherFormChanged = false;
 
   constructor(
     mysterySpecies: MysteryMonsterSpecies,
@@ -10621,6 +10667,85 @@ export class MysteryMonster extends EnemyPokemon {
 
     // 임시 PokémonSpecies 이름 대신 진짜 이름 사용
     this.name = mysterySpecies.name;
+  }
+
+  /**
+   * 디 아더 전용 HP 기반 2페이즈 전환.
+   * 8/25/55층: 로보키드 -> 폭주형 (50%)
+   * 145층: M.F.O -> M.N.O.2.4.8 (50%)
+   * 195층: M.N.O.2.4.8 -> 폭주형 (25%)
+   * 보스 세그먼트 처리 이후 실제 HP를 기준으로 검사한다.
+   */
+  private getOtherNextForm(): { id: MysteryMonsterId; threshold: number } | null {
+    if (globalScene.gameMode.modeId !== GameModes.THEOTHER || this.otherFormChanged) {
+      return null;
+    }
+    const wave = globalScene.currentBattle?.waveIndex;
+    switch (this.mysterySpecies.id) {
+      case MysteryMonsterId.ROBOKID:
+        return [8, 25, 55].includes(wave) ? { id: MysteryMonsterId.ROBOKID_BERSERK, threshold: 0.5 } : null;
+      case MysteryMonsterId.MFO:
+        return wave === 145 ? { id: MysteryMonsterId.MNO248, threshold: 0.5 } : null;
+      case MysteryMonsterId.MNO248:
+        return wave === 195 ? { id: MysteryMonsterId.MNO248_BERSERK, threshold: 0.25 } : null;
+      default:
+        return null;
+    }
+  }
+
+  public override damage(
+    damage: number,
+    ignoreSegments = false,
+    preventEndure = false,
+    ignoreFaintPhase = false,
+  ): number {
+    const nextForm = this.getOtherNextForm();
+    const thresholdHp = nextForm ? Math.max(1, Math.floor(this.getMaxHp() * nextForm.threshold)) : 0;
+
+    // 전환 전에 한 번에 쓰러지는 것을 방지. 기존 보스 세그먼트는 super.damage에서 처리.
+    if (nextForm && this.hp > thresholdHp && damage > 0) {
+      damage = Math.min(damage, this.hp - thresholdHp);
+    }
+
+    const applied = super.damage(damage, ignoreSegments, preventEndure, ignoreFaintPhase);
+
+    if (nextForm && this.hp > 0 && this.hp <= thresholdHp && !this.otherFormChanged) {
+      this.otherFormChanged = true;
+      // 8층 로보키드 폭주형 전환: 피해 애니메이션 종료 후 전용 대사를 1회 출력.
+      if (globalScene.currentBattle?.waveIndex === 8 && this.mysterySpecies.id === MysteryMonsterId.ROBOKID) {
+        (this as any).theOtherRobokidBerserkDialoguePending = true;
+      }
+      // 195층 25% 폭주 컷신 역시 피해 애니메이션 종료 후 1회 출력.
+      if (globalScene.currentBattle?.waveIndex === 195 && this.mysterySpecies.id === MysteryMonsterId.MNO248) {
+        (this as any).theOtherMno248BerserkDialoguePending = true;
+      }
+      // 145층 50% 변신 컷신은 피해 애니메이션이 끝난 뒤 1회 출력.
+      if (globalScene.currentBattle?.waveIndex === 145 && this.mysterySpecies.id === MysteryMonsterId.MFO) {
+        (this as any).theOtherMno248TransformDialoguePending = true;
+      }
+      const oldMaxHp = this.getMaxHp();
+      const remainingRate = this.hp / Math.max(1, oldMaxHp);
+      const previousName = this.name;
+      const nextSpecies = getMysteryMonster(nextForm.id);
+      this.mysterySpecies = nextSpecies;
+      this.customBaseStats = [...nextSpecies.baseStats];
+      this.customPokemonData.ability = nextSpecies.ability1;
+      this.customPokemonData.types = [PokemonType.MYSTERY];
+      this.name = nextSpecies.name;
+      this.calculateStats();
+      this.hp = Math.max(1, Math.min(this.getMaxHp(), Math.round(this.getMaxHp() * remainingRate)));
+      this.generateMysteryMoveset();
+      this.updateInfo(true);
+      void this.loadAssets().catch(error => console.warn("[THEOTHER_FORM_ASSET]", error));
+      console.log("[THEOTHER_FORM_CHANGE]", {
+        wave: globalScene.currentBattle?.waveIndex,
+        from: previousName,
+        to: nextSpecies.name,
+        hp: this.hp,
+        maxHp: this.getMaxHp(),
+      });
+    }
+    return applied;
   }
 
   public override isMysteryMonster(): boolean {

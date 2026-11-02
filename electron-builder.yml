@@ -1,0 +1,22 @@
+appId: com.hiddenepic.desktop
+productName: Hidden Epic
+directories:
+  app: desktop
+  output: release
+asar: true
+files:
+  - "**/*"
+extraResources:
+  - from: dist
+    to: game
+    filter:
+      - "**/*"
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

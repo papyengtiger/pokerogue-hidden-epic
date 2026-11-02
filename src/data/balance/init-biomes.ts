@@ -3978,7 +3978,8 @@ export function initBiomes() {
     ]
     ],
     [ SpeciesId.RAYQUAZA, PokemonType.DRAGON, PokemonType.FLYING, [
-      [ BiomeId.SKY, BiomePoolTier.BOSS_ULTRA_RARE ]
+      [ BiomeId.SKY, BiomePoolTier.BOSS_ULTRA_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.BOSS ]
     ]
     ],
     [ SpeciesId.JIRACHI, PokemonType.STEEL, PokemonType.PSYCHIC, [ 
@@ -8071,37 +8072,44 @@ export function initBiomes() {
     ],
     [ SpeciesId.NIHILEGO, PokemonType.ROCK, PokemonType.POISON, [
       [ BiomeId.POLLUTED_CAVE, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.POLLUTED_CAVE, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.POLLUTED_CAVE, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.COMMON ]
     ]
     ],
     [ SpeciesId.BUZZWOLE, PokemonType.BUG, PokemonType.FIGHTING, [
       [ BiomeId.LOG_CAVE, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.LOG_CAVE, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.LOG_CAVE, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.COMMON ]
     ]
     ],
     [ SpeciesId.PHEROMOSA, PokemonType.BUG, PokemonType.FIGHTING, [
       [ BiomeId.DESERT, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.DESERT, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.DESERT, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.COMMON ]
     ]
     ],
     [ SpeciesId.XURKITREE, PokemonType.ELECTRIC, -1, [
       [ BiomeId.LIGHTNING_FIELD, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.LIGHTNING_FIELD, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.LIGHTNING_FIELD, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.COMMON ]
     ]
     ],
     [ SpeciesId.CELESTEELA, PokemonType.STEEL, PokemonType.FLYING, [
       [ BiomeId.BAMBOO_FOREST, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.BAMBOO_FOREST, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.BAMBOO_FOREST, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.COMMON ]
     ]
     ],
     [ SpeciesId.KARTANA, PokemonType.GRASS, PokemonType.STEEL, [
       [ BiomeId.FOREST, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.FOREST, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.FOREST, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.COMMON ]
     ]
     ],
     [ SpeciesId.GUZZLORD, PokemonType.DARK, PokemonType.DRAGON, [
       [ BiomeId.SLUM, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.SLUM, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.SLUM, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.RARE ]
     ]
     ],
     [ SpeciesId.NECROZMA, PokemonType.PSYCHIC, -1, [
@@ -8120,22 +8128,26 @@ export function initBiomes() {
     ],
     [ SpeciesId.POIPOLE, PokemonType.POISON, -1, [
       [ BiomeId.DRAGON_FOREST, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.DRAGON_FOREST, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.DRAGON_FOREST, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.UNCOMMON ]
     ]
     ],
     [ SpeciesId.NAGANADEL, PokemonType.POISON, PokemonType.DRAGON, [
       [ BiomeId.DRAGON_FOREST, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.DRAGON_FOREST, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.DRAGON_FOREST, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.UNCOMMON ]
     ]
     ],
     [ SpeciesId.STAKATAKA, PokemonType.ROCK, PokemonType.STEEL, [
       [ BiomeId.CONSTRUCTION_SITE, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.CONSTRUCTION_SITE, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.CONSTRUCTION_SITE, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.UNCOMMON ]
     ]
     ],
     [ SpeciesId.BLACEPHALON, PokemonType.FIRE, PokemonType.GHOST, [
       [ BiomeId.AMUSEMENT_PARK, BiomePoolTier.ULTRA_RARE ],
-      [ BiomeId.AMUSEMENT_PARK, BiomePoolTier.BOSS_SUPER_RARE ]
+      [ BiomeId.AMUSEMENT_PARK, BiomePoolTier.BOSS_SUPER_RARE ],
+      [ BiomeId.OTHER, BiomePoolTier.UNCOMMON ]
     ]
     ],
     [ SpeciesId.ZERAORA, PokemonType.ELECTRIC, -1, [
@@ -8954,7 +8966,8 @@ export function initBiomes() {
     ]
     ],
     [ SpeciesId.ETERNATUS, PokemonType.POISON, PokemonType.DRAGON, [
-      [ BiomeId.END, BiomePoolTier.BOSS ]
+      [ BiomeId.END, BiomePoolTier.BOSS ],
+      [ BiomeId.OTHER, BiomePoolTier.BOSS ]
     ]
     ],
     [ SpeciesId.KUBFU, PokemonType.FIGHTING, -1, [

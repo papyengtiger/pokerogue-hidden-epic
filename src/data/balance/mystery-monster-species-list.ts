@@ -24,6 +24,43 @@ export const allMysteryMonsters: MysteryMonsterSpecies[] = [
   "robokid",
   52,
 ),
+  // 디 아더: 로보키드 폭주형 (HP 50% 이하 시 전환 예정)
+  new MysteryMonsterSpecies(
+  MysteryMonsterId.ROBOKID_BERSERK,
+  "Robokid (Berserk)",
+  PokemonType.MYSTERY,
+  null,
+  AbilityId.DOWNLOAD,
+  AbilityId.NONE,
+  AbilityId.NONE,
+  120, 120, 120, 120, 120, 120,
+  "robokid_berserk",
+  45,
+),
+  // 디 아더: M.F.O 외피형
+  new MysteryMonsterSpecies(
+    MysteryMonsterId.MFO, "M.F.O",
+    PokemonType.MYSTERY, null,
+    AbilityId.LEVITATE, AbilityId.NONE, AbilityId.NONE,
+    115, 115, 115, 115, 115, 115,
+    "mfo", 52, // 실제 스프라이트 키 및 프레임 개수 확인 필요
+  ),
+  // 디 아더: M.N.O.2.4.8 일반형 (종족값 합계 800)
+  new MysteryMonsterSpecies(
+    MysteryMonsterId.MNO248, "M.N.O.2.4.8",
+    PokemonType.MYSTERY, null,
+    AbilityId.CLEAR_BODY, AbilityId.NONE, AbilityId.NONE,
+    100, 184, 160, 95, 160, 101,
+    "mno248", 52, // 실제 스프라이트 키 및 프레임 개수 확인 필요
+  ),
+  // 디 아더: M.N.O.2.4.8 폭주형 (입력 능력치 합계는 899)
+  new MysteryMonsterSpecies(
+    MysteryMonsterId.MNO248_BERSERK, "M.N.O.2.4.8 (Berserk)",
+    PokemonType.MYSTERY, null,
+    AbilityId.CLEAR_BODY, AbilityId.NONE, AbilityId.NONE,
+    100, 200, 160, 95, 160, 184,
+    "mno248-berserk", 52, // 실제 스프라이트 키 및 프레임 개수 확인 필요
+  ),
   new MysteryMonsterSpecies(
     MysteryMonsterId.MYSTERIAN,
     "Mysterian",

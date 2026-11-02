@@ -12,6 +12,7 @@ import { modifierTypes } from "#data/data-lists";
 import { MAX_PER_TYPE_POKEBALLS } from "#data/pokeball";
 import { AbilityId } from "#enums/ability-id";
 import { BerryType } from "#enums/berry-type";
+import { GameModes } from "#enums/game-modes";
 import { ModifierTier } from "#enums/modifier-tier";
 import { MoveId } from "#enums/move-id";
 import { PokeballType } from "#enums/pokeball";
@@ -500,6 +501,11 @@ function initWildModifierPool() {
 /**
  * Initialize the common modifier pool
  */
+/** 클래식·디 아더: 스토리에서 지급하는 해금 아이템은 일반 보상 풀에서 제외. */
+function isStoryRewardRestrictedMode(): boolean {
+  return globalScene.gameMode.isClassic || globalScene.gameMode.modeId === GameModes.THEOTHER;
+}
+
 const allZMoveIds: Set<Moves> = new Set(Object.keys(zmovesSpecies).map(Number));
 const allMaxMoveIds: Set<Moves> = new Set(Object.keys(maxmovesSpecies).map(Number));
 function initCommonModifierPool() {
@@ -800,12 +806,12 @@ function initGreatModifierPool() {
     ),
     new WeightedModifierType(
       modifierTypes.MEGA_BRACELET,
-      () => globalScene.gameMode.isClassic ? 0 : Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9,
+      () => (isStoryRewardRestrictedMode() ? 0 : Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9),
       36,
     ),
     new WeightedModifierType(
       modifierTypes.DYNAMAX_BAND,
-      () => globalScene.gameMode.isClassic ? 0 : Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9,
+      () => (isStoryRewardRestrictedMode() ? 0 : Math.min(Math.ceil(globalScene.currentBattle.waveIndex / 50), 4) * 9),
       36,
     ),
     new WeightedModifierType(
@@ -1068,7 +1074,7 @@ function initGreatModifierPool() {
       },
       8,
     ),
-    new WeightedModifierType(modifierTypes.MAP, () => (globalScene.gameMode.isClassic ? 0 : 10)),
+    new WeightedModifierType(modifierTypes.MAP, () => (isStoryRewardRestrictedMode() ? 0 : 10)),
     new WeightedModifierType(modifierTypes.SOOTHE_BELL, 2),
     new WeightedModifierType(modifierTypes.TM_GREAT, 14),
     new WeightedModifierType(modifierTypes.AIR_BALLOON, 7),
@@ -1231,7 +1237,7 @@ function initUltraModifierPool() {
     new WeightedModifierType(
       modifierTypes.Z_RING,
       () =>
-        !globalScene.gameMode.isClassic
+        !isStoryRewardRestrictedMode()
           ? Math.min(Math.max(Math.floor(globalScene.currentBattle.waveIndex / 50) * 2, 1), 7)
           : 0,
       36,
@@ -1239,7 +1245,7 @@ function initUltraModifierPool() {
     new WeightedModifierType(
       modifierTypes.Z_POWER_RING,
       () =>
-        !globalScene.gameMode.isClassic
+        !isStoryRewardRestrictedMode()
           ? Math.min(Math.max(Math.floor(globalScene.currentBattle.waveIndex / 50) * 2, 1), 7)
           : 0,
       36,
@@ -2741,7 +2747,7 @@ function initUltraModifierPool() {
     new WeightedModifierType(
       modifierTypes.TERA_ORB,
       () =>
-        !globalScene.gameMode.isClassic
+        !isStoryRewardRestrictedMode()
           ? Math.min(Math.max(Math.floor(globalScene.currentBattle.waveIndex / 50) * 2, 1), 4)
           : 0,
       4,
@@ -2814,11 +2820,11 @@ function initRogueModifierPool() {
     new WeightedModifierType(modifierTypes.BATON, 2),
     new WeightedModifierType(modifierTypes.TREASURE_POUCH, 4),
     new WeightedModifierType(modifierTypes.MIND_ORB, 7),
-    new WeightedModifierType(modifierTypes.CATCHING_CHARM, () => (!globalScene.gameMode.isClassic ? 4 : 0), 4),
+    new WeightedModifierType(modifierTypes.CATCHING_CHARM, () => (!isStoryRewardRestrictedMode() ? 4 : 0), 4),
     new WeightedModifierType(modifierTypes.ABILITY_CHARM, skipInClassicAfterWave(189, 6)),
     new WeightedModifierType(modifierTypes.FOCUS_BAND, 5),
     new WeightedModifierType(modifierTypes.KINGS_ROCK, 3),
-    new WeightedModifierType(modifierTypes.LOCK_CAPSULE, () => (globalScene.gameMode.isClassic ? 0 : 3)),
+    new WeightedModifierType(modifierTypes.LOCK_CAPSULE, () => (isStoryRewardRestrictedMode() ? 0 : 3)),
     new WeightedModifierType(modifierTypes.SUPER_EXP_CHARM, skipInLastClassicWaveOrDefault(8)),
     new WeightedModifierType(
       modifierTypes.VOUCHER_PLUS,

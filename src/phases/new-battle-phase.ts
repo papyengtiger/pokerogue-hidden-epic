@@ -1,4 +1,6 @@
 import { globalScene } from "#app/global-scene";
+import { BattleType } from "#enums/battle-type";
+import { GameModes } from "#enums/game-modes";
 import { BattlePhase } from "#phases/battle-phase";
 
 export class NewBattlePhase extends BattlePhase {
@@ -10,7 +12,11 @@ export class NewBattlePhase extends BattlePhase {
 
     globalScene.phaseManager.removeAllPhasesOfType("NewBattlePhase");
 
-    globalScene.newBattle();
+    if (globalScene.gameMode.modeId === GameModes.THEOTHER && beforeWave === 300 && globalScene.theOther300Stage > 0) {
+      globalScene.newBattle(300, BattleType.WILD, undefined, false);
+    } else {
+      globalScene.newBattle();
+    }
 
     console.log("[NEW_BATTLE_AFTER_KECLEON]", {
       beforeWave,

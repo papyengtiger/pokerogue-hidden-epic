@@ -1,0 +1,214 @@
+src\data\moves\move.ts:2511:7 lint/style/useCollapsedIf ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This if statement can be collapsed into another if statement.
+  
+    2509 │     if (sheerForce && isDamagingMove) {
+    2510 │       // ✅ “부가효과가 있는 기술”만 제거 대상으로 (원하면 이 조건은 빼도 됨)
+  > 2511 │       if (move.chance > 0 && !SheerForceItemModifier.isExceptMove(move)) {
+         │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 2512 │         return 0;
+  > 2513 │       }
+         │       ^
+    2514 │     }
+    2515 │ 
+  
+  i Nested if statements without an else can be written as one condition, which reduces nesting.
+  
+
+src\data\moves\move.ts:3261:1 lint/correctness/useSingleJsDocAsterisk  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  × JSDoc comment line should end with a single asterisk.
+  
+    3259 │  * @extends MoveEffectAttr
+    3260 │  * @see {@linkcode apply}
+  > 3261 │  **/
+         │ ^^^^
+    3262 │ export class SacrificialAttr extends MoveEffectAttr {
+    3263 │   constructor() {
+  
+  i In JSDoc comments, extra asterisks beyond the first are unnecessary and are often added by mistake.
+  
+  i Unsafe fix: Remove additional asterisks.
+  
+    3261 │ ·**/
+         │   - 
+
+src\data\moves\move.ts:3274:1 lint/correctness/useSingleJsDocAsterisk  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  × JSDoc comment line should end with a single asterisk.
+  
+    3272 │    * @param args N/A
+    3273 │    * @returns true if the function succeeds
+  > 3274 │    **/
+         │ ^^^^^^
+    3275 │   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    3276 │     user.damageAndUpdate(user.hp, { result: HitResult.INDIRECT, ignoreSegments: true });
+  
+  i In JSDoc comments, extra asterisks beyond the first are unnecessary and are often added by mistake.
+  
+  i Unsafe fix: Remove additional asterisks.
+  
+    3274 │ ···**/
+         │     - 
+
+src\data\moves\move.ts:3294:1 lint/correctness/useSingleJsDocAsterisk  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  × JSDoc comment line should end with a single asterisk.
+  
+    3292 │  * @extends MoveEffectAttr
+    3293 │  * @see {@linkcode apply}
+  > 3294 │  **/
+         │ ^^^^
+    3295 │ export class SacrificialAttrOnHit extends MoveEffectAttr {
+    3296 │   constructor() {
+  
+  i In JSDoc comments, extra asterisks beyond the first are unnecessary and are often added by mistake.
+  
+  i Unsafe fix: Remove additional asterisks.
+  
+    3294 │ ·**/
+         │   - 
+
+src\data\moves\move.ts:3307:1 lint/correctness/useSingleJsDocAsterisk  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  × JSDoc comment line should end with a single asterisk.
+  
+    3305 │    * @param args N/A
+    3306 │    * @returns true if the function succeeds
+  > 3307 │    **/
+         │ ^^^^^^
+    3308 │   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    3309 │     // If the move fails to hit a target, then the user does not faint and the function returns false
+  
+  i In JSDoc comments, extra asterisks beyond the first are unnecessary and are often added by mistake.
+  
+  i Unsafe fix: Remove additional asterisks.
+  
+    3307 │ ···**/
+         │     - 
+
+src\data\moves\move.ts:4613:7 lint/performance/noDelete  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Avoid the delete operator.
+  
+    4611 │     // 소유/전달 가능/스테일 체크
+    4612 │     if (!hasModifierSided(user, item) || (item as any).pokemonId !== user.id || !item.isTransferable) {
+  > 4613 │       delete (user.summonData as any).bestowItem;
+         │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    4614 │       return true;
+    4615 │     }
+  
+  i Deleting a property changes the shape of the object, which can prevent JavaScript engines from optimizing code that uses it.
+  
+  i Unsafe fix: Use an undefined assignment instead.
+  
+     4611  4611 │       // 소유/전달 가능/스테일 체크
+     4612  4612 │       if (!hasModifierSided(user, item) || (item as any).pokemonId !== user.id || !item.isTransferable) {
+     4613       │ - ······delete·(user.summonData·as·any).bestowItem;
+           4613 │ + ······(user.summonData·as·any).bestowItem·=·undefined;
+     4614  4614 │         return true;
+     4615  4615 │       }
+  
+
+src\data\moves\move.ts:4661:5 lint/performance/noDelete  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Avoid the delete operator.
+  
+    4660 │     // 정리
+  > 4661 │     delete (user.summonData as any).bestowItem;
+         │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    4662 │     delete (user.summonData as any).bestowTargetBattlerIndex;
+    4663 │     user.turnData.bestowItemSelectedThisTurn = false;
+  
+  i Deleting a property changes the shape of the object, which can prevent JavaScript engines from optimizing code that uses it.
+  
+  i Unsafe fix: Use an undefined assignment instead.
+  
+     4659  4659 │   
+     4660  4660 │       // 정리
+     4661       │ - ····delete·(user.summonData·as·any).bestowItem;
+           4661 │ + ····(user.summonData·as·any).bestowItem·=·undefined;
+     4662  4662 │       delete (user.summonData as any).bestowTargetBattlerIndex;
+     4663  4663 │       user.turnData.bestowItemSelectedThisTurn = false;
+  
+
+src\data\moves\move.ts:4662:5 lint/performance/noDelete  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Avoid the delete operator.
+  
+    4660 │     // 정리
+    4661 │     delete (user.summonData as any).bestowItem;
+  > 4662 │     delete (user.summonData as any).bestowTargetBattlerIndex;
+         │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    4663 │     user.turnData.bestowItemSelectedThisTurn = false;
+    4664 │ 
+  
+  i Deleting a property changes the shape of the object, which can prevent JavaScript engines from optimizing code that uses it.
+  
+  i Unsafe fix: Use an undefined assignment instead.
+  
+     4660  4660 │       // 정리
+     4661  4661 │       delete (user.summonData as any).bestowItem;
+     4662       │ - ····delete·(user.summonData·as·any).bestowTargetBattlerIndex;
+           4662 │ + ····(user.summonData·as·any).bestowTargetBattlerIndex·=·undefined;
+     4663  4663 │       user.turnData.bestowItemSelectedThisTurn = false;
+     4664  4664 │   
+  
+
+src\data\moves\move.ts:5122:3 lint/complexity/noUselessConstructor  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This constructor is unnecessary.
+  
+    5121 │ export class ClearTerrainAttr extends MoveEffectAttr {
+  > 5122 │   constructor() {
+         │   ^^^^^^^^^^^^^^^
+  > 5123 │     super();
+  > 5124 │   }
+         │   ^
+    5125 │ 
+    5126 │   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+  
+  i A constructor that only does what the default constructor already does adds code without changing behavior.
+  
+  i Unsafe fix: Remove the unnecessary constructor.
+  
+     5120  5120 │   
+     5121  5121 │   export class ClearTerrainAttr extends MoveEffectAttr {
+     5122       │ - ··constructor()·{
+     5123       │ - ····super();
+     5124       │ - ··}
+     5125  5122 │   
+     5126  5123 │     apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+  
+
+src\data\moves\move.ts:5993:5 lint/performance/noDelete  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Avoid the delete operator.
+  
+    5992 │     // 예약값 정리
+  > 5993 │     delete td.naturalGiftReservedBerry;
+         │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    5994 │     delete td.naturalGiftReservedMoveId;
+    5995 │ 
+  
+  i Deleting a property changes the shape of the object, which can prevent JavaScript engines from optimizing code that uses it.
+  
+  i Unsafe fix: Use an undefined assignment instead.
+  
+     5991  5991 │   
+     5992  5992 │       // 예약값 정리
+     5993       │ - ····delete·td.naturalGiftReservedBerry;
+           5993 │ + ····td.naturalGiftReservedBerry·=·undefined;
+     5994  5994 │       delete td.naturalGiftReservedMoveId;
+     5995  5995 │   
+  
+
+The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+Diagnostics not shown: 946.
+Checked 1 file in 1731ms. No fixes applied.
+Found 956 errors.
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

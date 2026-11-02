@@ -54,3 +54,12 @@ coverage
 # Script outputs
 ./*.csv
 certs/
+
+# Android build outputs
+/android/.gradle/
+/android/.idea/
+/android/app/build/
+/android/build/
+
+# Desktop build outputs
+/release/

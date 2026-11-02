@@ -1,0 +1,30 @@
+CLI:
+  Version:                      2.3.8
+  Color support:                true
+
+Platform:
+  CPU Architecture:             x86_64
+  OS:                           windows
+
+Environment:
+  BIOME_LOG_PATH:               unset
+  BIOME_LOG_PREFIX_NAME:        unset
+  BIOME_CONFIG_PATH:            unset
+  BIOME_THREADS:                unset
+  NO_COLOR:                     unset
+  TERM:                         unset
+  JS_RUNTIME_VERSION:           v24.12.0
+  JS_RUNTIME_NAME:              node
+  NODE_PACKAGE_MANAGER:         pnpm/10.24.0
+
+Biome Configuration:
+  Status:                       Loaded successfully
+  Path:                         biome.jsonc
+  Formatter enabled:            true
+  Linter enabled:               true
+  Assist enabled:               true
+  VCS enabled:                  true
+
+Workspace:
+  Open Documents:               0
+

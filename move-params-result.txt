@@ -1,0 +1,124 @@
+src\data\moves\move.ts:2202:57 lint/correctness/noUnusedFunctionParameters  FIXABLE  ━━━━━━━━━━━━━━━
+
+  × This parameter nameAppend is unused.
+  
+    2200 │ };
+    2201 │ 
+  > 2202 │ function ChargeMove<TBase extends SubMove>(Base: TBase, nameAppend: string) {
+         │                                                         ^^^^^^^^^^
+    2203 │   return class extends Base {
+    2204 │     /** The animation to play during the move's charging phase */
+  
+  i Unused parameters might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: If this is intentional, prepend nameAppend with an underscore.
+  
+     2200  2200 │   };
+     2201  2201 │   
+     2202       │ - function·ChargeMove<TBase·extends·SubMove>(Base:·TBase,·nameAppend:·string)·{
+           2202 │ + function·ChargeMove<TBase·extends·SubMove>(Base:·TBase,·_nameAppend:·string)·{
+     2203  2203 │     return class extends Base {
+     2204  2204 │       /** The animation to play during the move's charging phase */
+  
+
+src\data\moves\move.ts:2344:9 lint/correctness/noUnusedFunctionParameters  FIXABLE  ━━━━━━━━━━━━━━━━
+
+  × This parameter user is unused.
+  
+    2342 │    * @returns true if application of the ability succeeds
+    2343 │    */
+  > 2344 │   apply(user: Pokemon | null, target: Pokemon | null, move: Move, args: any[]): boolean {
+         │         ^^^^
+    2345 │     return true;
+    2346 │   }
+  
+  i Unused parameters might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: If this is intentional, prepend user with an underscore.
+  
+     2342  2342 │      * @returns true if application of the ability succeeds
+     2343  2343 │      */
+     2344       │ - ··apply(user:·Pokemon·|·null,·target:·Pokemon·|·null,·move:·Move,·args:·any[]):·boolean·{
+           2344 │ + ··apply(_user:·Pokemon·|·null,·target:·Pokemon·|·null,·move:·Move,·args:·any[]):·boolean·{
+     2345  2345 │       return true;
+     2346  2346 │     }
+  
+
+src\data\moves\move.ts:2344:31 lint/correctness/noUnusedFunctionParameters  FIXABLE  ━━━━━━━━━━━━━━━
+
+  × This parameter target is unused.
+  
+    2342 │    * @returns true if application of the ability succeeds
+    2343 │    */
+  > 2344 │   apply(user: Pokemon | null, target: Pokemon | null, move: Move, args: any[]): boolean {
+         │                               ^^^^^^
+    2345 │     return true;
+    2346 │   }
+  
+  i Unused parameters might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: If this is intentional, prepend target with an underscore.
+  
+     2342  2342 │      * @returns true if application of the ability succeeds
+     2343  2343 │      */
+     2344       │ - ··apply(user:·Pokemon·|·null,·target:·Pokemon·|·null,·move:·Move,·args:·any[]):·boolean·{
+           2344 │ + ··apply(user:·Pokemon·|·null,·_target:·Pokemon·|·null,·move:·Move,·args:·any[]):·boolean·{
+     2345  2345 │       return true;
+     2346  2346 │     }
+  
+
+src\data\moves\move.ts:2344:55 lint/correctness/noUnusedFunctionParameters  FIXABLE  ━━━━━━━━━━━━━━━
+
+  × This parameter move is unused.
+  
+    2342 │    * @returns true if application of the ability succeeds
+    2343 │    */
+  > 2344 │   apply(user: Pokemon | null, target: Pokemon | null, move: Move, args: any[]): boolean {
+         │                                                       ^^^^
+    2345 │     return true;
+    2346 │   }
+  
+  i Unused parameters might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: If this is intentional, prepend move with an underscore.
+  
+     2342  2342 │      * @returns true if application of the ability succeeds
+     2343  2343 │      */
+     2344       │ - ··apply(user:·Pokemon·|·null,·target:·Pokemon·|·null,·move:·Move,·args:·any[]):·boolean·{
+           2344 │ + ··apply(user:·Pokemon·|·null,·target:·Pokemon·|·null,·_move:·Move,·args:·any[]):·boolean·{
+     2345  2345 │       return true;
+     2346  2346 │     }
+  
+
+src\data\moves\move.ts:2344:67 lint/correctness/noUnusedFunctionParameters  FIXABLE  ━━━━━━━━━━━━━━━
+
+  × This parameter args is unused.
+  
+    2342 │    * @returns true if application of the ability succeeds
+    2343 │    */
+  > 2344 │   apply(user: Pokemon | null, target: Pokemon | null, move: Move, args: any[]): boolean {
+         │                                                                   ^^^^
+    2345 │     return true;
+    2346 │   }
+  
+  i Unused parameters might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: If this is intentional, prepend args with an underscore.
+  
+     2342  2342 │      * @returns true if application of the ability succeeds
+     2343  2343 │      */
+     2344       │ - ··apply(user:·Pokemon·|·null,·target:·Pokemon·|·null,·move:·Move,·args:·any[]):·boolean·{
+           2344 │ + ··apply(user:·Pokemon·|·null,·target:·Pokemon·|·null,·move:·Move,·_args:·any[]):·boolean·{
+     2345  2345 │       return true;
+     2346  2346 │     }
+  
+
+The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+Diagnostics not shown: 906.
+Checked 1 file in 76ms. No fixes applied.
+Found 911 errors.
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

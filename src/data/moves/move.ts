@@ -70,7 +70,7 @@ import { StatusEffect } from "#enums/status-effect";
 import { SwitchType } from "#enums/switch-type";
 import { WeatherType } from "#enums/weather-type";
 import { MoveUsedEvent } from "#events/battle-scene";
-import type { EnemyPokemon, Pokemon } from "#field/pokemon";
+import type { EnemyPokemon } from "#field/pokemon";
 import { Pokemon } from "#field/pokemon";
 import {
   AttackTypeBoosterModifier,
@@ -135,7 +135,6 @@ import {
   counterAttackConditionBoth,
   counterAttackConditionPhysical,
   counterAttackConditionSpecial,
-  MoveCondition,
   type MoveRestriction,
 } from "#moves/move-condition";
 import { hasModifierSided, moveHeldItemOneStack_Sided } from "#moves/move-held-item-one-stack";
@@ -167,6 +166,8 @@ import i18next from "i18next";
  * A function used to conditionally determine execution of a given {@linkcode MoveAttr}.
  * Conventionally returns `true` for success and `false` for failure.
  */
+type Constructor<T> = new (...args: any[]) => T;
+
 type MoveConditionFunc = (user: Pokemon, target: Pokemon, move: Move) => boolean;
 export type UserMoveConditionFunc = (user: Pokemon, move: Move) => boolean;
 
@@ -189,7 +190,8 @@ export abstract class Move implements Localizable {
   private readonly restrictions: MoveRestriction[] = [];
   /** The move's {@linkcode MoveFlags} */
   private flags = 0;
-  private flags2 = 0;
+  // 확장 MoveFlags2는 비트마스크 대신 숫자 ID 목록으로 보관한다.
+  private flags2List = "";
   private nameAppend = "";
 
   /**
@@ -409,7 +411,7 @@ export abstract class Move implements Localizable {
    * @returns Whether the move is blocked by the target's type.
    * Self-targeted moves will return `false` regardless of circumstances.
    */
-  isTypeImmune(user: Pokemon, target: Pokemon, type: Type): boolean {
+  isTypeImmune(user: Pokemon, target: Pokemon, type: PokemonType): boolean {
     if (this.moveTarget === MoveTarget.USER) {
       return false;
     }
@@ -417,15 +419,8 @@ export abstract class Move implements Localizable {
     // 가루 계열 기술인지 먼저 확인 (불필요한 연산 방지)
     if (this.hasFlag(MoveFlags.POWDER_MOVE)) {
       // OvercoatModifier(방진고글)가 적용된 상태인지 확인
-      const existingOvercoatModifier = globalScene
-        .getModifiers(OvercoatModifier)
-        .find(mod => mod.pokemonId === target.id); // 대상 포켓몬에게 적용되었는지 확인
-
-      // 방진고글 효과가 이미 적용되었거나, 전투 중 새로 적용할 수 있는지 체크
-      const hasSafetyGoggles =
-        existingOvercoatModifier
-        || (target.isPlayer()
-          && (globalScene.applyModifier(OvercoatModifier, target.player, target) as OvercoatModifier | null));
+      // 보유 여부 판정 시 도구의 apply()를 실행하지 않는다.
+      const hasSafetyGoggles = target.getHeldItems().some(mod => mod instanceof OvercoatModifier);
 
       if (hasSafetyGoggles) {
         return true; // 방진고글 효과로 인해 가루 기술 면역
@@ -536,7 +531,10 @@ export abstract class Move implements Localizable {
         list.push(key);
       }
       if (!on) {
-        list.splice(list.indexOf(key), 1);
+        const index = list.indexOf(key);
+        if (index !== -1) {
+          list.splice(index, 1);
+        }
       }
       this.flags2List = list.join(",");
     }
@@ -887,284 +885,192 @@ export abstract class Move implements Localizable {
   }): boolean {
     switch (flag) {
       case MoveFlags.MAKES_CONTACT: {
-        const existingProtectModifier = globalScene
-          .getModifiers(IgnoreContactItemModifier, user.isPlayer())
-          .find(mod => mod.pokemonId === user.id);
+        const existingProtectModifier = user.getHeldItems().find(mod => mod instanceof IgnoreContactItemModifier);
 
         const hasProtectivePads = !!existingProtectModifier;
 
         // 🔹 PunchingGloveModifier (펀치기술용)
-        const existingPunchingGloveModifier = globalScene
-          .getModifiers(PunchingGloveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingPunchingGloveModifier = user.getHeldItems().find(mod => mod instanceof PunchingGloveModifier);
 
-        const hasPunchingGlove =
-          existingPunchingGloveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(PunchingGloveModifier, this.player, user) as PunchingGloveModifier | null));
+        const hasPunchingGlove = existingPunchingGloveModifier;
 
         // 🔹 SlicingMoveModifier (베기기술용)
-        const existingSlicingMoveModifier = globalScene
-          .getModifiers(SlicingMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingSlicingMoveModifier = user.getHeldItems().find(mod => mod instanceof SlicingMoveModifier);
 
-        const hasSlicingCharm =
-          existingSlicingMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(SlicingMoveModifier, this.player, user) as SlicingMoveModifier | null));
+        const hasSlicingCharm = existingSlicingMoveModifier;
 
-        const existingBitingMoveModifier = globalScene
-          .getModifiers(BitingMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingBitingMoveModifier = user.getHeldItems().find(mod => mod instanceof BitingMoveModifier);
 
-        const hasPowerTeeth =
-          existingSlicingMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(BitingMoveModifier, this.player, user) as BitingMoveModifier | null));
+        const hasPowerTeeth = existingBitingMoveModifier;
 
-        const existingHeadMoveModifier = globalScene
-          .getModifiers(HeadMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingHeadMoveModifier = user.getHeldItems().find(mod => mod instanceof HeadMoveModifier);
 
-        const hasPowerHelmet =
-          existingHeadMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(HeadMoveModifier, this.player, user) as HeadMoveModifier | null));
+        const hasPowerHelmet = existingHeadMoveModifier;
 
-        const existingHornMoveModifier = globalScene
-          .getModifiers(HornMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingHornMoveModifier = user.getHeldItems().find(mod => mod instanceof HornMoveModifier);
 
-        const hasHornHelmet =
-          existingHornMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(HornMoveModifier, this.player, user) as HornMoveModifier | null));
+        const hasHornHelmet = existingHornMoveModifier;
 
-        const existingKickMoveModifier = globalScene
-          .getModifiers(KickMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingKickMoveModifier = user.getHeldItems().find(mod => mod instanceof KickMoveModifier);
 
-        const hasPowerProtector =
-          existingKickMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(KickMoveModifier, this.player, user) as KickMoveModifier | null));
+        const hasPowerProtector = existingKickMoveModifier;
 
-        const existingSpearMoveModifier = globalScene
-          .getModifiers(SpearMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingSpearMoveModifier = user.getHeldItems().find(mod => mod instanceof SpearMoveModifier);
 
-        const hasSpikeSpear =
-          existingSpearMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(SpearMoveModifier, this.player, user) as SpearMoveModifier | null));
+        const hasSpikeSpear = existingSpearMoveModifier;
 
-        const existingWingMoveModifier = globalScene
-          .getModifiers(WingMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingWingMoveModifier = user.getHeldItems().find(mod => mod instanceof WingMoveModifier);
 
-        const hasPowerFeather =
-          existingWingMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(WingMoveModifier, this.player, user) as WingMoveModifier | null));
+        const hasPowerFeather = existingWingMoveModifier;
 
-        const existingHammerMoveModifier = globalScene
-          .getModifiers(HammerMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingHammerMoveModifier = user.getHeldItems().find(mod => mod instanceof HammerMoveModifier);
 
-        const hasMightyHammer =
-          existingHammerMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(HammerMoveModifier, this.player, user) as HammerMoveModifier | null));
+        const hasMightyHammer = existingHammerMoveModifier;
 
-        const existingClawMoveModifier = globalScene
-          .getModifiers(ClawMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingClawMoveModifier = user.getHeldItems().find(mod => mod instanceof ClawMoveModifier);
 
-        const hasPowerClaw =
-          existingClawMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(ClawMoveModifier, this.player, user) as ClawMoveModifier | null));
+        const hasPowerClaw = existingClawMoveModifier;
 
-        const existingPinchMoveModifier = globalScene
-          .getModifiers(PinchMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingPinchMoveModifier = user.getHeldItems().find(mod => mod instanceof PinchMoveModifier);
 
-        const hasPowerPinch =
-          existingPinchMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(PinchMoveModifier, this.player, user) as PinchMoveModifier | null));
+        const hasPowerPinch = existingPinchMoveModifier;
 
-        const existingBeakMoveModifier = globalScene
-          .getModifiers(BeakMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingBeakMoveModifier = user.getHeldItems().find(mod => mod instanceof BeakMoveModifier);
 
-        const hasHardenBeak =
-          existingBeakMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(BeakMoveModifier, this.player, user) as BeakMoveModifier | null));
+        const hasHardenBeak = existingBeakMoveModifier;
 
-        const existingDashMoveModifier = globalScene
-          .getModifiers(DashMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingDashMoveModifier = user.getHeldItems().find(mod => mod instanceof DashMoveModifier);
 
-        const hasFastBoots =
-          existingDashMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(DashMoveModifier, this.player, user) as DashMoveModifier | null));
+        const hasFastBoots = existingDashMoveModifier;
 
-        const existingSpinMoveModifier = globalScene
-          .getModifiers(SpinMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingSpinMoveModifier = user.getHeldItems().find(mod => mod instanceof SpinMoveModifier);
 
-        const hasSpinTop =
-          existingSpinMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(SpinMoveModifier, this.player, user) as SpinMoveModifier | null));
+        const hasSpinTop = existingSpinMoveModifier;
 
-        const existingDrillMoveModifier = globalScene
-          .getModifiers(DrillMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingDrillMoveModifier = user.getHeldItems().find(mod => mod instanceof DrillMoveModifier);
 
-        const hasPowerDrill =
-          existingDrillMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(DrillMoveModifier, this.player, user) as DrillMoveModifier | null));
+        const hasPowerDrill = existingDrillMoveModifier;
 
-        const existingWhipMoveModifier = globalScene
-          .getModifiers(WhipMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingWhipMoveModifier = user.getHeldItems().find(mod => mod instanceof WhipMoveModifier);
 
-        const hasPowerRope =
-          existingWhipMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(WhipMoveModifier, this.player, user) as WhipMoveModifier | null));
+        const hasPowerRope = existingWhipMoveModifier;
 
-        const existingWheelMoveModifier = globalScene
-          .getModifiers(WheelMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingWheelMoveModifier = user.getHeldItems().find(mod => mod instanceof WheelMoveModifier);
 
-        const hasPowerWheel =
-          existingWheelMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(WheelMoveModifier, this.player, user) as WheelMoveModifier | null));
+        const hasPowerWheel = existingWheelMoveModifier;
 
-        const existingTailMoveModifier = globalScene
-          .getModifiers(TailMoveModifier)
-          .find(mod => mod.pokemonId === user.id);
+        const existingTailMoveModifier = user.getHeldItems().find(mod => mod instanceof TailMoveModifier);
 
-        const hasPowerTail =
-          existingTailMoveModifier
-          || (user.isPlayer()
-            && (globalScene.applyModifier(TailMoveModifier, this.player, user) as TailMoveModifier | null));
+        const hasPowerTail = existingTailMoveModifier;
 
         // ✅ PunchingGlove 효과
-        if (hasPunchingGlove && user.currentMove && user.currentMove.hasFlag(MoveFlags.PUNCHING_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPunchingGlove && this && this.hasFlag(MoveFlags.PUNCHING_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[PunchingGlove] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[PunchingGlove] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
         // ✅ SlicingMoveModifier 효과
-        if (hasSlicingCharm && user.currentMove && user.currentMove.hasFlag(MoveFlags.SLICING_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasSlicingCharm && this && this.hasFlag(MoveFlags.SLICING_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[SlicingMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[SlicingMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerHelmet && user.currentMove && user.currentMove.hasFlag(MoveFlags.HEAD_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerHelmet && this && this.hasFlag(MoveFlags.HEAD_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[HeadMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[HeadMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerTeeth && user.currentMove && user.currentMove.hasFlag(MoveFlags.BITING_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerTeeth && this && this.hasFlag(MoveFlags.BITING_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[BitingMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[BitingMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasHornHelmet && user.currentMove && user.currentMove.hasFlag(MoveFlags.HORN_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasHornHelmet && this && this.hasFlag(MoveFlags.HORN_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[HornMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[HornMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerProtector && user.currentMove && user.currentMove.hasFlag(MoveFlags.KICK_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerProtector && this && this.hasFlag(MoveFlags.KICK_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[HornMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[HornMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasSpikeSpear && user.currentMove && user.currentMove.hasFlag(MoveFlags.SPEAR_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasSpikeSpear && this && this.hasFlag(MoveFlags.SPEAR_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[SpearMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[SpearMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerFeather && user.currentMove && user.currentMove.hasFlag(MoveFlags.WING_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerFeather && this && this.hasFlag(MoveFlags.WING_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[WingMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[WingMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasMightyHammer && user.currentMove && user.currentMove.hasFlag(MoveFlags.HAMMER_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasMightyHammer && this && this.hasFlag(MoveFlags.HAMMER_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[HammerMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[HammerMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerClaw && user.currentMove && user.currentMove.hasFlag(MoveFlags.CLAW_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerClaw && this && this.hasFlag(MoveFlags.CLAW_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[ClawMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[ClawMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerPinch && user.currentMove && user.currentMove.hasFlag(MoveFlags2.PINCH_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerPinch && this && this.hasFlag(MoveFlags2.PINCH_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[PinchMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[PinchMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasHardenBeak && user.currentMove && user.currentMove.hasFlag(MoveFlags2.BEAK_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasHardenBeak && this && this.hasFlag(MoveFlags2.BEAK_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[BeakMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[BeakMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasFastBoots && user.currentMove && user.currentMove.hasFlag(MoveFlags2.DASH_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasFastBoots && this && this.hasFlag(MoveFlags2.DASH_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[DashMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[DashMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasSpinTop && user.currentMove && user.currentMove.hasFlag(MoveFlags2.SPIN_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasSpinTop && this && this.hasFlag(MoveFlags2.SPIN_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[SpinMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[SpinMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerDrill && user.currentMove && user.currentMove.hasFlag(MoveFlags2.DRILL_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerDrill && this && this.hasFlag(MoveFlags2.DRILL_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[DrillMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[DrillMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerRope && user.currentMove && user.currentMove.hasFlag(MoveFlags2.ROPE_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerRope && this && this.hasFlag(MoveFlags2.WHIP_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[WhipMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[WhipMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerWheel && user.currentMove && user.currentMove.hasFlag(MoveFlags2.WHEEL_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerWheel && this && this.hasFlag(MoveFlags2.WHEEL_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[WheelMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[WheelMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
-        if (hasPowerTail && user.currentMove && user.currentMove.hasFlag(MoveFlags2.TAIL_MOVE)) {
-          user.currentMove.setFlag(MoveFlags.MAKES_CONTACT, false);
+        if (hasPowerTail && this && this.hasFlag(MoveFlags2.TAIL_MOVE)) {
+          this.setFlag(MoveFlags.MAKES_CONTACT, false);
           user.increaseMovePower(1.3);
-          console.log(`[TailMoveModifier] ${user.currentMove.name} → 위력 1.3배 & 비접촉`);
+          console.log(`[TailMoveModifier] ${this.name} → 위력 1.3배 & 비접촉`);
         }
 
         if (hasProtectivePads) {
@@ -1174,7 +1080,7 @@ export abstract class Move implements Localizable {
         if (user.hasAbilityWithAttr("IgnoreContactAbAttr") || this.hitsSubstitute(user, target)) {
           // 접촉 판정 무시
           // 동시에 위력 강화
-          if (user.currentMove && !user.currentMove.hasFlag(MoveFlags.MAKES_CONTACT)) {
+          if (!this.hasFlag(MoveFlags.MAKES_CONTACT)) {
             user.increaseMovePower(1.3);
           }
           return false;
@@ -1187,17 +1093,9 @@ export abstract class Move implements Localizable {
         const holderIsPlayer = user.isPlayer();
 
         // 1) 기존 bypass 아이템
-        const existingBypassMod = globalScene
-          .getModifiers(MoveAbilityBypassModifier, holderIsPlayer)
-          .find(mod => mod.pokemonId === user.id);
+        const existingBypassMod = user.getHeldItems().find(mod => mod instanceof MoveAbilityBypassModifier);
 
-        const bypassMod =
-          existingBypassMod
-          || (globalScene.applyModifier(
-            MoveAbilityBypassModifier,
-            holderIsPlayer,
-            user,
-          ) as MoveAbilityBypassModifier | null);
+        const bypassMod = existingBypassMod;
 
         if (bypassMod) {
           const bypass = new BooleanHolder(false);
@@ -2073,7 +1971,7 @@ export class AttackMove extends Move {
   /** This field does not exist at runtime and must not be used.
    * Its sole purpose is to ensure that typescript is able to properly narrow when the `is` method is called.
    */
-  private declare _: never;
+  declare private _: never;
   override is<K extends keyof MoveClassMap>(moveKind: K): this is MoveClassMap[K] {
     return moveKind === "AttackMove";
   }
@@ -2149,7 +2047,7 @@ export class StatusMove extends Move {
   /** This field does not exist at runtime and must not be used.
    * Its sole purpose is to ensure that typescript is able to properly narrow when the `is` method is called.
    */
-  private declare _: never;
+  declare private _: never;
   constructor(
     id: MoveId,
     type: PokemonType,
@@ -2171,7 +2069,7 @@ export class SelfStatusMove extends Move {
   /** This field does not exist at runtime and must not be used.
    * Its sole purpose is to ensure that typescript is able to properly narrow when the `is` method is called.
    */
-  private declare _: never;
+  declare private _: never;
   constructor(
     id: MoveId,
     type: PokemonType,
@@ -3007,7 +2905,7 @@ function sumCounterableDamageThisTurn(user: Pokemon, moveFilter?: MoveDamageCate
  * Attribute for counter-like moves to redirect the move to a different target
  */
 export class CounterRedirectAttr extends MoveAttr {
-  private declare moveFilter?: MoveDamageCategory;
+  declare private moveFilter?: MoveDamageCategory;
   constructor(moveFilter?: MoveDamageCategory) {
     super();
     if (moveFilter !== undefined) {
@@ -5238,7 +5136,7 @@ export class OverrideMoveEffectAttr extends MoveAttr {
   /** This field does not exist at runtime and must not be used.
    * Its sole purpose is to ensure that typescript is able to properly narrow when the `is` method is called.
    */
-  private declare _: never;
+  declare private _: never;
   /**
    * Apply the move attribute to override other effects of this move.
    * @param user - The {@linkcode Pokemon} using the move
@@ -6410,7 +6308,7 @@ export class MovePowerMultiplierAttr extends VariablePowerAttr {
 
   constructor(
     baseMultiplier: number | ((user: Pokemon, target: Pokemon, move: Move) => number),
-    dynamaxMultiplier: number | ((user: Pokemon, target: Pokemon, move: Move) => number),
+    dynamaxMultiplier: number | ((user: Pokemon, target: Pokemon, move: Move) => number) = baseMultiplier,
   ) {
     super();
     this.basePowerMultiplier = baseMultiplier;
@@ -13771,8 +13669,11 @@ export function initMoves() {
        * Should not apply abilities or held items if user is off the field
        */
       .edgeCase(),
-    new AttackMove(MoveId.ROCK_SMASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 40, 100, 15, 100, 0, 2)
-      .attr(StatStageChangeAttr, [Stat.DEF], -2),
+    new AttackMove(MoveId.ROCK_SMASH, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 40, 100, 15, 100, 0, 2).attr(
+      StatStageChangeAttr,
+      [Stat.DEF],
+      -2,
+    ),
     new AttackMove(MoveId.WHIRLPOOL, PokemonType.WATER, MoveCategory.SPECIAL, 35, 85, 15, -1, 0, 2)
       .spinMove()
       .attr(TrapAttr, BattlerTagType.WHIRLPOOL)
@@ -14778,8 +14679,7 @@ export function initMoves() {
       .attr(ZStatStageChangeAttr, [Stat.SPDEF], 1, true)
       .attr(AddArenaTagAttr, ArenaTagType.WONDER_ROOM, 5)
       .target(MoveTarget.BOTH_SIDES),
-    new AttackMove(MoveId.PSYSHOCK, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 5)
-      .attr(DefDefAttr),
+    new AttackMove(MoveId.PSYSHOCK, PokemonType.PSYCHIC, MoveCategory.SPECIAL, 80, 100, 10, -1, 0, 5).attr(DefDefAttr),
     new AttackMove(MoveId.VENOSHOCK, PokemonType.POISON, MoveCategory.SPECIAL, 65, 100, 10, -1, 0, 5).attr(
       MovePowerMultiplierAttr,
       (user, target, move) =>
@@ -16266,8 +16166,9 @@ export function initMoves() {
       .attr(CutHpStatStageBoostAttr, [Stat.ATK, Stat.DEF, Stat.SPATK, Stat.SPDEF, Stat.SPD], 1, 3)
       .soundBased()
       .danceMove(),
-    new AttackMove(MoveId.BODY_PRESS, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 8)
-      .attr(DefAtkAttr),
+    new AttackMove(MoveId.BODY_PRESS, PokemonType.FIGHTING, MoveCategory.PHYSICAL, 80, 100, 10, -1, 0, 8).attr(
+      DefAtkAttr,
+    ),
     new StatusMove(MoveId.DECORATE, PokemonType.FAIRY, -1, 15, -1, 0, 8)
       .attr(StatStageChangeAttr, [Stat.ATK, Stat.SPATK], 2)
       .ignoresProtect(),
@@ -16961,7 +16862,7 @@ export function initMoves() {
     new AttackMove(MoveId.RAGING_BULL, PokemonType.NORMAL, MoveCategory.PHYSICAL, 90, 100, 10, -1, 0, 9)
       .attr(RagingBullTypeAttr)
       .attr(RemoveScreensAttr),
-    new AttackMove(MoveId.MAKE_IT_RAIN, PokemonType.STEEL, MoveCategory.SPECIAL, 140, 100, 5, -1, 0, 9)
+    new AttackMove(MoveId.MAKE_IT_RAIN, PokemonType.STEEL, MoveCategory.SPECIAL, 140, 100, 5, -1, 2, 9)
       .attr(MoneyAttr)
       .attr(StatStageChangeAttr, [Stat.SPATK], -2, true, { firstTargetOnly: true })
       .target(MoveTarget.ALL_NEAR_ENEMIES),
@@ -20915,6 +20816,6 @@ export function initMoves() {
     new AttackMove(MoveId.ABSOLUTE_WORLD, PokemonType.DRAGON, MoveCategory.SPECIAL, 160, 85, 5, 40, 0, 224)
       .target(MoveTarget.ALL_NEAR_ENEMIES)
       .attr(StatStageChangeAttr, [Stat.DEF, Stat.SPDEF], -12)
-      .attr(PhotonGeyserCategoryAttr)
+      .attr(PhotonGeyserCategoryAttr),
   );
 }

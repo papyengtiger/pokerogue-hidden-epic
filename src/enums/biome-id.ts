@@ -74,6 +74,6 @@ export enum BiomeId {
   ISLAND = 1000,
   LABORATORY,
   END = 1100,
-  TUTORIAL_ROOM = 2000
+  OTHER,
+  TUTORIAL_ROOM = 2000,
 }
-
