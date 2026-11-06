@@ -1,8 +1,9 @@
+import { globalScene } from "#app/global-scene";
 import { PokemonType } from "#enums/pokemon-type";
 
 export type TypeDamageMultiplier = 0 | 0.125 | 0.25 | 0.5 | 1 | 2 | 4 | 8;
 
-export function getTypeDamageMultiplier(attackType: PokemonType, defType: PokemonType): TypeDamageMultiplier {
+function getHiddenEpicTypeDamageMultiplier(attackType: PokemonType, defType: PokemonType): TypeDamageMultiplier {
   if (attackType === PokemonType.UNKNOWN || defType === PokemonType.UNKNOWN) {
     return 1;
   }
@@ -297,6 +298,183 @@ export function getTypeDamageMultiplier(attackType: PokemonType, defType: Pokemo
   }
 
   return 1;
+}
+
+/** Standard Pokemon type chart. Defensive type -> offensive multipliers. */
+const ORIGINAL_TYPE_MATCHUPS: Partial<Record<PokemonType, Partial<Record<PokemonType, TypeDamageMultiplier>>>> = {
+  [PokemonType.NORMAL]: {
+    [PokemonType.FIGHTING]: 2,
+    [PokemonType.GHOST]: 0,
+  },
+  [PokemonType.FIGHTING]: {
+    [PokemonType.FLYING]: 2,
+    [PokemonType.ROCK]: 0.5,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.PSYCHIC]: 2,
+    [PokemonType.DARK]: 0.5,
+    [PokemonType.FAIRY]: 2,
+  },
+  [PokemonType.FLYING]: {
+    [PokemonType.FIGHTING]: 0.5,
+    [PokemonType.GROUND]: 0,
+    [PokemonType.ROCK]: 2,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.GRASS]: 0.5,
+    [PokemonType.ELECTRIC]: 2,
+    [PokemonType.ICE]: 2,
+  },
+  [PokemonType.POISON]: {
+    [PokemonType.FIGHTING]: 0.5,
+    [PokemonType.POISON]: 0.5,
+    [PokemonType.GROUND]: 2,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.GRASS]: 0.5,
+    [PokemonType.PSYCHIC]: 2,
+    [PokemonType.FAIRY]: 0.5,
+  },
+  [PokemonType.GROUND]: {
+    [PokemonType.POISON]: 0.5,
+    [PokemonType.ROCK]: 0.5,
+    [PokemonType.WATER]: 2,
+    [PokemonType.GRASS]: 2,
+    [PokemonType.ELECTRIC]: 0,
+    [PokemonType.ICE]: 2,
+  },
+  [PokemonType.ROCK]: {
+    [PokemonType.NORMAL]: 0.5,
+    [PokemonType.FIGHTING]: 2,
+    [PokemonType.FLYING]: 0.5,
+    [PokemonType.POISON]: 0.5,
+    [PokemonType.GROUND]: 2,
+    [PokemonType.STEEL]: 2,
+    [PokemonType.FIRE]: 0.5,
+    [PokemonType.WATER]: 2,
+    [PokemonType.GRASS]: 2,
+  },
+  [PokemonType.BUG]: {
+    [PokemonType.FIGHTING]: 0.5,
+    [PokemonType.FLYING]: 2,
+    [PokemonType.GROUND]: 0.5,
+    [PokemonType.ROCK]: 2,
+    [PokemonType.FIRE]: 2,
+    [PokemonType.GRASS]: 0.5,
+  },
+  [PokemonType.GHOST]: {
+    [PokemonType.NORMAL]: 0,
+    [PokemonType.FIGHTING]: 0,
+    [PokemonType.POISON]: 0.5,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.GHOST]: 2,
+    [PokemonType.DARK]: 2,
+  },
+  [PokemonType.STEEL]: {
+    [PokemonType.NORMAL]: 0.5,
+    [PokemonType.FIGHTING]: 2,
+    [PokemonType.FLYING]: 0.5,
+    [PokemonType.POISON]: 0,
+    [PokemonType.GROUND]: 2,
+    [PokemonType.ROCK]: 0.5,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.STEEL]: 0.5,
+    [PokemonType.FIRE]: 2,
+    [PokemonType.GRASS]: 0.5,
+    [PokemonType.PSYCHIC]: 0.5,
+    [PokemonType.ICE]: 0.5,
+    [PokemonType.DRAGON]: 0.5,
+    [PokemonType.FAIRY]: 0.5,
+  },
+  [PokemonType.FIRE]: {
+    [PokemonType.GROUND]: 2,
+    [PokemonType.ROCK]: 2,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.STEEL]: 0.5,
+    [PokemonType.FIRE]: 0.5,
+    [PokemonType.WATER]: 2,
+    [PokemonType.GRASS]: 0.5,
+    [PokemonType.ICE]: 0.5,
+    [PokemonType.FAIRY]: 0.5,
+  },
+  [PokemonType.WATER]: {
+    [PokemonType.STEEL]: 0.5,
+    [PokemonType.FIRE]: 0.5,
+    [PokemonType.WATER]: 0.5,
+    [PokemonType.GRASS]: 2,
+    [PokemonType.ELECTRIC]: 2,
+    [PokemonType.ICE]: 0.5,
+  },
+  [PokemonType.GRASS]: {
+    [PokemonType.FLYING]: 2,
+    [PokemonType.POISON]: 2,
+    [PokemonType.GROUND]: 0.5,
+    [PokemonType.BUG]: 2,
+    [PokemonType.FIRE]: 2,
+    [PokemonType.WATER]: 0.5,
+    [PokemonType.GRASS]: 0.5,
+    [PokemonType.ELECTRIC]: 0.5,
+    [PokemonType.ICE]: 2,
+  },
+  [PokemonType.ELECTRIC]: {
+    [PokemonType.FLYING]: 0.5,
+    [PokemonType.GROUND]: 2,
+    [PokemonType.STEEL]: 0.5,
+    [PokemonType.ELECTRIC]: 0.5,
+  },
+  [PokemonType.PSYCHIC]: {
+    [PokemonType.FIGHTING]: 0.5,
+    [PokemonType.BUG]: 2,
+    [PokemonType.GHOST]: 2,
+    [PokemonType.PSYCHIC]: 0.5,
+    [PokemonType.DARK]: 2,
+  },
+  [PokemonType.ICE]: {
+    [PokemonType.FIGHTING]: 2,
+    [PokemonType.ROCK]: 2,
+    [PokemonType.STEEL]: 2,
+    [PokemonType.FIRE]: 2,
+    [PokemonType.ICE]: 0.5,
+  },
+  [PokemonType.DRAGON]: {
+    [PokemonType.FIRE]: 0.5,
+    [PokemonType.WATER]: 0.5,
+    [PokemonType.GRASS]: 0.5,
+    [PokemonType.ELECTRIC]: 0.5,
+    [PokemonType.ICE]: 2,
+    [PokemonType.DRAGON]: 2,
+    [PokemonType.FAIRY]: 2,
+  },
+  [PokemonType.DARK]: {
+    [PokemonType.FIGHTING]: 2,
+    [PokemonType.BUG]: 2,
+    [PokemonType.GHOST]: 0.5,
+    [PokemonType.PSYCHIC]: 0,
+    [PokemonType.DARK]: 0.5,
+    [PokemonType.FAIRY]: 2,
+  },
+  [PokemonType.FAIRY]: {
+    [PokemonType.FIGHTING]: 0.5,
+    [PokemonType.POISON]: 2,
+    [PokemonType.BUG]: 0.5,
+    [PokemonType.STEEL]: 2,
+    [PokemonType.DRAGON]: 0,
+    [PokemonType.DARK]: 0.5,
+  },
+};
+
+/** Original / Hidden Epic switch. The old chart remains the Hidden Epic default. */
+export function getTypeDamageMultiplier(attackType: PokemonType, defType: PokemonType): TypeDamageMultiplier {
+  if (globalScene?.typeMatchupVersion !== "original") {
+    return getHiddenEpicTypeDamageMultiplier(attackType, defType);
+  }
+  if (attackType === PokemonType.UNKNOWN || defType === PokemonType.UNKNOWN) {
+    return 1;
+  }
+  if (defType === PokemonType.MYSTERY) {
+    return 0.5;
+  }
+  if (defType === PokemonType.STELLAR) {
+    return 1;
+  }
+  return ORIGINAL_TYPE_MATCHUPS[defType]?.[attackType] ?? 1;
 }
 
 /**

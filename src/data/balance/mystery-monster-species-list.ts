@@ -42,7 +42,7 @@ export const allMysteryMonsters: MysteryMonsterSpecies[] = [
     MysteryMonsterId.MFO, "M.F.O",
     PokemonType.MYSTERY, null,
     AbilityId.LEVITATE, AbilityId.NONE, AbilityId.NONE,
-    115, 115, 115, 115, 115, 115,
+    130, 130, 130, 130, 130, 130,
     "mfo", 52, // 실제 스프라이트 키 및 프레임 개수 확인 필요
   ),
   // 디 아더: M.N.O.2.4.8 일반형 (종족값 합계 800)

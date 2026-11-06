@@ -68,9 +68,12 @@ export class TitleUiHandler extends OptionSelectUiHandler {
       .setAlpha(0);
     ui.add(this.titleContainer);
 
+    // 히든에픽 타이틀 로고: 상단 중앙, 원본 종횡비(약 3:1) 유지.
+    // 게임 내부 좌표 150x50은 화면 확대 배율에 따라 함께 확대됩니다.
     const logo = globalScene.add
-      .image(scaledWidth / 2, 8, this.getLogo()) // formatting
-      .setOrigin(0.5, 0);
+      .image(scaledWidth / 2, 8, this.getLogo())
+      .setOrigin(0.5, 0)
+      .setDisplaySize(150, 50);
 
     if (timedEventManager.isEventActive()) {
       this.eventDisplay = new TimedEventDisplay(0, 0, timedEventManager.activeEvent());

@@ -294,7 +294,7 @@ export class InputsController {
       const config = deepCopy(this.getConfig(gamepadID)) as InterfaceConfig;
       config.custom = {
         ...config.default,
-        ...(this.configs[layout]?.custom ?? {}),
+        ...(this.configs[gamepadID]?.custom ?? {}),
       };
       this.configs[gamepadID] = config;
       globalScene.gameData?.saveMappingConfigs(gamepadID, this.configs[gamepadID]);
@@ -315,6 +315,21 @@ export class InputsController {
       globalScene.gameData?.saveMappingConfigs(this.selectedDevice[Device.KEYBOARD], this.configs[layout]);
     }
     this.initChosenLayoutKeyboard(this.selectedDevice[Device.KEYBOARD]);
+  }
+
+  /**
+   * Restores the default keyboard and gamepad mappings without re-registering input listeners.
+   * Called after GameData.resetMappingToFactory removes stored mapping overrides.
+   */
+  resetConfigs(): void {
+    this.deactivatePressedKey();
+    // Existing methods index configs by device ID, so replace the whole collection.
+    this.configs = new Map<string, InterfaceConfig>();
+    this.setupKeyboard();
+    this.refreshGamepads();
+    if (this.gamepads.length > 0) {
+      this.setupGamepad(this.gamepads[0]);
+    }
   }
 
   /**

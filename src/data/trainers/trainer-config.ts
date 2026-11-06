@@ -4141,7 +4141,8 @@ export const trainerConfigs: TrainerConfigs = {
       }),
     )
     .setSpeciesFilter(p => p.isOfType(PokemonType.FIRE))
-    .setSpecialtyType(PokemonType.FIRE),
+    .setSpecialtyType(PokemonType.FIRE)
+    .setMixedBattleBgm("battle_grisharm_griselle"),
   [TrainerType.GWYNN]: new TrainerConfig(TrainerType.GWYNN)
     .setBoss()
     .setStaticParty()
@@ -7715,8 +7716,8 @@ export const trainerConfigs: TrainerConfigs = {
     .setStaticParty()
     .setPartyTemplates(new TrainerPartyTemplate(6, PartyMemberStrength.STRONG))
     .setMoneyMultiplier(7)
-    .setBattleBgm("dangerous_enemy")
-    .setMixedBattleBgm("dangerous_enemy")
+    .setBattleBgm("battle_zinnia")
+    .setMixedBattleBgm("battle_zinnia")
     .setPartyMemberFunc(0, getZinniaPartyMemberFunc(0))
     .setPartyMemberFunc(1, getZinniaPartyMemberFunc(1))
     .setPartyMemberFunc(2, getZinniaPartyMemberFunc(2))

@@ -5,8 +5,8 @@ import { getStarterColors } from "#app/global-vars/starter-colors";
 import Overrides from "#app/overrides";
 import { handleTutorial, Tutorial } from "#app/tutorial";
 import { speciesEggMoves } from "#balance/egg-moves";
-import { pokemonPrevolutions } from "#balance/pokemon-evolutions";
 import { starterPassiveAbilities } from "#balance/passives";
+import { pokemonPrevolutions } from "#balance/pokemon-evolutions";
 import { pokemonFormLevelMoves, pokemonSpeciesLevelMoves } from "#balance/pokemon-level-moves";
 import {
   getPassiveCandyCount,
@@ -704,148 +704,102 @@ export class StarterSelectUiHandler extends MessageUiHandler {
       .setInteractive(new Phaser.Geom.Rectangle(0, 0, 250, 55), Phaser.Geom.Rectangle.Contains);
 
     this.pokemonPassiveText.on("pointerdown", () => {
-  if (!this.lastSpecies) {
-    return;
-  }
-
-  const speciesId = this.lastSpecies.speciesId;
-
-  const starterAttributes =
-    this.starterPreferences[speciesId];
-
-  const originalStarterAttributes =
-    this.originalStarterPreferences[speciesId];
-
-  const passiveSpeciesId =
-  this.getStarterKeySpeciesId(
-    this.lastSpecies,
-  );
-
-  const starterData =
-  globalScene.gameData
-    .starterData[passiveSpeciesId];
-
-  const passiveUnlocks =
-    starterData.passiveUnlocks ?? 0;
-
-  const formIndex =
-    starterAttributes.form ?? 0;
-
-  const passiveData =
-    starterPassiveAbilities[speciesId];
-
-  const rawPassives =
-    passiveData?.[formIndex]
-    ?? passiveData?.[0];
-
-  const passives: AbilityId[] =
-    rawPassives === undefined
-      ? []
-      : Array.isArray(rawPassives)
-        ? rawPassives
-        : [rawPassives];
-
-  const options: any[] = [];
-
-  for (
-    let passiveIndex = 0;
-    passiveIndex < passives.length;
-    passiveIndex++
-  ) {
-    const passiveId =
-      passives[passiveIndex];
-
-    const passiveAbility =
-      allAbilities[passiveId];
-
-    const unlocked =
-      !!(passiveUnlocks & (1 << passiveIndex));
-
-    if (!unlocked) {
-      continue;
-    }
-
-    const selected =
-      (starterAttributes.passive
-        ?? starterData.passiveIndex
-        ?? 0) === passiveIndex;
-
-    options.push({
-      label:
-        `${selected ? "● " : ""}${passiveAbility.name}`,
-
-      handler: () => {
-  starterAttributes.passive =
-    passiveIndex;
-
-  originalStarterAttributes.passive =
-    passiveIndex;
-
-  this.passiveCursor =
-    passiveIndex;
-
-  starterData.passiveIndex =
-    passiveIndex;
-
-  globalScene.gameData
-  .starterData[passiveSpeciesId]
-  .passiveIndex =
-  passiveIndex;
-
-  this.setSpeciesDetails(
-    this.lastSpecies,
-  );
-
-  globalScene.playSound("se/select");
-
-  console.log("[PASSIVE_UNLOCK_BEFORE_SAVE]", {
-  speciesId: this.lastSpecies.speciesId,
-  keySpeciesId,
-  passiveUnlocks:
-    persistentStarterData.passiveUnlocks,
-  passiveIndex:
-    persistentStarterData.passiveIndex,
-  passiveAttr:
-    persistentStarterData.passiveAttr,
-});
-
-  globalScene.gameData
-    .saveSystem()
-    .then(success => {
-      if (!success) {
-        return globalScene.reset(true);
+      if (!this.lastSpecies) {
+        return;
       }
+
+      const speciesId = this.lastSpecies.speciesId;
+
+      const starterAttributes = this.starterPreferences[speciesId];
+
+      const originalStarterAttributes = this.originalStarterPreferences[speciesId];
+
+      const passiveSpeciesId = this.getStarterKeySpeciesId(this.lastSpecies);
+
+      const starterData = globalScene.gameData.starterData[passiveSpeciesId];
+
+      const passiveUnlocks = starterData.passiveUnlocks ?? 0;
+
+      const formIndex = starterAttributes.form ?? 0;
+
+      const passiveData = starterPassiveAbilities[speciesId];
+
+      const rawPassives = passiveData?.[formIndex] ?? passiveData?.[0];
+
+      const passives: AbilityId[] =
+        rawPassives === undefined ? [] : Array.isArray(rawPassives) ? rawPassives : [rawPassives];
+
+      const options: any[] = [];
+
+      for (let passiveIndex = 0; passiveIndex < passives.length; passiveIndex++) {
+        const passiveId = passives[passiveIndex];
+
+        const passiveAbility = allAbilities[passiveId];
+
+        const unlocked = !!(passiveUnlocks & (1 << passiveIndex));
+
+        if (!unlocked) {
+          continue;
+        }
+
+        const selected = (starterAttributes.passive ?? starterData.passiveIndex ?? 0) === passiveIndex;
+
+        options.push({
+          label: `${selected ? "● " : ""}${passiveAbility.name}`,
+
+          handler: () => {
+            starterAttributes.passive = passiveIndex;
+
+            originalStarterAttributes.passive = passiveIndex;
+
+            this.passiveCursor = passiveIndex;
+
+            starterData.passiveIndex = passiveIndex;
+
+            globalScene.gameData.starterData[passiveSpeciesId].passiveIndex = passiveIndex;
+
+            this.setSpeciesDetails(this.lastSpecies);
+
+            globalScene.playSound("se/select");
+
+            console.log("[PASSIVE_UNLOCK_BEFORE_SAVE]", {
+              speciesId: this.lastSpecies.speciesId,
+              keySpeciesId,
+              passiveUnlocks: persistentStarterData.passiveUnlocks,
+              passiveIndex: persistentStarterData.passiveIndex,
+              passiveAttr: persistentStarterData.passiveAttr,
+            });
+
+            globalScene.gameData.saveSystem().then(success => {
+              if (!success) {
+                return globalScene.reset(true);
+              }
+            });
+
+            ui.setMode(UiMode.STARTER_SELECT);
+
+            return true;
+          },
+
+          onHover: () => {
+            this.moveInfoOverlay.clear();
+          },
+        });
+      }
+
+      if (options.length <= 1) {
+        return;
+      }
+
+      if (options.length <= 1) {
+        return;
+      }
+
+      ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
+        options,
+        yOffset: 47,
+      });
     });
-
-  ui.setMode(
-    UiMode.STARTER_SELECT,
-  );
-
-  return true;
-},
-
-      onHover: () => {
-  this.moveInfoOverlay.clear();
-},
-    });
-  }
-
-  if (options.length <= 1) {
-    return;
-  }
-
-  if (options.length <= 1) {
-  return;
-}
-
-ui.setModeWithoutClear(
-  UiMode.OPTION_SELECT,
-  {
-    options,
-    yOffset: 47,
-  },
-);
-});
 
     this.pokemonPassiveDisabledIcon = globalScene.add
       .sprite(starterInfoXPos, 137 + starterInfoYOffset, "icon_stop")
@@ -1365,40 +1319,29 @@ ui.setModeWithoutClear(
    * @returns StarterAttributes for the species
    */
   initStarterPrefs(
-  species: PokemonSpecies,
-  preferences: StarterPreferences,
-  ignoreChallenge = false,
-): StarterAttributes {
-  preferences[species.speciesId] ??= {};
+    species: PokemonSpecies,
+    preferences: StarterPreferences,
+    ignoreChallenge = false,
+  ): StarterAttributes {
+    preferences[species.speciesId] ??= {};
 
-  const keySpeciesId =
-    this.getStarterKeySpeciesId(species);
+    const keySpeciesId = this.getStarterKeySpeciesId(species);
 
-  preferences[keySpeciesId] ??= {};
+    preferences[keySpeciesId] ??= {};
 
-  const starterAttributes =
-    preferences[species.speciesId];
+    const starterAttributes = preferences[species.speciesId];
 
-  if (preferences[keySpeciesId].tera !== undefined) {
-    starterAttributes.tera =
-      preferences[keySpeciesId].tera;
-  }
+    if (preferences[keySpeciesId].tera !== undefined) {
+      starterAttributes.tera = preferences[keySpeciesId].tera;
+    }
 
-  const {
-    dexEntry,
-    starterDataEntry: starterData,
-  } = this.getSpeciesData(
-    species.speciesId,
-    !ignoreChallenge,
-  );
+    const { dexEntry, starterDataEntry: starterData } = this.getSpeciesData(species.speciesId, !ignoreChallenge);
 
-  const passiveStarterData =
-    globalScene.gameData.starterData[keySpeciesId]
-    ?? starterData;
+    const passiveStarterData = globalScene.gameData.starterData[keySpeciesId] ?? starterData;
 
-  if (!starterAttributes || !dexEntry.caughtAttr) {
-    return {};
-  }
+    if (!starterAttributes || !dexEntry.caughtAttr) {
+      return {};
+    }
 
     const caughtAttr = dexEntry.caughtAttr;
 
@@ -1429,32 +1372,19 @@ ui.setModeWithoutClear(
       }
     }
 
-    const passiveUnlocks =
-  passiveStarterData.passiveUnlocks ?? 0;
+    const passiveUnlocks = passiveStarterData.passiveUnlocks ?? 0;
 
-const savedPassiveIndex =
-  passiveStarterData.passiveIndex ?? 0;
+    const savedPassiveIndex = passiveStarterData.passiveIndex ?? 0;
 
-const currentPassiveIndex =
-  starterAttributes.passive ?? savedPassiveIndex;
+    const currentPassiveIndex = starterAttributes.passive ?? savedPassiveIndex;
 
-if (
-  currentPassiveIndex < 0
-  || currentPassiveIndex >= 4
-  || !(passiveUnlocks & (1 << currentPassiveIndex))
-) {
-  const firstUnlockedIndex =
-    [0, 1, 2, 3].find(
-      index =>
-        !!(passiveUnlocks & (1 << index)),
-    );
+    if (currentPassiveIndex < 0 || currentPassiveIndex >= 4 || !(passiveUnlocks & (1 << currentPassiveIndex))) {
+      const firstUnlockedIndex = [0, 1, 2, 3].find(index => !!(passiveUnlocks & (1 << index)));
 
-  starterAttributes.passive =
-    firstUnlockedIndex ?? 0;
-} else {
-  starterAttributes.passive =
-    currentPassiveIndex;
-}
+      starterAttributes.passive = firstUnlockedIndex ?? 0;
+    } else {
+      starterAttributes.passive = currentPassiveIndex;
+    }
     if (
       starterAttributes.female !== undefined
       && !(starterAttributes.female ? caughtAttr & DexAttr.FEMALE : caughtAttr & DexAttr.MALE)
@@ -2048,39 +1978,19 @@ if (
     } else {
       let starterContainer: StarterContainer;
       // The temporary, duplicated starter data to show info
-      const starterData =
-  this.getSpeciesData(
-    this.lastSpecies.speciesId,
-  ).starterDataEntry;
+      const starterData = this.getSpeciesData(this.lastSpecies.speciesId).starterDataEntry;
 
-const keySpeciesId =
-  this.getStarterKeySpeciesId(
-    this.lastSpecies,
-  );
+      const keySpeciesId = this.getStarterKeySpeciesId(this.lastSpecies);
 
-const persistentStarterData =
-  globalScene.gameData
-    .starterData[keySpeciesId];
+      const persistentStarterData = globalScene.gameData.starterData[keySpeciesId];
 
-if (
-  this.starterPreferences[
-    this.lastSpecies.speciesId
-  ] === undefined
-) {
-  this.starterPreferences[
-    this.lastSpecies.speciesId
-  ] = {};
-}
+      if (this.starterPreferences[this.lastSpecies.speciesId] === undefined) {
+        this.starterPreferences[this.lastSpecies.speciesId] = {};
+      }
 
-if (
-  this.originalStarterPreferences[
-    this.lastSpecies.speciesId
-  ] === undefined
-) {
-  this.originalStarterPreferences[
-    this.lastSpecies.speciesId
-  ] = {};
-}
+      if (this.originalStarterPreferences[this.lastSpecies.speciesId] === undefined) {
+        this.originalStarterPreferences[this.lastSpecies.speciesId] = {};
+      }
       // Bangs are safe here due to the above check
 
       this.starterPreferences[keySpeciesId] ??= {};
@@ -2484,174 +2394,125 @@ if (
 
           const passiveAttr = starterData.passiveAttr;
 
-const passiveUnlocks =
-  starterData.passiveUnlocks ?? 0;
+          const passiveUnlocks = starterData.passiveUnlocks ?? 0;
 
-const passiveFormIndex =
-  starterAttributes.form ?? 0;
+          const passiveFormIndex = starterAttributes.form ?? 0;
 
-const passiveSpeciesId =
-  this.getStarterKeySpeciesId(this.lastSpecies);
+          const passiveSpeciesId = this.getStarterKeySpeciesId(this.lastSpecies);
 
-const passiveData =
-  starterPassiveAbilities[passiveSpeciesId];
+          const passiveData = starterPassiveAbilities[passiveSpeciesId];
 
-const rawPassives =
-  passiveData?.[passiveFormIndex]
-  ?? passiveData?.[0];
+          const rawPassives = passiveData?.[passiveFormIndex] ?? passiveData?.[0];
 
-const passiveAbilities: AbilityId[] =
-  rawPassives === undefined
-    ? []
-    : Array.isArray(rawPassives)
-      ? rawPassives
-      : [rawPassives];
+          const passiveAbilities: AbilityId[] =
+            rawPassives === undefined ? [] : Array.isArray(rawPassives) ? rawPassives : [rawPassives];
 
-const unlockedPassiveIndices =
-  passiveAbilities
-    .map((_, index) => index)
-    .filter(
-      index =>
-        !!(passiveUnlocks & (1 << index)),
-    );
+          const unlockedPassiveIndices = passiveAbilities
+            .map((_, index) => index)
+            .filter(index => !!(passiveUnlocks & (1 << index)));
 
-if (unlockedPassiveIndices.length > 1) {
-  const showPassiveOptions = () => {
-    this.blockInput = true;
+          if (unlockedPassiveIndices.length > 1) {
+            const showPassiveOptions = () => {
+              this.blockInput = true;
 
-    ui.setMode(UiMode.STARTER_SELECT).then(() => {
-      ui.showText("패시브를 선택해주세요.", null, () => {
-        const passiveOptions: OptionSelectItem[] =
-          unlockedPassiveIndices.map(passiveIndex => {
-            const passiveAbility =
-              allAbilities[
-                passiveAbilities[passiveIndex]
-              ];
+              ui.setMode(UiMode.STARTER_SELECT).then(() => {
+                ui.showText("패시브를 선택해주세요.", null, () => {
+                  const passiveOptions: OptionSelectItem[] = unlockedPassiveIndices.map(passiveIndex => {
+                    const passiveAbility = allAbilities[passiveAbilities[passiveIndex]];
 
-            const currentPassiveIndex =
-              starterAttributes.passive
-              ?? starterData.passiveIndex
-              ?? 0;
+                    const currentPassiveIndex = starterAttributes.passive ?? starterData.passiveIndex ?? 0;
 
-            return {
-              label:
-                `${currentPassiveIndex === passiveIndex ? "● " : ""}`
-                + passiveAbility.name,
+                    return {
+                      label: `${currentPassiveIndex === passiveIndex ? "● " : ""}` + passiveAbility.name,
 
-              handler: () => {
-                starterAttributes.passive =
-                  passiveIndex;
+                      handler: () => {
+                        starterAttributes.passive = passiveIndex;
 
-                originalStarterAttributes.passive =
-                  passiveIndex;
+                        originalStarterAttributes.passive = passiveIndex;
 
-                this.passiveCursor =
-                  passiveIndex;
+                        this.passiveCursor = passiveIndex;
 
-                starterData.passiveIndex =
-                  passiveIndex;
+                        starterData.passiveIndex = passiveIndex;
 
-                persistentStarterData.passiveIndex =
-                  passiveIndex;
+                        persistentStarterData.passiveIndex = passiveIndex;
 
-                this.clearText();
+                        this.clearText();
 
-                ui.setMode(
-                  UiMode.STARTER_SELECT,
-                );
+                        ui.setMode(UiMode.STARTER_SELECT);
 
-                this.setSpeciesDetails(
-                  this.lastSpecies,
-                );
+                        this.setSpeciesDetails(this.lastSpecies);
 
-                globalScene.playSound(
-                  "se/select",
-                );
+                        globalScene.playSound("se/select");
 
-                globalScene.gameData
-                  .saveSystem()
-                  .then(success => {
-                    if (!success) {
-                      return globalScene.reset(
-                        true,
-                      );
-                    }
+                        globalScene.gameData.saveSystem().then(success => {
+                          if (!success) {
+                            return globalScene.reset(true);
+                          }
+                        });
+
+                        this.blockInput = false;
+
+                        return true;
+                      },
+                    };
                   });
 
-                this.blockInput = false;
+                  passiveOptions.push({
+                    label: i18next.t("menu:cancel"),
+
+                    handler: () => {
+                      this.clearText();
+
+                      ui.setMode(UiMode.STARTER_SELECT);
+
+                      this.blockInput = false;
+
+                      return true;
+                    },
+                  });
+
+                  ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
+                    options: passiveOptions,
+                    maxOptions: 6,
+                    yOffset: 19,
+                  });
+                });
+              });
+            };
+
+            options.push({
+              label: "패시브 선택",
+
+              handler: () => {
+                showPassiveOptions();
+                return true;
+              },
+            });
+          }
+
+          if (passiveAttr & PassiveAttr.UNLOCKED) {
+            // 기존 패시브 ON/OFF
+            const label = i18next.t(
+              passiveAttr & PassiveAttr.ENABLED
+                ? "starterSelectUiHandler:disablePassive"
+                : "starterSelectUiHandler:enablePassive",
+            );
+
+            options.push({
+              label,
+              handler: () => {
+                starterData.passiveAttr ^= PassiveAttr.ENABLED;
+
+                persistentStarterData.passiveAttr ^= PassiveAttr.ENABLED;
+
+                ui.setMode(UiMode.STARTER_SELECT);
+
+                this.setSpeciesDetails(this.lastSpecies);
 
                 return true;
               },
-            };
-          });
-
-        passiveOptions.push({
-          label: i18next.t("menu:cancel"),
-
-          handler: () => {
-            this.clearText();
-
-            ui.setMode(
-              UiMode.STARTER_SELECT,
-            );
-
-            this.blockInput = false;
-
-            return true;
-          },
-        });
-
-        ui.setModeWithoutClear(
-          UiMode.OPTION_SELECT,
-          {
-            options: passiveOptions,
-            maxOptions: 6,
-            yOffset: 19,
-          },
-        );
-      });
-    });
-  };
-
-  options.push({
-    label: "패시브 선택",
-
-    handler: () => {
-      showPassiveOptions();
-      return true;
-    },
-  });
-}
-
-if (passiveAttr & PassiveAttr.UNLOCKED) {
-  // 기존 패시브 ON/OFF
-  const label = i18next.t(
-    passiveAttr & PassiveAttr.ENABLED
-      ? "starterSelectUiHandler:disablePassive"
-      : "starterSelectUiHandler:enablePassive",
-  );
-
-  options.push({
-    label,
-    handler: () => {
-      starterData.passiveAttr ^=
-        PassiveAttr.ENABLED;
-
-      persistentStarterData.passiveAttr ^=
-        PassiveAttr.ENABLED;
-
-      ui.setMode(
-        UiMode.STARTER_SELECT,
-      );
-
-      this.setSpeciesDetails(
-        this.lastSpecies,
-      );
-
-      return true;
-    },
-  });
-}
+            });
+          }
 
           if (this.isPracticeMode()) {
             options.push({
@@ -2889,171 +2750,115 @@ if (passiveAttr & PassiveAttr.UNLOCKED) {
             const options: any[] = []; // TODO: add proper type
 
             // Unlock passive options
-if (!globalScene.gameMode.hasChallenge(Challenges.FRESH_START)) {
-  const passiveCost =
-    getPassiveCandyCount(speciesStarterCosts[this.lastSpecies.speciesId]);
+            if (!globalScene.gameMode.hasChallenge(Challenges.FRESH_START)) {
+              const passiveCost = getPassiveCandyCount(speciesStarterCosts[this.lastSpecies.speciesId]);
 
-  const formIndex =
-  starterAttributes.form ?? 0;
+              const formIndex = starterAttributes.form ?? 0;
 
-  const passiveData =
-    starterPassiveAbilities[this.lastSpecies.speciesId];
+              const passiveData = starterPassiveAbilities[this.lastSpecies.speciesId];
 
-  const rawPassives =
-    passiveData?.[formIndex]
-    ?? passiveData?.[0];
+              const rawPassives = passiveData?.[formIndex] ?? passiveData?.[0];
 
-  const passiveAbilities: AbilityId[] =
-    rawPassives === undefined
-      ? []
-      : Array.isArray(rawPassives)
-        ? rawPassives
-        : [rawPassives];
+              const passiveAbilities: AbilityId[] =
+                rawPassives === undefined ? [] : Array.isArray(rawPassives) ? rawPassives : [rawPassives];
 
-  const passiveUnlocks =
-    persistentStarterData.passiveUnlocks ?? 0;
+              const passiveUnlocks = persistentStarterData.passiveUnlocks ?? 0;
 
-  for (
-    let passiveIndex = 0;
-    passiveIndex < passiveAbilities.length;
-    passiveIndex++
-  ) {
-    const passiveAbilityId =
-      passiveAbilities[passiveIndex];
+              for (let passiveIndex = 0; passiveIndex < passiveAbilities.length; passiveIndex++) {
+                const passiveAbilityId = passiveAbilities[passiveIndex];
 
-    const passiveAbility =
-      allAbilities[passiveAbilityId];
+                const passiveAbility = allAbilities[passiveAbilityId];
 
-    const isUnlocked =
-      !!(passiveUnlocks & (1 << passiveIndex));
+                const isUnlocked = !!(passiveUnlocks & (1 << passiveIndex));
 
-    if (isUnlocked) {
-      continue;
-    }
+                if (isUnlocked) {
+                  continue;
+                }
 
-    options.push({
-      label:
-        `×${passiveCost} `
-        + `${i18next.t("starterSelectUiHandler:unlockPassive")} `
-        + `(${passiveAbility.name})`,
+                options.push({
+                  label:
+                    `×${passiveCost} `
+                    + `${i18next.t("starterSelectUiHandler:unlockPassive")} `
+                    + `(${passiveAbility.name})`,
 
-      handler: () => {
-        if (
-          Overrides.FREE_CANDY_UPGRADE_OVERRIDE
-          || persistentStarterData.candyCount >= passiveCost
-        ) {
-          const previousUnlocks =
-            persistentStarterData.passiveUnlocks ?? 0;
+                  handler: () => {
+                    if (Overrides.FREE_CANDY_UPGRADE_OVERRIDE || persistentStarterData.candyCount >= passiveCost) {
+                      const previousUnlocks = persistentStarterData.passiveUnlocks ?? 0;
 
-          persistentStarterData.passiveUnlocks =
-  previousUnlocks | (1 << passiveIndex);
+                      persistentStarterData.passiveUnlocks = previousUnlocks | (1 << passiveIndex);
 
-console.log("[PASSIVE_UNLOCK_WRITE]", {
-  speciesId: this.lastSpecies.speciesId,
-  keySpeciesId,
-  passiveIndex,
-  previousUnlocks,
-  newUnlocks:
-    persistentStarterData.passiveUnlocks,
-  actualStored:
-    globalScene.gameData
-      .starterData[keySpeciesId]
-      .passiveUnlocks,
-});
-starterData.passiveUnlocks =
-  persistentStarterData.passiveUnlocks;
+                      console.log("[PASSIVE_UNLOCK_WRITE]", {
+                        speciesId: this.lastSpecies.speciesId,
+                        keySpeciesId,
+                        passiveIndex,
+                        previousUnlocks,
+                        newUnlocks: persistentStarterData.passiveUnlocks,
+                        actualStored: globalScene.gameData.starterData[keySpeciesId].passiveUnlocks,
+                      });
+                      starterData.passiveUnlocks = persistentStarterData.passiveUnlocks;
 
-persistentStarterData.passiveIndex ??= 0;
-starterData.passiveIndex =
-  persistentStarterData.passiveIndex;
+                      persistentStarterData.passiveIndex ??= 0;
+                      starterData.passiveIndex = persistentStarterData.passiveIndex;
 
-          // 기존 패시브 시스템과 호환
-          persistentStarterData.passiveAttr |=
-            PassiveAttr.UNLOCKED | PassiveAttr.ENABLED;
+                      // 기존 패시브 시스템과 호환
+                      persistentStarterData.passiveAttr |= PassiveAttr.UNLOCKED | PassiveAttr.ENABLED;
 
-          starterData.passiveAttr =
-            persistentStarterData.passiveAttr;
+                      starterData.passiveAttr = persistentStarterData.passiveAttr;
 
-          // 처음 해금한 패시브라면 자동 선택
-          if (previousUnlocks === 0) {
-            persistentStarterData.passiveIndex =
-              passiveIndex;
+                      // 처음 해금한 패시브라면 자동 선택
+                      if (previousUnlocks === 0) {
+                        persistentStarterData.passiveIndex = passiveIndex;
 
-            starterData.passiveIndex =
-              passiveIndex;
+                        starterData.passiveIndex = passiveIndex;
 
-            starterAttributes.passive =
-              passiveIndex;
+                        starterAttributes.passive = passiveIndex;
 
-            originalStarterAttributes.passive =
-              passiveIndex;
-          }
+                        originalStarterAttributes.passive = passiveIndex;
+                      }
 
-          if (!Overrides.FREE_CANDY_UPGRADE_OVERRIDE) {
-            persistentStarterData.candyCount -=
-              passiveCost;
+                      if (!Overrides.FREE_CANDY_UPGRADE_OVERRIDE) {
+                        persistentStarterData.candyCount -= passiveCost;
 
-            starterData.candyCount =
-              persistentStarterData.candyCount;
-          }
+                        starterData.candyCount = persistentStarterData.candyCount;
+                      }
 
-          this.pokemonCandyCountText.setText(
-            `×${starterData.candyCount}`,
-          );
+                      this.pokemonCandyCountText.setText(`×${starterData.candyCount}`);
 
-          globalScene.gameData
-  .saveSystem()
-  .then(success => {
-    console.log(
-      "[PASSIVE_UNLOCK_SAVE_RESULT]",
-      {
-        success,
-        keySpeciesId,
-        passiveUnlocks:
-          globalScene.gameData
-            .starterData[keySpeciesId]
-            .passiveUnlocks,
-      },
-    );
+                      globalScene.gameData.saveSystem().then(success => {
+                        console.log("[PASSIVE_UNLOCK_SAVE_RESULT]", {
+                          success,
+                          keySpeciesId,
+                          passiveUnlocks: globalScene.gameData.starterData[keySpeciesId].passiveUnlocks,
+                        });
 
-    if (!success) {
-      return globalScene.reset(true);
-    }
-  });
+                        if (!success) {
+                          return globalScene.reset(true);
+                        }
+                      });
 
-          ui.setMode(UiMode.STARTER_SELECT);
+                      ui.setMode(UiMode.STARTER_SELECT);
 
-          this.setSpeciesDetails(
-            this.lastSpecies,
-          );
+                      this.setSpeciesDetails(this.lastSpecies);
 
-          globalScene.playSound("se/buy");
+                      globalScene.playSound("se/buy");
 
-          if (starterContainer) {
-            this.updateCandyUpgradeDisplay(
-              starterContainer,
-            );
+                      if (starterContainer) {
+                        this.updateCandyUpgradeDisplay(starterContainer);
 
-            starterContainer.starterPassiveBgs
-              .setVisible(
-                !!starterData.passiveAttr,
-              );
-          }
+                        starterContainer.starterPassiveBgs.setVisible(!!starterData.passiveAttr);
+                      }
 
-          return true;
-        }
+                      return true;
+                    }
 
-        return false;
-      },
+                    return false;
+                  },
 
-      item: "candy",
-      itemArgs:
-        getStarterColors[
-          this.lastSpecies.speciesId
-        ],
-    });
-  }
-}
+                  item: "candy",
+                  itemArgs: getStarterColors[this.lastSpecies.speciesId],
+                });
+              }
+            }
 
             // Reduce cost option
             const valueReduction = starterData.valueReduction;
@@ -3859,12 +3664,9 @@ starterData.passiveIndex =
       formIndex: practiceFormIndex,
       female: props.female,
       abilityIndex,
-passive: !(starterDataEntry.passiveAttr ^ (PassiveAttr.ENABLED | PassiveAttr.UNLOCKED)),
-passiveIndex:
-  this.starterPreferences[species.speciesId]?.passive
-  ?? starterDataEntry.passiveIndex
-  ?? 0,
-nature,
+      passive: !(starterDataEntry.passiveAttr ^ (PassiveAttr.ENABLED | PassiveAttr.UNLOCKED)),
+      passiveIndex: this.starterPreferences[species.speciesId]?.passive ?? starterDataEntry.passiveIndex ?? 0,
+      nature,
       moveset,
       pokerus: this.pokerusSpecies.includes(species),
       nickname: this.starterPreferences[species.speciesId]?.nickname,
@@ -4229,15 +4031,11 @@ nature,
       container.cost = globalScene.gameData.getSpeciesStarterValue(container.species.speciesId);
 
       // First, ensure you have the caught attributes for the species else default to bigint 0
-      const { dexEntry, starterDataEntry: starterData } =
-  this.getSpeciesData(container.species.speciesId);
+      const { dexEntry, starterDataEntry: starterData } = this.getSpeciesData(container.species.speciesId);
 
-const keySpeciesId =
-  this.getStarterKeySpeciesId(container.species);
+      const keySpeciesId = this.getStarterKeySpeciesId(container.species);
 
-const passiveStarterData =
-  globalScene.gameData.starterData[keySpeciesId]
-  ?? starterData;
+      const passiveStarterData = globalScene.gameData.starterData[keySpeciesId] ?? starterData;
       const caughtAttr = dexEntry?.caughtAttr ?? BigInt(0);
       const isStarterProgressable = speciesEggMoves.hasOwnProperty(container.species.speciesId);
 
@@ -4631,64 +4429,50 @@ const passiveStarterData =
   }
 
   setSpecies(species: PokemonSpecies | null) {
-  this.speciesStarterDexEntry = null;
-  this.dexAttrCursor = 0n;
-  this.abilityCursor = 0;
-  this.passiveCursor = 0;
-  this.natureCursor = 0;
-  this.teraCursor = PokemonType.UNKNOWN;
+    this.speciesStarterDexEntry = null;
+    this.dexAttrCursor = 0n;
+    this.abilityCursor = 0;
+    this.passiveCursor = 0;
+    this.natureCursor = 0;
+    this.teraCursor = PokemonType.UNKNOWN;
 
-  if (species) {
-    const { dexEntry } = this.getSpeciesData(species.speciesId);
-    this.speciesStarterDexEntry = dexEntry;
-    this.dexAttrCursor = this.getCurrentDexProps(species.speciesId);
-    this.abilityCursor =
-      globalScene.gameData.getStarterSpeciesDefaultAbilityIndex(species);
-    this.natureCursor =
-      globalScene.gameData.getSpeciesDefaultNature(species, dexEntry);
-    this.teraCursor = species.type1;
-  }
+    if (species) {
+      const { dexEntry } = this.getSpeciesData(species.speciesId);
+      this.speciesStarterDexEntry = dexEntry;
+      this.dexAttrCursor = this.getCurrentDexProps(species.speciesId);
+      this.abilityCursor = globalScene.gameData.getStarterSpeciesDefaultAbilityIndex(species);
+      this.natureCursor = globalScene.gameData.getSpeciesDefaultNature(species, dexEntry);
+      this.teraCursor = species.type1;
+    }
 
-  if (!species && globalScene.ui.getTooltip().visible) {
-    globalScene.ui.hideTooltip();
-  }
+    if (!species && globalScene.ui.getTooltip().visible) {
+      globalScene.ui.hideTooltip();
+    }
 
-  this.pokemonAbilityText.off("pointerover");
-  this.pokemonPassiveText.off("pointerover");
+    this.pokemonAbilityText.off("pointerover");
+    this.pokemonPassiveText.off("pointerover");
 
-  const starterAttributes: StarterAttributes | null = species
-    ? {
-        ...this.starterPreferences[
-          this.getStarterKeySpeciesId(species)
-        ],
-      }
-    : null;
+    const starterAttributes: StarterAttributes | null = species
+      ? {
+          ...this.starterPreferences[this.getStarterKeySpeciesId(species)],
+        }
+      : null;
 
-  if (
-    starterAttributes?.passive !== undefined
-    && !Number.isNaN(starterAttributes.passive)
-  ) {
-    this.passiveCursor =
-      starterAttributes.passive;
-  }
+    if (starterAttributes?.passive !== undefined && !Number.isNaN(starterAttributes.passive)) {
+      this.passiveCursor = starterAttributes.passive;
+    }
 
-  if (starterAttributes?.nature) {
-    this.natureCursor =
-      starterAttributes.nature;
-  }
+    if (starterAttributes?.nature) {
+      this.natureCursor = starterAttributes.nature;
+    }
 
-  if (
-    starterAttributes?.ability !== undefined
-    && !Number.isNaN(starterAttributes.ability)
-  ) {
-    this.abilityCursor =
-      starterAttributes.ability;
-  }
+    if (starterAttributes?.ability !== undefined && !Number.isNaN(starterAttributes.ability)) {
+      this.abilityCursor = starterAttributes.ability;
+    }
 
-  if (starterAttributes?.tera) {
-    this.teraCursor =
-      starterAttributes.tera;
-  }
+    if (starterAttributes?.tera) {
+      this.teraCursor = starterAttributes.tera;
+    }
 
     if (this.statsMode) {
       if (this.speciesStarterDexEntry?.caughtAttr) {
@@ -5222,30 +5006,19 @@ const passiveStarterData =
           .setColor(getTextColor(!isHidden ? TextStyle.SUMMARY_ALT : TextStyle.SUMMARY_GOLD))
           .setShadowColor(getTextColor(!isHidden ? TextStyle.SUMMARY_ALT : TextStyle.SUMMARY_GOLD, true));
 
-        const passiveSpeciesId =
-  this.getStarterKeySpeciesId(species);
+        const passiveSpeciesId = this.getStarterKeySpeciesId(species);
 
-const passiveStarterData =
-  globalScene.gameData.starterData[passiveSpeciesId]
-  ?? starterDataEntry;
+        const passiveStarterData = globalScene.gameData.starterData[passiveSpeciesId] ?? starterDataEntry;
 
-const passiveAttr =
-  passiveStarterData.passiveAttr;
+        const passiveAttr = passiveStarterData.passiveAttr;
 
-const passiveIndex =
-  this.starterPreferences[species.speciesId]?.passive
-  ?? passiveStarterData.passiveIndex
-  ?? 0;
+        const passiveIndex =
+          this.starterPreferences[species.speciesId]?.passive ?? passiveStarterData.passiveIndex ?? 0;
 
-const passiveAbility =
-  practiceOverride?.passive !== undefined
-    ? allAbilities[practiceOverride.passive]
-    : allAbilities[
-        this.lastSpecies.getPassiveAbility(
-          formIndex,
-          passiveIndex,
-        )
-      ];
+        const passiveAbility =
+          practiceOverride?.passive !== undefined
+            ? allAbilities[practiceOverride.passive]
+            : allAbilities[this.lastSpecies.getPassiveAbility(formIndex, passiveIndex)];
 
         if (this.pokemonAbilityText.visible) {
           if (this.activeTooltip === "ABILITY") {
@@ -5263,14 +5036,11 @@ const passiveAbility =
         }
 
         if (passiveAbility) {
-          const passiveUnlocks =
-  passiveStarterData.passiveUnlocks ?? 0;
+          const passiveUnlocks = passiveStarterData.passiveUnlocks ?? 0;
 
-const isUnlocked =
-  !!(passiveUnlocks & (1 << passiveIndex));
+          const isUnlocked = !!(passiveUnlocks & (1 << passiveIndex));
 
-const isEnabled =
-  !!(passiveAttr & PassiveAttr.ENABLED);
+          const isEnabled = !!(passiveAttr & PassiveAttr.ENABLED);
 
           const textStyle = isUnlocked && isEnabled ? TextStyle.SUMMARY_ALT : TextStyle.SUMMARY_GRAY;
           const textAlpha = isUnlocked && isEnabled ? 1 : 0.5;
@@ -5330,12 +5100,12 @@ const isEnabled =
         }
         this.speciesStarterMoves.push(...levelMoves.filter(lm => lm[0] > 0 && lm[0] <= 5).map(lm => lm[1]));
         if (speciesEggMoves.hasOwnProperty(species.speciesId)) {
-  for (let em = 0; em < speciesEggMoves[species.speciesId].length; em++) {
-    if (starterDataEntry.eggMoves & (1 << em)) {
-      this.speciesStarterMoves.push(speciesEggMoves[species.speciesId][em]);
-    }
-  }
-}
+          for (let em = 0; em < speciesEggMoves[species.speciesId].length; em++) {
+            if (starterDataEntry.eggMoves & (1 << em)) {
+              this.speciesStarterMoves.push(speciesEggMoves[species.speciesId][em]);
+            }
+          }
+        }
 
         const speciesMoveData = starterDataEntry.moveset;
 
@@ -5682,7 +5452,7 @@ const isEnabled =
     const canStart = this.isPartyValid();
 
     if (canStart) {
-      ui.showText(i18next.t("starterSelectUiHandler:confirmStartTeam"), null, () => {
+      ui.showText("모험을 시작할까요?", null, () => {
         ui.setModeWithoutClear(
           UiMode.CONFIRM,
           () => {
@@ -5700,7 +5470,7 @@ const isEnabled =
           null,
           null,
           19,
-        );
+        ).then(() => ui.getHandler().setCursor(1));
       });
     } else {
       this.tutorialActive = true;

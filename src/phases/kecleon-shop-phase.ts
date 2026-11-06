@@ -53,6 +53,7 @@ export class KecleonShopPhase extends Phase {
   private shopKeeperSprite?: Phaser.GameObjects.Sprite;
   private displayItemSprites: Phaser.GameObjects.Sprite[] = [];
   private shopContainer?: Phaser.GameObjects.Container;
+  private shopSaveQueue: Promise<void> = Promise.resolve();
 
   public override start(): void {
     super.start();
@@ -212,7 +213,46 @@ export class KecleonShopPhase extends Phase {
     );
   }
 
-  private handleUnpaidExit(): void {
+  private handleUnpaidExit(confirmed = false): void {
+    if (!confirmed) {
+      void globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+        globalScene.ui.showText(
+          "결제하지 않고 떠나면 켈리몬과 전투가 시작됩니다.\n정말 결제하지 않고 떠날까요?",
+          null,
+          () => {
+            void globalScene.ui
+              .setModeWithoutClear(UiMode.MENU_OPTION_SELECT, {
+                options: [
+                  {
+                    label: "예",
+                    handler: () => {
+                      this.handleUnpaidExit(true);
+                      return true;
+                    },
+                    keepOpen: true,
+                  },
+                  {
+                    label: "아니오",
+                    handler: () => {
+                      this.openShopUi();
+                      return true;
+                    },
+                    keepOpen: true,
+                  },
+                ],
+                xOffset: 0,
+                yOffset: 0,
+                maxOptions: 2,
+              })
+              .then(() => globalScene.ui.getHandler().setCursor(1));
+          },
+          null,
+          true,
+        );
+      });
+      return;
+    }
+
     const paymentDue = kecleonShopManager.getPaymentDue();
 
     const money = globalScene.money;
@@ -324,13 +364,21 @@ export class KecleonShopPhase extends Phase {
       },
       // 두기
       (index: number) => {
-        this.putKecleonItem(index);
+        if (index <= -2) {
+          this.openEmptySlotPutMenu(-index - 2);
+        } else {
+          this.putKecleonItem(index);
+        }
         return true;
       },
 
       // 교환하기
       (index: number) => {
-        this.exchangeKecleonItem(index);
+        if (index <= -2) {
+          this.takeBackEmptySlotItem(-index - 2);
+        } else {
+          this.exchangeKecleonItem(index);
+        }
         return true;
       },
     );
@@ -452,6 +500,68 @@ export class KecleonShopPhase extends Phase {
 
     this.refreshShopDisplay();
     this.openShopUi();
+  }
+
+  private takeBackEmptySlotItem(slotIndex: number): void {
+    const key = -slotIndex - 1;
+    const placed = kecleonShopManager.getPlacedItem(key);
+    if (!placed) {
+      globalScene.ui.playError();
+      this.openShopUi();
+      return;
+    }
+    const modifier = placed.modifier.clone();
+    modifier.stackCount = 1;
+    if (!globalScene.addModifier(modifier, false, true)) {
+      globalScene.ui.playError();
+      this.openShopUi();
+      return;
+    }
+    kecleonShopManager.removePlacedItem(key);
+    kecleonShopManager.addPaymentDue(kecleonShopManager.getPlacedItemValue(placed.modifier));
+    this.refreshShopDisplay();
+    this.openShopUi();
+  }
+
+  private openEmptySlotPutMenu(slotIndex: number): void {
+    if (!kecleonShopManager.isOriginalEmptySlot(slotIndex) || kecleonShopManager.getPlacedItemAtSlot(slotIndex)) {
+      globalScene.ui.playError();
+      this.openShopUi();
+      return;
+    }
+    // Negative keys map precisely to physical slots outside the initial item array.
+    const emptyKey = -slotIndex - 1;
+    globalScene.ui.setModeWithoutClear(UiMode.MENU_OPTION_SELECT, {
+      options: [
+        {
+          label: "트레이너 도구 놓기",
+          handler: () => {
+            this.openTrainerItemPutMenu(emptyKey);
+            return true;
+          },
+          keepOpen: true,
+        },
+        {
+          label: "포켓몬 지닌 도구 놓기",
+          handler: () => {
+            this.openPokemonItemPutMenu(emptyKey);
+            return true;
+          },
+          keepOpen: true,
+        },
+        {
+          label: "취소",
+          handler: () => {
+            this.openShopUi();
+            return true;
+          },
+          keepOpen: true,
+        },
+      ],
+      xOffset: 0,
+      yOffset: 0,
+      maxOptions: 3,
+    });
   }
 
   private putKecleonItem(index: number): void {
@@ -582,6 +692,11 @@ export class KecleonShopPhase extends Phase {
 
     // ★ 이 선언이 필요합니다.
     const previousPlaced = kecleonShopManager.getPlacedItem(shopIndex);
+    if (kecleonShopManager.isItemTaken(shopIndex) && !previousPlaced) {
+      globalScene.ui.playError();
+      this.openShopUi();
+      return;
+    }
 
     const receivedModifier = previousPlaced ? previousPlaced.modifier.clone() : shopType.newModifier(pokemon);
 
@@ -694,6 +809,20 @@ export class KecleonShopPhase extends Phase {
     this.displayItemSprites = [];
 
     this.showDisplayItems();
+    // The existing Kecleon shop mode can remain active when returning from an action.
+    // Update its visual slots immediately instead of relying on setMode to call show().
+    const shopUi = globalScene.ui.handlers[UiMode.KECLEON_SHOP] as { refreshShelf?: () => void } | undefined;
+
+    shopUi?.refreshShelf?.();
+    // Every transfer/purchase state change must persist, not just shop arrival.
+    this.shopSaveQueue = this.shopSaveQueue
+      .then(async () => {
+        const ok = await globalScene.gameData.saveAll(false, true);
+        if (!ok) {
+          console.warn("[KECLEON_SHOP_STATE_SAVE_FAILED]");
+        }
+      })
+      .catch(error => console.error("[KECLEON_SHOP_STATE_SAVE_FAILED]", error));
   }
 
   private placePokemonHeldItem(shopIndex: number, pokemon: PlayerPokemon, modifier: PokemonHeldItemModifier): void {
@@ -800,6 +929,12 @@ export class KecleonShopPhase extends Phase {
   }
 
   private obtainKecleonItem(index: number, modifier: Modifier, cost: number): void {
+    if (kecleonShopManager.isItemTaken(index)) {
+      globalScene.ui.playError();
+      this.refreshShopDisplay();
+      this.openShopUi();
+      return;
+    }
     const result = globalScene.addModifier(modifier, false, true);
 
     if (!result) {
@@ -817,6 +952,7 @@ export class KecleonShopPhase extends Phase {
       paymentDue: kecleonShopManager.getPaymentDue(),
     });
 
+    this.refreshShopDisplay();
     this.openShopUi();
   }
 
@@ -905,31 +1041,35 @@ export class KecleonShopPhase extends Phase {
       return;
     }
 
-    globalScene.ui.setModeWithoutClear(UiMode.MENU_OPTION_SELECT, {
-      options: [
-        ...items.map(modifier => ({
-          label: modifier.type.getSafeName(),
-          handler: () => {
-            this.placeTrainerItem(shopIndex, modifier);
+    // 기존 MENU_OPTION_SELECT에서 다시 동일 모드를 열면 선택 목록이 갱신되지 않을 수 있다.
+    // 먼저 기존 메뉴를 닫은 뒤 새 선택 목록을 연다.
+    void globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+      void globalScene.ui.setModeWithoutClear(UiMode.MENU_OPTION_SELECT, {
+        options: [
+          ...items.map(modifier => ({
+            label: modifier.type.getSafeName(),
+            handler: () => {
+              this.placeTrainerItem(shopIndex, modifier);
 
-            return true;
+              return true;
+            },
+            keepOpen: true,
+          })),
+
+          {
+            label: "취소",
+            handler: () => {
+              this.openShopUi();
+              return true;
+            },
+            keepOpen: true,
           },
-          keepOpen: true,
-        })),
+        ],
 
-        {
-          label: "취소",
-          handler: () => {
-            this.openShopUi();
-            return true;
-          },
-          keepOpen: true,
-        },
-      ],
-
-      xOffset: 0,
-      yOffset: 0,
-      maxOptions: 6,
+        xOffset: 0,
+        yOffset: 0,
+        maxOptions: 6,
+      });
     });
   }
 
@@ -948,31 +1088,35 @@ export class KecleonShopPhase extends Phase {
       return;
     }
 
-    globalScene.ui.setModeWithoutClear(UiMode.MENU_OPTION_SELECT, {
-      options: [
-        ...items.map(modifier => ({
-          label: modifier.type.getSafeName(),
-          handler: () => {
-            this.exchangeTrainerItem(shopIndex, modifier);
+    // 기존 MENU_OPTION_SELECT에서 다시 동일 모드를 열면 선택 목록이 갱신되지 않을 수 있다.
+    // 먼저 기존 메뉴를 닫은 뒤 새 선택 목록을 연다.
+    void globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+      void globalScene.ui.setModeWithoutClear(UiMode.MENU_OPTION_SELECT, {
+        options: [
+          ...items.map(modifier => ({
+            label: modifier.type.getSafeName(),
+            handler: () => {
+              this.exchangeTrainerItem(shopIndex, modifier);
 
-            return true;
+              return true;
+            },
+            keepOpen: true,
+          })),
+
+          {
+            label: "취소",
+            handler: () => {
+              this.openShopUi();
+              return true;
+            },
+            keepOpen: true,
           },
-          keepOpen: true,
-        })),
+        ],
 
-        {
-          label: "취소",
-          handler: () => {
-            this.openShopUi();
-            return true;
-          },
-          keepOpen: true,
-        },
-      ],
-
-      xOffset: 0,
-      yOffset: 0,
-      maxOptions: 6,
+        xOffset: 0,
+        yOffset: 0,
+        maxOptions: 6,
+      });
     });
   }
 

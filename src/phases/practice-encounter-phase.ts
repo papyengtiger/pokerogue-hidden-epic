@@ -4,6 +4,7 @@ import { BattlerIndex } from "#enums/battler-index";
 import { BiomeId } from "#enums/biome-id";
 import { FieldPosition } from "#enums/field-position";
 import { MoveId } from "#enums/move-id";
+import type { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import { TrainerSlot } from "#enums/trainer-slot";
@@ -96,7 +97,13 @@ export class PracticeEncounterPhase extends BattlePhase {
       battle.double = false;
     }
 
-    const player1 = playerParty[0];
+    const player1 = playerParty[0] as (typeof playerParty)[number] & {
+      practiceAbilityId?: number;
+      abilityId?: number;
+      practicePassiveAbilityId?: number;
+      practicePassiveId?: number;
+      passiveAbilityId?: number;
+    };
     const player2 = battle.double ? playerParty[1] : null;
 
     const starterCfg = globalScene.gameData.practiceDummyConfig?.starter;
@@ -208,7 +215,7 @@ export class PracticeEncounterPhase extends BattlePhase {
 
       this.applyPracticeDummyConfig(dummy2, "dummy2");
 
-      this.applyPracticeDummyRentalModifiers(dummy2);
+      this.applyPracticeDummyRentalModifiers(dummy2, "dummy2");
 
       battle.practiceDummy2 = dummy2;
 
@@ -221,7 +228,7 @@ export class PracticeEncounterPhase extends BattlePhase {
 
     this.applyPracticeDummyConfig(dummy, "dummy1");
 
-    this.applyPracticeDummyRentalModifiers(dummy);
+    this.applyPracticeDummyRentalModifiers(dummy, "dummy1");
 
     dummy.isOnField = () => true;
     dummy.isActive = () => true;
@@ -432,8 +439,12 @@ export class PracticeEncounterPhase extends BattlePhase {
           (globalScene as any).biomeWaveText?.setVisible?.(true);
           (globalScene as any).biomeWaveText?.setAlpha?.(1);
 
-          globalScene.moneyText?.setVisible?.(true);
-          globalScene.roguePointText?.setVisible?.(true);
+          const practiceHud = globalScene as unknown as {
+            moneyText?: { setVisible: (visible: boolean) => unknown };
+            roguePointText?: { setVisible: (visible: boolean) => unknown };
+          };
+          practiceHud.moneyText?.setVisible?.(true);
+          practiceHud.roguePointText?.setVisible?.(true);
 
           globalScene.updateUIPositions?.();
 
@@ -535,6 +546,16 @@ export class PracticeEncounterPhase extends BattlePhase {
   }
 
   private applyPracticeDummyConfig(dummy: Pokemon, dummyKey: "dummy1" | "dummy2"): void {
+    const practiceDummy = dummy as Pokemon & {
+      maxHp?: number;
+      practiceAbilityId?: number;
+      abilityId?: number;
+      practicePassiveAbilityId?: number;
+      practicePassiveId?: number;
+      passiveAbilityId?: number;
+      getNameWithAffix?: () => string;
+      getNickname?: () => string;
+    };
     const rootCfg = globalScene.gameData.practiceDummyConfig;
 
     const cfg = {
@@ -562,8 +583,8 @@ export class PracticeEncounterPhase extends BattlePhase {
         cfg.baseStats.spe ?? 255,
       ];
 
-      dummy.maxHp = dummy.stats[0];
-      dummy.hp = dummy.maxHp;
+      practiceDummy.maxHp = dummy.stats[0];
+      dummy.hp = dummy.stats[0];
     }
 
     if (Array.isArray(cfg.types)) {
@@ -573,8 +594,8 @@ export class PracticeEncounterPhase extends BattlePhase {
     const abilityId = (cfg as any).practiceAbilityId ?? (cfg as any).abilityId;
 
     if (abilityId !== undefined) {
-      dummy.practiceAbilityId = abilityId;
-      dummy.abilityId = abilityId;
+      practiceDummy.practiceAbilityId = abilityId;
+      practiceDummy.abilityId = abilityId;
       dummy.customPokemonData.ability = abilityId;
       dummy.summonData.ability = abilityId;
 
@@ -591,9 +612,9 @@ export class PracticeEncounterPhase extends BattlePhase {
     if (passiveId !== undefined) {
       dummy.passive = true;
 
-      dummy.practicePassiveAbilityId = passiveId;
-      dummy.practicePassiveId = passiveId;
-      dummy.passiveAbilityId = passiveId;
+      practiceDummy.practicePassiveAbilityId = passiveId;
+      practiceDummy.practicePassiveId = passiveId;
+      practiceDummy.passiveAbilityId = passiveId;
 
       dummy.getPassiveAbility = () => allAbilities[passiveId];
       dummy.hasPassive = () => true;
@@ -616,8 +637,8 @@ export class PracticeEncounterPhase extends BattlePhase {
       dummy.nickname = cfg.name;
       dummy.getName = () => cfg.name;
       dummy.getNameToRender = () => cfg.name;
-      dummy.getNameWithAffix = () => cfg.name;
-      dummy.getNickname = () => cfg.name;
+      practiceDummy.getNameWithAffix = () => cfg.name;
+      practiceDummy.getNickname = () => cfg.name;
     }
 
     (dummy as any).practiceMoveCursor = 0;

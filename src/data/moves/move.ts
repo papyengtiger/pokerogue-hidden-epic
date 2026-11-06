@@ -5,6 +5,7 @@ import { blocksNonDirectDamage } from "#abilities/block-non-direct-damage";
 import { loggedInUser } from "#app/account";
 import type { GameMode } from "#app/game-mode";
 import { globalScene } from "#app/global-scene";
+import { recordItemOverload } from "#app/item-overload";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { isMaxMove } from "#balance/trs";
 import type { EntryHazardTag } from "#data/arena-tag";
@@ -1527,6 +1528,7 @@ export abstract class Move implements Localizable {
       const before = power.value;
 
       power.value = Math.floor(power.value * 1.3);
+      recordItemOverload(source, before, power.value, "이판사판벨트");
 
       const after = power.value;
     }
@@ -1573,7 +1575,9 @@ export abstract class Move implements Localizable {
       .getHeldItems()
       .filter(i => i instanceof PokemonFormChangeItemModifier) as PokemonFormChangeItemModifier[];
     for (const m of formItems) {
+      const before = power.value;
       m.applyGenesectDrivePowerBoost(source, typeChangeHolder.value, power, simulated);
+      recordItemOverload(source, before, power.value, "폼체인지 도구");
     }
 
     const abAttrParams: PreAttackModifyPowerAbAttrParams = {
@@ -1603,7 +1607,9 @@ export abstract class Move implements Localizable {
     if (protectivePads && wasContactMove) {
       (power as any).__practiceLabel = "방호패드";
 
+      const before = power.value;
       power.value = Math.floor(power.value * 1.3);
+      recordItemOverload(source, before, power.value, "방호패드");
     }
     // Non-priority, single-hit moves of the user's Tera Type are always a bare minimum of 60 power
 
@@ -1663,6 +1669,7 @@ export abstract class Move implements Localizable {
       power,
     ) as TypeSpecificMoveBoosterModifier;
 
+    recordItemOverload(source, beforeTypeBoosterPower, power.value, "타입별 기술 강화");
     if (typeSpecificMoveBooster) {
       globalScene.updateModifiers(source.isPlayer());
       source.updateInfo();
@@ -1680,7 +1687,9 @@ export abstract class Move implements Localizable {
 
         const mult = sb.getAllMovePowerMult?.();
         if (typeof mult === "number" && mult > 1 && power.value >= 1) {
+          const before = power.value;
           power.value = Math.floor(power.value * mult);
+          recordItemOverload(source, before, power.value, "종족 전용 기술 강화");
 
           if (!simulated) {
             console.log("[SBOO][ALL_MOVE_POWER_MULT] applied", {
@@ -1706,7 +1715,9 @@ export abstract class Move implements Localizable {
 
     if (!this.hasAttr(TypelessAttr)) {
       globalScene.arena.applyTags(WeakenMoveTypeTag, simulated, typeChangeHolder.value, power);
+      const before = power.value;
       globalScene.applyModifiers(AttackTypeBoosterModifier, source.isPlayer(), source, typeChangeHolder.value, power);
+      recordItemOverload(source, before, power.value, "공격 타입 강화");
     }
 
     if (source.getTag(HelpingHandTag)) {
@@ -1740,7 +1751,9 @@ export abstract class Move implements Localizable {
 
         const singleMult = boost.mult ?? 1;
 
+        const before = power.value;
         power.value = Math.floor(power.value * singleMult);
+        recordItemOverload(source, before, power.value, "주얼/소모 도구 위력 강화");
       }
 
       td.movePowerMultiplier = 1;
@@ -20513,7 +20526,7 @@ export function initMoves() {
           : 1;
       })
       .target(MoveTarget.ALL_NEAR_ENEMIES),
-    new AttackMove(MoveId.TIDAL_BOLT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 120, 85, -1, -1, 0, 224)
+    new AttackMove(MoveId.TIDAL_BOLT, PokemonType.ELECTRIC, MoveCategory.SPECIAL, 120, 85, 5, -1, 0, 224)
       .attr(RemoveScreensAttr)
       .attr(MovePowerMultiplierAttr, (user, target, move) => {
         const weather = globalScene.arena.weather;

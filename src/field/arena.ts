@@ -344,6 +344,7 @@ export class Arena {
       case BiomeId.SPACE:
         return 1;
       case BiomeId.END:
+      case BiomeId.OTHER:
         return 0;
     }
 
@@ -860,6 +861,7 @@ export class Arena {
       case BiomeId.ABYSS:
       case BiomeId.SPACE:
       case BiomeId.END:
+      case BiomeId.OTHER:
         return this.getDayTint();
     }
 
@@ -1328,6 +1330,8 @@ export class Arena {
         return 0.0;
       case BiomeId.END:
         return 17.153;
+      case BiomeId.OTHER:
+        return 0.0;
       default:
         console.warn(`missing bgm loop-point for biome "${BiomeId[this.biomeType]}" (=${this.biomeType})`);
         return 0;
@@ -1385,6 +1389,7 @@ export function getBiomeHasProps(biomeType: BiomeId): boolean {
     case BiomeId.ISLAND:
     case BiomeId.LABORATORY:
     case BiomeId.END:
+    case BiomeId.OTHER:
       return true;
   }
 

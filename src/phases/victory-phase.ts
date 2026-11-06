@@ -10,6 +10,7 @@ import { GameModes } from "#enums/game-modes";
 import { ModifierTier } from "#enums/modifier-tier";
 import { handleMysteryEncounterVictory } from "#mystery-encounters/encounter-phase-utils";
 import { PokemonPhase } from "#phases/pokemon-phase";
+import { showTheOtherMfoVictoryStory } from "#phases/trainer-victory-phase";
 
 export class VictoryPhase extends PokemonPhase {
   public readonly phaseName = "VictoryPhase";
@@ -168,7 +169,10 @@ export class VictoryPhase extends PokemonPhase {
       if (gameMode.modeId === GameModes.THEOTHER && currentWaveIndex === 300 && globalScene.theOther300Stage < 2) {
         globalScene.theOther300Stage = (globalScene.theOther300Stage + 1) as 1 | 2;
         console.log("[THEOTHER_300_STAGE_ADVANCE]", globalScene.theOther300Stage);
+        // NewBattlePhase는 Battle 객체만 생성합니다. 같은 300층에서
+        // 실제 적 파티를 구성하려면 EncounterPhase를 연이어 실행해야 합니다.
         globalScene.phaseManager.pushNew("NewBattlePhase");
+        globalScene.phaseManager.pushNew("EncounterPhase");
         this.end();
         return;
       }
@@ -227,6 +231,15 @@ export class VictoryPhase extends PokemonPhase {
               }
               break;
           }
+        }
+
+        // 디 아더 165층 승리 시 록캡슐 확정 지급 (클래식 보상과 분리).
+        if (
+          gameMode.modeId === GameModes.THEOTHER
+          && currentWaveIndex === 165
+          && !globalScene.findModifier(m => m.type?.id === modifierTypes.LOCK_CAPSULE.id)
+        ) {
+          globalScene.phaseManager.pushNew("ModifierRewardPhase", modifierTypes.LOCK_CAPSULE);
         }
 
         if (gameMode.isClassic) {
@@ -320,6 +333,17 @@ export class VictoryPhase extends PokemonPhase {
         globalScene.score += gameMode.getClearScoreBonus();
         globalScene.updateScoreText();
         globalScene.phaseManager.pushNew("GameOverPhase", true);
+      }
+
+      // 디 아더 야생 보스전(95/145/195층)의 승리 대사.
+      // 승리가 확정된 분기 안에서만 호출하고, 대사가 끝나면 이 페이즈를 종료한다.
+      if (
+        gameMode.modeId === GameModes.THEOTHER
+        && globalScene.currentBattle.battleType === BattleType.WILD
+        && (currentWaveIndex === 95 || currentWaveIndex === 145 || currentWaveIndex === 195)
+      ) {
+        showTheOtherMfoVictoryStory(currentWaveIndex, () => this.end());
+        return;
       }
     }
 

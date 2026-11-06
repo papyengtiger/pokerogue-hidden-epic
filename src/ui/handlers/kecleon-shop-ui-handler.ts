@@ -24,7 +24,10 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
   private onExchange: KecleonShopExchangeCallback | null = null;
 
   private paymentDueText!: Phaser.GameObjects.Text;
+  private ownedGoldText!: Phaser.GameObjects.Text;
   private paymentDue = 0;
+  /** Cursor in the physical 5x5 shelf, retained when the UI is rebuilt. */
+  private lastShelfSlot = 0;
 
   constructor() {
     super(UiMode.KECLEON_SHOP);
@@ -49,6 +52,17 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
     this.paymentDueText.setVisible(false);
 
     this.modifierContainer.add(this.paymentDueText);
+
+    this.ownedGoldText = addTextObject(
+      globalScene.scaledCanvas.width - 8,
+      -globalScene.scaledCanvas.height + 20,
+      "",
+      TextStyle.MONEY,
+      { align: "right" },
+    );
+    this.ownedGoldText.setOrigin(1, 0);
+    this.ownedGoldText.setVisible(false);
+    this.modifierContainer.add(this.ownedGoldText);
 
     ui.add(this.modifierContainer);
   }
@@ -79,47 +93,31 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
 
     this.modifierContainer.setVisible(true);
 
+    // Physical 5x5 display slots; some are intentionally empty.
+    const visibleSlots = kecleonShopManager.getShopSlotCount();
     const columns = 5;
-    const rows = 5;
+    const spacingX = 53;
+    const spacingY = 37;
+    const originX = globalScene.scaledCanvas.width / 2 - ((columns - 1) * spacingX) / 2;
+    const originY = -globalScene.scaledCanvas.height + 43;
 
-    const spacingX = 26;
-    const spacingY = 24;
-
-    const centerX = globalScene.scaledCanvas.width / 2;
-
-    const centerY = -globalScene.scaledCanvas.height / 2 - 20;
-
-    const startX = centerX - ((columns - 1) * spacingX) / 2;
-
-    const startY = centerY - ((rows - 1) * spacingY) / 2;
-
-    const slotCount = kecleonShopManager.getShopSlotCount();
-
-    for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
-      const itemIndex = kecleonShopManager.getItemIndexAtSlot(slotIndex);
-
-      const column = slotIndex % columns;
-
-      const row = Math.floor(slotIndex / columns);
-
+    for (let slot = 0; slot < visibleSlots; slot++) {
+      const itemIndex = kecleonShopManager.getItemIndexAtSlot(slot);
       const option = new KecleonShopOption(
-        startX + column * spacingX,
-        startY + row * spacingY,
-
+        originX + (slot % columns) * spacingX,
+        originY + Math.floor(slot / columns) * spacingY,
         itemIndex >= 0 ? typeOptions[itemIndex] : null,
-
         itemIndex,
+        slot,
       );
-
       option.setScale(0.5);
-
       globalScene.add.existing(option);
       this.modifierContainer.add(option);
       this.options.push(option);
     }
 
     this.cursor = -1;
-    this.setCursor(0);
+    this.setCursor(Math.min(this.lastShelfSlot, this.options.length - 1));
 
     this.awaitingActionInput = true;
 
@@ -136,72 +134,151 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
     return true;
   }
 
+  /**
+   * 골드 부족 경고 이후 선택을 한 번 더 확인합니다.
+   * 여기서는 물품을 가져갈지만 확정하며 도둑질 판정이나 결제는 하지 않습니다.
+   * 도둑질 판정은 상점 퇴장 시 최종 결제 처리에서만 수행해야 합니다.
+   */
+  private openOverBudgetConfirmation(selectedIndex: number): void {
+    this.awaitingActionInput = false;
+    // 기존 OPTION_SELECT의 handler가 끝나기 전에 또 다른 OPTION_SELECT를 열면
+    // 기존 메뉴 종료 후처리가 새 메뉴까지 닫아 버릴 수 있으므로 다음 프레임에 엽니다.
+    globalScene.time.delayedCall(0, () => {
+      if (!this.modifierContainer?.visible) {
+        return;
+      }
+      globalScene.ui.showText(
+        "경고! 이 물품까지 가져가면 현재 소지한 골드로는 지불할 수 없습니다!\n정말 고르시겠습니까?",
+      );
+      globalScene.ui.setOverlayMode(UiMode.OPTION_SELECT, {
+        options: [
+          {
+            label: "예",
+            handler: () => {
+              globalScene.ui.revertMode();
+              // 경고창이 열려 있는 동안 선택된 물건의 상태가 바뀌었을 가능성 방지
+              if (kecleonShopManager.isItemTaken(selectedIndex) && !kecleonShopManager.getPlacedItem(selectedIndex)) {
+                globalScene.ui.playError();
+                this.refreshShelf();
+                return true;
+              }
+              this.onSelect?.(selectedIndex);
+              return true;
+            },
+          },
+          {
+            label: "아니오",
+            handler: () => {
+              globalScene.ui.revertMode();
+              // 선택만 취소. 물품 지급, 결제, 캘리몬 분노 모두 발생하지 않습니다.
+              this.refreshShelf();
+              return true;
+            },
+          },
+        ],
+        delay: 0,
+      });
+    });
+  }
+
   private openItemActionMenu(): void {
-    const slotIndex = this.cursor;
+    const physicalSlot = this.cursor;
+    const selectedIndex = kecleonShopManager.getItemIndexAtSlot(physicalSlot);
+    const isEmptySlot = selectedIndex < 0;
+    const placedAtSlot = kecleonShopManager.getPlacedItemAtSlot(physicalSlot);
+    const hasPlacedEmptyItem = isEmptySlot && !!placedAtSlot;
+    const alreadyTaken = !isEmptySlot && kecleonShopManager.isItemTaken(selectedIndex) && !placedAtSlot;
+    const callbackIndex = isEmptySlot ? -physicalSlot - 2 : selectedIndex;
 
-    if (slotIndex < 0 || slotIndex >= this.options.length) {
+    if (physicalSlot < 0 || physicalSlot >= this.options.length) {
       return;
     }
-
-    const selected = this.options[slotIndex];
-
-    if (!selected || selected.shopIndex < 0 || !selected.modifierTypeOption) {
-      this.getUi().showText("아무것도 놓여 있지 않다.");
-
-      return;
-    }
-
-    // 실제 shopOptions 배열의 인덱스
-    const itemIndex = selected.shopIndex;
 
     this.awaitingActionInput = false;
 
     globalScene.ui.setOverlayMode(UiMode.OPTION_SELECT, {
       options: [
-        {
-          label: "가져가기",
-          handler: () => {
-            globalScene.ui.revertMode();
-            this.awaitingActionInput = true;
+        ...(!isEmptySlot && !alreadyTaken
+          ? [
+              {
+                label: "가져가기",
+                handler: () => {
+                  globalScene.ui.revertMode();
 
-            if (this.onSelect) {
-              this.onSelect(itemIndex);
-            }
+                  this.awaitingActionInput = false;
+                  if (
+                    kecleonShopManager.isItemTaken(selectedIndex)
+                    && !kecleonShopManager.getPlacedItem(selectedIndex)
+                  ) {
+                    globalScene.ui.playError();
+                    this.awaitingActionInput = true;
+                    this.refreshShelf();
+                    return true;
+                  }
 
-            return true;
-          },
-        },
-        {
-          label: "교환하기",
-          handler: () => {
-            globalScene.ui.revertMode();
-            this.awaitingActionInput = true;
+                  const candidate = this.options[physicalSlot].modifierTypeOption;
+                  const newDue = kecleonShopManager.getPaymentDue() + (candidate?.cost ?? 0);
+                  if (candidate && newDue > globalScene.money && this.onSelect) {
+                    this.openOverBudgetConfirmation(selectedIndex);
+                  } else {
+                    this.onSelect?.(selectedIndex);
+                  }
+                  return true;
+                },
+              },
+            ]
+          : []),
+        ...(!isEmptySlot || hasPlacedEmptyItem
+          ? [
+              {
+                label: hasPlacedEmptyItem ? "놓은 물건 되가져오기" : "교환하기",
+                handler: () => {
+                  globalScene.ui.revertMode();
 
-            if (this.onExchange) {
-              return this.onExchange(itemIndex);
-            }
+                  this.awaitingActionInput = true;
 
-            return true;
-          },
-        },
-        {
-          label: "두기",
-          handler: () => {
-            globalScene.ui.revertMode();
-            this.awaitingActionInput = true;
+                  console.log("[KECLEON_SHOP_EXCHANGE_ITEM]", {
+                    index: selectedIndex,
+                  });
 
-            if (this.onPut) {
-              return this.onPut(itemIndex);
-            }
+                  if (this.onExchange) {
+                    return this.onExchange(callbackIndex);
+                  }
 
-            return true;
-          },
-        },
+                  return true;
+                },
+              },
+            ]
+          : []),
+        ...(!hasPlacedEmptyItem
+          ? [
+              {
+                label: "두기",
+                handler: () => {
+                  globalScene.ui.revertMode();
+
+                  this.awaitingActionInput = true;
+
+                  console.log("[KECLEON_SHOP_PUT_ITEM]", {
+                    index: selectedIndex,
+                  });
+
+                  if (this.onPut) {
+                    return this.onPut(callbackIndex);
+                  }
+
+                  return true;
+                },
+              },
+            ]
+          : []),
         {
           label: "취소",
           handler: () => {
             globalScene.ui.revertMode();
+
             this.awaitingActionInput = true;
+
             return true;
           },
         },
@@ -218,39 +295,29 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
     let success = false;
 
     switch (button) {
-      case Button.LEFT: {
-        const column = this.cursor % 5;
-
-        if (column > 0) {
-          success = this.setCursor(this.cursor - 1);
-        }
-
-        break;
-      }
-
-      case Button.RIGHT: {
-        const column = this.cursor % 5;
-
-        if (column < 4) {
-          success = this.setCursor(this.cursor + 1);
-        }
-
-        break;
-      }
-
-      case Button.UP: {
-        if (this.cursor >= 5) {
-          success = this.setCursor(this.cursor - 5);
-        }
-
-        break;
-      }
-
+      case Button.LEFT:
+      case Button.RIGHT:
+      case Button.UP:
       case Button.DOWN: {
-        if (this.cursor + 5 < this.options.length) {
-          success = this.setCursor(this.cursor + 5);
+        const columns = 5;
+        const count = this.options.length;
+        const rowStart = Math.floor(this.cursor / columns) * columns;
+        const rowLength = Math.min(columns, count - rowStart);
+        const column = this.cursor % columns;
+        let next = this.cursor;
+
+        if (button === Button.LEFT) {
+          next = rowStart + ((column - 1 + rowLength) % rowLength);
+        } else if (button === Button.RIGHT) {
+          next = rowStart + ((column + 1) % rowLength);
+        } else {
+          const rowCount = Math.ceil(count / columns);
+          const row = Math.floor(this.cursor / columns);
+          const nextRow = (row + (button === Button.DOWN ? 1 : -1) + rowCount) % rowCount;
+          next = Math.min(nextRow * columns + column, count - 1);
         }
 
+        success = this.setCursor(next);
         break;
       }
 
@@ -294,29 +361,31 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
       return ret;
     }
 
-    // 빈칸이든 상품칸이든 커서는 먼저 이동
+    this.lastShelfSlot = cursor;
     this.cursorObj.setPosition(selected.x - 12, selected.y + 2);
 
-    if (selected.shopIndex < 0 || !selected.modifierTypeOption) {
-      this.getUi().showText("아무것도 놓여 있지 않다.");
-
+    const itemIndex = kecleonShopManager.getItemIndexAtSlot(cursor);
+    const placed = kecleonShopManager.getPlacedItemAtSlot(cursor);
+    if (itemIndex < 0 && !placed) {
+      this.getUi().showText("빈 진열대. 어떤 종류의 물건이든 놓을 수 있다.");
       return ret;
     }
 
-    const itemIndex = selected.shopIndex;
-
-    const placed = kecleonShopManager.getPlacedItem(itemIndex);
-
-    if (kecleonShopManager.isItemTaken(itemIndex) && !placed) {
+    if (itemIndex >= 0 && kecleonShopManager.isItemTaken(itemIndex) && !placed) {
       this.getUi().showText("아무것도 놓여 있지 않다.");
-
       return ret;
     }
 
-    const type = placed?.modifier.type ?? selected.modifierTypeOption.type;
+    const type = placed?.modifier.type ?? selected.modifierTypeOption?.type;
 
+    if (!type) {
+      this.getUi().showText("빈 진열대.");
+      return ret;
+    }
+
+    const cost = selected.modifierTypeOption?.cost;
     this.getUi().showText(
-      `${type.getDescription()}\n${formatMoney(globalScene.moneyFormat, selected.modifierTypeOption.cost)}`,
+      cost == null ? type.getDescription() : `${type.getDescription()}\n${formatMoney(globalScene.moneyFormat, cost)}`,
     );
 
     return ret;
@@ -338,6 +407,43 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
     this.paymentDueText.setShadowColor(getTextColor(textStyle, true));
 
     this.paymentDueText.setVisible(true);
+    this.ownedGoldText.setText(`보유 골드: ${formatMoney(globalScene.moneyFormat, globalScene.money)}`);
+    this.ownedGoldText.setVisible(true);
+  }
+
+  /** Rebuild the displayed goods without changing the current shop mode or cursor. */
+  public refreshShelf(): void {
+    if (this.options.length === 0) {
+      return;
+    }
+    const slot = Math.max(0, Math.min(this.cursor, this.options.length - 1));
+    const options = kecleonShopManager.getShopOptions();
+    this.clearOptionsOnly();
+    const columns = 5;
+    const spacingX = 53;
+    const spacingY = 37;
+    const originX = globalScene.scaledCanvas.width / 2 - ((columns - 1) * spacingX) / 2;
+    const originY = -globalScene.scaledCanvas.height + 43;
+    for (let physicalSlot = 0; physicalSlot < kecleonShopManager.getShopSlotCount(); physicalSlot++) {
+      const itemIndex = kecleonShopManager.getItemIndexAtSlot(physicalSlot);
+      const option = new KecleonShopOption(
+        originX + (physicalSlot % columns) * spacingX,
+        originY + Math.floor(physicalSlot / columns) * spacingY,
+        itemIndex >= 0 ? options[itemIndex] : null,
+        itemIndex,
+        physicalSlot,
+      );
+      option.setScale(0.5);
+      globalScene.add.existing(option);
+      this.modifierContainer.add(option);
+      this.options.push(option);
+    }
+    if (this.options.length > 0) {
+      this.cursor = -1;
+      this.setCursor(Math.min(slot, this.options.length - 1));
+    }
+    this.setPaymentDue(kecleonShopManager.getPaymentDue());
+    this.awaitingActionInput = true;
   }
 
   public updateCostText(): void {
@@ -360,8 +466,11 @@ export class KecleonShopUiHandler extends AwaitableUiHandler {
     this.modifierContainer.setVisible(false);
 
     this.paymentDue = 0;
+    this.lastShelfSlot = 0;
     this.paymentDueText.setText("");
     this.paymentDueText.setVisible(false);
+    this.ownedGoldText.setText("");
+    this.ownedGoldText.setVisible(false);
 
     console.log("[KECLEON_SHOP_UI_CLEAR]");
   }
@@ -388,30 +497,32 @@ class KecleonShopOption extends Phaser.GameObjects.Container {
   private itemText!: Phaser.GameObjects.Text;
   private itemCostText!: Phaser.GameObjects.Text;
 
-  public readonly shopIndex: number;
+  private readonly shopIndex: number;
+  private readonly physicalSlot: number;
 
-  constructor(x: number, y: number, modifierTypeOption: ModifierTypeOption | null, shopIndex: number) {
+  constructor(
+    x: number,
+    y: number,
+    modifierTypeOption: ModifierTypeOption | null,
+    shopIndex: number,
+    physicalSlot: number,
+  ) {
     super(globalScene, x, y);
 
     this.modifierTypeOption = modifierTypeOption;
     this.shopIndex = shopIndex;
+    this.physicalSlot = physicalSlot;
 
     this.setup();
   }
 
   private setup(): void {
-    if (this.shopIndex < 0 || !this.modifierTypeOption) {
-      this.setupEmptySlot();
-      return;
-    }
-    const placed = kecleonShopManager.getPlacedItem(this.shopIndex);
-
-    const taken = kecleonShopManager.isItemTaken(this.shopIndex);
-
-    const type = placed?.modifier.type ?? this.modifierTypeOption.type;
+    const placed = kecleonShopManager.getPlacedItemAtSlot(this.physicalSlot);
+    const taken = this.shopIndex < 0 || kecleonShopManager.isItemTaken(this.shopIndex);
+    const type = placed?.modifier.type ?? this.modifierTypeOption?.type;
 
     // 가져간 뒤 아무것도 두지 않은 슬롯 = 빈칸
-    if (taken && !placed) {
+    if ((taken || !type) && !placed) {
       this.setupEmptySlot();
       return;
     }
@@ -439,9 +550,9 @@ class KecleonShopOption extends Phaser.GameObjects.Container {
   }
 
   private setupEmptySlot(): void {
-    this.itemText = addTextObject(0, 0, "-", TextStyle.PARTY, { align: "center" });
+    this.itemText = addTextObject(0, 25, "-", TextStyle.PARTY, { align: "center" });
 
-    this.itemText.setOrigin(0.5);
+    this.itemText.setOrigin(0.5, 0);
     this.add(this.itemText);
 
     this.itemCostText = addTextObject(0, 35, "", TextStyle.MONEY, { align: "center" });
@@ -451,21 +562,19 @@ class KecleonShopOption extends Phaser.GameObjects.Container {
   }
 
   public updateCostText(): void {
-    if (this.shopIndex < 0 || !this.modifierTypeOption) {
-      this.itemCostText?.setText("");
-      return;
-    }
-
-    const placed = kecleonShopManager.getPlacedItem(this.shopIndex);
-
-    const taken = kecleonShopManager.isItemTaken(this.shopIndex);
+    const placed = kecleonShopManager.getPlacedItemAtSlot(this.physicalSlot);
+    const taken = this.shopIndex < 0 || kecleonShopManager.isItemTaken(this.shopIndex);
 
     if (taken && !placed) {
       this.itemCostText?.setText("");
       return;
     }
+    if (this.shopIndex < 0 && placed) {
+      this.itemCostText?.setText("두기");
+      return;
+    }
 
-    const cost = this.modifierTypeOption.cost;
+    const cost = this.modifierTypeOption?.cost ?? 0;
 
     const textStyle = cost <= globalScene.money ? TextStyle.MONEY : TextStyle.PARTY_RED;
 

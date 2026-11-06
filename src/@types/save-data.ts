@@ -2,6 +2,7 @@ import type { PokeballCounts } from "#app/battle-scene";
 import type { Tutorial } from "#app/tutorial";
 import type { MonsterHouseSaveData } from "#data/monster-house/monster-house-manager";
 import type { MysteryTimeSaveData } from "#data/mystery-time/mystery-time-manager";
+import type { AbilityId } from "#enums/ability-id";
 import type { BattleType } from "#enums/battle-type";
 import type { GameDifficulty } from "#enums/game-difficulty";
 import type { GameModes } from "#enums/game-modes";
@@ -68,7 +69,16 @@ export interface PracticeDummyData {
   };
 }
 
-export interface PracticeDummyConfig {
+export interface PracticeDummyConfig extends PracticeDummyData {
+  /** 대타출동 인형의 행동 허용 여부 (전투 설정 전체에 적용). */
+  canAct?: boolean;
+
+  /** 연습장 대여 도구. 프리셋과 시스템 저장 데이터에 포함됩니다. */
+  rentalModifiers?: RunItemData[];
+
+  /** 플레이어 시작 포켓몬의 연습장용 특성/패시브 설정. */
+  starter?: Starter & { abilityId?: number; passiveId?: number };
+
   dummy1?: PracticeDummyData;
 
   dummy2?: PracticeDummyData;
@@ -87,6 +97,7 @@ export interface PracticeDummyConfig {
     roguePoints?: boolean;
 
     allowDummyFaint?: boolean;
+    allowAllyFaint?: boolean;
   };
 }
 
@@ -110,6 +121,19 @@ export interface KecleonShopSaveData {
   generatedWave: number;
   paymentDue: number;
   items: KecleonShopItemSaveData[];
+  /** Display slot mapping, required for stable layout after refresh. */
+  slotIndexes?: number[];
+  /** Player items placed in displayed slots; negative keys denote originally empty slots. */
+  placedItems?: Array<{
+    index: number;
+    typeId: string;
+    tier: number;
+    source: "trainer" | "pokemon";
+    originalPokemonId?: number;
+    stackCount?: number;
+    pokemonId?: number;
+    pregenArgs?: any[];
+  }>;
 
   // 캘리몬 도둑질 추격전
   theftBattleActive?: boolean;
@@ -213,6 +237,8 @@ export interface SessionSaveData {
   playTime: number;
   gameMode: GameModes;
   difficulty?: GameDifficulty;
+  /** HARD 클래식 200층 이후 확장 선택 여부. */
+  hard300?: boolean;
   party: PokemonData[];
   enemyParty: PokemonData[];
   modifiers: ModifierData[];
@@ -241,6 +267,7 @@ export interface SessionSaveData {
   mysteryTime?: MysteryTimeSaveData;
 
   trainerStrategy?: TrainerStrategySaveData;
+  trainerCardData?: TrainerCardSaveData;
 }
 
 export interface Unlocks {
@@ -298,15 +325,8 @@ export interface Starter {
   female?: boolean;
   abilityIndex: number;
   passive: boolean;
-  // StarterAttributes
-  passive?: number;
-
-  // Starter
   passiveIndex?: number;
-
-  // StarterDataEntry
   passiveUnlocks?: number;
-  passiveIndex?: number;
   nature: Nature;
   moveset?: StarterMoveset;
   pokerus: boolean;
@@ -319,6 +339,7 @@ export interface Starter {
 
   practiceAbilityId?: AbilityId;
   practicePassiveAbilityId?: AbilityId;
+  passiveAbilityId?: AbilityId;
 }
 
 export type RunHistoryData = Record<number, RunEntry>;

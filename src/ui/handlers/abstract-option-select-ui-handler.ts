@@ -27,6 +27,8 @@ export interface OptionSelectItem {
   keepOpen?: boolean;
   overrideSound?: boolean;
   style?: TextStyle;
+  /** Optional per-option text color (hex #RRGGBB), used for trainer-card choices. */
+  textColor?: string;
   item?: string;
   itemArgs?: any[];
 }
@@ -84,6 +86,12 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
     this.scale = getTextStyleOptions(TextStyle.WINDOW).scale;
   }
 
+  private getOptionTextColor(option: OptionSelectItem): string {
+    return option.textColor && /^#[0-9a-fA-F]{6}$/.test(option.textColor)
+      ? option.textColor
+      : getTextColor(option.style ?? TextStyle.WINDOW, false);
+  }
+
   protected setupOptions() {
     const configOptions = this.config?.options ?? [];
 
@@ -122,8 +130,8 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
       optionsForWidth
         .map(o =>
           o.item
-            ? `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${getTextColor(o.style ?? TextStyle.WINDOW, false)}]    ${o.label}[/color][/shadow]`
-            : `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${getTextColor(o.style ?? TextStyle.WINDOW, false)}]${o.label}[/color][/shadow]`,
+            ? `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]    ${o.label}[/color][/shadow]`
+            : `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]${o.label}[/color][/shadow]`,
         )
         .join("\n"),
       TextStyle.WINDOW,
@@ -147,8 +155,8 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
     this.textContent = optionsWithScroll
       .map(o =>
         o.item
-          ? `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${getTextColor(o.style ?? TextStyle.WINDOW, false)}]    ${o.label}[/color][/shadow]`
-          : `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${getTextColor(o.style ?? TextStyle.WINDOW, false)}]${o.label}[/color][/shadow]`,
+          ? `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]    ${o.label}[/color][/shadow]`
+          : `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]${o.label}[/color][/shadow]`,
       )
       .join("\n");
     this.optionSelectText.setText(this.textContent);

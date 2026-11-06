@@ -113,6 +113,9 @@ export class KecleonShopManager {
 
   private shopSlotIndexes: number[] = [];
 
+  // Original empty display slots may hold player-deposited items.
+  private readonly emptyShopSlots = new Set<number>();
+
   private theftBattleActive = false;
 
   // 도둑질이 시작된 층
@@ -306,6 +309,28 @@ export class KecleonShopManager {
     return this.config.slotCount;
   }
 
+  public isOriginalEmptySlot(slotIndex: number): boolean {
+    return slotIndex >= 0 && slotIndex < this.config.slotCount && this.getItemIndexAtSlot(slotIndex) < 0;
+  }
+
+  public getPlacedItemAtSlot(slotIndex: number): KecleonPlacedItem | undefined {
+    const itemIndex = this.getItemIndexAtSlot(slotIndex);
+    return itemIndex >= 0 ? this.getPlacedItem(itemIndex) : this.placedItems.get(-slotIndex - 1);
+  }
+
+  public placeItemAtEmptySlot(slotIndex: number, item: KecleonPlacedItem): boolean {
+    if (!this.isOriginalEmptySlot(slotIndex) || this.getPlacedItemAtSlot(slotIndex)) {
+      return false;
+    }
+    this.placedItems.set(-slotIndex - 1, item);
+    this.emptyShopSlots.add(slotIndex);
+    return true;
+  }
+
+  public getPlacedEmptySlotIndexes(): number[] {
+    return [...this.emptyShopSlots];
+  }
+
   /**
    * 상점 상품을 새로 생성한다.
    *
@@ -382,6 +407,7 @@ export class KecleonShopManager {
     }
 
     this.shopSlotIndexes = [];
+    this.emptyShopSlots.clear();
 
     const availableSlots = Array.from({ length: this.config.slotCount }, (_, index) => index);
 
@@ -576,6 +602,18 @@ export class KecleonShopManager {
       theftStartWave: this.theftStartWave,
       theftEndWave: this.theftEndWave,
 
+      // Preserve the RANDOM on-screen slot placement for refresh/resume.
+      slotIndexes: [...this.shopSlotIndexes],
+      placedItems: [...this.placedItems.entries()].map(([index, placed]) => ({
+        index,
+        typeId: placed.modifier.type.id,
+        tier: placed.modifier.type.tier,
+        source: placed.source,
+        originalPokemonId: placed.originalPokemonId,
+        stackCount: placed.modifier.stackCount,
+        pokemonId: (placed.modifier as any).pokemonId,
+        pregenArgs: (placed.modifier.type as Partial<GeneratedPersistentModifierType>).getPregenArgs?.(),
+      })),
       items: this.shopOptions.map((option, index) => {
         const generatedType = option.type as Partial<GeneratedPersistentModifierType>;
 
@@ -647,6 +685,19 @@ export class KecleonShopManager {
       return;
     }
 
+    const savedSlots = (data as KecleonShopSaveData & { slotIndexes?: number[] }).slotIndexes;
+    if (
+      Array.isArray(savedSlots)
+      && savedSlots.length === data.items.length
+      && new Set(savedSlots).size === savedSlots.length
+      && savedSlots.every(slot => Number.isInteger(slot) && slot >= 0 && slot < this.config.slotCount)
+    ) {
+      this.shopSlotIndexes = [...savedSlots];
+    } else {
+      // Legacy saves had no slot indices; restore a deterministic layout.
+      this.shopSlotIndexes = data.items.map((_, index) => index);
+    }
+
     for (let index = 0; index < data.items.length; index++) {
       const savedItem = data.items[index];
 
@@ -693,6 +744,61 @@ export class KecleonShopManager {
 
       if (savedItem.taken) {
         this.takenItemIndexes.add(restoredIndex);
+      }
+    }
+
+    // Restore offered items, including negative keys for previously empty slots.
+    const placedData =
+      (
+        data as KecleonShopSaveData & {
+          placedItems?: Array<{
+            index: number;
+            typeId: string;
+            tier: ModifierTier;
+            source: "trainer" | "pokemon";
+            originalPokemonId?: number;
+            stackCount?: number;
+            pokemonId?: number;
+            pregenArgs?: any[];
+          }>;
+        }
+      ).placedItems ?? [];
+    for (const saved of placedData) {
+      const factory = getModifierTypeFuncById(saved.typeId);
+      let type = factory?.();
+      if (type instanceof ModifierTypeGenerator) {
+        type = type.generateType(globalScene.getPlayerParty(), saved.pregenArgs);
+      }
+      if (!type) {
+        console.warn("[KECLEON_PLACED_RESTORE_UNSUPPORTED]", saved);
+        continue;
+      }
+      type.setTier(saved.tier);
+      let modifier: PersistentModifier | null = null;
+      try {
+        // Pokemon modifiers require an owner; do not fabricate ownership.
+        const owner =
+          saved.originalPokemonId == null
+            ? undefined
+            : globalScene.getPlayerParty().find(p => p.id === saved.originalPokemonId);
+        modifier = (type as any).newModifier(owner) as PersistentModifier;
+      } catch (error) {
+        console.warn("[KECLEON_PLACED_RESTORE_FAILED]", saved, error);
+      }
+      if (!modifier) {
+        continue;
+      }
+      modifier.stackCount = Math.max(1, saved.stackCount ?? 1);
+      if (saved.pokemonId != null) {
+        (modifier as any).pokemonId = saved.pokemonId;
+      }
+      this.placedItems.set(saved.index, {
+        modifier,
+        source: saved.source,
+        originalPokemonId: saved.originalPokemonId,
+      });
+      if (saved.index < 0) {
+        this.emptyShopSlots.add(-saved.index - 1);
       }
     }
 
@@ -760,6 +866,7 @@ export class KecleonShopManager {
     this.placedItems.clear();
 
     this.shopSlotIndexes = [];
+    this.emptyShopSlots.clear();
 
     if (resetLastShopWave) {
       this.lastShopWave = -1;
@@ -930,8 +1037,17 @@ export class KecleonShopManager {
    * 판매하고 싶다면 이 함수만 수정하면 된다.
    */
   private isKecleonShopCandidate(type: ModifierType): boolean {
-    // 캘리몬 상점 전용 추가 상품
-    if (type.id === "LUCKY_EGG" || type.id === "GOLDEN_EGG") {
+    // 배포 JS의 캘리몬 상점 몬스터볼 판매 패치 반영.
+    // 기존 PLAYER 보상 풀의 등장 확률과 등급을 그대로 사용합니다.
+    if (
+      type.id === "POKEBALL"
+      || type.id === "GREAT_BALL"
+      || type.id === "ULTRA_BALL"
+      || type.id === "ROGUE_BALL"
+      || type.id === "MASTER_BALL"
+      || type.id === "LUCKY_EGG"
+      || type.id === "GOLDEN_EGG"
+    ) {
       return true;
     }
 

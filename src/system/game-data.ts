@@ -38,6 +38,7 @@ import { Passive as PassiveAttr } from "#enums/passive";
 import { PlayerGender } from "#enums/player-gender";
 import { PokeballType } from "#enums/pokeball";
 import { PokemonType } from "#enums/pokemon-type";
+import { SpeciesFormKey } from "#enums/species-form-key";
 import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import { TrainerVariant } from "#enums/trainer-variant";
@@ -49,6 +50,7 @@ import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
 // biome-ignore lint/performance/noNamespaceImport: Something weird is going on here and I don't want to touch it
 import * as Modifier from "#modifiers/modifier";
 import { ModifierClassMap } from "#modifiers/modifier";
+import { buildRogueShopListings } from "#modifiers/rogue-shop-utils";
 import { MysteryEncounterSaveData } from "#mystery-encounters/mystery-encounter-save-data";
 import type { Variant } from "#sprites/variant";
 import { achvs } from "#system/achv";
@@ -66,7 +68,7 @@ import { resetSettings, SettingKeys, setSetting } from "#system/settings";
 import { SettingGamepad, setSettingGamepad, settingGamepadDefaults } from "#system/settings-gamepad";
 import type { SettingKeyboard } from "#system/settings-keyboard";
 import { setSettingKeyboard } from "#system/settings-keyboard";
-import { type TrainerCardSaveData, trainerCardManager } from "#system/trainer-card-manager";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import { TrainerData } from "#system/trainer-data";
 import { trainerStrategyManager } from "#system/trainer-strategy-manager";
 import {
@@ -270,6 +272,7 @@ export class GameData {
       dummy1: {},
       dummy2: {},
       battleType: "SINGLE",
+      rentalModifiers: [],
     };
 
     this.berryPlanterSlots = [
@@ -405,10 +408,7 @@ export class GameData {
   public getExchangeCurrencyAmount(type: ExchangeCurrencyType, speciesId?: SpeciesId): number {
     switch (type) {
       case ExchangeCurrencyType.MONEY:
-        if ((this.money ?? 0) < amount) {
-          return false;
-        }
-        this.money -= amount;
+        return Math.max(0, globalScene.money ?? 0);
 
       case ExchangeCurrencyType.CANDY:
         if (speciesId == null) {
@@ -425,23 +425,12 @@ export class GameData {
       case ExchangeCurrencyType.VOUCHER_PREMIUM:
         return this.voucherCounts?.[VoucherType.PREMIUM] ?? 0;
 
-      case ExchangeCurrencyType.VOUCHER_GOLDEN:
+      case ExchangeCurrencyType.VOUCHER_GOLD:
         return this.voucherCounts?.[VoucherType.GOLDEN] ?? 0;
 
       default:
         return 0;
     }
-  }
-
-  private togglePracticeDummyFaint(): boolean {
-    const cfg = (globalScene.gameData.practiceDummyConfig ??= {});
-    cfg.rewardFlags ??= {};
-
-    cfg.rewardFlags.allowDummyFaint = !cfg.rewardFlags.allowDummyFaint;
-
-    this.refreshList?.();
-
-    return true;
   }
 
   public getTotalStarterCandyCount(): number {
@@ -477,10 +466,11 @@ export class GameData {
 
     switch (type) {
       case ExchangeCurrencyType.MONEY:
-        if ((this.money ?? 0) < amount) {
+        if ((globalScene.money ?? 0) < amount) {
           return false;
         }
-        this.money -= amount;
+        globalScene.money -= amount;
+        globalScene.updateMoneyText();
         return true;
 
       case ExchangeCurrencyType.CANDY: {
@@ -771,6 +761,33 @@ export class GameData {
     const recoveredKeys = new Set<string>();
     const recoveredItemIds = new Set<string>();
 
+    // 클리어 보상은 로그센터에서 실제로 판매하는 개별 도구만 보관할 수 있다.
+    // BASE_STAT_BOOSTER / FORM_CHANGE_ITEM처럼 생성 인자가 빠진 공용 ID는
+    // 개별 품목을 특정할 수 없으므로 절대로 창고에 등록하지 않는다.
+    // 판매 목록을 한 번만 생성하여 아래의 모든 이관 경로에 같은 기준을 적용한다.
+    const sellableItemIds = new Set<string>();
+    for (const listing of buildRogueShopListings()) {
+      if (listing.id) {
+        sellableItemIds.add(listing.id);
+      }
+      if (listing.option?.type?.id) {
+        sellableItemIds.add(listing.option.type.id);
+      }
+    }
+
+    const isClearStorageEligible = (itemId: string): boolean => sellableItemIds.has(itemId);
+
+    const depositIfEligible = (itemId: string, quantity: number, source: string): boolean => {
+      if (!isClearStorageEligible(itemId)) {
+        console.info("[CLEAR_STORAGE_SKIP_NOT_FOR_SALE]", { itemId, quantity, source });
+        return false;
+      }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return false;
+      }
+      return this.addToStorage(itemId, quantity);
+    };
+
     const getRecoverItemId = (modifier: any): string | null => {
       const className = modifier.constructor?.name;
       const typeId = modifier.type?.id;
@@ -841,7 +858,9 @@ export class GameData {
       }
 
       const storageId = `BALL_${ballType}`;
-      this.addToStorage(storageId, count);
+      if (!depositIfEligible(storageId, count, "pokeball")) {
+        continue;
+      }
       recoveredItemIds.add(storageId);
 
       console.log("[DEPOSIT_POKEBALL]", {
@@ -852,8 +871,7 @@ export class GameData {
     }
 
     for (const item of this.runStorageItems ?? []) {
-      if (item.quantity > 0) {
-        this.addToStorage(item.itemId, item.quantity);
+      if (item.quantity > 0 && depositIfEligible(item.itemId, item.quantity, "runStorageItems")) {
         recoveredKeys.add(`run:${item.itemId}`);
         recoveredItemIds.add(item.itemId);
       }
@@ -883,6 +901,16 @@ export class GameData {
         continue;
       }
 
+      if (!isClearStorageEligible(itemId)) {
+        console.info("[CLEAR_STORAGE_SKIP_NOT_FOR_SALE]", {
+          itemId,
+          source: "activeModifier",
+          className: modifier.constructor?.name,
+          iconImage: type?.iconImage,
+        });
+        continue;
+      }
+
       const qty = Math.max(1, Math.floor((modifier as any).stackCount ?? 1));
       const key = `${itemId}:${(modifier as any).pokemonId ?? "trainer"}`;
 
@@ -890,7 +918,9 @@ export class GameData {
         continue;
       }
 
-      this.addToStorage(itemId, qty);
+      if (!depositIfEligible(itemId, qty, "activeModifier")) {
+        continue;
+      }
       recoveredKeys.add(key);
       recoveredItemIds.add(itemId);
 
@@ -907,7 +937,9 @@ export class GameData {
     }
     if (hardClearBonus) {
       for (const itemId of recoveredItemIds) {
-        this.addToStorage(itemId, 1);
+        if (!depositIfEligible(itemId, 1, "hardClearBonus")) {
+          continue;
+        }
 
         console.log("[HARD_CLEAR_ITEM_BONUS]", {
           itemId,
@@ -941,8 +973,7 @@ export class GameData {
       voucherCounts: this.voucherCounts,
 
       companionData: companionManager.exportSaveData(),
-
-      // Trainer cards are run-specific and saved in the session instead.
+      // Trainer strategy and cards belong ONLY to the current run/session.
 
       roguePoints: this.roguePoints,
       lastAttendanceDate: this.lastAttendanceDate,
@@ -1134,9 +1165,9 @@ export class GameData {
     applySystemVersionMigration(systemData);
 
     companionManager.importSaveData(systemData.companionData);
-
-    // Legacy system-save card state must not override a run's state.
-    // A session load below restores card ownership and equipment.
+    // Ignore legacy account-wide trainer-card/strategy fields.
+    // Only the selected session may restore them.
+    trainerStrategyManager.reset();
     trainerCardManager.resetRun();
 
     this.clearVoucherRewards =
@@ -1155,7 +1186,12 @@ export class GameData {
       dummy1: {},
       dummy2: {},
       battleType: "SINGLE",
+      rentalModifiers: [],
     };
+
+    // 구버전 시스템 저장 데이터는 대여 도구를 별도 필드에 보관할 수 있습니다.
+    // 신버전에서는 practiceDummyConfig.rentalModifiers만 사용합니다.
+    this.practiceDummyConfig.rentalModifiers ??= systemData.practiceRentalModifiers ?? [];
 
     this.berryPlanterSlots = Array.isArray(systemData.berryPlanterSlots)
       ? systemData.berryPlanterSlots
@@ -1926,45 +1962,118 @@ export class GameData {
   }
 
   async getSession(slotId: number): Promise<SessionSaveData | null> {
-    const { promise, resolve, reject } = Promise.withResolvers<SessionSaveData | null>();
     if (slotId < 0) {
-      resolve(null);
-      return promise;
+      return null;
     }
-    const handleSessionData = async (sessionDataStr: string) => {
+
+    const cacheKey = `sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    // For online accounts, fetch the authoritative session first. A cached
+    // session may predate progress made on another device.
+    if (!bypassLogin) {
       try {
-        const sessionData = this.parseSessionData(sessionDataStr);
-        resolve(sessionData);
-      } catch (err) {
-        reject(err);
-        return;
+        const response = await pokerogueApi.savedata.session.get({ slot: slotId, clientSessionId });
+        if (typeof response === "string" && response.startsWith("{")) {
+          const session = this.parseSessionData(response);
+
+          // Some servers return a session without Hidden Epic's custom fields.
+          // Only recover these fields from LOCAL storage when both records refer
+          // to exactly the same run (seed + game mode). Never carry them into
+          // a new run or a different saved slot.
+          // A server-side save can occasionally omit the opponent party even
+          // while a correct copy still exists in the local cache. Restore only
+          // the SAME slot, run, mode and wave. Never substitute a random enemy
+          // or pull an enemy from another encounter.
+          if (
+            cached
+            && (!session.trainerStrategy
+              || !session.trainerCardData
+              || !session.kecleonShop
+              || (session.kecleonShop.active && !session.kecleonShop.items?.length)
+              || session.enemyParty?.length === 0)
+          ) {
+            try {
+              const localSession = this.parseSessionData(decrypt(cached, bypassLogin));
+              const sameRun =
+                typeof session.seed === "string"
+                && session.seed.length > 0
+                && session.seed === localSession.seed
+                && session.gameMode === localSession.gameMode;
+
+              if (sameRun) {
+                if (
+                  Array.isArray(session.enemyParty)
+                  && session.enemyParty.length === 0
+                  && Array.isArray(localSession.enemyParty)
+                  && localSession.enemyParty.length > 0
+                  && localSession.waveIndex === session.waveIndex
+                  && session.battleType === localSession.battleType
+                ) {
+                  session.enemyParty = localSession.enemyParty;
+                  console.warn("[SESSION_WILD_ENEMY_RECOVERED_FROM_LOCAL]", {
+                    slotId,
+                    wave: session.waveIndex,
+                    enemyCount: localSession.enemyParty.length,
+                    species: localSession.enemyParty.map(p => p.species),
+                  });
+                }
+                if (!session.trainerStrategy && localSession.trainerStrategy) {
+                  session.trainerStrategy = localSession.trainerStrategy;
+                }
+                if (!session.trainerCardData && localSession.trainerCardData) {
+                  session.trainerCardData = localSession.trainerCardData;
+                }
+                if (
+                  (!session.kecleonShop || (session.kecleonShop.active && !session.kecleonShop.items?.length))
+                  && localSession.kecleonShop
+                  && localSession.kecleonShop.items?.length
+                  && localSession.waveIndex === session.waveIndex
+                ) {
+                  session.kecleonShop = localSession.kecleonShop;
+                  console.info("[KECLEON_SESSION_LOCAL_RECOVERY]", {
+                    slotId,
+                    wave: session.waveIndex,
+                  });
+                }
+                if (session.trainerStrategy || session.trainerCardData || session.kecleonShop) {
+                  console.info("[TRAINER_SESSION_LOCAL_RECOVERY]", {
+                    slotId,
+                    strategy: !!session.trainerStrategy,
+                    cards: !!session.trainerCardData,
+                  });
+                }
+              }
+            } catch (error) {
+              console.warn("[TRAINER_SESSION_LOCAL_RECOVERY_FAILED]", { slotId, error });
+            }
+          }
+
+          // Cache the merged record, not the server's stripped version.
+          localStorage.setItem(cacheKey, encrypt(JSON.stringify(session), bypassLogin));
+          return session;
+        }
+        // If the server says this slot is genuinely empty, do not resurrect
+        // an old local save. Unexpected failures retain the local fallback.
+        if (String(response) === "404") {
+          localStorage.removeItem(cacheKey);
+          return null;
+        }
+        console.warn("[SESSION_REMOTE_FETCH_FAILED]", { slotId, response });
+      } catch (error) {
+        console.warn("[SESSION_REMOTE_FETCH_FAILED]", { slotId, error });
       }
-    };
-
-    if (!bypassLogin && !localStorage.getItem(`sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`)) {
-      const response = await pokerogueApi.savedata.session.get({ slot: slotId, clientSessionId });
-
-      if (!response || response?.length === 0 || response?.[0] !== "{") {
-        console.error(response);
-        resolve(null);
-        return promise;
-      }
-
-      localStorage.setItem(
-        `sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`,
-        encrypt(response, bypassLogin),
-      );
-
-      await handleSessionData(response);
-      return promise;
     }
-    const sessionData = localStorage.getItem(`sessionData${slotId ? slotId : ""}_${loggedInUser?.username}`);
-    if (sessionData) {
-      await handleSessionData(decrypt(sessionData, bypassLogin));
-      return promise;
+
+    if (!cached) {
+      return null;
     }
-    resolve(null);
-    return promise;
+    try {
+      return this.parseSessionData(decrypt(cached, bypassLogin));
+    } catch (error) {
+      console.error("[SESSION_CACHE_PARSE_FAILED]", { slotId, error });
+      return null;
+    }
   }
 
   async renameSession(slotId: number, newName: string): Promise<boolean> {
@@ -2030,11 +2139,9 @@ export class GameData {
         // ========================================
         trainerStrategyManager.importSaveData(fromSession.trainerStrategy, fromSession.waveIndex);
 
-        // Recover the slot layout first, then run-owned cards and equipped cards.
-        trainerCardManager.syncSlotsWithStrategy();
-        trainerCardManager.importSaveData(
-          (fromSession as SessionSaveData & { trainerCardData?: TrainerCardSaveData }).trainerCardData,
-        );
+        // Restore exactly this session's card ownership and equipment.
+        // Never merge with cards from another run or an account-wide cache.
+        trainerCardManager.importSaveData(fromSession.trainerCardData);
         console.log("[LOAD_TRAINER_CARDS]", trainerCardManager.exportSaveData());
 
         console.log("[LOAD_TRAINER_STRATEGY]", {
@@ -2216,20 +2323,69 @@ export class GameData {
 
         const isMonsterHouseLoad = !!fromSession.monsterHouse?.active;
 
-        const isDoubleBattle =
-          battleType === BattleType.TRAINER
+        // 디 아더 300층의 레쿠쟈 전투에서 재접속한 경우에는
+        // 저장된 레쿠쟈 1마리 대신 피아나의 원래 트레이너 파티를 다시 만든다.
+        // 일반 300층 피아나 세이브와 다른 모드에는 영향을 주지 않는다.
+        const restartTheOther300Zinnia =
+          globalScene.gameMode.modeId === GameModes.THEOTHER
+          && fromSession.waveIndex === 300
+          && battleType === BattleType.WILD
+          && !fromSession.trainer;
+
+        if (restartTheOther300Zinnia) {
+          battleType = BattleType.TRAINER;
+          globalScene.theOther300Stage = 0;
+          console.log("[THEOTHER_300_RESTORE_ZINNIA_PARTY]", {
+            savedEnemies: fromSession.enemyParty.length,
+            savedBattleType: fromSession.battleType,
+          });
+        }
+
+        const isDoubleBattle = restartTheOther300Zinnia
+          ? false
+          : battleType === BattleType.TRAINER
             ? !!(trainerConfig?.doubleOnly || fromSession.trainer?.variant === TrainerVariant.DOUBLE)
             : !isMonsterHouseLoad && fromSession.enemyParty.length > 1;
 
         const battle = globalScene.newBattle(
           fromSession.waveIndex,
-          battleType,
-          fromSession.trainer,
+          restartTheOther300Zinnia ? BattleType.TRAINER : battleType,
+          restartTheOther300Zinnia ? undefined : (fromSession.trainer ?? undefined),
           isDoubleBattle,
-          mysteryEncounterType,
+          restartTheOther300Zinnia ? undefined : mysteryEncounterType,
         );
 
-        battle.enemyLevels = fromSession.enemyParty.map(p => p.level);
+        // 레쿠쟈의 레벨 배열([1마리])로 피아나의 파티 레벨 배열을 덮어쓰지 않는다.
+        // newBattle()에서 피아나 설정의 getPartyLevels()를 사용해 전원 생성됨.
+        if (!restartTheOther300Zinnia) {
+          const savedEnemyLevels = fromSession.enemyParty.map(p => p.level);
+          // When an older/incomplete save was written between waves, enemyParty can
+          // be empty even though the newly constructed ordinary wild battle already
+          // has valid enemy levels. Do not overwrite those levels with [].
+          const canRecoverEmptyWildParty =
+            savedEnemyLevels.length === 0
+            && battleType === BattleType.WILD
+            && !isMonsterHouseLoad
+            && !battle.isBattleMysteryEncounter()
+            && !mysteryTimeManager.isMysteryTimeWave(fromSession.waveIndex)
+            && !kecleonShopManager.isTheftBattleActive()
+            && !restartTheOther300Zinnia;
+
+          if (canRecoverEmptyWildParty && (battle.enemyLevels?.length ?? 0) > 0) {
+            console.warn("[LOAD_SESSION_REGENERATE_WILD_ENEMY_LEVELS]", {
+              wave: fromSession.waveIndex,
+              recoveredLevels: [...(battle.enemyLevels ?? [])],
+            });
+            // EncounterPhase handles enemy creation when loaded data has no enemy.
+          } else {
+            battle.enemyLevels = savedEnemyLevels;
+            if (canRecoverEmptyWildParty) {
+              console.error("[LOAD_SESSION_WILD_ENEMY_LEVELS_UNAVAILABLE]", {
+                wave: fromSession.waveIndex,
+              });
+            }
+          }
+        }
 
         console.log("[LOAD_SESSION_BATTLE_MODE]", {
           wave: fromSession.waveIndex,
@@ -2243,37 +2399,56 @@ export class GameData {
 
         globalScene.arena.init();
 
-        fromSession.enemyParty.forEach((enemyData, e) => {
-          const enemyPokemon = enemyData.toPokemon(
-            battleType,
-            e,
-            fromSession.trainer?.variant === TrainerVariant.DOUBLE,
-          ) as EnemyPokemon;
-
-          const invalidMoves = enemyPokemon.getMoveset().filter(m => MoveId[m.moveId] === undefined);
-
-          if (invalidMoves.length > 0) {
-            console.error("[INVALID_SAVED_ENEMY_MOVE]", {
-              index: e,
-              pokemon: enemyPokemon.name,
-              pokemonId: enemyPokemon.id,
-              species: enemyPokemon.species?.speciesId,
-              moves: invalidMoves.map(m => m.moveId),
-              fullMoveset: enemyPokemon.getMoveset().map(m => ({
-                id: m.moveId,
-                name: MoveId[m.moveId],
-              })),
-            });
+        if (restartTheOther300Zinnia) {
+          if (!battle.trainer || !battle.enemyLevels?.length) {
+            throw new Error("[THEOTHER_300_RESTORE] 피아나 트레이너 또는 파티 레벨 생성 실패");
           }
 
-          battle.enemyParty[e] = enemyPokemon;
-
-          if (battleType === BattleType.WILD) {
-            battle.seenEnemyPartyMemberIds.add(enemyPokemon.id);
+          // EncounterPhase의 일반 트레이너 파티 생성 방식과 동일하게 생성한다.
+          // 저장된 레쿠쟈 개체/기술/배리어는 가져오지 않는다.
+          for (let e = 0; e < battle.enemyLevels.length; e++) {
+            const enemyPokemon = battle.trainer.genPartyMember(e);
+            battle.enemyParty[e] = enemyPokemon;
+            loadPokemonAssets.push(enemyPokemon.loadAssets());
           }
+          console.log("[THEOTHER_300_ZINNIA_PARTY_REGENERATED]", {
+            expected: battle.enemyLevels.length,
+            actual: battle.enemyParty.length,
+            species: battle.enemyParty.map(p => p.species?.speciesId),
+          });
+        } else {
+          fromSession.enemyParty.forEach((enemyData, e) => {
+            const enemyPokemon = enemyData.toPokemon(
+              battleType,
+              e,
+              fromSession.trainer?.variant === TrainerVariant.DOUBLE,
+            ) as EnemyPokemon;
 
-          loadPokemonAssets.push(enemyPokemon.loadAssets());
-        });
+            const invalidMoves = enemyPokemon.getMoveset().filter(m => MoveId[m.moveId] === undefined);
+
+            if (invalidMoves.length > 0) {
+              console.error("[INVALID_SAVED_ENEMY_MOVE]", {
+                index: e,
+                pokemon: enemyPokemon.name,
+                pokemonId: enemyPokemon.id,
+                species: enemyPokemon.species?.speciesId,
+                moves: invalidMoves.map(m => m.moveId),
+                fullMoveset: enemyPokemon.getMoveset().map(m => ({
+                  id: m.moveId,
+                  name: MoveId[m.moveId],
+                })),
+              });
+            }
+
+            battle.enemyParty[e] = enemyPokemon;
+
+            if (battleType === BattleType.WILD) {
+              battle.seenEnemyPartyMemberIds.add(enemyPokemon.id);
+            }
+
+            loadPokemonAssets.push(enemyPokemon.loadAssets());
+          });
+        }
 
         const shouldRestoreMonsterHouse =
           !!fromSession.monsterHouse?.active
@@ -2284,7 +2459,7 @@ export class GameData {
             - fromSession.monsterHouse.capturedEnemies
             > 0;
 
-        if (shouldRestoreMonsterHouse) {
+        if (shouldRestoreMonsterHouse && fromSession.monsterHouse) {
           monsterHouseManager.restore(fromSession.monsterHouse, battle.enemyParty);
         } else {
           monsterHouseManager.reset();
@@ -2307,7 +2482,6 @@ export class GameData {
             WeatherType.NONE,
             globalScene.arena.weather?.weatherType!,
             globalScene.arena.weather?.turnsLeft!,
-            globalScene.arena.weather?.maxDuration!,
           ),
         ); // TODO: is this bang correct?
 
@@ -2317,7 +2491,6 @@ export class GameData {
             TerrainType.NONE,
             globalScene.arena.terrain?.terrainType!,
             globalScene.arena.terrain?.turnsLeft!,
-            globalScene.arena.terrain?.maxDuration!,
           ),
         ); // TODO: is this bang correct?
 
@@ -2369,7 +2542,7 @@ export class GameData {
             console.warn("[LOAD][RECOVER_EXP_MOD]", modifierData.className, modifierData.typeId, modifierData.args);
           }
 
-          const ctor = this.modifiersModule?.[modifierData.className] ?? ModifierClassMap?.[modifierData.className];
+          const ctor = ModifierClassMap?.[modifierData.className];
 
           const modifier = modifierData.toModifier(ctor);
 
@@ -2383,7 +2556,8 @@ export class GameData {
         }
         globalScene.updateModifiers(true);
 
-        for (const enemyModifierData of fromSession.enemyModifiers) {
+        // 레쿠쟈 전용 적 도구가 피아나 파티에 넘어가지 않도록 제외한다.
+        for (const enemyModifierData of restartTheOther300Zinnia ? [] : fromSession.enemyModifiers) {
           const modifier = enemyModifierData.toModifier(Modifier[enemyModifierData.className]);
           if (modifier) {
             globalScene.addEnemyModifier(modifier, true);
@@ -2881,6 +3055,8 @@ export class GameData {
         seenAttr: 0n,
         caughtAttr: 0n,
         natureAttr: 0,
+        abilityAttr: 0,
+        passiveAttr: 0,
         seenCount: 0,
         caughtCount: 0,
         hatchedCount: 0,
@@ -3471,6 +3647,11 @@ export class GameData {
   }
 
   getSpeciesStarterValue(speciesId: SpeciesId): number {
+    // THEOTHER only: selection cost is fixed to 1; permanent reductions stay untouched.
+    if (globalScene.gameMode?.modeId === GameModes.THEOTHER) {
+      return 1;
+    }
+
     const baseValue = speciesStarterCosts[speciesId];
     let value = baseValue;
 

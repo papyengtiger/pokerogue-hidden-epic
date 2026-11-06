@@ -42,6 +42,16 @@ interface GameModeConfig {
 
 export class GameMode implements GameModeConfig {
   public difficulty: GameDifficulty = GameDifficulty.NORMAL;
+  /** HARD 클래식 200층 선택 후에만 활성화됩니다. */
+  public hard300 = false;
+
+  public isHard300Active(): boolean {
+    return this.modeId === GameModes.CLASSIC && this.difficulty === GameDifficulty.HARD && this.hard300;
+  }
+
+  public getClassicFinalWave(): number {
+    return this.isHard300Active() ? 300 : 200;
+  }
   public modeId: GameModes;
   public isClassic: boolean;
   public isEndless: boolean;
@@ -109,6 +119,20 @@ export class GameMode implements GameModeConfig {
 
       case GameDifficulty.HARD:
         return 0; // 추후 확정
+    }
+  }
+
+  /** 공격형 도구의 합산 화력 상한. 난이도별 조정은 이 수치만 바꾸면 됩니다. */
+  getItemDamageMultiplierCap(): number {
+    switch (this.difficulty) {
+      case GameDifficulty.EASY:
+        return 20;
+      case GameDifficulty.NORMAL:
+        return 15;
+      case GameDifficulty.HARD:
+        return 10;
+      default:
+        return 15;
     }
   }
 
@@ -348,6 +372,12 @@ export class GameMode implements GameModeConfig {
       return false;
     }
 
+    // 디 아더: 10층 단위의 사천왕/챔피언도 반드시 트레이너전으로 진행한다.
+    // 일반 판정에서는 190/200/280/290층이 야생 보스전으로 처리될 수 있다.
+    if (this.modeId === GameModes.THEOTHER && [190, 192, 194, 196, 200, 280, 282, 284, 286, 290].includes(waveIndex)) {
+      return true;
+    }
+
     if (this.isDaily) {
       return waveIndex % 10 === 5 || (!(waveIndex % 10) && waveIndex > 10 && !this.isWaveFinal(waveIndex));
     }
@@ -473,6 +503,11 @@ export class GameMode implements GameModeConfig {
   }
 
   getOverrideSpecies(waveIndex: number): PokemonSpecies | null {
+    // 디 아더 300층: 피아나 승리 이후 두 번의 야생 레쿠쟈 전투를 확정 생성합니다.
+    if (this.modeId === GameModes.THEOTHER && waveIndex === 300 && globalScene.theOther300Stage > 0) {
+      return getPokemonSpecies(SpeciesId.RAYQUAZA);
+    }
+
     // ================================
     // 데일리 최종보스
     // ================================
@@ -579,6 +614,7 @@ export class GameMode implements GameModeConfig {
       case GameModes.TUTORIAL:
         return waveIndex === 50;
       case GameModes.CLASSIC:
+        return waveIndex === this.getClassicFinalWave();
       case GameModes.CHALLENGE:
       case GameModes.MONTHLY:
         return waveIndex === 200;

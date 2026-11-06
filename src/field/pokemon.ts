@@ -11,6 +11,7 @@ import { maxmovesSpecies } from "#app/data/balance/trs";
 import { BypassFreezeDamageReductionAttr } from "#app/data/moves/move";
 import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
+import { beginItemOverload, finishItemOverload, recordItemOverload } from "#app/item-overload";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { exclusiveZMoveToSpeciesMap, typeToZMoveMap } from "#app/modifier/modifier-type";
 import Overrides from "#app/overrides";
@@ -1932,6 +1933,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     };
 
     if (!ignoreHeldItems) {
+      const itemStatBefore = statVal.value;
       console.log("[STAT_BOOST_BEFORE]", {
         pokemon: this.name,
         stat: Stat[stat],
@@ -1989,6 +1991,9 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         }
       }
 
+      if (stat === Stat.ATK || stat === Stat.SPATK) {
+        recordItemOverload(this, itemStatBefore, statVal.value, `공격 능력치 도구(${Stat[stat]})`);
+      }
       console.log("[STAT_BOOST_AFTER]", {
         pokemon: this.name,
         stat: Stat[stat],
@@ -2025,7 +2030,11 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       });
 
       watchStatValue("파워업디스크", () => {
+        const itemBefore = statVal.value;
         globalScene.applyModifiers(PowerUpDiskModifier, this.isPlayer(), this, stat, statVal);
+        if (stat === Stat.ATK || stat === Stat.SPATK) {
+          recordItemOverload(this, itemBefore, statVal.value, "파워업디스크");
+        }
       });
     }
     // ✅ 아군 보조 특성 (플라워기프트 등)
@@ -5417,23 +5426,23 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       }
     };
 
-    const watchDamageValue = (label: string, callback: () => void) => {
+    const watchDamageValue = (label: string, callback: () => void, offensiveItem = false) => {
       const before = damage.value;
-
       callback();
-
       const after = damage.value;
-
+      if (offensiveItem) {
+        recordItemOverload(source, before, after, label);
+      }
       applyPracticeFactor(label, before, after);
     };
 
-    const watchTotalChange = (label: string, callback: () => void) => {
+    const watchTotalChange = (label: string, callback: () => void, offensiveItem = false) => {
       const before = total;
-
       callback();
-
       const after = total;
-
+      if (offensiveItem) {
+        recordItemOverload(source, before, after, label);
+      }
       applyPracticeFactor(label, before, after);
     };
 
@@ -5654,6 +5663,11 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
      * The attack's base damage, as determined by the source's level, move power
      * and Attack stat as well as this Pokemon's Defense stat
      */
+    // 공격형 아이템 누적 배율 추적은 일반 피해 계산에만 적용합니다.
+    // 고정 피해 / 일격기 / 참기 등 특수 피해는 기존 규칙을 유지합니다.
+    if (source.isPlayer()) {
+      beginItemOverload(source);
+    }
     const baseDamage = this.getBaseDamage({
       source,
       move,
@@ -5738,6 +5752,9 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       globalScene.applyModifier(CritDamageBoostModifier, source.isPlayer(), source, criticalMultiplier);
 
       const after = criticalMultiplier.value;
+      if (source.isPlayer()) {
+        recordItemOverload(source, before, after, "급소 강화 도구");
+      }
 
       console.log("[CRIT_DAMAGE_ITEM]", {
         item: modName,
@@ -5962,9 +5979,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       if (matchedMod && move.hasFlag(flag)) {
         const modName = (matchedMod as any).getPracticeLogName?.() ?? matchedMod.constructor.name;
 
-        watchTotalChange(modName, () => {
-          total = Math.floor(total * mult);
-        });
+        watchTotalChange(
+          modName,
+          () => {
+            total = Math.floor(total * mult);
+          },
+          true,
+        );
 
         move.setFlag(MoveFlags.MAKES_CONTACT, false);
       }
@@ -6009,9 +6030,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         ?? (drainMod as any).type?.id
         ?? drainMod.constructor.name;
 
-      watchTotalChange(modName, () => {
-        total = Math.floor(total * 1.5);
-      });
+      watchTotalChange(
+        modName,
+        () => {
+          total = Math.floor(total * 1.5);
+        },
+        true,
+      );
     }
 
     // ✅ SpeciesStatBoosterModifier : WIND_MOVE면 windMoveMult 적용
@@ -6032,9 +6057,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         const modName =
           (m as any).getPracticeLogName?.() ?? (m as any).type?.name ?? (m as any).type?.id ?? m.constructor.name;
 
-        watchTotalChange(modName, () => {
-          total = Math.floor(total * w);
-        });
+        watchTotalChange(
+          modName,
+          () => {
+            total = Math.floor(total * w);
+          },
+          true,
+        );
 
         console.log(`[SPECIES_BOOSTER][WIND] x${w} applied`);
         break;
@@ -6063,9 +6092,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
           const modName =
             (m as any).getPracticeLogName?.() ?? (m as any).type?.name ?? (m as any).type?.id ?? m.constructor.name;
 
-          watchTotalChange(modName, () => {
-            total = Math.floor(total * mult);
-          });
+          watchTotalChange(
+            modName,
+            () => {
+              total = Math.floor(total * mult);
+            },
+            true,
+          );
 
           break;
         }
@@ -6094,9 +6127,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
           const modName =
             (m as any).getPracticeLogName?.() ?? (m as any).type?.name ?? (m as any).type?.id ?? m.constructor.name;
 
-          watchTotalChange(modName, () => {
-            total = Math.floor(total * mult);
-          });
+          watchTotalChange(
+            modName,
+            () => {
+              total = Math.floor(total * mult);
+            },
+            true,
+          );
 
           break;
         }
@@ -6112,9 +6149,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         const modName =
           (m as any).getPracticeLogName?.() ?? (m as any).type?.name ?? (m as any).type?.id ?? m.constructor.name;
 
-        watchTotalChange(modName, () => {
-          total = Math.floor(total * mult);
-        });
+        watchTotalChange(
+          modName,
+          () => {
+            total = Math.floor(total * mult);
+          },
+          true,
+        );
       }
     }
 
@@ -6133,21 +6174,29 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         ?? (stackingPowerMod as any).type?.id
         ?? stackingPowerMod.constructor.name;
 
-      watchDamageValue(modName, () => {
-        damage.value = stackingPowerMod.applyMovePowerBoost(
-          move,
-          source,
-          this,
-          damage.value,
-          globalScene.currentBattle,
-        );
-      });
+      watchDamageValue(
+        modName,
+        () => {
+          damage.value = stackingPowerMod.applyMovePowerBoost(
+            move,
+            source,
+            this,
+            damage.value,
+            globalScene.currentBattle,
+          );
+        },
+        true,
+      );
     }
 
     if (typeof IgnoreContactItemModifier !== "undefined") {
-      watchDamageValue("접촉 무시 보정", () => {
-        globalScene.applyModifiers(IgnoreContactItemModifier, source.isPlayer(), damage);
-      });
+      watchDamageValue(
+        "접촉 무시 보정",
+        () => {
+          globalScene.applyModifiers(IgnoreContactItemModifier, source.isPlayer(), damage);
+        },
+        true,
+      );
     }
 
     // SheerForceItemModifier
@@ -6166,9 +6215,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         ?? (sheerForceMod as any).type?.id
         ?? sheerForceMod.constructor.name;
 
-      watchDamageValue(modName, () => {
-        damage.value = Math.floor(damage.value * 1.3);
-      });
+      watchDamageValue(
+        modName,
+        () => {
+          damage.value = Math.floor(damage.value * 1.3);
+        },
+        true,
+      );
 
       console.log(`[SheerForceItemModifier] ${move.name} → x1.3`);
     }
@@ -6184,9 +6237,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         ?? (movePowerMod as any).type?.id
         ?? movePowerMod.constructor.name;
 
-      watchDamageValue(modName, () => {
-        globalScene.applyModifier(MovePowerBoostItemModifier, source.isPlayer(), source, move, damage);
-      });
+      watchDamageValue(
+        modName,
+        () => {
+          globalScene.applyModifier(MovePowerBoostItemModifier, source.isPlayer(), source, move, damage);
+        },
+        true,
+      );
     }
 
     // 5) Source ability-based boosts
@@ -6395,9 +6452,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         ?? (matchedMod as any).type?.id
         ?? matchedMod.constructor.name;
 
-      watchDamageValue(modName, () => {
-        damage.value = matchedMod.applyMovePowerBoost(move, attacker, this, damage.value, globalScene.currentBattle);
-      });
+      watchDamageValue(
+        modName,
+        () => {
+          damage.value = matchedMod.applyMovePowerBoost(move, attacker, this, damage.value, globalScene.currentBattle);
+        },
+        true,
+      );
     }
     // 11) SuperEffective / NotEffective boosters
 
@@ -6414,9 +6475,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
           ?? (ultra as any).type?.id
           ?? ultra.constructor.name;
 
-        watchDamageValue(modName, () => {
-          damage.value = Math.floor(damage.value * mult);
-        });
+        watchDamageValue(
+          modName,
+          () => {
+            damage.value = Math.floor(damage.value * mult);
+          },
+          true,
+        );
 
         if (!simulated) {
           console.log(`[ULTRA_BEAD][NOT_EFFECTIVE] x${mult} applied`);
@@ -6436,9 +6501,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
           ?? (expertBelt as any).type?.id
           ?? expertBelt.constructor.name;
 
-        watchDamageValue(modName, () => {
-          damage.value = expertBelt.applyMovePowerBoost(move, source, this, damage.value, globalScene.currentBattle);
-        });
+        watchDamageValue(
+          modName,
+          () => {
+            damage.value = expertBelt.applyMovePowerBoost(move, source, this, damage.value, globalScene.currentBattle);
+          },
+          true,
+        );
       }
 
       // 트레이닝 카드: 엄청난효과
@@ -6514,9 +6583,13 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
 
         const mult = (notEffectiveMod as any).multiplier ?? 2;
 
-        watchDamageValue(modName, () => {
-          damage.value = Math.floor(damage.value * mult);
-        });
+        watchDamageValue(
+          modName,
+          () => {
+            damage.value = Math.floor(damage.value * mult);
+          },
+          true,
+        );
       }
     }
 
@@ -6524,6 +6597,17 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       watchDamageValue("풀피 버티기 보정", () => {
         applyAbAttrs("PreDefendFullHpEndureAbAttr", abAttrParams);
       });
+    }
+
+    // 공격형 아이템 총배율에만 난이도별 20/15/10배 상한을 적용합니다.
+    // 다른 배율은 기존대로 유지되며, 보스 실드/실제 HP 감소 처리보다 앞입니다.
+    if (source.isPlayer()) {
+      damage.value = finishItemOverload(
+        source,
+        damage.value,
+        globalScene.gameMode.getItemDamageMultiplierCap(),
+        !simulated,
+      );
     }
 
     // 13) Debug output (when not simulated)
@@ -10002,6 +10086,64 @@ export class EnemyPokemon extends Pokemon {
     console.log("[THEOTHER_RAYQUAZA_PHASE_MOVES]", { phase, moves: this.moveset.map(move => MoveId[move.moveId]) });
   }
 
+  /**
+   * 디아더 300층 레쿠쟈 1→2페이즈 전환.
+   * 기절시키거나 새 적을 생성하지 않고, 기존 개체의 체력과 배리어를 전부 복구합니다.
+   */
+  public enterTheOtherRayquazaPhaseTwo(): boolean {
+    if (
+      globalScene.gameMode.modeId !== GameModes.THEOTHER
+      || globalScene.currentBattle?.waveIndex !== 300
+      || globalScene.theOther300Stage !== 1
+      || this.species.speciesId !== SpeciesId.RAYQUAZA
+    ) {
+      return false;
+    }
+
+    // 먼저 단계를 올려 재진입과 1페이즈 피해 제한을 해제합니다.
+    globalScene.theOther300Stage = 2;
+    this.setTheOtherRayquazaPhase(2);
+
+    const megaIndex = this.species.forms.findIndex(form => form.formKey === "mega");
+    if (megaIndex >= 0) {
+      this.formIndex = megaIndex;
+      this.generateName();
+      this.calculateStats();
+    } else {
+      console.warn(
+        "[THEOTHER_300_MEGA_FORM_NOT_FOUND]",
+        this.species.forms.map(form => form.formKey),
+      );
+    }
+
+    this.hp = this.getMaxHp();
+    this.doSetStatus(StatusEffect.NONE);
+
+    // 보스 배리어 전체 복원: 첫 페이즈에서 깨진 체력칸도 다시 표시합니다.
+    if (this.bossSegments > 1) {
+      this.bossSegmentIndex = this.bossSegments - 1;
+    }
+    this.battleInfo?.updateBossSegments(this);
+
+    console.log("[THEOTHER_300_PHASE_TWO]", {
+      stage: globalScene.theOther300Stage,
+      hp: this.hp,
+      maxHp: this.getMaxHp(),
+      bossSegments: this.bossSegments,
+      bossSegmentIndex: this.bossSegmentIndex,
+      formIndex: this.formIndex,
+    });
+    globalScene.phaseManager.queueMessage("레쿠쟈가 진정한 힘을 해방했다!", null, true);
+
+    void this.loadAssets(false)
+      .then(() => {
+        this.playAnim();
+        return this.updateInfo(true);
+      })
+      .catch(error => console.error("[THEOTHER_300_PHASE_TWO_ASSET_ERROR]", error));
+    return true;
+  }
+
   generateAndPopulateMoveset(formIndex?: number): void {
     switch (true) {
       case this.species.speciesId === SpeciesId.RAYQUAZA
@@ -10009,8 +10151,8 @@ export class EnemyPokemon extends Pokemon {
         && globalScene.currentBattle?.waveIndex === 300:
         this.moveset = (
           this.theOtherRayquazaPhase === 2
-            ? [MoveId.SKY_LANCE, MoveId.DRAGON_IMPACT, MoveId.FREEZE_TORNADO, MoveId.GROUND_STREAM]
-            : [MoveId.DRAGON_ASCENT, MoveId.DRAGON_STREAM, MoveId.ORIGIN_PULSE, MoveId.PRECIPICE_BLADES]
+            ? [MoveId.DRAGON_ASCENT, MoveId.DRAGON_IMPACT, MoveId.FREEZE_TORNADO, MoveId.GROUND_STREAM]
+            : [MoveId.MAX_AIRSTREAM, MoveId.DRAGON_STREAM, MoveId.ORIGIN_PULSE, MoveId.PRECIPICE_BLADES]
         ).map(moveId => new PokemonMove(moveId));
         break;
       case this.species.speciesId === SpeciesId.SMEARGLE:
@@ -10458,7 +10600,29 @@ export class EnemyPokemon extends Pokemon {
         }
     }
 
+    // 디아더 300층 레쿠쟈 1페이즈: 마지막 체력칸 1개가 남는
+    // 경계에서 피해를 멈추고, 일반 기절 처리 대신 2페이즈로 전환합니다.
+    const theOtherRayquazaFirstPhase =
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle?.waveIndex === 300
+      && globalScene.theOther300Stage === 1
+      && this.species.speciesId === SpeciesId.RAYQUAZA
+      && this.isBoss()
+      && this.bossSegments > 1;
+    const finalSegmentHp = theOtherRayquazaFirstPhase
+      ? Math.max(1, Math.round(this.getMaxHp() / this.bossSegments))
+      : 0;
+    if (theOtherRayquazaFirstPhase) {
+      damage = Math.min(damage, Math.max(0, this.hp - finalSegmentHp));
+    }
+
     const ret = super.damage(damage, ignoreSegments, preventEndure, ignoreFaintPhase);
+
+    // 배리어를 전부 회복하는 동안 일반 데미지 처리/기절 분기를 거치지 않습니다.
+    if (theOtherRayquazaFirstPhase && this.hp <= finalSegmentHp) {
+      this.enterTheOtherRayquazaPhaseTwo();
+      return ret;
+    }
 
     if (this.isBoss()) {
       if (ignoreSegments) {

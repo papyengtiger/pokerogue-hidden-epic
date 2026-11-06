@@ -1,15 +1,19 @@
+import { WeatherType } from "#app/enums/weather-type";
 import { getGameMode } from "#app/game-mode";
 import { globalScene } from "#app/global-scene";
+import { EvolutionItem } from "#balance/pokemon-evolutions";
 import { getApricornName } from "#data/apricorn";
 import { getBerryEffectDescription, getBerryName } from "#data/berry";
 import { CraftingLocation } from "#data/crafting/crafting-manager";
 import { modifierTypes } from "#data/data-lists";
 import { getPokeballName } from "#data/pokeball";
+import { TerrainType } from "#data/terrain";
 import type { ApricornType } from "#enums/apricorn-type";
 import { BankCurrencyType } from "#enums/bank-currency-type";
 import { BerryType } from "#enums/berry-type";
 import { Button } from "#enums/buttons";
 import { ExchangeCurrencyType } from "#enums/exchange-currency-type";
+import { FormChangeItem } from "#enums/form-change-item";
 import { GameModes } from "#enums/game-modes";
 import { ModifierTier } from "#enums/modifier-tier";
 import { PlayerGender } from "#enums/player-gender";
@@ -36,6 +40,596 @@ import { addTextObject } from "#ui/text";
 import { addWindow } from "#ui/ui-theme";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 
+/** 로그센터 이름만큼은 번역 로딩 순서와 무관하도록 한국어 modifier-type.json의 이름을 보존합니다. */
+const ROGUE_SHOP_KO_NAME_MAP: Record<string, string> = {
+  "ModifierType.MaxAllIvModifierType": "금색병뚜껑",
+  "ModifierType.ChangeAbilityModifierType": "특성캡슐",
+  "ModifierType.RegisterAbilityModifierType": "특성패치",
+  "ModifierType.PokemonZMovePpRestoreModifierType": "Z회복",
+  "ModifierType.PokemonMaxMovePpRestoreModifierType": "다이PP맥스",
+  "ModifierType.PokemonBaseStatTotalModifierType": "단단지주스",
+  "ModifierType.PokemonBaseStatFlatModifierType": "숲의양갱",
+  "ModifierType.RARE_CANDY": "이상한사탕",
+  "ModifierType.RARER_CANDY": "더이상한사탕",
+  "ModifierType.MEGA_BRACELET": "메가링",
+  "ModifierType.DYNAMAX_BAND": "다이맥스 밴드",
+  "ModifierType.TERA_ORB": "테라스탈오브",
+  "ModifierType.Z_RING": "Z링",
+  "ModifierType.Z_POWER_RING": "Z파워링",
+  "ModifierType.MAP": "지도",
+  "ModifierType.POTION": "상처약",
+  "ModifierType.SUPER_POTION": "좋은상처약",
+  "ModifierType.HYPER_POTION": "고급상처약",
+  "ModifierType.MAX_POTION": "풀회복약",
+  "ModifierType.FULL_RESTORE": "회복약",
+  "ModifierType.REVIVE": "기력의조각",
+  "ModifierType.MAX_REVIVE": "기력의덩어리",
+  "ModifierType.FULL_HEAL": "만병통치제",
+  "ModifierType.SACRED_ASH": "성스러운분말",
+  "ModifierType.REVIVER_SEED": "부활의씨앗",
+  "ModifierType.WHITE_HERB": "하양허브",
+  "ModifierType.WISHING_STAR": "소원의별",
+  "ModifierType.DYNAMAX_CANDY": "다이맥스사탕",
+  "ModifierType.ETHER": "PP에이드",
+  "ModifierType.MAX_ETHER": "PP회복",
+  "ModifierType.ELIXIR": "PP에이더",
+  "ModifierType.MAX_ELIXIR": "PP맥스",
+  "ModifierType.PP_UP": "포인트업",
+  "ModifierType.PP_MAX": "포인트맥스",
+  "ModifierType.LURE": "더블배틀코롱",
+  "ModifierType.SUPER_LURE": "실버코롱",
+  "ModifierType.MAX_LURE": "골드코롱",
+  "ModifierType.MEMORY_MUSHROOM": "기억버섯",
+  "ModifierType.EXP_SHARE": "학습장치",
+  "ModifierType.EXP_BALANCE": "균형학습장치",
+  "ModifierType.OVAL_CHARM": "둥근부적",
+  "ModifierType.ARMORITE_ORE": "갑옷광석",
+  "ModifierType.EXP_CHARM": "경험부적",
+  "ModifierType.SUPER_EXP_CHARM": "좋은경험부적",
+  "ModifierType.GOLDEN_EXP_CHARM": "황금경험부적",
+  "ModifierType.LUCKY_EGG": "행복의알",
+  "ModifierType.GOLDEN_EGG": "황금의알",
+  "ModifierType.SOOTHE_BELL": "평온의방울",
+  "ModifierType.SCOPE_LENS": "초점렌즈",
+  "ModifierType.DIRE_HIT": "크리티컬커터",
+  "ModifierType.LEEK": "대파",
+  "ModifierType.TIDAL_BELL": "해명의방울",
+  "ModifierType.CLEAR_BELL": "크리스탈방울",
+  "ModifierType.EVIOLITE": "진화의휘석",
+  "ModifierType.MIND_ORB": "마음의구슬",
+  "ModifierType.MUSCLE_BAND": "힘의머리띠",
+  "ModifierType.WISE_GLASSES": "박식안경",
+  "ModifierType.EXPERT_BELT": "달인의띠",
+  "ModifierType.METRONOME": "메트로놈",
+  "ModifierType.LIFE_ORB": "생명의구슬",
+  "ModifierType.SMOKE_BALL": "연막탄",
+  "ModifierType.BRIGHT_POWDER": "반짝가루",
+  "ModifierType.PROTECTIVE_PADS": "방호패드",
+  "ModifierType.FOCUS_SASH": "기합의띠",
+  "ModifierType.MENTAL_HERB": "멘탈허브",
+  "ModifierType.ROCKY_HELMET": "울퉁불퉁멧",
+  "ModifierType.WEAKNESS_POLICY": "약점보험",
+  "ModifierType.CLEAR_AMULET": "클리어참",
+  "ModifierType.ASSAULT_VEST": "돌격조끼",
+  "ModifierType.CHOICE_SCARF": "구애스카프",
+  "ModifierType.CHOICE_SPECS": "구애안경",
+  "ModifierType.CHOICE_BAND": "구애머리띠",
+  "ModifierType.SAFETY_GOGGLES": "방진고글",
+  "ModifierType.PUNCHING_GLOVE": "펀치글러브",
+  "ModifierType.COVERT_CLOAK": "은밀망토",
+  "ModifierType.LOADED_DICE": "속임수주사위",
+  "ModifierType.AIR_BALLOON": "풍선",
+  "ModifierType.THROAT_SPRAY": "목스프레이",
+  "ModifierType.LAGGING_TAIL": "느림보꼬리",
+  "ModifierType.UTILITY_UMBRELLA": "만능우산",
+  "ModifierType.LIGHT_CLAY": "빛의점토",
+  "ModifierType.MIRROR_HERB": "흉내허브",
+  "ModifierType.TREASURE_POUCH": "보물주머니",
+  "ModifierType.CRITICAL_BAND": "크리티컬밴드",
+  "ModifierType.COLORFUL_LENS": "칼라풀렌즈",
+  "ModifierType.TECHNIC_ANKLET": "테크닉앵클릿",
+  "ModifierType.RECOIL_BELT": "이판사판벨트",
+  "ModifierType.MOLD_BREAKER_BRACER": "틀깨기벨트",
+  "ModifierType.POWER_UP_WEIGHT": "파워업웨이트",
+  "ModifierType.UNAWARE_BAND": "천진밴드",
+  "ModifierType.SIMPLE_BAND": "단순한밴드",
+  "ModifierType.POWER_HERB": "파워풀허브",
+  "ModifierType.UNNERVE_INCENSE": "바들바들향로",
+  "ModifierType.DAMP_INCENSE": "습기향로",
+  "ModifierType.ODD_INCENSE": "괴상한향로",
+  "ModifierType.SILVER_INCENSE": "은빛향로",
+  "ModifierType.GOLDEN_INCENSE": "황금향로",
+  "ModifierType.AROMA_INCENSE": "아로마향로",
+  "ModifierType.SCRAPPY_BELT": "관통벨트",
+  "ModifierType.ADAPTABILITY_BAND": "적응력밴드",
+  "ModifierType.SHEER_FORCE_BAND": "우격다짐밴드",
+  "ModifierType.ENIGMA_INCENSE": "수수깨끼향로",
+  "ModifierType.STAT_STAGE_CHANGE_REVERSE_BAND": "내맘대로밴드",
+  "ModifierType.MOODY_BAND": "변덕쟁이밴드",
+  "ModifierType.EVOLUTION_INCENSE": "진화의향로",
+  "ModifierType.STURDYSTONE_INCENSE": "멧집향로",
+  "ModifierType.ROOM_SERVICE": "룸서비스",
+  "ModifierType.BLUNDER_POLICY": "허탕보험",
+  "ModifierType.ABILITY_SHIELD": "특성가드",
+  "ModifierType.BOOSTER_ENERGY": "부스트에너지",
+  "ModifierType.POWER_UP_DISK": "파워업디스크",
+  "ModifierType.ULTRA_ENERGY": "울트라에너지",
+  "ModifierType.VICTORY_SYMBOL": "승리의배지",
+  "ModifierType.CURSED_BOWL": "저주받은그릇",
+  "ModifierType.CURSED_SWORD": "저주받은검",
+  "ModifierType.CURSED_BOOK": "저주받은서",
+  "ModifierType.CURSED_BEAD": "저주받은구슬",
+  "ModifierType.SHARPNESS_SWORD": "예리한칼",
+  "ModifierType.POWER_TEETH": "파워틀니",
+  "ModifierType.POWER_HELMET": "파워헬멧",
+  "ModifierType.HORN_HELMET": "뿔투구",
+  "ModifierType.POWER_PROTECTOR": "파워보호대",
+  "ModifierType.SPIKE_SPEAR": "뾰족한 창",
+  "ModifierType.POWER_FEATHER": "파워깃털",
+  "ModifierType.MIGHTY_HAMMER": "마이티해머",
+  "ModifierType.POWER_CLAW": "파워발톱",
+  "ModifierType.POWER_PINCH": "파워집게",
+  "ModifierType.HARDEN_BEAK": "단단한부리",
+  "ModifierType.FAST_BOOTS": "쾌속부츠",
+  "ModifierType.SPIN_TOP": "회오리팽이",
+  "ModifierType.POWER_DRILL": "파워드릴",
+  "ModifierType.POWER_ROPE": "파워로프",
+  "ModifierType.POWER_WHEEL": "파워타이어",
+  "ModifierType.POWER_TAIL": "튼튼한꼬리",
+  "ModifierType.POWER_BOW": "만능활",
+  "ModifierType.POWER_BEADS": "파워구슬",
+  "ModifierType.POWER_BOOMERANG": "파워부메랑",
+  "ModifierType.THROW_GLOVE": "파워글러브",
+  "ModifierType.PULSE_ORB": "파동의구슬",
+  "ModifierType.RAZORPOINTER": "레이저포인터",
+  "ModifierType.POWER_LANTERN": "파워랜턴",
+  "ModifierType.PUNK_MIKE": "펑크마이크",
+  "ModifierType.POWER_FAN": "만능부채",
+  "ModifierType.HULAHULA_SKIRT": "훌라훌라스커트",
+  "ModifierType.BIG_ROOT": "큰뿌리",
+  "ModifierType.POWER_SHELL": "만능조개껍질",
+  "ModifierType.CHAMPION_BELT": "천하장사벨트",
+  "ModifierType.SCHOLAR_TOME": "박학다식도감",
+  "ModifierType.NUGGET": "금구슬",
+  "ModifierType.BIG_NUGGET": "큰금구슬",
+  "ModifierType.RELIC_GOLD": "고대의금화",
+  "ModifierType.AMULET_COIN": "부적금화",
+  "ModifierType.GOLDEN_PUNCH": "골든펀치",
+  "ModifierType.COIN_CASE": "동전케이스",
+  "ModifierType.LOCK_CAPSULE": "록캡슐",
+  "ModifierType.GRIP_CLAW": "끈기갈고리손톱",
+  "ModifierType.WIDE_LENS": "광각렌즈",
+  "ModifierType.MULTI_LENS": "멀티렌즈",
+  "ModifierType.HEALING_CHARM": "치유의부적",
+  "ModifierType.CANDY_JAR": "사탕단지",
+  "ModifierType.BERRY_POUCH": "열매주머니",
+  "ModifierType.STRANGE_BOX": "이상한박스",
+  "ModifierType.FOCUS_BAND": "기합의머리띠",
+  "ModifierType.QUICK_CLAW": "선제공격손톱",
+  "ModifierType.KINGS_ROCK": "왕의징표석",
+  "ModifierType.LEFTOVERS": "먹다남은음식",
+  "ModifierType.SHELL_BELL": "조개껍질방울",
+  "ModifierType.TOXIC_ORB": "맹독구슬",
+  "ModifierType.FLAME_ORB": "화염구슬",
+  "ModifierType.FREEZE_ORB": "서리구슬",
+  "ModifierType.MYSTIC_SCALE": "신비한비늘",
+  "ModifierType.MYSTICAL_ROCK": "신비한바위",
+  "ModifierType.WICKED_GLOVE": "일격의글러브",
+  "ModifierType.BLACK_MANE_HAIR": "검은갈기",
+  "ModifierType.WHITE_MANE_HAIR": "하얀갈기",
+  "ModifierType.SURGING_GLOVE": "연격의글러브",
+  "ModifierType.WARRIOR_SWORD": "역전의보검",
+  "ModifierType.WARRIOR_SHIELD": "역전의방패",
+  "ModifierType.ANGE_ORB": "앙쥬오브",
+  "ModifierType.LEGEND_PLATE": "레전드플레이트",
+  "ModifierType.DUSK_BEAD": "황혼의비드로",
+  "ModifierType.DAWN_BEAD": "새벽의비드로",
+  "ModifierType.BLIGHT_BEAD": "광명의비드로",
+  "ModifierType.EVOLUTION_TRACKER_GIMMIGHOUL": "보물",
+  "ModifierType.BATON": "배턴",
+  "ModifierType.SHINY_CHARM": "빛나는부적",
+  "ModifierType.MARK_CHARM": "증표의부적",
+  "ModifierType.ABILITY_CHARM": "특성부적",
+  "ModifierType.CATCHING_CHARM": "흔들림없는부적",
+  "ModifierType.IV_SCANNER": "개체값탐지기",
+  "ModifierType.DNA_SPLICERS": "유전자쐐기",
+  "ModifierType.MINI_BLACK_HOLE": "미니 블랙홀",
+  "ModifierType.GOLDEN_POKEBALL": "황금몬스터볼",
+  "ModifierType.ENEMY_DAMAGE_BOOSTER": "데미지 토큰",
+  "ModifierType.ENEMY_DAMAGE_REDUCTION": "보호 토큰",
+  "ModifierType.ENEMY_HEAL": "회복 토큰",
+  "ModifierType.ENEMY_ATTACK_POISON_CHANCE": "독 토큰",
+  "ModifierType.ENEMY_ATTACK_PARALYZE_CHANCE": "마비 토큰",
+  "ModifierType.ENEMY_ATTACK_BURN_CHANCE": "화상 토큰",
+  "ModifierType.ENEMY_STATUS_EFFECT_HEAL_CHANCE": "만병통치 토큰",
+  "ModifierType.ENEMY_ENDURE_CHANCE": "버티기 토큰",
+  "ModifierType.ENEMY_FUSED_CHANCE": "합체 토큰",
+  "ModifierType.MYSTERY_ENCOUNTER_SHUCKLE_JUICE": "단단지주스",
+  "ModifierType.MYSTERY_ENCOUNTER_BLACK_SLUDGE": "검은진흙",
+  "ModifierType.MYSTERY_ENCOUNTER_MACHO_BRACE": "교정깁스",
+  "ModifierType.MYSTERY_ENCOUNTER_OLD_GATEAU": "숲의양갱",
+  "ModifierType.MYSTERY_ENCOUNTER_GOLDEN_BUG_NET": "황금잠자리채",
+  "SpeciesBoosterItem.LIGHT_BALL": "전기구슬",
+  "SpeciesBoosterItem.THICK_CLUB": "굵은뼈",
+  "SpeciesBoosterItem.RARE_BONE": "귀중한뼈",
+  "SpeciesBoosterItem.METAL_POWDER": "금속파우더",
+  "SpeciesBoosterItem.QUICK_POWDER": "스피드파우더",
+  "SpeciesBoosterItem.ADAMANT_ORB": "금강옥",
+  "SpeciesBoosterItem.LUSTROUS_ORB": "백옥",
+  "SpeciesBoosterItem.GRISEOUS_ORB": "백금옥",
+  "SpeciesBoosterItem.DEEP_SEA_SCALE": "심해의비늘",
+  "SpeciesBoosterItem.DEEP_SEA_TOOTH": "심해의이빨",
+  "SpeciesBoosterItem.HELIX_FOSSIL": "조개화석",
+  "SpeciesBoosterItem.DOME_FOSSIL": "껍질화석",
+  "SpeciesBoosterItem.OLD_AMBER": "비밀의호박",
+  "SpeciesBoosterItem.ROOT_FOSSIL": "뿌리화석",
+  "SpeciesBoosterItem.CLAW_FOSSIL": "발톱화석",
+  "SpeciesBoosterItem.SKULL_FOSSIL": "두개의화석",
+  "SpeciesBoosterItem.ARMOR_FOSSIL": "방패화석",
+  "SpeciesBoosterItem.COVER_FOSSIL": "덮개화석",
+  "SpeciesBoosterItem.PLUME_FOSSIL": "깃털화석",
+  "SpeciesBoosterItem.JAW_FOSSIL": "턱화석",
+  "SpeciesBoosterItem.SAIL_FOSSIL": "지느러미화석",
+  "SpeciesBoosterItem.FOSSILIZED_BIRD": "화석새",
+  "SpeciesBoosterItem.FOSSILIZED_DINO": "화석용",
+  "SpeciesBoosterItem.FOSSILIZED_DRAKE": "화석물고기",
+  "SpeciesBoosterItem.FOSSILIZED_FISH": "화석긴목",
+  "SpeciesBoosterItem.LIGHT_STONE": "라이트스톤",
+  "SpeciesBoosterItem.DARK_STONE": "다크스톤",
+  "SpeciesBoosterItem.GOD_STONE": "갓스톤",
+  "SpeciesBoosterItem.ODD_KEYSTONE": "쐐기돌",
+  "SpeciesBoosterItem.MOON_FLUTE": "달의피리",
+  "SpeciesBoosterItem.SUN_FLUTE": "태양의피리",
+  "SpeciesBoosterItem.SILVER_WING": "은빛날개",
+  "SpeciesBoosterItem.RAINBOW_WING": "무지갯빛깃털",
+  "SpeciesBoosterItem.SOUL_DEW": "마음의물방울",
+  "SpeciesBoosterItem.MAGMA_STONE": "화산의돌",
+  "SpeciesBoosterItem.LIFES_FLOWER": "생명의꽃",
+  "SpeciesBoosterItem.OBLIVION_WINGS": "파괴의날개",
+  "SpeciesBoosterItem.ZYGARDE_CUBE": "지가르데큐브",
+  "SpeciesBoosterItem.ENIGMA_STONE": "수수께끼수정",
+  "SpeciesBoosterItem.ALPHA_SAPPHIRE": "근원의사파이어",
+  "SpeciesBoosterItem.OMEGA_RUBY": "최후의루비",
+  "SpeciesBoosterItem.DELTA_FLUTE": "델타플루트",
+  "SpeciesBoosterItem.ICEROOT_CARROT": "차가운당근",
+  "SpeciesBoosterItem.SHADEROOT_CARROT": "검은당근",
+  "SpeciesBoosterItem.METEORITE_SHARD": "소원의조각",
+  "SpeciesBoosterItem.METEORITE": "운석",
+  "SpeciesBoosterItem.NORMAL_MEMORY": "노말메모리",
+  "SpeciesBoosterItem.BLANK_PLATE": "순백플레이트",
+  "SpeciesBoosterItem.RADIANT_PETAL": "황제의꽃",
+  "SpeciesBoosterItem.BLIZZARD_FEATHER": "눈보라깃털",
+  "SpeciesBoosterItem.THUNDER_FEATHER": "천둥의깃털",
+  "SpeciesBoosterItem.BLAZE_FEATHER": "불사의깃털",
+  "SpeciesBoosterItem.MUTATION_SAMPLE": "파괴의샘플",
+  "SpeciesBoosterItem.NEO_SAMPLE": "신종샘플",
+  "SpeciesBoosterItem.LIGHTNING_MANE": "우레갈기",
+  "SpeciesBoosterItem.MAGMA_MANE": "용암갈기",
+  "SpeciesBoosterItem.AURORA_MANE": "오로라갈기",
+  "SpeciesBoosterItem.GREEN_WATCH": "심록의회중시계",
+  "SpeciesBoosterItem.ROCK_MILESTONE": "바위점자판",
+  "SpeciesBoosterItem.ICE_MILESTONE": "얼음점자판",
+  "SpeciesBoosterItem.STEEL_MILESTONE": "무쇠점자판",
+  "SpeciesBoosterItem.KNOWLEDGE_GEM": "지식의보석",
+  "SpeciesBoosterItem.EMOTION_GEM": "감정의보석",
+  "SpeciesBoosterItem.WILLPOWER_GEM": "의지의보석",
+  "SpeciesBoosterItem.GIANT_MILESTONE": "거대점자판",
+  "SpeciesBoosterItem.LUNAR_WING": "초승달깃털",
+  "SpeciesBoosterItem.RAPIDS_SYMBOL": "여울의심볼",
+  "SpeciesBoosterItem.WAVE_SYMBOL": "파랑의심볼",
+  "SpeciesBoosterItem.NIGHTMARE_SYMBOLE": "악몽의심볼",
+  "SpeciesBoosterItem.COBALT_SWORD": "코발트소드",
+  "SpeciesBoosterItem.TERRACOTTA_AXE": "테라코타액스",
+  "SpeciesBoosterItem.VIRIDIAN_KNIFE": "비리디안나이프",
+  "SpeciesBoosterItem.CYCLONE_FAN": "선풍부채",
+  "SpeciesBoosterItem.BOLT_STRIKE_FAN": "천둥바람부채",
+  "SpeciesBoosterItem.ABUNDANCE_FAN": "풍요부채",
+  "SpeciesBoosterItem.SPRINGTIDE_FAN": "봄바람부채",
+  "SpeciesBoosterItem.RESOLVE_BLADE": "각오의칼날",
+  "SpeciesBoosterItem.MELODY_SYMBOL": "멜로디심볼",
+  "SpeciesBoosterItem.GENE_DRIVE": "게놈카세트",
+  "SpeciesBoosterItem.VOLCANIC_RING": "마그마링",
+  "SpeciesBoosterItem.KOKO_FLOWER": "뇌신의꽃",
+  "SpeciesBoosterItem.LELE_FLOWER": "치유의꽃",
+  "SpeciesBoosterItem.BULU_FLOWER": "심원의꽃",
+  "SpeciesBoosterItem.FINI_FLOWER": "저너머의꽃",
+  "SpeciesBoosterItem.PRISM_CORE": "프리즘코어",
+  "SpeciesBoosterItem.ANTIQUE_GEAR": "고대의기어하트",
+  "SpeciesBoosterItem.SHADE_CAPE": "그림자망토",
+  "SpeciesBoosterItem.THUNDERCLAP_CLAW": "신뢰의발톱",
+  "SpeciesBoosterItem.ANTIQUE_NUT": "이상한고대너트",
+  "SpeciesBoosterItem.WARRIOR_SWORD": "역전의보검",
+  "SpeciesBoosterItem.WARRIOR_SHIELD": "역전의방패",
+  "SpeciesBoosterItem.ETERNAL_HOLE": "무한다이오브",
+  "SpeciesBoosterItem.WUSHU_BELT": "궁극의허리띠",
+  "SpeciesBoosterItem.JUNGLE_CAPE": "심원의망토",
+  "SpeciesBoosterItem.ELEKI_MILESTONE": "전자점자판",
+  "SpeciesBoosterItem.DRAGO_MILESTONE": "마룡점자판",
+  "SpeciesBoosterItem.SCALET_SCALE": "진홍빛비늘",
+  "SpeciesBoosterItem.HADRON_SCALE": "하드론비늘",
+  "SpeciesBoosterItem.MALIGNANT_CHAINS": "악독한사슬",
+  "SpeciesBoosterItem.CRYSTAL_CLUSTER": "감청빛크리스탈",
+  "SpeciesBoosterItem.REDMOON_STONE": "붉은달의돌",
+  "SpeciesBoosterItem.CRUEL_FEATHER": "냉정한깃털",
+  "SpeciesBoosterItem.STRONG_FEATHER": "강력한깃털",
+  "SpeciesBoosterItem.MALEVOLENT_FEATHER": "사악한깃털",
+  "SpeciesBoosterItem.ODD_JAR": "괴상한항아리",
+  "SpeciesBoosterItem.MYTHICAL_PECHA_BERRY": "환상복슝",
+  "TempStatStageBoosterItem.x_attack": "플러스파워",
+  "TempStatStageBoosterItem.x_defense": "디펜드업",
+  "TempStatStageBoosterItem.x_sp_atk": "스페셜업",
+  "TempStatStageBoosterItem.x_sp_def": "스페셜가드",
+  "TempStatStageBoosterItem.x_speed": "스피드업",
+  "TempStatStageBoosterItem.x_accuracy": "잘-맞히기",
+  "WeatherRockTrainer.heat_rock": "뜨거운바위",
+  "WeatherRockTrainer.damp_rock": "축축한바위",
+  "WeatherRockTrainer.smooth_rock": "보송보송바위",
+  "WeatherRockTrainer.icy_rock": "차가운바위",
+  "TerrainSeedTrainer.misty_seed": "미스트시드",
+  "TerrainSeedTrainer.electric_seed": "일렉트릭시드",
+  "TerrainSeedTrainer.grassy_seed": "그래스시드",
+  "TerrainSeedTrainer.psychic_seed": "사이코시드",
+  "AttackTypeBoosterItem.silk_scarf": "실크스카프",
+  "AttackTypeBoosterItem.black_belt": "검은띠",
+  "AttackTypeBoosterItem.sharp_beak": "예리한부리",
+  "AttackTypeBoosterItem.poison_barb": "독바늘",
+  "AttackTypeBoosterItem.soft_sand": "부드러운모래",
+  "AttackTypeBoosterItem.hard_stone": "딱딱한돌",
+  "AttackTypeBoosterItem.silver_powder": "은빛가루",
+  "AttackTypeBoosterItem.spell_tag": "저주의부적",
+  "AttackTypeBoosterItem.metal_coat": "금속코트",
+  "AttackTypeBoosterItem.charcoal": "목탄",
+  "AttackTypeBoosterItem.mystic_water": "신비의물방울",
+  "AttackTypeBoosterItem.miracle_seed": "기적의씨",
+  "AttackTypeBoosterItem.magnet": "자석",
+  "AttackTypeBoosterItem.twisted_spoon": "휘어진스푼",
+  "AttackTypeBoosterItem.never_melt_ice": "녹지않는얼음",
+  "AttackTypeBoosterItem.dragon_fang": "용의이빨",
+  "AttackTypeBoosterItem.black_glasses": "검은안경",
+  "AttackTypeBoosterItem.fairy_feather": "요정의깃털",
+  "exclusiveZMoves.pikanium_z": "피카츄Z",
+  "exclusiveZMoves.decidium_z": "모크나이퍼Z",
+  "exclusiveZMoves.incinium_z": "어흥염Z",
+  "exclusiveZMoves.primarium_z": "누리레느Z",
+  "exclusiveZMoves.tapunium_z": "카푸Z",
+  "exclusiveZMoves.marshadium_z": "마샤도Z",
+  "exclusiveZMoves.aloraichium_z": "알로라이Z",
+  "exclusiveZMoves.snorlium_z": "잠만보Z",
+  "exclusiveZMoves.eevium_z": "이브이Z",
+  "exclusiveZMoves.mewnium_z": "뮤Z",
+  "exclusiveZMoves.pikashunium_z": "지우피카Z",
+  "exclusiveZMoves.solium_z": "솔가레오Z",
+  "exclusiveZMoves.lunarium_z": "루나아라Z",
+  "exclusiveZMoves.mimikium_z": "따라큐Z",
+  "exclusiveZMoves.lycanium_z": "루가루암Z",
+  "exclusiveZMoves.kommonium_z": "짜랑고우거Z",
+  "exclusiveZMoves.ultranecrozium_z": "울트라네크로Z",
+  "TypeSpecificMoveBoosterItem.normal_gem": "노말주얼",
+  "TypeSpecificMoveBoosterItem.fighting_gem": "격투주얼",
+  "TypeSpecificMoveBoosterItem.flying_gem": "비행주얼",
+  "TypeSpecificMoveBoosterItem.poison_gem": "독주얼",
+  "TypeSpecificMoveBoosterItem.ground_gem": "땅주얼",
+  "TypeSpecificMoveBoosterItem.rock_gem": "바위주얼",
+  "TypeSpecificMoveBoosterItem.bug_gem": "벌레주얼",
+  "TypeSpecificMoveBoosterItem.ghost_gem": "고스트주얼",
+  "TypeSpecificMoveBoosterItem.steel_gem": "강철주얼",
+  "TypeSpecificMoveBoosterItem.fire_gem": "불꽃주얼",
+  "TypeSpecificMoveBoosterItem.water_gem": "물주얼",
+  "TypeSpecificMoveBoosterItem.grass_gem": "풀주얼",
+  "TypeSpecificMoveBoosterItem.electric_gem": "전기주얼",
+  "TypeSpecificMoveBoosterItem.psychic_gem": "에스퍼주얼",
+  "TypeSpecificMoveBoosterItem.ice_gem": "얼음주얼",
+  "TypeSpecificMoveBoosterItem.dragon_gem": "드래곤주얼",
+  "TypeSpecificMoveBoosterItem.dark_gem": "악주얼",
+  "TypeSpecificMoveBoosterItem.fairy_gem": "페어리주얼",
+  "BaseStatBoosterItem.hp_up": "맥스업",
+  "BaseStatBoosterItem.protein": "타우린",
+  "BaseStatBoosterItem.iron": "사포닌",
+  "BaseStatBoosterItem.calcium": "리보플라빈",
+  "BaseStatBoosterItem.zinc": "키토산",
+  "BaseStatBoosterItem.carbos": "알칼로이드",
+  "EvolutionItem.LINKING_CORD": "연결의끈",
+  "EvolutionItem.SUN_STONE": "태양의돌",
+  "EvolutionItem.MOON_STONE": "달의돌",
+  "EvolutionItem.LEAF_STONE": "리프의돌",
+  "EvolutionItem.FIRE_STONE": "불꽃의돌",
+  "EvolutionItem.WATER_STONE": "물의돌",
+  "EvolutionItem.THUNDER_STONE": "천둥의돌",
+  "EvolutionItem.ICE_STONE": "얼음의돌",
+  "EvolutionItem.DUSK_STONE": "어둠의돌",
+  "EvolutionItem.DAWN_STONE": "각성의돌",
+  "EvolutionItem.SHINY_STONE": "빛의돌",
+  "EvolutionItem.CRACKED_POT": "깨진포트",
+  "EvolutionItem.SWEET_APPLE": "달콤한사과",
+  "EvolutionItem.TART_APPLE": "새콤한사과",
+  "EvolutionItem.STRAWBERRY_SWEET": "딸기사탕공예",
+  "EvolutionItem.UNREMARKABLE_TEACUP": "범작찻잔",
+  "EvolutionItem.UPGRADE": "업그레이드",
+  "EvolutionItem.DUBIOUS_DISC": "괴상한패치",
+  "EvolutionItem.DRAGON_SCALE": "용의비늘",
+  "EvolutionItem.PRISM_SCALE": "고운비늘",
+  "EvolutionItem.RAZOR_CLAW": "예리한손톱",
+  "EvolutionItem.RAZOR_FANG": "예리한이빨",
+  "EvolutionItem.REAPER_CLOTH": "영계의천",
+  "EvolutionItem.ELECTIRIZER": "에레키부스터",
+  "EvolutionItem.MAGMARIZER": "마그마부스터",
+  "EvolutionItem.PROTECTOR": "프로텍터",
+  "EvolutionItem.SACHET": "향기주머니",
+  "EvolutionItem.WHIPPED_DREAM": "휘핑크림",
+  "EvolutionItem.LEADERS_CREST": "대장의징표",
+  "EvolutionItem.CHIPPED_POT": "이빠진포트",
+  "EvolutionItem.BLACK_AUGURITE": "검은휘석",
+  "EvolutionItem.GALARICA_CUFF": "가라두구팔찌",
+  "EvolutionItem.GALARICA_WREATH": "가라두구머리장식",
+  "EvolutionItem.PEAT_BLOCK": "피트블록",
+  "EvolutionItem.AUSPICIOUS_ARMOR": "축복받은갑옷",
+  "EvolutionItem.MALICIOUS_ARMOR": "저주받은갑옷",
+  "EvolutionItem.MASTERPIECE_TEACUP": "걸작찻잔",
+  "EvolutionItem.METAL_ALLOY": "복합금속",
+  "EvolutionItem.SCROLL_OF_DARKNESS": "악의 족자",
+  "EvolutionItem.SCROLL_OF_WATERS": "물의 족자",
+  "EvolutionItem.SYRUPY_APPLE": "꿀맛사과",
+  "EvolutionItem.OVAL_STONE": "동글동글돌",
+  "FormChangeItem.ABOMASITE": "눈설왕나이트",
+  "FormChangeItem.ABSOLITE": "앱솔나이트",
+  "FormChangeItem.AERODACTYLITE": "프테라나이트",
+  "FormChangeItem.AGGRONITE": "보스로라나이트",
+  "FormChangeItem.ALAKAZITE": "후딘나이트",
+  "FormChangeItem.ALTARIANITE": "파비코리나이트",
+  "FormChangeItem.AMPHAROSITE": "전룡나이트",
+  "FormChangeItem.AUDINITE": "다부니나이트",
+  "FormChangeItem.BANETTITE": "다크펫나이트",
+  "FormChangeItem.BEEDRILLITE": "독침붕나이트",
+  "FormChangeItem.BLASTOISINITE": "거북왕나이트",
+  "FormChangeItem.BLAZIKENITE": "번치코나이트",
+  "FormChangeItem.CAMERUPTITE": "폭타나이트",
+  "FormChangeItem.CHARIZARDITE_X": "리자몽나이트 X",
+  "FormChangeItem.CHARIZARDITE_Y": "리자몽나이트 Y",
+  "FormChangeItem.DIANCITE": "디안시나이트",
+  "FormChangeItem.GALLADITE": "엘레이드나이트",
+  "FormChangeItem.GARCHOMPITE": "한카리아스나이트",
+  "FormChangeItem.GARDEVOIRITE": "가디안나이트",
+  "FormChangeItem.GENGARITE": "팬텀나이트",
+  "FormChangeItem.GLALITITE": "얼음귀신나이트",
+  "FormChangeItem.GYARADOSITE": "갸라도스나이트",
+  "FormChangeItem.HERACRONITE": "헤라크로스나이트",
+  "FormChangeItem.HOUNDOOMINITE": "헬가나이트",
+  "FormChangeItem.KANGASKHANITE": "캥카나이트",
+  "FormChangeItem.LATIASITE": "라티아스나이트",
+  "FormChangeItem.LATIOSITE": "라티오스나이트",
+  "FormChangeItem.LOPUNNITE": "이어롭나이트",
+  "FormChangeItem.LUCARIONITE": "루카리오나이트",
+  "FormChangeItem.MANECTITE": "썬더볼트나이트",
+  "FormChangeItem.MAWILITE": "입치트나이트",
+  "FormChangeItem.MEDICHAMITE": "요가램나이트",
+  "FormChangeItem.METAGROSSITE": "메타그로스나이트",
+  "FormChangeItem.MEWTWONITE_X": "뮤츠나이트 X",
+  "FormChangeItem.MEWTWONITE_Y": "뮤츠나이트 Y",
+  "FormChangeItem.PIDGEOTITE": "피죤투나이트",
+  "FormChangeItem.PINSIRITE": "쁘사이저나이트",
+  "FormChangeItem.RAYQUAZITE": "레쿠쟈나이트",
+  "FormChangeItem.SABLENITE": "깜까미나이트",
+  "FormChangeItem.SALAMENCITE": "보만다나이트",
+  "FormChangeItem.SCEPTILITE": "나무킹나이트",
+  "FormChangeItem.SCIZORITE": "핫삼나이트",
+  "FormChangeItem.SHARPEDONITE": "샤크니아나이트",
+  "FormChangeItem.SLOWBRONITE": "야도란나이트",
+  "FormChangeItem.STEELIXITE": "강철톤나이트",
+  "FormChangeItem.SWAMPERTITE": "대짱이나이트",
+  "FormChangeItem.TYRANITARITE": "마기라스나이트",
+  "FormChangeItem.VENUSAURITE": "이상해꽃나이트",
+  "FormChangeItem.CLEFABLITE": "픽시나이트",
+  "FormChangeItem.VICTREEBELITE": "우츠보트나이트",
+  "FormChangeItem.STARMINITE": "아쿠스타나이트",
+  "FormChangeItem.DRAGONINITE": "망나뇽나이트",
+  "FormChangeItem.MEGANIUMITE": "메가니움나이트",
+  "FormChangeItem.FERALIGITE": "장크로다일나이트",
+  "FormChangeItem.SKARMORITE": "무장조나이트",
+  "FormChangeItem.FROSLASSITE": "눈여아나이트",
+  "FormChangeItem.EMBOARITE": "염무왕나이트",
+  "FormChangeItem.EXCADRITE": "몰드류나이트",
+  "FormChangeItem.SCOLIPITE": "펜드라나이트",
+  "FormChangeItem.SCRAFTINITE": "곤율거니나이트",
+  "FormChangeItem.EELEKTROSSITE": "저리더프나이트",
+  "FormChangeItem.CHANDELURITE": "샹델라나이트",
+  "FormChangeItem.CHESNAUGHTITE": "브리가론나이트",
+  "FormChangeItem.DELPHOXITE": "마폭시나이트",
+  "FormChangeItem.GRENINJITE": "개굴닌자나이트",
+  "FormChangeItem.PYROARITE": "화염레오나이트",
+  "FormChangeItem.FLOETTITE": "플라엣테나이트",
+  "FormChangeItem.MALAMARITE": "칼라마네로나이트",
+  "FormChangeItem.BARBARACITE": "거북손데스나이트",
+  "FormChangeItem.DRAGALGITE": "드래캄나이트",
+  "FormChangeItem.HAWLUCHANITE": "루차불나이트",
+  "FormChangeItem.ZYGARDITE": "지가르데나이트",
+  "FormChangeItem.DRAMPANITE": "할비롱나이트",
+  "FormChangeItem.FALINKSITE": "대여르나이트",
+  "FormChangeItem.HEATRANITE": "히드런나이트",
+  "FormChangeItem.DARKRANITE": "다크라이나이트",
+  "FormChangeItem.ZERAORITE": "제라오라나이트",
+  "FormChangeItem.RAICHUNITE_X": "라이츄나이트 X",
+  "FormChangeItem.RAICHUNITE_Y": "라이츄나이트 Y",
+  "FormChangeItem.CHIMECHITE": "치렁나이트",
+  "FormChangeItem.ABSOLITE_Z": "앱솔나이트Z",
+  "FormChangeItem.STARAPTITE": "찌르호크나이트",
+  "FormChangeItem.GARCHOMPITE_Z": "한카리아스나이트Z",
+  "FormChangeItem.LUCARIONITE_Z": "루카리오나이트Z",
+  "FormChangeItem.GOLURKITE": "골루그나이트",
+  "FormChangeItem.MEOWSTICITE": "냐오닉스나이트",
+  "FormChangeItem.CRABOMINITE": "모단단게나이트",
+  "FormChangeItem.GOLISOPITE": "갑주무사나이트",
+  "FormChangeItem.MAGEARNITE": "마기아나이트",
+  "FormChangeItem.SCOVILLAINITE": "스코빌런나이트",
+  "FormChangeItem.BAXCALIBRITE": "드닐레이브나이트",
+  "FormChangeItem.TATSUGIRINITE": "싸리용나이트",
+  "FormChangeItem.GLIMMORANITE": "킬라플로르나이트",
+  "FormChangeItem.BLUE_ORB": "쪽빛구슬",
+  "FormChangeItem.RED_ORB": "주홍구슬",
+  "FormChangeItem.SHARP_METEORITE": "뾰족한운석",
+  "FormChangeItem.HARD_METEORITE": "단단한운석",
+  "FormChangeItem.SMOOTH_METEORITE": "부드러운운석",
+  "FormChangeItem.ADAMANT_CRYSTAL": "큰금강옥",
+  "FormChangeItem.LUSTROUS_GLOBE": "큰백옥",
+  "FormChangeItem.GRISEOUS_CORE": "큰백금옥",
+  "FormChangeItem.REVEAL_GLASS": "비추는거울",
+  "FormChangeItem.GRACIDEA": "그라시데아꽃",
+  "FormChangeItem.MAX_MUSHROOMS": "다이버섯",
+  "FormChangeItem.MAX_HONEY": "다이꿀",
+  "FormChangeItem.DARK_SPLICERS": "이상의쐐기",
+  "FormChangeItem.LIGHT_SPLICERS": "진실의쐐기",
+  "FormChangeItem.PRISON_BOTTLE": "굴레의항아리",
+  "FormChangeItem.N_LUNARIZER": "네크로플러스루나",
+  "FormChangeItem.N_SOLARIZER": "네크로플러스솔",
+  "FormChangeItem.RUSTED_SWORD": "녹슨검",
+  "FormChangeItem.RUSTED_SHIELD": "녹슨방패",
+  "FormChangeItem.ICY_REINS_OF_UNITY": "차가운유대의고삐",
+  "FormChangeItem.SHADOW_REINS_OF_UNITY": "검은유대의고삐",
+  "FormChangeItem.WELLSPRING_MASK": "우물의가면",
+  "FormChangeItem.HEARTHFLAME_MASK": "화덕의가면",
+  "FormChangeItem.CORNERSTONE_MASK": "주춧돌의가면",
+  "FormChangeItem.SHOCK_DRIVE": "번개카세트",
+  "FormChangeItem.BURN_DRIVE": "블레이즈카세트",
+  "FormChangeItem.CHILL_DRIVE": "프리즈카세트",
+  "FormChangeItem.DOUSE_DRIVE": "아쿠아카세트",
+  "FormChangeItem.FIST_PLATE": "주먹플레이트",
+  "FormChangeItem.SKY_PLATE": "푸른하늘플레이트",
+  "FormChangeItem.TOXIC_PLATE": "맹독플레이트",
+  "FormChangeItem.EARTH_PLATE": "대지플레이트",
+  "FormChangeItem.STONE_PLATE": "암석플레이트",
+  "FormChangeItem.INSECT_PLATE": "비단벌레플레이트",
+  "FormChangeItem.SPOOKY_PLATE": "원령플레이트",
+  "FormChangeItem.IRON_PLATE": "강철플레이트",
+  "FormChangeItem.FLAME_PLATE": "불구슬플레이트",
+  "FormChangeItem.SPLASH_PLATE": "물방울플레이트",
+  "FormChangeItem.MEADOW_PLATE": "초록플레이트",
+  "FormChangeItem.ZAP_PLATE": "우뢰플레이트",
+  "FormChangeItem.MIND_PLATE": "이상한플레이트",
+  "FormChangeItem.ICICLE_PLATE": "고드름플레이트",
+  "FormChangeItem.DRACO_PLATE": "용의플레이트",
+  "FormChangeItem.DREAD_PLATE": "공포플레이트",
+  "FormChangeItem.PIXIE_PLATE": "정령플레이트",
+  "FormChangeItem.BLANK_PLATE": "순백플레이트",
+  "FormChangeItem.LEGEND_PLATE": "레전드플레이트",
+  "FormChangeItem.FIGHTING_MEMORY": "파이팅메모리",
+  "FormChangeItem.FLYING_MEMORY": "플라잉메모리",
+  "FormChangeItem.POISON_MEMORY": "포이즌메모리",
+  "FormChangeItem.GROUND_MEMORY": "그라운드메모리",
+  "FormChangeItem.ROCK_MEMORY": "록메모리",
+  "FormChangeItem.BUG_MEMORY": "버그메모리",
+  "FormChangeItem.GHOST_MEMORY": "고스트메모리",
+  "FormChangeItem.STEEL_MEMORY": "스틸메모리",
+  "FormChangeItem.FIRE_MEMORY": "파이어메모리",
+  "FormChangeItem.WATER_MEMORY": "워터메모리",
+  "FormChangeItem.GRASS_MEMORY": "그래스메모리",
+  "FormChangeItem.ELECTRIC_MEMORY": "일렉트릭메모리",
+  "FormChangeItem.PSYCHIC_MEMORY": "사이킥메모리",
+  "FormChangeItem.ICE_MEMORY": "아이스메모리",
+  "FormChangeItem.DRAGON_MEMORY": "드래곤메모리",
+  "FormChangeItem.DARK_MEMORY": "다크메모리",
+  "FormChangeItem.FAIRY_MEMORY": "페어리메모리",
+  "FormChangeItem.NORMAL_MEMORY": "일반메모리",
+};
+
 export type RogueShopTab =
   | "SHOP"
   | "BANK"
@@ -48,6 +642,28 @@ export type RogueShopTab =
   | "CAFE"
   | "BRIEFING"
   | "HEADQUARTERS";
+
+/** 표시 전용: 은행 금액을 K/M 단위로 소수 첫째 자리까지 버림. 원본 수치는 변경하지 않습니다. */
+export function formatRogueBankAmount(value: number): string {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) {
+    return "0";
+  }
+  const abs = Math.abs(amount);
+  if (abs < 1000) {
+    return Math.trunc(amount).toLocaleString("en-US");
+  }
+  const unit = abs >= 1_000_000 ? 1_000_000 : 1000;
+  const suffix = unit === 1_000_000 ? "M" : "K";
+  const truncated = Math.trunc((amount / unit) * 10) / 10;
+  return `${truncated}${suffix}`;
+}
+
+/** 일반 소지 금액은 축약하지 않고 3자리마다 쉼표로 구분합니다. */
+export function formatRogueOwnedAmount(value: number): string {
+  const amount = Number(value ?? 0);
+  return (Number.isFinite(amount) ? Math.trunc(amount) : 0).toLocaleString("en-US");
+}
 
 export interface RogueShopBankData {
   roguePoints: number;
@@ -147,6 +763,8 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
   private valueRoguePointText: Phaser.GameObjects.Text;
   private valueGoldText: Phaser.GameObjects.Text;
+  private moneyHeaderRpScale = 1;
+  private moneyHeaderGoldScale = 1;
 
   private listTextObjects: Phaser.GameObjects.Text[] = [];
   private detailTitleText: Phaser.GameObjects.Text;
@@ -291,39 +909,16 @@ export class RogueShopUiHandler extends MessageUiHandler {
     this.titleText = addTextObject(8, 6, "로그센터", TextStyle.SUMMARY);
 
     this.moneyWindow = addWindow(210, 4, 107, 28);
-    this.moneyWindow.setInteractive(new Phaser.Geom.Rectangle(0, 0, 107, 28), Phaser.Geom.Rectangle.Contains);
-
-    this.moneyWindow.on("pointerover", () => {
-      const ownedRp = globalScene.gameData.roguePoints ?? 0;
-
-      const bankRp = globalScene.gameData.bankRoguePoints ?? 0;
-
-      const ownedGold = globalScene.money ?? 0;
-
-      const bankGold = globalScene.gameData.bankMoney ?? 0;
-
-      const tooltipText =
-        "[현재 보유]\n"
-        + `로그포인트: ${ownedRp.toLocaleString()} RP\n`
-        + `골드: ${ownedGold.toLocaleString()} G\n\n`
-        + "[은행 예치]\n"
-        + `로그포인트: ${bankRp.toLocaleString()} RP\n`
-        + `골드: ${bankGold.toLocaleString()} G`;
-
-      globalScene.ui.showTooltip("로그센터 자산", tooltipText, true);
-    });
-
-    this.moneyWindow.on("pointerout", () => {
-      globalScene.ui.hideTooltip();
-    });
     this.tabWindow = addWindow(4, 20, 306, 18);
     this.mainListWindow = addWindow(4, 38, 140, 124);
     this.detailWindow = addWindow(146, 38, 171, 124);
     this.helpWindow = addWindow(4, 162, 313, 18);
 
-    this.valueRoguePointText = addTextObject(216, 9, "RP: 0", TextStyle.WINDOW);
-
-    this.valueGoldText = addTextObject(260, 9, "G: 0", TextStyle.WINDOW);
+    // RP / 골드 영역을 분할하고 각 영역 안에서만 텍스트 크기를 조절합니다.
+    this.valueRoguePointText = addTextObject(214, 9, "RP: 0", TextStyle.WINDOW);
+    this.valueGoldText = addTextObject(266, 9, "G: 0", TextStyle.WINDOW);
+    this.moneyHeaderRpScale = this.valueRoguePointText.scaleX;
+    this.moneyHeaderGoldScale = this.valueGoldText.scaleX;
     const assetTooltipTargets = [this.moneyWindow, this.valueRoguePointText, this.valueGoldText];
 
     for (const target of assetTooltipTargets) {
@@ -337,8 +932,6 @@ export class RogueShopUiHandler extends MessageUiHandler {
         this.hideAssetTooltip();
       });
     }
-
-    const tabLabels = ["상점", "은행", "창고", "의뢰소", "연습", "공방소", "로그광산"];
 
     for (let i = 0; i < this.visibleTabCount; i++) {
       const tabText = addTextObject(this.tabXPositions[i], 25, "", TextStyle.WINDOW);
@@ -462,6 +1055,16 @@ export class RogueShopUiHandler extends MessageUiHandler {
     companionManager.ensureDefaultPlayerCompanion(globalScene.gameData.gender);
 
     this.shopListings = buildRogueShopListings();
+    console.info("[ROGUE_SHOP_KO_DIAG_V2] 한글 이름 진단 활성화", this.shopListings.length);
+    console.table(
+      this.shopListings.slice(0, 30).map(listing => ({
+        id: listing.id,
+        typeId: listing.option?.type?.id,
+        icon: listing.option?.type?.iconImage,
+        englishOrNative: listing.option?.type?.name,
+        displayName: this.getListingDisplayName(listing),
+      })),
+    );
     console.table(
       this.shopListings
         .filter(l => l.id.startsWith("BERRY"))
@@ -829,7 +1432,9 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
     const args = type?.getPregenArgs?.();
     if (id && Array.isArray(args) && args.length > 0) {
-      return `${id}_${args.join("_")}`;
+      const suffix = `_${args.join("_")}`;
+      // ModifierTypeGenerator가 ID에 생성 인자를 이미 붙인 경우 중복 저장하지 않는다.
+      return id.endsWith(suffix) ? id : `${id}${suffix}`;
     }
 
     return id;
@@ -1019,38 +1624,83 @@ export class RogueShopUiHandler extends MessageUiHandler {
     ];
   }
 
+  /**
+   * 창고에 직렬화된 생성형 도구 ID를 원래 ModifierType으로 복원한다.
+   * 개별 이름을 하드코딩하지 않고 modifier-type.ts의 생성기와 getPregenArgs를 재사용한다.
+   */
   private resolveGeneratedStorageModifierType(itemId: string): ModifierType | null {
-    const attackMatch = itemId.match(/^ATTACK_TYPE_BOOSTER_(\d+)(?:_\d+)?$/);
-    if (attackMatch) {
-      const moveType = Number(attackMatch[1]) as PokemonType;
-      const gen = modifierTypes
-        .ATTACK_TYPE_BOOSTER()
-        .withIdFromFunc(modifierTypes.ATTACK_TYPE_BOOSTER) as ModifierTypeGenerator;
-      return gen.generateType([], [moveType]) as ModifierType;
-    }
-
-    const gemMatch = itemId.match(/^TYPE_SPECIFIC_MOVE_BOOSTER_(\d+)(?:_\d+)?$/);
-    if (gemMatch) {
-      const moveType = Number(gemMatch[1]) as PokemonType;
-      const gen = modifierTypes
-        .TYPE_SPECIFIC_MOVE_BOOSTER()
-        .withIdFromFunc(modifierTypes.TYPE_SPECIFIC_MOVE_BOOSTER) as ModifierTypeGenerator;
-      return gen.generateType([], [moveType]) as ModifierType;
-    }
-
     const speciesMatch = itemId.match(/^modifierType:SpeciesBoosterItem\.(.+)$/);
     if (speciesMatch) {
-      const key = speciesMatch[1];
-      const rareGen = modifierTypes
-        .RARE_SPECIES_STAT_BOOSTER()
-        .withIdFromFunc(modifierTypes.RARE_SPECIES_STAT_BOOSTER) as ModifierTypeGenerator;
-      const normalGen = modifierTypes
-        .SPECIES_STAT_BOOSTER()
-        .withIdFromFunc(modifierTypes.SPECIES_STAT_BOOSTER) as ModifierTypeGenerator;
+      for (const key of ["RARE_SPECIES_STAT_BOOSTER", "SPECIES_STAT_BOOSTER"] as const) {
+        try {
+          const factory = modifierTypes[key];
+          const generator = factory().withIdFromFunc(factory) as ModifierTypeGenerator;
+          const type = generator.generateType([], [speciesMatch[1]]) as ModifierType | null;
+          if (type) {
+            return type;
+          }
+        } catch {
+          /* 다른 종류의 종족 전용 강화 도구를 검사 */
+        }
+      }
+    }
 
-      return (
-        (rareGen.generateType([], [key]) as ModifierType) ?? (normalGen.generateType([], [key]) as ModifierType) ?? null
-      );
+    // 긴 접두사부터 처리하여 다른 생성형 아이템과 잘못 매칭되지 않도록 한다.
+    const keys = [
+      "RARE_FORM_CHANGE_ITEM",
+      "FORM_CHANGE_ITEM",
+      "RARE_EVOLUTION_ITEM",
+      "EVOLUTION_ITEM",
+      "TEMP_WEATHER_ROCK",
+      "TEMP_TERRAIN_SEED",
+      "TEMP_STAT_STAGE_BOOSTER",
+      "BASE_STAT_BOOSTER",
+      "ATTACK_TYPE_BOOSTER",
+      "TYPE_SPECIFIC_MOVE_BOOSTER",
+      "RARE_SPECIES_STAT_BOOSTER",
+      "SPECIES_STAT_BOOSTER",
+    ] as const;
+
+    for (const key of keys) {
+      if (!itemId.startsWith(`${key}_`)) {
+        continue;
+      }
+      const suffix = itemId.slice(key.length + 1);
+      const args = suffix.split("_");
+      // 종족 전용 도구는 문자열 키가 필요하며, 그 외 생성기는 숫자 인자이다.
+      const isSpecies = key === "SPECIES_STAT_BOOSTER" || key === "RARE_SPECIES_STAT_BOOSTER";
+      if (!isSpecies && (args.length === 0 || args.some(arg => !/^\d+$/.test(arg)))) {
+        continue;
+      }
+      const values = isSpecies ? [suffix] : args.map(Number);
+      if (values.some(v => typeof v === "number" && !Number.isSafeInteger(v))) {
+        continue;
+      }
+      const index = values[0];
+      if (typeof index === "number") {
+        if ((key === "FORM_CHANGE_ITEM" || key === "RARE_FORM_CHANGE_ITEM") && FormChangeItem[index] === undefined) {
+          continue;
+        }
+        if ((key === "EVOLUTION_ITEM" || key === "RARE_EVOLUTION_ITEM") && EvolutionItem[index] === undefined) {
+          continue;
+        }
+        if (key === "TEMP_WEATHER_ROCK" && (!WeatherType[index] || index === WeatherType.NONE)) {
+          continue;
+        }
+        if (key === "TEMP_TERRAIN_SEED" && (!TerrainType[index] || index === TerrainType.NONE)) {
+          continue;
+        }
+      }
+      try {
+        const factory = modifierTypes[key];
+        const generator = factory().withIdFromFunc(factory) as ModifierTypeGenerator;
+        const result = generator.generateType([], values) as ModifierType | null;
+        if (result) {
+          return result;
+        }
+      } catch (error) {
+        console.warn("[ROGUE_SHOP] 생성형 도구 복원 실패", { itemId, key, error });
+      }
     }
 
     return null;
@@ -1813,25 +2463,42 @@ export class RogueShopUiHandler extends MessageUiHandler {
     }
   }
 
+  /**
+   * 이전 버전에서 생성 인자가 두 번 붙어 저장된 품목을 정상 판매 ID로 복구한다.
+   * 실제 판매 목록에서 대응되는 개별 품목을 찾았을 때에만 병합한다.
+   * 대응 품목이 없는 데이터는 삭제하지 않는다.
+   */
   private migrateBrokenGeneratedStorageItems(): void {
+    const allowed = this.getRogueShopSaleStorageIds();
     const storedItems = globalScene.gameData.getStorageItems();
     let changed = false;
 
-    const brokenIds = ["TYPE_SPECIFIC_MOVE_BOOSTER", "ATTACK_TYPE_BOOSTER"];
-
-    for (const brokenId of brokenIds) {
-      const item = storedItems.find(i => i.itemId === brokenId);
-      if (!item) {
+    for (const item of storedItems) {
+      const match = item.itemId.match(/^(ATTACK_TYPE_BOOSTER|TYPE_SPECIFIC_MOVE_BOOSTER|BASE_STAT_BOOSTER)_(\d+)_\2$/);
+      if (!match) {
         continue;
       }
-
-      globalScene.gameData.removeFromStorage(brokenId, item.quantity);
+      const correctedId = `${match[1]}_${match[2]}`;
+      if (!allowed.has(correctedId)) {
+        continue;
+      }
+      if (!Number.isSafeInteger(item.quantity) || item.quantity <= 0) {
+        continue;
+      }
+      if (!globalScene.gameData.addToStorage(correctedId, item.quantity)) {
+        continue;
+      }
+      if (!globalScene.gameData.removeFromStorage(item.itemId, item.quantity)) {
+        // 비정상적인 데이터가 있으면 기존 수량을 복원한다.
+        globalScene.gameData.removeFromStorage(correctedId, item.quantity);
+        continue;
+      }
       changed = true;
+      console.info("[ROGUE_SHOP_STORAGE_REPAIRED_ID]", { from: item.itemId, to: correctedId, quantity: item.quantity });
     }
 
     if (changed) {
-      globalScene.gameData.saveSystem();
-      console.log("[ROGUE_SHOP] removed broken generated storage items");
+      void globalScene.gameData.saveSystem();
     }
   }
 
@@ -2071,48 +2738,205 @@ export class RogueShopUiHandler extends MessageUiHandler {
     return value as PokeballType;
   }
 
+  /** 실제 로그센터 판매 목록을 창고 허용 목록으로 사용한다. */
+  private getRogueShopSaleStorageIds(): Set<string> {
+    const allowed = new Set<string>();
+    for (const listing of this.shopListings) {
+      if (!listing.option?.type || listing.specialAction) {
+        continue;
+      }
+      const itemId = this.getStorageItemIdFromListing(listing);
+      if (itemId) {
+        allowed.add(itemId);
+      }
+      if (listing.id) {
+        allowed.add(listing.id);
+      }
+      if (listing.option.type.id) {
+        allowed.add(listing.option.type.id);
+      }
+    }
+    return allowed;
+  }
+
   private buildStorageEntries(): RogueShopStorageEntry[] {
     const storedItems = globalScene.gameData.getStorageItems();
 
     console.log("[ROGUE_SHOP] raw storageItems", storedItems);
+    const allowed = this.getRogueShopSaleStorageIds();
 
-    return storedItems.map(item => {
-      console.log("[ROGUE_SHOP] storage entry raw", item);
+    return storedItems
+      .filter(item => {
+        // 개별 판매 ID가 확인되지 않는 도구는 창고에 표시하지 않는다.
+        // 기존 데이터는 삭제하지 않으며, 모드 클리어 시 신규 반입은 game-data.ts에서 차단한다.
+        if (!allowed.has(item.itemId)) {
+          console.info("[ROGUE_SHOP_STORAGE_NOT_FOR_SALE] 창고에서 제외 (원본 저장 데이터 보존)", item);
+          return false;
+        }
+        return true;
+      })
+      .map(item => {
+        console.log("[ROGUE_SHOP] storage entry raw", item);
 
-      const display = this.getStorageDisplayMeta(item.itemId);
+        const display = this.getStorageDisplayMeta(item.itemId);
 
-      let purchaseMode: "INSTANT" | "SELECT_POKEMON" | "TRAINER_LOADOUT" = (item as any).purchaseMode ?? "INSTANT";
+        let purchaseMode: "INSTANT" | "SELECT_POKEMON" | "TRAINER_LOADOUT" = (item as any).purchaseMode ?? "INSTANT";
 
-      if (!(item as any).purchaseMode) {
-        if (item.itemId.startsWith("BERRY_") || item.itemId === "BERRY") {
-          purchaseMode = "SELECT_POKEMON";
-        } else {
-          const modifierType =
-            this.resolveGeneratedStorageModifierType(item.itemId) ?? getModifierTypeById(item.itemId);
-
-          if (modifierType && typeof (modifierType as any).getRogueShopPurchaseMode === "function") {
-            purchaseMode = (modifierType as any).getRogueShopPurchaseMode();
-          } else if (this.isPokemonTargetStorageItem(item.itemId)) {
+        if (!(item as any).purchaseMode) {
+          if (item.itemId.startsWith("BERRY_") || item.itemId === "BERRY") {
             purchaseMode = "SELECT_POKEMON";
+          } else {
+            const modifierType =
+              this.resolveGeneratedStorageModifierType(item.itemId) ?? getModifierTypeById(item.itemId);
+
+            if (modifierType && typeof (modifierType as any).getRogueShopPurchaseMode === "function") {
+              purchaseMode = (modifierType as any).getRogueShopPurchaseMode();
+            } else if (this.isPokemonTargetStorageItem(item.itemId)) {
+              purchaseMode = "SELECT_POKEMON";
+            }
           }
         }
-      }
 
-      return {
-        id: item.itemId,
-        name: display.name,
-        quantity: item.quantity,
-        description: display.description,
-        purchaseMode,
-        option: undefined,
-      };
+        return {
+          id: item.itemId,
+          name: display.name,
+          quantity: item.quantity,
+          description: display.description,
+          purchaseMode,
+          option: undefined,
+        };
+      });
+  }
+
+  /**
+   * 한국어 modifier-type.json에 정의된 이름을 직접 사용합니다.
+   * 각 생성형 타입의 iconImage / enum 인자를 기준으로 종류별 정확한 이름을 찾습니다.
+   * 실행 시 i18next가 아직 ko 리소스를 로드하지 않았더라도 영어로 표시되지 않습니다.
+   */
+  /**
+   * 생성형 도구의 한국어 표시명은 원본 ModifierType의 id, 아이콘, 생성 인자를
+   * 함께 조사합니다. 이름을 찾지 못하면 실제 조회값을 콘솔에서 확인할 수 있습니다.
+   */
+  private getLocalizedModifierName(modifierType: ModifierType | null | undefined, fallbackId: string): string {
+    const map = ROGUE_SHOP_KO_NAME_MAP;
+    const lookup = (key: string): string | undefined => map[key];
+    const type = modifierType as
+      | (ModifierType & { nameKey?: string; key?: string; getPregenArgs?: () => unknown[] })
+      | undefined;
+    const id = String(type?.id ?? fallbackId ?? "");
+    const icon = String(type?.iconImage ?? "");
+    const localeKey = String(type?.localeKey ?? "").replace(/^modifierType:/, "");
+    const className = type?.constructor?.name ?? "";
+    const args = typeof type?.getPregenArgs === "function" ? type.getPregenArgs() : [];
+    const prefixes: Record<string, string> = {
+      TEMP_WEATHER_ROCK: "WeatherRockTrainer",
+      WEATHER_ROCK_TRAINER: "WeatherRockTrainer",
+      TEMP_TERRAIN_SEED: "TerrainSeedTrainer",
+      TERRAIN_SEED_TRAINER: "TerrainSeedTrainer",
+      TEMP_STAT_STAGE_BOOSTER: "TempStatStageBoosterItem",
+      BASE_STAT_BOOSTER: "BaseStatBoosterItem",
+      ATTACK_TYPE_BOOSTER: "AttackTypeBoosterItem",
+      TYPE_SPECIFIC_MOVE_BOOSTER: "TypeSpecificMoveBoosterItem",
+      RARE_EVOLUTION_ITEM: "EvolutionItem",
+      EVOLUTION_ITEM: "EvolutionItem",
+      RARE_FORM_CHANGE_ITEM: "FormChangeItem",
+      FORM_CHANGE_ITEM: "FormChangeItem",
+    };
+    const classes: Record<string, string> = {
+      WeatherRockTrainerModifierType: "WeatherRockTrainer",
+      TerrainSeedTrainerModifierType: "TerrainSeedTrainer",
+      TempStatStageBoosterModifierType: "TempStatStageBoosterItem",
+      BaseStatBoosterModifierType: "BaseStatBoosterItem",
+      AttackTypeBoosterModifierType: "AttackTypeBoosterItem",
+      TypeSpecificMoveBoosterModifierType: "TypeSpecificMoveBoosterItem",
+      EvolutionItemModifierType: "EvolutionItem",
+      FormChangeItemModifierType: "FormChangeItem",
+    };
+    const prefix = Object.keys(prefixes).find(
+      p => id === p || id.startsWith(`${p}_`) || fallbackId === p || fallbackId.startsWith(`${p}_`),
+    );
+    const preferredGroup = classes[className] ?? (prefix ? prefixes[prefix] : "");
+    const groups = [
+      preferredGroup,
+      "WeatherRockTrainer",
+      "TerrainSeedTrainer",
+      "TempStatStageBoosterItem",
+      "BaseStatBoosterItem",
+      "AttackTypeBoosterItem",
+      "TypeSpecificMoveBoosterItem",
+      "EvolutionItem",
+      "FormChangeItem",
+      "SpeciesBoosterItem",
+      "exclusiveZMoves",
+    ].filter(Boolean);
+    const variants = [icon, String(type?.nameKey ?? ""), String(type?.key ?? ""), localeKey, id, fallbackId];
+    const tried = new Set<string>();
+    const candidates: string[] = [];
+    for (const value of variants) {
+      if (!value) {
+        continue;
+      }
+      candidates.push(value, value.replace(/^modifierType:/, ""), value.toLowerCase(), value.toUpperCase());
+      for (const group of groups) {
+        const raw = value.replace(/^modifierType:/, "").replace(/^.*[.:]/, "");
+        candidates.push(`${group}.${raw}`, `${group}.${raw.toLowerCase()}`, `${group}.${raw.toUpperCase()}`);
+      }
+    }
+    for (const value of [id, fallbackId]) {
+      if (!value) {
+        continue;
+      }
+      candidates.push(`ModifierType.${value}`, `SpeciesBoosterItem.${value.replace(/^.*[.:]/, "")}`);
+    }
+    for (const candidate of candidates) {
+      if (tried.has(candidate)) {
+        continue;
+      }
+      tried.add(candidate);
+      const found = lookup(candidate);
+      if (found) {
+        return found;
+      }
+    }
+    // 명시적 매핑이 없는 동적 아이템(민트, Z기술 등)은 기존 생성 로직을 사용합니다.
+    const nativeName = type?.name;
+    if (
+      typeof nativeName === "string"
+      && nativeName.trim()
+      && !nativeName.includes("{{")
+      && !nativeName.endsWith(".name")
+      && nativeName !== localeKey
+      && nativeName !== "NULL.NAME"
+    ) {
+      if (/^[A-Za-z][A-Za-z0-9_ .:-]*$/.test(nativeName)) {
+        console.warn("[ROGUE_SHOP_KO_UNRESOLVED]", {
+          id,
+          fallbackId,
+          icon,
+          localeKey,
+          className,
+          args,
+          nativeName,
+          preferredGroup,
+        });
+      }
+      return nativeName;
+    }
+    console.warn("[ROGUE_SHOP_KO_UNRESOLVED]", {
+      id,
+      fallbackId,
+      icon,
+      localeKey,
+      className,
+      args,
+      nativeName,
+      preferredGroup,
     });
+    return id || fallbackId || "이름없음";
   }
 
   private getListingDisplayName(listing: RogueShopListing): string {
-    return typeof (listing.option?.type as any)?.getSafeName === "function"
-      ? (listing.option!.type as any).getSafeName()
-      : (listing.option?.type?.name ?? listing.id ?? "이름없음");
+    return this.getLocalizedModifierName(listing.option?.type, listing.id);
   }
 
   private confirmCandySpeciesSelection(): boolean {
@@ -3024,53 +3848,6 @@ export class RogueShopUiHandler extends MessageUiHandler {
     return true;
   }
 
-  private moveListCursor(direction: 1 | -1): void {
-    const list = this.getCurrentList();
-
-    if (list.length === 0) {
-      return;
-    }
-
-    const currentIndex = this.listScroll + this.cursor;
-
-    let nextIndex = currentIndex + direction;
-
-    // 맨 아래 → 맨 위
-    if (nextIndex >= list.length) {
-      nextIndex = 0;
-    }
-
-    // 맨 위 → 맨 아래
-    if (nextIndex < 0) {
-      nextIndex = list.length - 1;
-    }
-
-    // 다음 항목이 현재 표시 영역보다 아래
-    if (nextIndex >= this.listScroll + this.visibleRows) {
-      this.listScroll = nextIndex - this.visibleRows + 1;
-    }
-
-    // 다음 항목이 현재 표시 영역보다 위
-    else if (nextIndex < this.listScroll) {
-      this.listScroll = nextIndex;
-    }
-
-    // 순환해서 첫 번째로 돌아온 경우
-    if (nextIndex === 0) {
-      this.listScroll = 0;
-    }
-
-    // 순환해서 마지막으로 간 경우
-    if (nextIndex === list.length - 1) {
-      this.listScroll = Math.max(0, list.length - this.visibleRows);
-    }
-
-    this.cursor = nextIndex - this.listScroll;
-
-    this.refreshList();
-    this.updateCursor();
-  }
-
   private handlePracticeConfirm(): boolean {
     switch (this.listCursor) {
       case 0:
@@ -3432,7 +4209,7 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
         config: structuredClone(globalScene.gameData.practiceDummyConfig),
 
-        rentalModifiers: structuredClone(globalScene.gameData.practiceRentalModifiers ?? []),
+        rentalModifiers: structuredClone(globalScene.gameData.practiceDummyConfig?.rentalModifiers ?? []),
 
         starters: structuredClone(globalScene.gameData.lastSelectedStarters ?? []),
 
@@ -3462,7 +4239,12 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
       globalScene.gameData.practiceDummyConfig = JSON.parse(JSON.stringify(preset.config ?? {}));
 
-      globalScene.gameData.practiceRentalModifiers = (preset.rentalModifiers ?? []).map(item => ({
+      // 연습 전투에서는 practiceDummyConfig.rentalModifiers를 사용합니다.
+      globalScene.gameData.practiceDummyConfig.rentalModifiers = (
+        preset.rentalModifiers
+        ?? preset.config?.rentalModifiers
+        ?? []
+      ).map(item => ({
         itemId: item.itemId,
         quantity: item.quantity,
       }));
@@ -3484,12 +4266,14 @@ export class RogueShopUiHandler extends MessageUiHandler {
   }
 
   private openPracticeDummyConfig(): boolean {
-    this.openPracticeLevelMenu();
+    this.openPracticeLevelMenu("dummy1");
     return true;
   }
 
   private resetPracticeDummyConfig(): boolean {
     globalScene.gameData.practiceDummyConfig = {
+      dummy1: {},
+      dummy2: {},
       rentalModifiers: [],
       battleType: "SINGLE",
     };
@@ -3571,6 +4355,7 @@ export class RogueShopUiHandler extends MessageUiHandler {
     }
 
     this.syncTabFromCursor();
+    globalScene.ui.hideTooltip();
     this.resetListState();
 
     return true;
@@ -3914,18 +4699,27 @@ export class RogueShopUiHandler extends MessageUiHandler {
     return this.storageItems;
   }
 
-  private refreshMoneyTexts(): void {
-    if (this.currentTab === "BANK") {
-      this.valueRoguePointText.setText(`RP: ${(globalScene.gameData.bankRoguePoints ?? 0).toLocaleString()}`);
-
-      this.valueGoldText.setText(`G: ${(globalScene.gameData.bankMoney ?? 0).toLocaleString()}`);
-
-      return;
+  /** 헤더의 RP/골드 텍스트가 서로 침범하지 않도록 지정된 폭으로 맞춥니다. */
+  private fitMoneyHeaderText(text: Phaser.GameObjects.Text, baseScale: number, maxDisplayWidth: number): void {
+    text.setScale(baseScale);
+    if (text.displayWidth > maxDisplayWidth && text.displayWidth > 0) {
+      text.setScale((baseScale * maxDisplayWidth) / text.displayWidth);
     }
+  }
 
-    this.valueRoguePointText.setText(`RP: ${(globalScene.gameData.roguePoints ?? 0).toLocaleString()}`);
+  private refreshMoneyTexts(): void {
+    const isBank = this.currentTab === "BANK";
+    const rp = isBank ? (globalScene.gameData.bankRoguePoints ?? 0) : (globalScene.gameData.roguePoints ?? 0);
+    const gold = isBank ? (globalScene.gameData.bankMoney ?? 0) : (globalScene.money ?? 0);
 
-    this.valueGoldText.setText(`G: ${(globalScene.money ?? 0).toLocaleString()}`);
+    this.valueRoguePointText.setText(`RP: ${isBank ? formatRogueBankAmount(rp) : formatRogueOwnedAmount(rp)}`);
+    this.valueGoldText.setText(`G: ${isBank ? formatRogueBankAmount(gold) : formatRogueOwnedAmount(gold)}`);
+
+    // 210~317의 107px 창: RP(214~263) / 골드(266~313).
+    this.valueRoguePointText.setPosition(214, 9);
+    this.valueGoldText.setPosition(266, 9);
+    this.fitMoneyHeaderText(this.valueRoguePointText, this.moneyHeaderRpScale, 48);
+    this.fitMoneyHeaderText(this.valueGoldText, this.moneyHeaderGoldScale, 47);
   }
 
   private refreshTabCursor(): void {
@@ -3972,6 +4766,32 @@ export class RogueShopUiHandler extends MessageUiHandler {
     }
   }
 
+  /** 목록 폭을 넘는 상품/아이템명은 축약하고 전체 이름은 툴팁으로 제공합니다. */
+  private setListRowText(textObj: Phaser.GameObjects.Text, fullText: string): void {
+    textObj.setText(fullText);
+    // UI는 320x180 논리 좌표이고 텍스트 폰트는 6배 기준으로 작성됩니다.
+    const maxWidth = 124 * 6;
+    if (textObj.width <= maxWidth) {
+      return;
+    }
+
+    let low = 0;
+    let high = fullText.length;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      textObj.setText(`${fullText.slice(0, mid)}…`);
+      if (textObj.width <= maxWidth) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
+    }
+    textObj.setText(`${fullText.slice(0, low)}…`);
+    textObj.setInteractive();
+    textObj.on("pointerover", () => globalScene.ui.showTooltip("전체 이름", fullText, true));
+    textObj.on("pointerout", () => globalScene.ui.hideTooltip());
+  }
+
   private refreshList(): void {
     const list = this.getCurrentList();
 
@@ -3979,6 +4799,12 @@ export class RogueShopUiHandler extends MessageUiHandler {
       const dataIndex = this.listScroll + i;
       const row = list[dataIndex];
       const textObj = this.listTextObjects[i];
+
+      // 이전 탭의 툴팁이 다음 상품 행에 남거나 중복 실행되지 않도록 정리합니다.
+      textObj.off("pointerover");
+      textObj.off("pointerout");
+      textObj.disableInteractive();
+      textObj.setFontSize(72);
 
       if (!row) {
         textObj.setText("");
@@ -4008,41 +4834,28 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
         const soldOut = listing.stock <= 0 ? " [매진]" : "";
 
-        console.log("[TYPE_NAME_DEBUG]", {
-          id: listing.option?.type?.id,
-          ctor: listing.option?.type?.constructor?.name,
-          rawName: listing.option?.type?.name,
-          safeName:
-            typeof (listing.option?.type as any)?.getSafeName === "function"
-              ? (listing.option!.type as any).getSafeName()
-              : null,
-          localeKey: (listing.option?.type as any)?.localeKey,
-        });
-        const itemName =
-          typeof (listing.option?.type as any)?.getSafeName === "function"
-            ? (listing.option!.type as any).getSafeName()
-            : (listing.option?.type?.name ?? listing.id ?? "이름없음");
-        textObj.setText(`${itemName} - ${listing.priceRp}RP${soldOut}`);
+        const itemName = this.getListingDisplayName(listing);
+        this.setListRowText(textObj, `${itemName} - ${listing.priceRp}RP${soldOut}`);
       }
 
       // 창고
       else if (this.currentTab === "STORAGE") {
         const storageItem = row as RogueShopStorageEntry;
-        textObj.setText(`${storageItem.name} x${storageItem.quantity}`);
+        this.setListRowText(textObj, `${storageItem.name} x${storageItem.quantity}`);
       }
 
       // 공방소
       else if (this.currentTab === "BRIEFING" || this.currentTab === "HEADQUARTERS") {
-        textObj.setText((row as RogueWorkshopEntry).name);
+        this.setListRowText(textObj, (row as RogueWorkshopEntry).name);
       } else if (this.currentTab === "WORKSHOP") {
         const workshopEntry = row as RogueWorkshopEntry;
-        textObj.setText(workshopEntry.name);
+        this.setListRowText(textObj, workshopEntry.name);
       } else if (this.currentTab === "MINE") {
         const mineEntry = row as RogueWorkshopEntry;
-        textObj.setText(mineEntry.name);
+        this.setListRowText(textObj, mineEntry.name);
       } else if (this.currentTab === "MEETING" || this.currentTab === "CAFE") {
         const companionEntry = row as RogueCompanionEntry;
-        textObj.setText(companionEntry.name);
+        this.setListRowText(textObj, companionEntry.name);
       }
 
       // 의뢰
@@ -4078,7 +4891,7 @@ export class RogueShopUiHandler extends MessageUiHandler {
       }
       // 은행 / 연습
       else {
-        textObj.setText((row as RogueBankActionEntry).name);
+        this.setListRowText(textObj, (row as RogueBankActionEntry).name);
       }
     }
 
@@ -4167,9 +4980,14 @@ export class RogueShopUiHandler extends MessageUiHandler {
   }
 
   private refreshDetail(): void {
-    this.detailTitleText.setFontSize(96);
-    this.detailBodyText.setFontSize(96);
+    this.detailTitleText.setFontSize(78);
+    this.detailBodyText.setFontSize(72).setVisible(true);
+    this.detailBodyText.off("pointerover");
+    this.detailBodyText.off("pointerout");
     this.questFooterText.setVisible(false);
+    this.companionPortrait.setVisible(false);
+    this.companionKnowhowTitleText.setVisible(false);
+    this.companionKnowhowBodyText.setVisible(false);
 
     const list = this.getCurrentList();
     const selected = list[this.listCursor];
@@ -4230,10 +5048,7 @@ export class RogueShopUiHandler extends MessageUiHandler {
       }
 
       // 일반 상점 상품
-      const itemName =
-        typeof (listing.option?.type as any)?.getSafeName === "function"
-          ? (listing.option!.type as any).getSafeName()
-          : (listing.option?.type?.name ?? listing.id ?? "이름없음");
+      const itemName = this.getListingDisplayName(listing);
 
       const itemDesc =
         typeof listing.option?.type?.getDescription === "function"
@@ -4253,9 +5068,10 @@ export class RogueShopUiHandler extends MessageUiHandler {
     }
 
     if (this.currentTab === "BANK") {
-      this.detailTitleText.setText(selected.name);
+      const bankEntry = selected as RogueBankActionEntry;
+      this.detailTitleText.setText(bankEntry.name);
       this.detailBodyText.setText(
-        `${selected.description}\n\n보유 RP: ${globalScene.gameData.roguePoints ?? 0}\n예치 RP: ${this.bankData.bankRoguePoints}\n보유 골드: ${globalScene.money ?? 0}\n예치 골드: ${this.bankData.bankGold}\n\n이자 시스템은 추후 연결`,
+        `${bankEntry.description}\n\n보유 RP: ${formatRogueOwnedAmount(globalScene.gameData.roguePoints ?? 0)}\n예치 RP: ${formatRogueBankAmount(this.bankData.bankRoguePoints)}\n보유 골드: ${formatRogueOwnedAmount(globalScene.money ?? 0)}\n예치 골드: ${formatRogueBankAmount(this.bankData.bankGold)}\n\n이자 시스템은 추후 연결`,
       );
       return;
     }
@@ -4398,6 +5214,15 @@ export class RogueShopUiHandler extends MessageUiHandler {
       const spriteKey = definition?.frontSpriteKey ?? trainerConfig.getSpriteKey(variant === TrainerVariant.FEMALE);
 
       trainerConfig.loadAssets(variant).then(() => {
+        // 다른 동료/탭으로 이동한 뒤 늦게 로딩된 이미지가 덮어쓰지 않도록 합니다.
+        const currentEntry = this.getCurrentList()[this.listCursor] as RogueCompanionEntry | undefined;
+        if (
+          !this.rootContainer.visible
+          || this.currentTab !== "CAFE"
+          || currentEntry?.trainerType !== companionEntry.trainerType
+        ) {
+          return;
+        }
         this.companionPortrait.setTexture(spriteKey);
 
         const frame = this.companionPortrait.frame;
@@ -4925,12 +5750,9 @@ export class RogueShopUiHandler extends MessageUiHandler {
       };
     }
 
-    const modifierType = this.resolveGeneratedStorageModifierType(itemId) ?? getModifierTypeById(itemId);
+    const modifierType = this.resolveModifierTypeFromStorageItemId(itemId);
     if (modifierType) {
-      const name =
-        typeof (modifierType as any).getSafeName === "function"
-          ? (modifierType as any).getSafeName()
-          : (modifierType.name ?? itemId);
+      const name = this.getLocalizedModifierName(modifierType, itemId);
 
       const description =
         typeof modifierType.getDescription === "function"
@@ -4979,6 +5801,7 @@ export class RogueShopUiHandler extends MessageUiHandler {
 
   clear(): void {
     super.clear();
+    globalScene.ui.hideTooltip();
 
     if (this.noticeTimer) {
       this.noticeTimer.remove(false);

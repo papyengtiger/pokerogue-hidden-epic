@@ -172,6 +172,7 @@ export const SettingKeys = {
   Fusion_Palette_Swaps: "FUSION_PALETTE_SWAPS",
   Player_Gender: "PLAYER_GENDER",
   Type_Hints: "TYPE_HINTS",
+  Type_Matchups: "TYPE_MATCHUPS",
   Master_Volume: "MASTER_VOLUME",
   BGM_Volume: "BGM_VOLUME",
   Field_Volume: "FIELD_VOLUME",
@@ -623,6 +624,16 @@ export const Setting: Setting[] = [
     type: SettingType.DISPLAY,
   },
   {
+    key: SettingKeys.Type_Matchups,
+    label: "타입 상성",
+    options: [
+      { value: "original", label: "원작" },
+      { value: "hidden_epic", label: "히든에픽" },
+    ],
+    default: 1,
+    type: SettingType.DISPLAY,
+  },
+  {
     key: SettingKeys.Type_Hints,
     label: i18next.t("settings:typeHints"),
     options: OFF_ON,
@@ -916,6 +927,9 @@ export function setSetting(setting: string, value: number): boolean {
     }
     case SettingKeys.Vibration:
       globalScene.enableVibration = Setting[index].options[value].value !== "Disabled" && hasTouchscreen();
+      break;
+    case SettingKeys.Type_Matchups:
+      globalScene.typeMatchupVersion = Setting[index].options[value].value === "original" ? "original" : "hidden_epic";
       break;
     case SettingKeys.Type_Hints:
       globalScene.typeHints = Setting[index].options[value].value === "On";

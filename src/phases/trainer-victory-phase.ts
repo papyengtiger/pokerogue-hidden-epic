@@ -13,367 +13,372 @@ import { vouchers } from "#system/voucher";
 import { randSeedItem } from "#utils/common";
 import i18next from "i18next";
 
+/** 디 아더 보스전 승리 스토리: 트레이너전/야생전 공통. */
+export function showTheOtherMfoVictoryStory(wave: number, onComplete: () => void): void {
+  const female = globalScene.gameData.gender === PlayerGender.FEMALE;
+  const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
+  type Line = [string, string];
+  let ko: Line[];
+  let en: Line[];
+
+  if (wave === 25) {
+    ko = [
+      ["M.F.O", "………."],
+      ["M.F.O", "로보키드 3기, 전투 불능."],
+      ["M.F.O", "대상의 전투 능력…… 예상 수치 초과."],
+      ...(female
+        ? ([
+            ["핀", "휴우…… 정말 힘들었어!"],
+            ["미로", "그런데 저 녀석은 왜 직접 싸우지 않는 거지?"],
+            ["미지", "잠깐! 아직 물어볼 게 있어!"],
+          ] as Line[])
+        : ([
+            ["미지", "휴우…… 겨우 이겼어!"],
+            ["아이비", "그런데 저 녀석은 직접 싸울 생각이 없는 건가?"],
+            ["미로", "잠깐! 아직 물어볼 게 있어!"],
+          ] as Line[])),
+      ["M.F.O", "추가 교전은 불필요."],
+      ["M.F.O", "관측 기록을 갱신한다."],
+      ["시스템", "M.F.O는 모습을 감췄다."],
+      ...(female
+        ? ([
+            ["핀", "가 버렸어…… 대체 정체가 뭐지?"],
+            ["미로", "적어도 저 기계들과 관련 있는 녀석인 건 확실해."],
+            ["미지", "계속 수색하자. 나중에 다시 만날 수도 있어."],
+          ] as Line[])
+        : ([
+            ["미지", "가 버렸네…… 대체 뭐였을까?"],
+            ["아이비", "로보키드를 부릴 수 있다는 건 확실해졌어."],
+            ["미로", "일단 계속 가자. 또 만날지도 모르니까."],
+          ] as Line[])),
+    ];
+    en = [
+      ["M.F.O", "........."],
+      ["M.F.O", "Three Robokid units incapacitated."],
+      ["M.F.O", "Target combat capability exceeds expectations."],
+      ...(female
+        ? ([
+            ["Finn", "Phew... That was tough!"],
+            ["Miro", "Why isn't that thing fighting us itself?"],
+            ["Miji", "Wait! We still have questions!"],
+          ] as Line[])
+        : ([
+            ["Miji", "Phew... We made it!"],
+            ["Ivy", "Does that thing have no intention of fighting itself?"],
+            ["Miro", "Wait! We still have questions!"],
+          ] as Line[])),
+      ["M.F.O", "Further engagement unnecessary."],
+      ["M.F.O", "Updating observation records."],
+      ["System", "M.F.O disappeared."],
+      ...(female
+        ? ([
+            ["Finn", "It's gone... What was that?"],
+            ["Miro", "At least it's connected to those machines."],
+            ["Miji", "Let's keep searching. We may meet it again."],
+          ] as Line[])
+        : ([
+            ["Miji", "It left... What was that?"],
+            ["Ivy", "We know it commands those Robokids."],
+            ["Miro", "Let's continue. We might run into it again."],
+          ] as Line[])),
+    ];
+  } else if (wave === 55) {
+    ko = [
+      ["M.F.O", "………."],
+      ["M.F.O", "로보키드 6기, 전투 불능."],
+      ["M.F.O", "재검증 실패. 대상 전투 능력 재평가."],
+      ...(female
+        ? ([
+            ["핀", "하아…… 이번엔 진짜 힘들었어!"],
+            ["미로", "여섯 대를 상대했는데도 아직 부족하다는 거야?"],
+            ["미지", "우리를 계속 시험하는 이유가 뭐지?"],
+          ] as Line[])
+        : ([
+            ["미지", "하아…… 여섯 대나 상대하려니 정말 힘들었어."],
+            ["아이비", "이 정도면 저 녀석도 포기할 때가 되지 않았어?"],
+            ["미로", "넌 대체 뭘 확인하려는 거야?"],
+          ] as Line[])),
+      ["M.F.O", "현재 전력으로는 목표 달성 불가."],
+      ["M.F.O", "다음 교전에서는 직접 대응한다."],
+      ["시스템", "M.F.O는 다시 모습을 감췄다."],
+      ...(female
+        ? ([
+            ["미로", "다음에는 직접 싸우겠다는 뜻인가?"],
+            ["핀", "으으…… 벌써부터 불길한데."],
+            ["미지", "경계하면서 움직이자. 초코도 계속 찾아야 하니까."],
+          ] as Line[])
+        : ([
+            ["아이비", "직접 대응한다고……? 설마 다음엔 저 녀석이 싸우려는 거야?"],
+            ["미지", "어쩐지 점점 더 위험해지는 것 같아……."],
+            ["미로", "그래도 초코를 찾는 게 먼저야. 계속 가자."],
+          ] as Line[])),
+      ["시스템", "그러나 일행이 미처 눈치채지 못한 곳에서, 누군가가 그 광경을 지켜보고 있었다."],
+      ["피아나", "………."],
+      ["피아나", "저 녀석들…… 생각보다 제법인데?"],
+      ["피아나", "후후, 재미있어지겠어."],
+      ["시스템", "피아나는 아무런 기척도 남기지 않은 채 자리를 떠났다."],
+    ];
+    en = [
+      ["M.F.O", "........."],
+      ["M.F.O", "Six Robokid units incapacitated."],
+      ["M.F.O", "Revalidation failed. Reassessing target capabilities."],
+      ...(female
+        ? ([
+            ["Finn", "Phew... That was tough!"],
+            ["Miro", "Six weren't enough either?"],
+            ["Miji", "Why do you keep testing us?"],
+          ] as Line[])
+        : ([
+            ["Miji", "Phew... Six was exhausting!"],
+            ["Ivy", "Isn't it time that thing gave up?"],
+            ["Miro", "What are you trying to find out?"],
+          ] as Line[])),
+      ["M.F.O", "Current forces insufficient."],
+      ["M.F.O", "Next encounter: direct engagement."],
+      ["System", "M.F.O disappeared again."],
+      ...(female
+        ? ([
+            ["Miro", "So next time it'll fight us itself?"],
+            ["Finn", "That sounds ominous..."],
+            ["Miji", "Stay alert. We still need to find Choco."],
+          ] as Line[])
+        : ([
+            ["Ivy", "Direct engagement...? Does that mean it'll fight us next time?"],
+            ["Miji", "Things are getting dangerous..."],
+            ["Miro", "Let's keep going. Finding Choco comes first."],
+          ] as Line[])),
+      ["System", "Unnoticed by the team, someone had been observing everything from the shadows."],
+      ["Zinnia", "........."],
+      ["Zinnia", "Those kids... better than I expected."],
+      ["Zinnia", "Heh. Now this is getting interesting."],
+      ["System", "Zinnia slipped away without a trace."],
+    ];
+  } else if (wave === 195) {
+    ko = [
+      ["N.O.2.4.8", "……시스템…… 한계 초과……."],
+      ["N.O.2.4.8", "폭주 출력으로도…… 목표 제압 실패……."],
+      ...(female
+        ? ([
+            ["핀", "하아…… 이번엔 정말 끝난 거지?"],
+            ["미로", "아까는 정말 통제가 안 되는 것 같았어."],
+            ["미지", "왜 이렇게까지 우리를 막으려는 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "하아…… 정말 무서웠어."],
+            ["아이비", "마지막엔 자기 자신도 제어하지 못한 것 같았어."],
+            ["미로", "이제 그만해. 대체 뭘 지키려는 거지?"],
+          ] as Line[])),
+      ["N.O.2.4.8", "……응답…… 불가……."],
+      ["N.O.2.4.8", "동력 저하. 기능 정지 절차…… 실행……."],
+      ["시스템", "N.O.2.4.8의 기계음이 끊기고, 기체는 움직임을 멈췄다."],
+      ...(female
+        ? ([
+            ["미로", "정말 끝난 건가……?"],
+            ["핀", "우리도 여기서 오래 머물면 안 될 것 같아."],
+            ["미지", "초코를 찾아야 해. 계속 가자."],
+          ] as Line[])
+        : ([
+            ["아이비", "이젠 정말 멈춘 것 같네……."],
+            ["미지", "그래도 마음이 편하진 않아."],
+            ["미로", "초코를 찾으러 가자. 아직 할 일이 남았어."],
+          ] as Line[])),
+    ];
+    en = [
+      ["N.O.2.4.8", "...System... beyond operational limits..."],
+      ["N.O.2.4.8", "Even berserk output... target suppression failed..."],
+      ...(female
+        ? ([
+            ["Finn", "Is it really over now?"],
+            ["Miro", "It seemed completely out of control."],
+            ["Miji", "Why are you so determined to stop us?"],
+          ] as Line[])
+        : ([
+            ["Miji", "That was terrifying..."],
+            ["Ivy", "It couldn't even control itself at the end."],
+            ["Miro", "Stop this. What are you trying to protect?"],
+          ] as Line[])),
+      ["N.O.2.4.8", "...Unable... to respond..."],
+      ["N.O.2.4.8", "Power depleted. Initiating shutdown..."],
+      ["System", "The machine fell silent and stopped moving."],
+      ...(female
+        ? ([
+            ["Miro", "Is it finally over...?"],
+            ["Finn", "We shouldn't stay here."],
+            ["Miji", "We still have to find Choco. Let's go."],
+          ] as Line[])
+        : ([
+            ["Ivy", "Looks like it really stopped..."],
+            ["Miji", "I still feel uneasy."],
+            ["Miro", "Let's find Choco. We're not done yet."],
+          ] as Line[])),
+    ];
+  } else if (wave === 145) {
+    ko = [
+      ["N.O.2.4.8", "………!?"],
+      ["N.O.2.4.8", "오류…… 전투 결과가 예측값을 초과……."],
+      ["N.O.2.4.8", "제2전투형태에서도…… 목표 제압 실패……."],
+      ...(female
+        ? ([
+            ["핀", "하아…… 심장이 멎는 줄 알았어!"],
+            ["미로", "변신까지 하다니…… 정말 끝이 없네."],
+            ["미지", "넌 대체 무슨 목적으로 우리를 쫓아오는 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "하아…… 이번엔 정말 위험했어!"],
+            ["아이비", "저렇게까지 강해졌는데도 또 덤벼들 줄이야."],
+            ["미로", "이제 그만해. 대체 뭘 위해 이렇게까지 하는 거야?"],
+          ] as Line[])),
+      ["N.O.2.4.8", "………."],
+      ["N.O.2.4.8", "현재 전투 체계의 결함 확인."],
+      ["N.O.2.4.8", "최종 대응 프로토콜…… 검토 필요."],
+      ["N.O.2.4.8", "일시 철수한다."],
+      ["시스템", "N.O.2.4.8은 손상된 기체를 이끌고 모습을 감췄다."],
+      ...(female
+        ? ([
+            ["미로", "최종 대응이라니…… 또 뭘 꾸미는 거지?"],
+            ["핀", "이제 제발 그만 나타났으면 좋겠는데……."],
+            ["미지", "아직 방심할 수 없겠어. 계속 가자."],
+          ] as Line[])
+        : ([
+            ["아이비", "최종 대응 프로토콜……? 어째 불길한데."],
+            ["미지", "설마 또 나타나는 건 아니겠지……?"],
+            ["미로", "아직 끝나지 않았어. 다음엔 더 조심해야겠어."],
+          ] as Line[])),
+    ];
+    en = [
+      ["N.O.2.4.8", "...!?"],
+      ["N.O.2.4.8", "Error... Result exceeds projected values..."],
+      ["N.O.2.4.8", "Even in the second combat form... target suppression failed..."],
+      ...(female
+        ? ([
+            ["Finn", "I thought my heart would stop!"],
+            ["Miro", "It even transformed..."],
+            ["Miji", "Why are you pursuing us?"],
+          ] as Line[])
+        : ([
+            ["Miji", "That was really dangerous!"],
+            ["Ivy", "It got so much stronger..."],
+            ["Miro", "Stop this. Why go so far?"],
+          ] as Line[])),
+      ["N.O.2.4.8", "........."],
+      ["N.O.2.4.8", "Current combat system deficiencies confirmed."],
+      ["N.O.2.4.8", "Final response protocol... requires evaluation."],
+      ["N.O.2.4.8", "Temporary withdrawal."],
+      ["System", "N.O.2.4.8 vanished, carrying its damaged body away."],
+      ...(female
+        ? ([
+            ["Miro", "Final response? What's it planning?"],
+            ["Finn", "I hope it stops showing up..."],
+            ["Miji", "Stay alert. Let's go."],
+          ] as Line[])
+        : ([
+            ["Ivy", "Final response protocol...? Sounds ominous."],
+            ["Miji", "Surely it won't appear again...?"],
+            ["Miro", "This isn't over. Stay alert."],
+          ] as Line[])),
+    ];
+  } else {
+    ko = [
+      ["M.F.O", "………!?"],
+      ["M.F.O", "오류…… 예상 전투 결과와 불일치……."],
+      ["M.F.O", "직접 교전에서도…… 제압 실패……."],
+      ...(female
+        ? ([
+            ["핀", "으아…… 정말 강했어!"],
+            ["미로", "로보키드랑은 비교도 안 되는데?"],
+            ["미지", "이제 말해 줘. 왜 우리를 계속 방해하는 거야?"],
+          ] as Line[])
+        : ([
+            ["미지", "하아…… 드디어 쓰러뜨렸어!"],
+            ["아이비", "로보키드보다 훨씬 강했네. 대체 정체가 뭐야?"],
+            ["미로", "이제 대답해. 왜 우리를 계속 공격하는 거지?"],
+          ] as Line[])),
+      ["M.F.O", "………."],
+      ["M.F.O", "대상의 전투 능력…… 재평가 필요."],
+      ["M.F.O", "현 단계에서는 임무 수행 불가능."],
+      ["M.F.O", "전술 체계 재구축을 개시한다."],
+      ...(female
+        ? ([
+            ["미로", "야, 잠깐! 아직 얘기 안 끝났어!"],
+            ["핀", "또 가 버리는 거야……?"],
+            ["미지", "다음에 만날 때는 더 위험해질지도 몰라."],
+          ] as Line[])
+        : ([
+            ["아이비", "잠깐! 또 도망칠 생각이야!?"],
+            ["미지", "저 녀석, 대체 무슨 목적이 있는 걸까……."],
+            ["미로", "아직 끝난 게 아닌 것 같아. 조심하자."],
+          ] as Line[])),
+      ["시스템", "M.F.O는 불안정한 기계음을 남긴 채 모습을 감췄다."],
+    ];
+    en = [
+      ["M.F.O", "...!?"],
+      ["M.F.O", "Error... Result deviates from projections..."],
+      ["M.F.O", "Even direct engagement... failed to suppress targets..."],
+      ...(female
+        ? ([
+            ["Finn", "That was so strong!"],
+            ["Miro", "Nothing like those Robokids."],
+            ["Miji", "Tell us why you keep stopping us!"],
+          ] as Line[])
+        : ([
+            ["Miji", "Phew... We finally beat it!"],
+            ["Ivy", "Much stronger than a Robokid. What are you?"],
+            ["Miro", "Tell us why you keep attacking us!"],
+          ] as Line[])),
+      ["M.F.O", "........."],
+      ["M.F.O", "Reevaluation of target combat ability required."],
+      ["M.F.O", "Mission cannot be completed at this stage."],
+      ["M.F.O", "Initiating tactical system reconstruction."],
+      ...(female
+        ? ([
+            ["Miro", "Hey, wait! We're not finished!"],
+            ["Finn", "It's leaving again...?"],
+            ["Miji", "It may be even more dangerous next time."],
+          ] as Line[])
+        : ([
+            ["Ivy", "Wait! Running away again!?"],
+            ["Miji", "What is it trying to do...?"],
+            ["Miro", "I don't think this is over. Stay alert."],
+          ] as Line[])),
+      ["System", "M.F.O vanished, leaving an unstable mechanical noise behind."],
+    ];
+  }
+
+  const lines = korean ? ko : en;
+  const portraitKey = wave === 145 || wave === 195 ? "theother_mno248_portrait" : "theother_mfo_portrait";
+  let portrait: Phaser.GameObjects.Image | undefined;
+  const finish = (): void => {
+    portrait?.destroy();
+    globalScene.hideFieldOverlay(250).then(onComplete);
+  };
+  const advance = (index: number): void => {
+    if (index >= lines.length) {
+      finish();
+      return;
+    }
+    const [speaker, message] = lines[index];
+    if ((speaker === "피아나" || speaker === "Zinnia") && portrait) {
+      portrait.setVisible(false);
+    }
+    globalScene.ui.showDialogue(message, speaker, null, () => advance(index + 1));
+  };
+  globalScene.showFieldOverlay(500).then(() => {
+    if (globalScene.textures.exists(portraitKey)) {
+      portrait = globalScene.add.image(globalScene.scaledCanvas.width * 0.71, -104, portraitKey);
+      portrait.setOrigin(0.5);
+      portrait.setScale(1.3);
+      globalScene.fieldUI.add(portrait);
+    }
+    advance(0);
+  });
+}
+
 export class TrainerVictoryPhase extends BattlePhase {
   public readonly phaseName = "TrainerVictoryPhase";
 
-  /** 디 아더 25/55/95층: 트레이너전 승리 직후 이야기 연출. */
+  /** 디 아더 보스전 공통 대사를 실행하고 정상적으로 다음 페이즈로 복귀합니다. */
   private showTheOtherMfoVictoryStory(wave: number): void {
-    const female = globalScene.gameData.gender === PlayerGender.FEMALE;
-    const korean = (i18next.resolvedLanguage ?? i18next.language ?? "ko").startsWith("ko");
-    type Line = [string, string];
-    let ko: Line[];
-    let en: Line[];
-
-    if (wave === 25) {
-      ko = [
-        ["M.F.O", "………."],
-        ["M.F.O", "로보키드 3기, 전투 불능."],
-        ["M.F.O", "대상의 전투 능력…… 예상 수치 초과."],
-        ...(female
-          ? ([
-              ["핀", "휴우…… 정말 힘들었어!"],
-              ["미로", "그런데 저 녀석은 왜 직접 싸우지 않는 거지?"],
-              ["미지", "잠깐! 아직 물어볼 게 있어!"],
-            ] as Line[])
-          : ([
-              ["미지", "휴우…… 겨우 이겼어!"],
-              ["아이비", "그런데 저 녀석은 직접 싸울 생각이 없는 건가?"],
-              ["미로", "잠깐! 아직 물어볼 게 있어!"],
-            ] as Line[])),
-        ["M.F.O", "추가 교전은 불필요."],
-        ["M.F.O", "관측 기록을 갱신한다."],
-        ["시스템", "M.F.O는 모습을 감췄다."],
-        ...(female
-          ? ([
-              ["핀", "가 버렸어…… 대체 정체가 뭐지?"],
-              ["미로", "적어도 저 기계들과 관련 있는 녀석인 건 확실해."],
-              ["미지", "계속 수색하자. 나중에 다시 만날 수도 있어."],
-            ] as Line[])
-          : ([
-              ["미지", "가 버렸네…… 대체 뭐였을까?"],
-              ["아이비", "로보키드를 부릴 수 있다는 건 확실해졌어."],
-              ["미로", "일단 계속 가자. 또 만날지도 모르니까."],
-            ] as Line[])),
-      ];
-      en = [
-        ["M.F.O", "........."],
-        ["M.F.O", "Three Robokid units incapacitated."],
-        ["M.F.O", "Target combat capability exceeds expectations."],
-        ...(female
-          ? ([
-              ["Finn", "Phew... That was tough!"],
-              ["Miro", "Why isn't that thing fighting us itself?"],
-              ["Miji", "Wait! We still have questions!"],
-            ] as Line[])
-          : ([
-              ["Miji", "Phew... We made it!"],
-              ["Ivy", "Does that thing have no intention of fighting itself?"],
-              ["Miro", "Wait! We still have questions!"],
-            ] as Line[])),
-        ["M.F.O", "Further engagement unnecessary."],
-        ["M.F.O", "Updating observation records."],
-        ["System", "M.F.O disappeared."],
-        ...(female
-          ? ([
-              ["Finn", "It's gone... What was that?"],
-              ["Miro", "At least it's connected to those machines."],
-              ["Miji", "Let's keep searching. We may meet it again."],
-            ] as Line[])
-          : ([
-              ["Miji", "It left... What was that?"],
-              ["Ivy", "We know it commands those Robokids."],
-              ["Miro", "Let's continue. We might run into it again."],
-            ] as Line[])),
-      ];
-    } else if (wave === 55) {
-      ko = [
-        ["M.F.O", "………."],
-        ["M.F.O", "로보키드 6기, 전투 불능."],
-        ["M.F.O", "재검증 실패. 대상 전투 능력 재평가."],
-        ...(female
-          ? ([
-              ["핀", "하아…… 이번엔 진짜 힘들었어!"],
-              ["미로", "여섯 대를 상대했는데도 아직 부족하다는 거야?"],
-              ["미지", "우리를 계속 시험하는 이유가 뭐지?"],
-            ] as Line[])
-          : ([
-              ["미지", "하아…… 여섯 대나 상대하려니 정말 힘들었어."],
-              ["아이비", "이 정도면 저 녀석도 포기할 때가 되지 않았어?"],
-              ["미로", "넌 대체 뭘 확인하려는 거야?"],
-            ] as Line[])),
-        ["M.F.O", "현재 전력으로는 목표 달성 불가."],
-        ["M.F.O", "다음 교전에서는 직접 대응한다."],
-        ["시스템", "M.F.O는 다시 모습을 감췄다."],
-        ...(female
-          ? ([
-              ["미로", "다음에는 직접 싸우겠다는 뜻인가?"],
-              ["핀", "으으…… 벌써부터 불길한데."],
-              ["미지", "경계하면서 움직이자. 초코도 계속 찾아야 하니까."],
-            ] as Line[])
-          : ([
-              ["아이비", "직접 대응한다고……? 설마 다음엔 저 녀석이 싸우려는 거야?"],
-              ["미지", "어쩐지 점점 더 위험해지는 것 같아……."],
-              ["미로", "그래도 초코를 찾는 게 먼저야. 계속 가자."],
-            ] as Line[])),
-        ["시스템", "그러나 일행이 미처 눈치채지 못한 곳에서, 누군가가 그 광경을 지켜보고 있었다."],
-        ["피아나", "………."],
-        ["피아나", "저 녀석들…… 생각보다 제법인데?"],
-        ["피아나", "후후, 재미있어지겠어."],
-        ["시스템", "피아나는 아무런 기척도 남기지 않은 채 자리를 떠났다."],
-      ];
-      en = [
-        ["M.F.O", "........."],
-        ["M.F.O", "Six Robokid units incapacitated."],
-        ["M.F.O", "Revalidation failed. Reassessing target capabilities."],
-        ...(female
-          ? ([
-              ["Finn", "Phew... That was tough!"],
-              ["Miro", "Six weren't enough either?"],
-              ["Miji", "Why do you keep testing us?"],
-            ] as Line[])
-          : ([
-              ["Miji", "Phew... Six was exhausting!"],
-              ["Ivy", "Isn't it time that thing gave up?"],
-              ["Miro", "What are you trying to find out?"],
-            ] as Line[])),
-        ["M.F.O", "Current forces insufficient."],
-        ["M.F.O", "Next encounter: direct engagement."],
-        ["System", "M.F.O disappeared again."],
-        ...(female
-          ? ([
-              ["Miro", "So next time it'll fight us itself?"],
-              ["Finn", "That sounds ominous..."],
-              ["Miji", "Stay alert. We still need to find Choco."],
-            ] as Line[])
-          : ([
-              ["Ivy", "Direct engagement...? Does that mean it'll fight us next time?"],
-              ["Miji", "Things are getting dangerous..."],
-              ["Miro", "Let's keep going. Finding Choco comes first."],
-            ] as Line[])),
-        ["System", "Unnoticed by the team, someone had been observing everything from the shadows."],
-        ["Zinnia", "........."],
-        ["Zinnia", "Those kids... better than I expected."],
-        ["Zinnia", "Heh. Now this is getting interesting."],
-        ["System", "Zinnia slipped away without a trace."],
-      ];
-    } else if (wave === 195) {
-      ko = [
-        ["N.O.2.4.8", "……시스템…… 한계 초과……."],
-        ["N.O.2.4.8", "폭주 출력으로도…… 목표 제압 실패……."],
-        ...(female
-          ? ([
-              ["핀", "하아…… 이번엔 정말 끝난 거지?"],
-              ["미로", "아까는 정말 통제가 안 되는 것 같았어."],
-              ["미지", "왜 이렇게까지 우리를 막으려는 거야?"],
-            ] as Line[])
-          : ([
-              ["미지", "하아…… 정말 무서웠어."],
-              ["아이비", "마지막엔 자기 자신도 제어하지 못한 것 같았어."],
-              ["미로", "이제 그만해. 대체 뭘 지키려는 거지?"],
-            ] as Line[])),
-        ["N.O.2.4.8", "……응답…… 불가……."],
-        ["N.O.2.4.8", "동력 저하. 기능 정지 절차…… 실행……."],
-        ["시스템", "N.O.2.4.8의 기계음이 끊기고, 기체는 움직임을 멈췄다."],
-        ...(female
-          ? ([
-              ["미로", "정말 끝난 건가……?"],
-              ["핀", "우리도 여기서 오래 머물면 안 될 것 같아."],
-              ["미지", "초코를 찾아야 해. 계속 가자."],
-            ] as Line[])
-          : ([
-              ["아이비", "이젠 정말 멈춘 것 같네……."],
-              ["미지", "그래도 마음이 편하진 않아."],
-              ["미로", "초코를 찾으러 가자. 아직 할 일이 남았어."],
-            ] as Line[])),
-      ];
-      en = [
-        ["N.O.2.4.8", "...System... beyond operational limits..."],
-        ["N.O.2.4.8", "Even berserk output... target suppression failed..."],
-        ...(female
-          ? ([
-              ["Finn", "Is it really over now?"],
-              ["Miro", "It seemed completely out of control."],
-              ["Miji", "Why are you so determined to stop us?"],
-            ] as Line[])
-          : ([
-              ["Miji", "That was terrifying..."],
-              ["Ivy", "It couldn't even control itself at the end."],
-              ["Miro", "Stop this. What are you trying to protect?"],
-            ] as Line[])),
-        ["N.O.2.4.8", "...Unable... to respond..."],
-        ["N.O.2.4.8", "Power depleted. Initiating shutdown..."],
-        ["System", "The machine fell silent and stopped moving."],
-        ...(female
-          ? ([
-              ["Miro", "Is it finally over...?"],
-              ["Finn", "We shouldn't stay here."],
-              ["Miji", "We still have to find Choco. Let's go."],
-            ] as Line[])
-          : ([
-              ["Ivy", "Looks like it really stopped..."],
-              ["Miji", "I still feel uneasy."],
-              ["Miro", "Let's find Choco. We're not done yet."],
-            ] as Line[])),
-      ];
-    } else if (wave === 145) {
-      ko = [
-        ["N.O.2.4.8", "………!?"],
-        ["N.O.2.4.8", "오류…… 전투 결과가 예측값을 초과……."],
-        ["N.O.2.4.8", "제2전투형태에서도…… 목표 제압 실패……."],
-        ...(female
-          ? ([
-              ["핀", "하아…… 심장이 멎는 줄 알았어!"],
-              ["미로", "변신까지 하다니…… 정말 끝이 없네."],
-              ["미지", "넌 대체 무슨 목적으로 우리를 쫓아오는 거야?"],
-            ] as Line[])
-          : ([
-              ["미지", "하아…… 이번엔 정말 위험했어!"],
-              ["아이비", "저렇게까지 강해졌는데도 또 덤벼들 줄이야."],
-              ["미로", "이제 그만해. 대체 뭘 위해 이렇게까지 하는 거야?"],
-            ] as Line[])),
-        ["N.O.2.4.8", "………."],
-        ["N.O.2.4.8", "현재 전투 체계의 결함 확인."],
-        ["N.O.2.4.8", "최종 대응 프로토콜…… 검토 필요."],
-        ["N.O.2.4.8", "일시 철수한다."],
-        ["시스템", "N.O.2.4.8은 손상된 기체를 이끌고 모습을 감췄다."],
-        ...(female
-          ? ([
-              ["미로", "최종 대응이라니…… 또 뭘 꾸미는 거지?"],
-              ["핀", "이제 제발 그만 나타났으면 좋겠는데……."],
-              ["미지", "아직 방심할 수 없겠어. 계속 가자."],
-            ] as Line[])
-          : ([
-              ["아이비", "최종 대응 프로토콜……? 어째 불길한데."],
-              ["미지", "설마 또 나타나는 건 아니겠지……?"],
-              ["미로", "아직 끝나지 않았어. 다음엔 더 조심해야겠어."],
-            ] as Line[])),
-      ];
-      en = [
-        ["N.O.2.4.8", "...!?"],
-        ["N.O.2.4.8", "Error... Result exceeds projected values..."],
-        ["N.O.2.4.8", "Even in the second combat form... target suppression failed..."],
-        ...(female
-          ? ([
-              ["Finn", "I thought my heart would stop!"],
-              ["Miro", "It even transformed..."],
-              ["Miji", "Why are you pursuing us?"],
-            ] as Line[])
-          : ([
-              ["Miji", "That was really dangerous!"],
-              ["Ivy", "It got so much stronger..."],
-              ["Miro", "Stop this. Why go so far?"],
-            ] as Line[])),
-        ["N.O.2.4.8", "........."],
-        ["N.O.2.4.8", "Current combat system deficiencies confirmed."],
-        ["N.O.2.4.8", "Final response protocol... requires evaluation."],
-        ["N.O.2.4.8", "Temporary withdrawal."],
-        ["System", "N.O.2.4.8 vanished, carrying its damaged body away."],
-        ...(female
-          ? ([
-              ["Miro", "Final response? What's it planning?"],
-              ["Finn", "I hope it stops showing up..."],
-              ["Miji", "Stay alert. Let's go."],
-            ] as Line[])
-          : ([
-              ["Ivy", "Final response protocol...? Sounds ominous."],
-              ["Miji", "Surely it won't appear again...?"],
-              ["Miro", "This isn't over. Stay alert."],
-            ] as Line[])),
-      ];
-    } else {
-      ko = [
-        ["M.F.O", "………!?"],
-        ["M.F.O", "오류…… 예상 전투 결과와 불일치……."],
-        ["M.F.O", "직접 교전에서도…… 제압 실패……."],
-        ...(female
-          ? ([
-              ["핀", "으아…… 정말 강했어!"],
-              ["미로", "로보키드랑은 비교도 안 되는데?"],
-              ["미지", "이제 말해 줘. 왜 우리를 계속 방해하는 거야?"],
-            ] as Line[])
-          : ([
-              ["미지", "하아…… 드디어 쓰러뜨렸어!"],
-              ["아이비", "로보키드보다 훨씬 강했네. 대체 정체가 뭐야?"],
-              ["미로", "이제 대답해. 왜 우리를 계속 공격하는 거지?"],
-            ] as Line[])),
-        ["M.F.O", "………."],
-        ["M.F.O", "대상의 전투 능력…… 재평가 필요."],
-        ["M.F.O", "현 단계에서는 임무 수행 불가능."],
-        ["M.F.O", "전술 체계 재구축을 개시한다."],
-        ...(female
-          ? ([
-              ["미로", "야, 잠깐! 아직 얘기 안 끝났어!"],
-              ["핀", "또 가 버리는 거야……?"],
-              ["미지", "다음에 만날 때는 더 위험해질지도 몰라."],
-            ] as Line[])
-          : ([
-              ["아이비", "잠깐! 또 도망칠 생각이야!?"],
-              ["미지", "저 녀석, 대체 무슨 목적이 있는 걸까……."],
-              ["미로", "아직 끝난 게 아닌 것 같아. 조심하자."],
-            ] as Line[])),
-        ["시스템", "M.F.O는 불안정한 기계음을 남긴 채 모습을 감췄다."],
-      ];
-      en = [
-        ["M.F.O", "...!?"],
-        ["M.F.O", "Error... Result deviates from projections..."],
-        ["M.F.O", "Even direct engagement... failed to suppress targets..."],
-        ...(female
-          ? ([
-              ["Finn", "That was so strong!"],
-              ["Miro", "Nothing like those Robokids."],
-              ["Miji", "Tell us why you keep stopping us!"],
-            ] as Line[])
-          : ([
-              ["Miji", "Phew... We finally beat it!"],
-              ["Ivy", "Much stronger than a Robokid. What are you?"],
-              ["Miro", "Tell us why you keep attacking us!"],
-            ] as Line[])),
-        ["M.F.O", "........."],
-        ["M.F.O", "Reevaluation of target combat ability required."],
-        ["M.F.O", "Mission cannot be completed at this stage."],
-        ["M.F.O", "Initiating tactical system reconstruction."],
-        ...(female
-          ? ([
-              ["Miro", "Hey, wait! We're not finished!"],
-              ["Finn", "It's leaving again...?"],
-              ["Miji", "It may be even more dangerous next time."],
-            ] as Line[])
-          : ([
-              ["Ivy", "Wait! Running away again!?"],
-              ["Miji", "What is it trying to do...?"],
-              ["Miro", "I don't think this is over. Stay alert."],
-            ] as Line[])),
-        ["System", "M.F.O vanished, leaving an unstable mechanical noise behind."],
-      ];
-    }
-
-    const lines = korean ? ko : en;
-    const portraitKey = wave === 145 || wave === 195 ? "theother_mno248_portrait" : "theother_mfo_portrait";
-    let portrait: Phaser.GameObjects.Image | undefined;
-    const finish = (): void => {
-      portrait?.destroy();
-      globalScene.hideFieldOverlay(250).then(() => this.end());
-    };
-    const advance = (index: number): void => {
-      if (index >= lines.length) {
-        finish();
-        return;
-      }
-      const [speaker, message] = lines[index];
-      if ((speaker === "피아나" || speaker === "Zinnia") && portrait) {
-        portrait.setVisible(false);
-      }
-      globalScene.ui.showDialogue(message, speaker, null, () => advance(index + 1));
-    };
-    globalScene.showFieldOverlay(500).then(() => {
-      if (globalScene.textures.exists(portraitKey)) {
-        portrait = globalScene.add.image(globalScene.scaledCanvas.width * 0.71, -104, portraitKey);
-        portrait.setOrigin(0.5);
-        portrait.setScale(1.3);
-        globalScene.fieldUI.add(portrait);
-      }
-      advance(0);
-    });
+    showTheOtherMfoVictoryStory(wave, () => this.end());
   }
 
   /** 디 아더 245층: 첫 피아나전 승리 후. 기존 트레이너 보상 처리는 유지합니다. */
@@ -624,7 +629,25 @@ export class TrainerVictoryPhase extends BattlePhase {
     const lines = korean ? ko : en;
     const advance = (index: number): void => {
       if (index >= lines.length) {
-        this.end();
+        // 디 아더 300층: 피아나가 퇴장한 뒤 레쿠쟈전으로 전환한다.
+        // 트레이너 오브젝트는 다음 전투에서 재사용하지 않으므로 화면에서만 숨긴다.
+        const trainer = globalScene.currentBattle?.trainer;
+        if (!trainer || !trainer.active) {
+          this.end();
+          return;
+        }
+
+        globalScene.tweens.add({
+          targets: trainer,
+          x: trainer.x + 300,
+          duration: 650,
+          ease: "Sine.easeIn",
+          onComplete: () => {
+            trainer.setVisible(false);
+            console.log("[THEOTHER_300_ZINNIA_EXIT]");
+            this.end();
+          },
+        });
         return;
       }
       const [speaker, message] = lines[index];

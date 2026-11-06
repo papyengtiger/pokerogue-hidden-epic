@@ -18,6 +18,7 @@ import { GameModes } from "#enums/game-modes";
 import { HitResult } from "#enums/hit-result";
 import { MarkId } from "#enums/mark-id";
 import { MysteryMonsterId } from "#enums/mystery-monster-id";
+import { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import { SwitchType } from "#enums/switch-type";
 import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
@@ -98,6 +99,24 @@ export class FaintPhase extends PokemonPhase {
       faintPokemon.updateInfo();
 
       return this.end();
+    }
+
+    // 디아더 300층 레쿠쟈 1차전: 무한다이노처럼 기절 대신 2페이즈로 전환.
+    // 일반적인 Faint/Victory/BattleEnd 처리가 실행되기 전에 가로채므로
+    // 레쿠쟈를 제거하거나 새 배틀을 시작하지 않습니다.
+    if (
+      globalScene.gameMode.modeId === GameModes.THEOTHER
+      && globalScene.currentBattle.waveIndex === 300
+      && globalScene.theOther300Stage === 1
+      && !faintPokemon.isPlayer()
+      && faintPokemon.species.speciesId === SpeciesId.RAYQUAZA
+    ) {
+      // 간접 피해 등으로 피해 제한을 우회했을 때도 동일한 HP·배리어 복원 적용.
+      // 복원 구현은 EnemyPokemon에 모아 두어 두 경로가 어긋나지 않게 합니다.
+      const rayquaza = faintPokemon as EnemyPokemon;
+      rayquaza.enterTheOtherRayquazaPhaseTwo();
+      this.end();
+      return;
     }
 
     if (this.source) {
@@ -357,55 +376,31 @@ export class FaintPhase extends PokemonPhase {
 
         const hasMonsterHouseReserve = isMonsterHouse && monsterHouseManager.getRemainingEnemies() > 0;
 
-        // 디 아더 25/55층 로보키드 연전: 야생전이어도 남은 적이 있으면 계속 진행.
-        const isTheOtherRobokidSquad =
-          globalScene.gameMode.modeId === GameModes.THEOTHER
-          && [25, 55].includes(globalScene.currentBattle.waveIndex)
-          && pokemon.isMysteryMonster()
-          && globalScene.getEnemyParty().length > 1;
-        const hasTheOtherReserve =
-          isTheOtherRobokidSquad
-          && globalScene.getEnemyParty().some(p => p !== pokemon && !p.isFainted() && !p.isOnField());
-
         const isMultiEnemyBattle =
           [BattleType.TRAINER, BattleType.MYSTERY_ENCOUNTER].includes(globalScene.currentBattle.battleType)
           || isKecleonTheftBattle
-          || isMonsterHouse
-          || isTheOtherRobokidSquad;
+          || isMonsterHouse;
 
-        const hasReservePartyMember = isTheOtherRobokidSquad
-          ? hasTheOtherReserve
-          : isMonsterHouse
-            ? hasMonsterHouseReserve
-            : isMultiEnemyBattle
-              ? isKecleonTheftBattle
-                ? globalScene.getEnemyParty().some(p => p !== pokemon && !p.isFainted() && !p.isOnField())
-                : globalScene
-                    .getEnemyParty()
-                    .some(
-                      p => p.isActive() && !p.isOnField() && p.trainerSlot === (pokemon as EnemyPokemon).trainerSlot,
-                    )
-              : false;
+        const hasReservePartyMember = isMonsterHouse
+          ? hasMonsterHouseReserve
+          : isMultiEnemyBattle
+            ? isKecleonTheftBattle
+              ? globalScene.getEnemyParty().some(p => p !== pokemon && !p.isFainted() && !p.isOnField())
+              : globalScene
+                  .getEnemyParty()
+                  .some(p => p.isActive() && !p.isOnField() && p.trainerSlot === (pokemon as EnemyPokemon).trainerSlot)
+            : false;
 
         /*
          * 캘리몬 추격전 / 몬스터소굴:
          * 다음 적이 남아 있으면 중간 VictoryPhase만 실행하여
          * 경험치 등을 처리하고 전투는 계속합니다.
          */
-        if ((isKecleonTheftBattle || isMonsterHouse || isTheOtherRobokidSquad) && hasReservePartyMember) {
+        if ((isKecleonTheftBattle || isMonsterHouse) && hasReservePartyMember) {
           globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex, true);
         } else {
           // 마지막 적 또는 일반 전투
           globalScene.phaseManager.unshiftNew("VictoryPhase", this.battlerIndex);
-        }
-
-        if (isTheOtherRobokidSquad) {
-          console.log("[THEOTHER_ROBOKID_FAINT_FLOW]", {
-            wave: globalScene.currentBattle.waveIndex,
-            fainted: pokemon.getName(),
-            partySize: globalScene.getEnemyParty().length,
-            hasReservePartyMember,
-          });
         }
 
         if (isMonsterHouse) {

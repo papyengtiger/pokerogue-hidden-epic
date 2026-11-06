@@ -128,6 +128,7 @@ export enum PartyUiMode {
   NATURAL_GIFT_BERRY_SELECT,
   SEND_TO_STORAGE,
   SEND_TO_STORAGE_SELECT,
+  KECLEON_PUT_ITEM_SELECT,
 }
 
 export enum PartyOption {
@@ -240,11 +241,9 @@ export class PartyUiHandler extends MessageUiHandler {
 
   private companionPartyMode = false;
 
-private getCurrentParty(): PlayerPokemon[] {
-  return this.companionPartyMode
-    ? globalScene.getCompanionParty()
-    : globalScene.getPlayerParty();
-}
+  private getCurrentParty(): PlayerPokemon[] {
+    return this.companionPartyMode ? globalScene.getCompanionParty() : globalScene.getPlayerParty();
+  }
 
   public static FilterNonFainted = (pokemon: PlayerPokemon) => {
     if (pokemon.isFainted()) {
@@ -275,37 +274,30 @@ private getCurrentParty(): PlayerPokemon[] {
   };
 
   private togglePartyGroup(): void {
-  const companionParty =
-    globalScene.getCompanionParty();
+    const companionParty = globalScene.getCompanionParty();
 
-  if (
-    !this.companionPartyMode
-    && companionParty.length === 0
-  ) {
-    return;
+    if (!this.companionPartyMode && companionParty.length === 0) {
+      return;
+    }
+
+    this.companionPartyMode = !this.companionPartyMode;
+
+    this.clearOptions();
+    this.clearPartySlots();
+
+    this.cursor = 0;
+    this.lastCursor = 0;
+    this.lastLeftPokemonCursor = 0;
+    this.lastRightPokemonCursor = 0;
+
+    this.populatePartySlots();
+    this.showPartyText();
+
+    console.log("[PARTY_GROUP_CHANGED]", {
+      companion: this.companionPartyMode,
+      count: this.getCurrentParty().length,
+    });
   }
-
-  this.companionPartyMode =
-    !this.companionPartyMode;
-
-  this.clearOptions();
-  this.clearPartySlots();
-
-  this.cursor = 0;
-  this.lastCursor = 0;
-  this.lastLeftPokemonCursor = 0;
-  this.lastRightPokemonCursor = 0;
-
-  this.populatePartySlots();
-  this.showPartyText();
-
-  console.log("[PARTY_GROUP_CHANGED]", {
-    companion:
-      this.companionPartyMode,
-    count:
-      this.getCurrentParty().length,
-  });
-}
 
   private static FilterAllMoves = (_pokemonMove: PokemonMove) => null;
 
@@ -431,6 +423,14 @@ private getCurrentParty(): PlayerPokemon[] {
 
     this.partyUiMode = args[0] as PartyUiMode;
     this.fieldIndex = args.length > 1 ? (args[1] as number) : -1;
+
+    // 아이템 관리 화면 진입 시 이동/버리기 전환 버튼을 표시한다.
+    // 다른 파티 UI 모드에서는 이전 버튼이 남지 않도록 숨긴다.
+    if (this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER || this.partyUiMode === PartyUiMode.DISCARD) {
+      this.partyDiscardModeButton.toggleIcon(this.partyUiMode);
+    } else {
+      this.partyDiscardModeButton.clear();
+    }
 
     this.transferMode = false;
     this.transferAll = false;
@@ -785,6 +785,14 @@ private getCurrentParty(): PlayerPokemon[] {
     }
     let success = false;
     const option = this.options[this.optionsCursor];
+    if (
+      !Number.isInteger(option)
+      || option < 0
+      || option >= (this.transferQuantities?.length ?? 0)
+      || !this.transferQuantitiesMax?.[option]
+    ) {
+      return false;
+    }
     if (button === Button.LEFT) {
       /** Decrease quantity for the current item and update UI */
       this.transferQuantities[option] =
@@ -855,14 +863,27 @@ private getCurrentParty(): PlayerPokemon[] {
     this.clearOptions();
 
     if (option === PartyOption.ALL) {
-      // Discard all currently held items
-      for (let i = 0; i < itemModifiers.length; i++) {
-        globalScene.tryDiscardHeldItemModifier(itemModifiers[i], this.transferQuantities[i]);
+      // 배열을 복사해 두어 완전 제거 중 원본 목록이 변해도 누락되지 않게 한다.
+      for (const [index, item] of [...itemModifiers].entries()) {
+        const quantity = this.transferQuantities[index];
+        if (Number.isInteger(quantity) && quantity > 0) {
+          globalScene.tryDiscardHeldItemModifier(item, Math.min(quantity, item.stackCount));
+        }
       }
     } else {
-      // Discard the currently selected item
-      globalScene.tryDiscardHeldItemModifier(itemModifiers[option], this.transferQuantities[option]);
+      const item = itemModifiers[option];
+      const quantity = this.transferQuantities[option];
+      if (!item || !Number.isInteger(quantity) || quantity <= 0) {
+        this.getUi().playError();
+        this.showPartyText();
+        return;
+      }
+      globalScene.tryDiscardHeldItemModifier(item, Math.min(quantity, item.stackCount));
     }
+
+    // 수량 일부만 버린 경우도 아이템 바와 파티 화면에 반영한다.
+    globalScene.updateModifiers(true);
+    this.showPartyText();
   }
 
   private moveOptionCursor(button: Button.UP | Button.DOWN): boolean {
@@ -897,8 +918,7 @@ private getCurrentParty(): PlayerPokemon[] {
 
     // show move description
     const option = this.options[this.optionsCursor];
-    const pokemon =
-  this.getCurrentParty()[this.cursor];
+    const pokemon = this.getCurrentParty()[this.cursor];
     const move = allMoves[pokemon.getLearnableLevelMoves()[option]];
     if (move) {
       this.moveInfoOverlay.show(move);
@@ -943,8 +963,7 @@ private getCurrentParty(): PlayerPokemon[] {
       return this.processOptionMenuInput(Button.CANCEL);
     }
 
-    const pokemon =
-  this.getCurrentParty()[this.cursor];
+    const pokemon = this.getCurrentParty()[this.cursor];
 
     // ✅ 여기부터 추가 (FLING/TRICK 공통 아이템 인덱스 처리)
     const isIndexItemSelect =
@@ -1269,19 +1288,16 @@ private getCurrentParty(): PlayerPokemon[] {
       return this.processPartyDirectionalInput(button);
     }
 
-    if (
-  this.partyUiMode === PartyUiMode.CHECK
-  && button === Button.SPECIAL
-) {
-  if (globalScene.getCompanionParty().length > 0) {
-    this.togglePartyGroup();
-    ui.playSelect();
-    return true;
-  }
+    if (this.partyUiMode === PartyUiMode.CHECK && button === Button.SPECIAL) {
+      if (globalScene.getCompanionParty().length > 0) {
+        this.togglePartyGroup();
+        ui.playSelect();
+        return true;
+      }
 
-  ui.playError();
-  return true;
-}
+      ui.playError();
+      return true;
+    }
     return false;
   }
 
@@ -1327,18 +1343,14 @@ private getCurrentParty(): PlayerPokemon[] {
         || this.partyUiMode === PartyUiMode.DISCARD
         || this.partyUiMode === PartyUiMode.SEND_TO_STORAGE_SELECT
       ) {
-        const pokemon =
-  this.getCurrentParty()[this.cursor];
+        const pokemon = this.getCurrentParty()[this.cursor];
 
-if (!pokemon) {
-  ui.playError();
-  return false;
-}
+        if (!pokemon) {
+          ui.playError();
+          return false;
+        }
         const itemModifiers = globalScene.findModifiers(
-          m =>
-            m.is("PokemonHeldItemModifier")
-            && m.isTransferable
-            && m.pokemonId === pokemon.id,
+          m => m.is("PokemonHeldItemModifier") && m.isTransferable && m.pokemonId === pokemon.id,
         ) as PokemonHeldItemModifier[];
 
         this.transferQuantities = itemModifiers.map(item => item.getStackCount());
@@ -1358,18 +1370,6 @@ if (!pokemon) {
 
         case PartyUiMode.MODIFIER_TRANSFER:
           this.partyUiMode = PartyUiMode.DISCARD;
-          break;
-
-        case PartyUiMode.FLING_ITEM_SELECT:
-          text = i18next.t("partyUiHandler:flingSelectItem"); // 기존
-          break;
-
-        case PartyUiMode.BESTOW_ITEM_SELECT:
-          text = i18next.t("partyUiHandler:bestowSelectItem"); // ✅ 새 키
-          break;
-
-        case PartyUiMode.NATURAL_GIFT_BERRY_SELECT:
-          text = i18next.t("partyUiHandler:naturalGiftSelectBerry"); // ✅ 새 키
           break;
 
         default:
@@ -1481,63 +1481,40 @@ if (!pokemon) {
         success = this.setCursor(this.cursor < 6 ? (this.cursor < slotCount - 1 ? this.cursor + 1 : 6) : 0);
         break;
       case Button.LEFT:
-  if (
-    this.partyUiMode === PartyUiMode.CHECK
-    && this.cursor === 6
-    && globalScene.getCompanionParty().length > 0
-  ) {
-    this.togglePartyGroup();
-    success = true;
-    break;
-  }
+        if (this.partyUiMode === PartyUiMode.CHECK && this.cursor === 6 && globalScene.getCompanionParty().length > 0) {
+          this.togglePartyGroup();
+          success = true;
+          break;
+        }
 
-  if (this.cursor === 6) {
-    success = this.setCursor(
-      this.isItemManageMode()
-        ? 7
-        : this.lastLeftPokemonCursor,
-    );
-  }
+        if (this.cursor === 6) {
+          success = this.setCursor(this.isItemManageMode() ? 7 : this.lastLeftPokemonCursor);
+        }
 
-  if (
-    this.cursor >= battlerCount
-    && this.cursor < 6
-  ) {
-    success = this.setCursor(
-      this.lastLeftPokemonCursor,
-    );
-  }
+        if (this.cursor >= battlerCount && this.cursor < 6) {
+          success = this.setCursor(this.lastLeftPokemonCursor);
+        }
 
-  break;
+        break;
 
-case Button.RIGHT:
-  if (
-    this.partyUiMode === PartyUiMode.CHECK
-    && this.cursor === 6
-    && globalScene.getCompanionParty().length > 0
-  ) {
-    this.togglePartyGroup();
-    success = true;
-    break;
-  }
+      case Button.RIGHT:
+        if (this.partyUiMode === PartyUiMode.CHECK && this.cursor === 6 && globalScene.getCompanionParty().length > 0) {
+          this.togglePartyGroup();
+          success = true;
+          break;
+        }
 
-  // Scrolling right from item transfer button
-  // or with no backup party members goes to cancel
-  if (
-    this.cursor === 7
-    || slotCount <= battlerCount
-  ) {
-    success = this.setCursor(6);
-    break;
-  }
+        // Scrolling right from item transfer button
+        // or with no backup party members goes to cancel
+        if (this.cursor === 7 || slotCount <= battlerCount) {
+          success = this.setCursor(6);
+          break;
+        }
 
-  if (this.cursor < battlerCount) {
-    success = this.setCursor(
-      this.lastRightPokemonCursor
-        || battlerCount,
-    );
-    break;
-  }
+        if (this.cursor < battlerCount) {
+          success = this.setCursor(this.lastRightPokemonCursor || battlerCount);
+          break;
+        }
     }
 
     if (success) {
@@ -1547,44 +1524,32 @@ case Button.RIGHT:
   }
 
   populatePartySlots() {
-  const party = this.getCurrentParty();
+    const party = this.getCurrentParty();
 
-  if (
-    this.cursor < 6
-    && this.cursor >= party.length
-  ) {
-    this.cursor = party.length - 1;
-  } else if (this.cursor === 6) {
-    this.partyCancelButton.select();
-  }
+    if (this.cursor < 6 && this.cursor >= party.length) {
+      this.cursor = party.length - 1;
+    } else if (this.cursor === 6) {
+      this.partyCancelButton.select();
+    }
 
-  if (
-    this.lastCursor < 6
-    && this.lastCursor >= party.length
-  ) {
-    this.lastCursor = party.length - 1;
-  }
+    if (this.lastCursor < 6 && this.lastCursor >= party.length) {
+      this.lastCursor = party.length - 1;
+    }
 
-  for (const p in party) {
-    const slotIndex = Number.parseInt(p);
+    for (const p in party) {
+      const slotIndex = Number.parseInt(p);
 
-    const partySlot = new PartySlot(
-      slotIndex,
-      party[p],
-      this.iconAnimHandler,
-      this.partyUiMode,
-      this.tmMoveId,
-    );
+      const partySlot = new PartySlot(slotIndex, party[p], this.iconAnimHandler, this.partyUiMode, this.tmMoveId);
 
-    globalScene.add.existing(partySlot);
-    this.partySlotsContainer.add(partySlot);
-    this.partySlots.push(partySlot);
+      globalScene.add.existing(partySlot);
+      this.partySlotsContainer.add(partySlot);
+      this.partySlots.push(partySlot);
 
-    if (this.cursor === slotIndex) {
-      partySlot.select();
+      if (this.cursor === slotIndex) {
+        partySlot.select();
+      }
     }
   }
-}
 
   setCursor(cursor: number): boolean {
     if (this.optionsMode) {
@@ -1825,25 +1790,22 @@ case Button.RIGHT:
     return !!move?.getAttrs("ForceSwitchOutAttr")[0]?.isBatonPass();
   }
 
-  private getItemModifiers(
-  _pokemon: Pokemon | undefined,
-): PokemonHeldItemModifier[] {
-  if (!_pokemon) {
-    console.warn("[GET_ITEM_MODIFIERS_NO_POKEMON]");
-    return [];
-  }
+  private getItemModifiers(_pokemon: Pokemon | undefined): PokemonHeldItemModifier[] {
+    if (!_pokemon) {
+      console.warn("[GET_ITEM_MODIFIERS_NO_POKEMON]");
+      return [];
+    }
 
-  const ownerId =
-    this.partyUiMode === PartyUiMode.TRICK_GIVE_SELECT
-    || this.partyUiMode === PartyUiMode.TRICK_TAKE_SELECT
-      ? (this.itemSelectOwnerPokemonId ?? _pokemon.id)
-      : _pokemon.id;
+    const ownerId =
+      this.partyUiMode === PartyUiMode.TRICK_GIVE_SELECT || this.partyUiMode === PartyUiMode.TRICK_TAKE_SELECT
+        ? (this.itemSelectOwnerPokemonId ?? _pokemon.id)
+        : _pokemon.id;
 
     // ✅ ownerId가 플레이어 소속인지 판별 (파티/필드에 있으면 플레이어)
     const isPlayerOwner =
-  globalScene.getPlayerParty().some(p => p.id === ownerId)
-  || globalScene.getCompanionParty().some(p => p.id === ownerId)
-  || globalScene.getPlayerField().some(p => p?.id === ownerId);
+      globalScene.getPlayerParty().some(p => p.id === ownerId)
+      || globalScene.getCompanionParty().some(p => p.id === ownerId)
+      || globalScene.getPlayerField().some(p => p?.id === ownerId);
 
     const all = globalScene.findModifiers(
       m => m instanceof PokemonHeldItemModifier && m.pokemonId === ownerId,
@@ -1982,8 +1944,7 @@ case Button.RIGHT:
 
   updateOptions(): void {
     console.log("[PARTYUI]", "mode=", PartyUiMode[this.partyUiMode], "transferMode=", this.transferMode);
-    const pokemon =
-  this.getCurrentParty()[this.cursor];
+    const pokemon = this.getCurrentParty()[this.cursor];
 
     if (this.options.length > 0) {
       this.options.splice(0, this.options.length);
@@ -2112,11 +2073,11 @@ case Button.RIGHT:
   }
 
   updateOptionsHardcore(): void {
-  const pokemon = this.getCurrentParty()[this.cursor];
+    const pokemon = this.getCurrentParty()[this.cursor];
 
-  if (!pokemon) {
-    return;
-  }
+    if (!pokemon) {
+      return;
+    }
 
     switch (this.partyUiMode) {
       case PartyUiMode.MODIFIER_TRANSFER:
@@ -2143,16 +2104,16 @@ case Button.RIGHT:
   }
 
   private updateOptionsWindow(): void {
-  const pokemon = this.getCurrentParty()[this.cursor];
+    const pokemon = this.getCurrentParty()[this.cursor];
 
-  if (!pokemon) {
-    console.warn("[PARTY_UI_NO_POKEMON]", {
-      cursor: this.cursor,
-      companionPartyMode: this.companionPartyMode,
-      currentPartyLength: this.getCurrentParty().length,
-    });
-    return;
-  }
+    if (!pokemon) {
+      console.warn("[PARTY_UI_NO_POKEMON]", {
+        cursor: this.cursor,
+        companionPartyMode: this.companionPartyMode,
+        currentPartyLength: this.getCurrentParty().length,
+      });
+      return;
+    }
 
     this.optionsBg = addWindow(0, 0, 0, 16 * this.options.length + 13);
     this.optionsBg.setOrigin(1, 1);

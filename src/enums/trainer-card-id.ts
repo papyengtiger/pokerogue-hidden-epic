@@ -12,6 +12,7 @@ export enum TrainerCardId {
   BEST_LOYALTY = "BEST_LOYALTY",
   ONE_MORE_ONE = "ONE_MORE_ONE",
   FRUGAL = "FRUGAL",
+  CAPTURE_TIME = "CAPTURE_TIME",
 }
 
 export enum TrainerCardCategory {

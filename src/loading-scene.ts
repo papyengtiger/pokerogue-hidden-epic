@@ -41,6 +41,13 @@ export class LoadingScene extends SceneBase {
     this.loadImage("friendship_overlay", "ui");
     this.loadImage("cursor", "ui");
     this.loadImage("cursor_reverse", "ui");
+
+    // Trainer card reward/loadout illustrations.
+    // Place these files at public/images/ui/trainer_*_card.png.
+    this.loadImage("trainer_battle_card", "card");
+    this.loadImage("trainer_epic_card", "card");
+    this.loadImage("trainer_friend_card", "card");
+    this.loadImage("trainer_growth_card", "card");
     for (const wv of getEnumValues(WindowVariant)) {
       for (let w = 1; w <= 5; w++) {
         this.loadImage(`window_${w}${getWindowVariantSuffix(wv)}`, "ui/windows");
@@ -169,7 +176,7 @@ export class LoadingScene extends SceneBase {
     // Load arena images
     getEnumValues(BiomeId).map(bt => {
       const btKey = BiomeId[bt].toLowerCase();
-      const isBaseAnimated = btKey === "end";
+      const isBaseAnimated = btKey === "end" || btKey === "other";
       const baseAKey = `${btKey}_a`;
       const baseBKey = `${btKey}_b`;
       this.loadImage(`${btKey}_bg`, "arenas");
@@ -185,7 +192,7 @@ export class LoadingScene extends SceneBase {
       }
       if (getBiomeHasProps(bt)) {
         for (let p = 1; p <= 3; p++) {
-          const isPropAnimated = p === 3 && ["power_plant", "end"].find(b => b === btKey);
+          const isPropAnimated = p === 3 && ["power_plant", "end", "other"].includes(btKey);
           const propKey = `${btKey}_b_${p}`;
           if (!isPropAnimated) {
             this.loadImage(propKey, "arenas");
@@ -469,8 +476,6 @@ export class LoadingScene extends SceneBase {
 
     this.loadImage("end_m", "cg");
     this.loadImage("end_f", "cg");
-    this.loadImage("end_tutorial_m", "cg");
-    this.loadImage("end_tutorial_f", "cg");
 
     for (let i = 0; i < 10; i++) {
       this.loadAtlas(`pokemon_icons_${i}`, "");
@@ -579,10 +584,10 @@ export class LoadingScene extends SceneBase {
     const midWidth = width / 2;
     const midHeight = height / 2;
 
-    const logo = this.add.image(midWidth, 240, "");
+    // Keep the loading logo proportional and centered in the upper section.
+    const logo = this.add.image(midWidth, height * 0.25, "");
     logo.setVisible(false);
     logo.setOrigin(0.5, 0.5);
-    logo.setScale(4);
 
     const percentText = this.make.text({
       x: midWidth,
@@ -690,12 +695,19 @@ export class LoadingScene extends SceneBase {
             bg.setVisible(true);
           }
           break;
-        case "logo":
+        case "logo": {
           logo.setTexture("logo");
+          // The image starts without a texture, so size it only after it loads.
+          // Use uniform scale to avoid stretching the original logo.
+          const maxLogoWidth = width * 0.56;
+          const maxLogoHeight = height * 0.28;
+          const logoScale = Math.min(maxLogoWidth / logo.width, maxLogoHeight / logo.height);
+          logo.setScale(logoScale);
           if (mobile) {
             logo.setVisible(true);
           }
           break;
+        }
       }
     });
 

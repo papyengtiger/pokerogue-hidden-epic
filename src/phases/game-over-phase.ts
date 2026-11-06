@@ -33,6 +33,73 @@ import { isLocalServerConnected } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
+/**
+ * The Other: +100 candies per member of the final player party.
+ * Receipt stores a fixed target before saving so that a repeated clear,
+ * including retries after a failed save, never adds the same reward twice.
+ */
+async function claimTheOtherClearCandies(): Promise<void> {
+  const scene = globalScene;
+  if (
+    scene.gameMode.modeId !== GameModes.THEOTHER
+    || scene.currentBattle.waveIndex !== 300
+    || scene.theOther300Stage !== 2
+  ) {
+    return;
+  }
+
+  const party = scene.getPlayerParty();
+  const ids = party.map(pokemon => pokemon.id).sort((a, b) => a - b);
+  const key = `theOtherClearCandy:v1:${JSON.stringify([scene.seed, scene.sessionSlotId, ids])}`;
+  type CandyReceipt = { targets: Record<string, number>; done: boolean };
+  let receipt: CandyReceipt | null = null;
+  try {
+    const value = localStorage.getItem(key);
+    if (value) {
+      const parsed = JSON.parse(value) as CandyReceipt;
+      if (parsed && typeof parsed.targets === "object") {
+        receipt = parsed;
+      }
+    }
+  } catch (error) {
+    console.error("[THEOTHER_CANDY_RECEIPT_READ_ERROR]", error);
+    throw error;
+  }
+
+  if (receipt?.done) {
+    return;
+  }
+  if (!receipt) {
+    const amounts: Record<string, number> = {};
+    for (const pokemon of party) {
+      const rootId = pokemon.species.getRootSpeciesId();
+      if (scene.gameData.starterData[rootId]) {
+        amounts[rootId] = (amounts[rootId] ?? 0) + 100;
+      }
+    }
+    const targets: Record<string, number> = {};
+    for (const [id, amount] of Object.entries(amounts)) {
+      targets[id] = (scene.gameData.starterData[Number(id)]?.candyCount ?? 0) + amount;
+    }
+    receipt = { targets, done: false };
+    localStorage.setItem(key, JSON.stringify(receipt));
+  }
+
+  for (const [id, target] of Object.entries(receipt.targets)) {
+    const data = scene.gameData.starterData[Number(id)];
+    if (data) {
+      data.candyCount = Math.max(data.candyCount ?? 0, target);
+    }
+  }
+  const saved = await scene.gameData.saveSystem();
+  if (!saved) {
+    throw new Error("[THEOTHER_CANDY_SAVE_FAILED] Final party candy reward was not saved");
+  }
+  receipt.done = true;
+  localStorage.setItem(key, JSON.stringify(receipt));
+  console.log("[THEOTHER_CLEAR_CANDY_AWARDED]", receipt.targets);
+}
+
 export class GameOverPhase extends BattlePhase {
   public readonly phaseName = "GameOverPhase";
   private isVictory: boolean;
@@ -287,6 +354,23 @@ export class GameOverPhase extends BattlePhase {
               // 해금 처리를 먼저 실행
               if (!isQuestClear && (newClear || isTutorial)) {
                 this.handleUnlocks();
+              }
+
+              // Rayquaza phase 2 victory ONLY. Save candies before clearing the run.
+              if (
+                !isQuestClear
+                && globalScene.gameMode.modeId === GameModes.THEOTHER
+                && globalScene.currentBattle.waveIndex === 300
+                && globalScene.theOther300Stage === 2
+              ) {
+                try {
+                  await claimTheOtherClearCandies();
+                } catch (error) {
+                  console.error("[THEOTHER_CANDY_REWARD_FAILED] Clear finalization postponed", error);
+                  // Do not finalize the run until the candy receipt has been saved.
+                  globalScene.ui.showText("사탕 보상 저장에 실패했습니다. 저장 상태를 확인해 주세요.");
+                  return;
+                }
               }
 
               // 아이템 회수 및 시스템 저장

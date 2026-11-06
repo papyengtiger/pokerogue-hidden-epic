@@ -256,6 +256,8 @@ export class BattleScene extends SceneBase {
    * - false: No hints
    */
   public typeHints = false;
+  /** Selected type effectiveness chart; defaults to the pre-existing Hidden Epic rules. */
+  public typeMatchupVersion: "original" | "hidden_epic" = "hidden_epic";
 
   public disableMenu = false;
 
@@ -438,6 +440,37 @@ export class BattleScene extends SceneBase {
 
   update() {
     this.ui?.update();
+
+    // 디 아더 최종전: 피아나가 퇴장한 뒤 레쿠쟈 1·2페이즈가
+    // 끝날 때까지 OTHER 바이옴의 적 발판을 화면에 유지한다.
+    // 일반 전투나 300층 피아나 트레이너전(stage 0)에는 적용하지 않는다.
+    const keepTheOtherRayquazaPlatform =
+      this.gameMode?.modeId === GameModes.THEOTHER
+      && this.currentBattle?.waveIndex === 300
+      && this.theOther300Stage > 0
+      && this.currentBattle.battleType === BattleType.WILD;
+
+    // 피아나 격파 후 레쿠쟈 최종 격파까지 플레이어 측 OTHER 발판도 유지한다.
+    // 기존 소환 연출에서 밀려난 경우에만 정위치로 복원한다.
+    if (keepTheOtherRayquazaPlatform && this.arenaPlayer) {
+      if (!this.arenaPlayer.visible) {
+        this.arenaPlayer.setVisible(true);
+      }
+      if (this.arenaPlayer.x !== 0) {
+        this.arenaPlayer.setX(0);
+      }
+    }
+
+    if (keepTheOtherRayquazaPlatform && this.arenaEnemy) {
+      if (!this.arenaEnemy.visible) {
+        this.arenaEnemy.setVisible(true);
+      }
+      // 일반 조우 연출 완료 지점: 시작 위치 -280에서 +300 이동한 좌표.
+      // 연속 전투 전환 과정에서 발판이 화면 밖으로 밀리는 현상을 방지한다.
+      if (this.arenaEnemy.x !== 20) {
+        this.arenaEnemy.setX(20);
+      }
+    }
   }
 
   launchBattle() {
@@ -1581,9 +1614,12 @@ export class BattleScene extends SceneBase {
     // 트레이닝 전략 초기화
     // ========================================
     trainerStrategyManager.reset();
+    trainerCardManager.resetRun();
 
-    console.log("[TRAINER_STRATEGY_RESET]", {
+    console.log("[TRAINER_RUN_RESET]", {
       strategy: trainerStrategyManager.currentId,
+      slots: trainerCardManager.getSlotTypes().length,
+      cards: trainerCardManager.exportSaveData().owned.length,
     });
 
     this.gameMode = getGameMode(GameModes.CLASSIC);
@@ -1767,7 +1803,27 @@ export class BattleScene extends SceneBase {
     mysteryEncounterType?: MysteryEncounterType,
   ): Battle {
     const _startingWave = startingWave.toString();
-    const newWaveIndex = waveIndex || (this.currentBattle?.waveIndex || _startingWave - 1) + 1;
+    // 디 아더 최종전은 300층에서 피아나 → 레쿠쟈 1차 → 레쿠쟈 2차로 연속 진행합니다.
+    // NewBattlePhase가 인수 없이 newBattle()을 호출해도 301층으로 넘어가지 않게 합니다.
+    const continueTheOther300 =
+      this.gameMode.modeId === GameModes.THEOTHER && this.currentBattle?.waveIndex === 300 && this.theOther300Stage > 0;
+    const newWaveIndex = continueTheOther300
+      ? 300
+      : (waveIndex ?? (this.currentBattle?.waveIndex ?? Number(_startingWave) - 1) + 1);
+
+    // 디 아더 최종전: 재접속/로드로 300층을 명시적으로 다시 시작하는 경우
+    // 메모리의 stage는 초기값 0이므로 저장된 야생전 설정 대신 피아나 고정전을 재생성한다.
+    // 현재 실행 중인 300층 연속 전투(stage 1/2)는 건드리지 않는다.
+    if (
+      this.gameMode.modeId === GameModes.THEOTHER
+      && newWaveIndex === 300
+      && waveIndex === 300
+      && this.theOther300Stage === 0
+    ) {
+      trainerData = undefined;
+      battleType = BattleType.TRAINER;
+      console.log("[THEOTHER_300_RESTART_FROM_ZINNIA]", { wave: newWaveIndex });
+    }
 
     let newDouble: boolean | undefined;
     let newBattleType: BattleType;
@@ -2798,7 +2854,7 @@ export class BattleScene extends SceneBase {
 
   updateroguePointText(): void {
     const roguePoints = this.gameData?.roguePoints ?? 0;
-    this.roguePointText.setText(`RP: ${roguePoints}`);
+    this.roguePointText.setText(`RP: ${Math.trunc(Number(roguePoints) || 0).toLocaleString("en-US")}`);
     this.roguePointText.setVisible(true);
   }
 

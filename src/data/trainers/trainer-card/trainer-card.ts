@@ -72,6 +72,9 @@ export const allTrainerCards: readonly TrainerCard[] = [
   ]),
 
   // Epic
+  new TrainerCard(TrainerCardId.CAPTURE_TIME, TrainerCardCategory.EPIC, "trainer_epic_card", "captureTime", [
+    new CardMultiplierAttr("BALL_REWARD_WEIGHT", 1.5),
+  ]),
   new TrainerCard(TrainerCardId.ONE_MORE_ONE, TrainerCardCategory.EPIC, "trainer_epic_card", "oneMoreOne", [
     new CardMultiplierAttr("EXTRA_ITEM_CHOICE", 1),
   ]),

@@ -11,6 +11,7 @@ export type CardNumericKind =
   | "RP_GAIN"
   | "EV_GAIN"
   | "CATCH_RATE"
+  | "BALL_REWARD_WEIGHT"
   | "INCOMING_DAMAGE"
   | "EXTRA_ITEM_CHOICE"
   | "SHOP_PRICE"

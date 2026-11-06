@@ -91,6 +91,9 @@ export class EncounterPhase extends BattlePhase {
 
   private monsterHouseIntroVisuals: MonsterHouseIntroVisuals | null = null;
 
+  /** 현재 조우에서 게이트 제안은 한 번만 처리합니다. */
+  private mysteryGateDecisionResolved = false;
+
   /**
    * biomePokemonPools의 엔트리 안에 특정 speciesId가 포함되어 있는지 재귀적으로 검사합니다.
    * 진화 레벨별 오브젝트/배열 구조도 함께 처리합니다.
@@ -647,6 +650,53 @@ export class EncounterPhase extends BattlePhase {
       return;
     }
 
+    // 미스터리게이트: 실제 적/세이브 초기화 전에 입장 여부를 선택합니다.
+    // 거절해도 동일 웨이브에서 재추첨하거나 재질문하지 않습니다.
+    const gateBattle = globalScene.currentBattle;
+    if (
+      !this.mysteryGateDecisionResolved
+      && !this.loaded
+      && gateBattle.battleType === BattleType.WILD
+      && !gateBattle.isBattleMysteryEncounter()
+      && !mysteryTimeManager.isActive()
+      && !monsterHouseManager.isActive()
+      && !kecleonShopManager.isTheftBattleActive()
+      && mysteryTimeManager.shouldSpawn()
+    ) {
+      this.mysteryGateDecisionResolved = true;
+      const resume = (enter: boolean) => {
+        if (enter) {
+          // 기존 등급/불길한 개체/보스/저장 로직을 그대로 사용합니다.
+          // 5웨이브를 넘지 않으며 보호된 고정 전투 앞에서는 더 일찍 끝납니다.
+          mysteryTimeManager.start(gateBattle.waveIndex, undefined, 5);
+          console.log("[MYSTERY_GATE_ENTER]", {
+            startWave: mysteryTimeManager.getStartWave(),
+            endWave: mysteryTimeManager.getEndWave(),
+          });
+        } else {
+          console.log("[MYSTERY_GATE_DECLINED]", { wave: gateBattle.waveIndex });
+        }
+        this.start();
+      };
+
+      void globalScene.ui.setMode(UiMode.MESSAGE).then(() => {
+        globalScene.ui.showText("미스터리게이트를 발견했다! 넘어가볼까?", null, () => {
+          void globalScene.ui
+            .setModeWithoutClear(
+              UiMode.CONFIRM,
+              () => resume(true),
+              () => resume(false),
+              null,
+              null,
+              null,
+              300,
+            )
+            .then(() => globalScene.ui.getHandler().setCursor(1));
+        });
+      });
+      return;
+    }
+
     super.start();
 
     globalScene.updateGameInfo();
@@ -671,8 +721,11 @@ export class EncounterPhase extends BattlePhase {
 
     globalScene.eventTarget.dispatchEvent(new EncounterPhaseEvent());
 
-    // Failsafe if players somehow skip floor 200 in classic mode
-    if (globalScene.gameMode.isClassic && globalScene.currentBattle.waveIndex > 200) {
+    // HARD 300층 확장 도중에는 정상 진행하도록 허용합니다.
+    if (
+      globalScene.gameMode.isClassic
+      && globalScene.currentBattle.waveIndex > globalScene.gameMode.getClassicFinalWave()
+    ) {
       globalScene.phaseManager.unshiftNew("GameOverPhase");
     }
 
@@ -830,27 +883,7 @@ export class EncounterPhase extends BattlePhase {
       }
     }
 
-    // ========================================
-    // 미스터리타임 발생 판정
-    // ========================================
-    if (
-      !this.loaded
-      && battle.battleType === BattleType.WILD
-      && !battle.isBattleMysteryEncounter()
-      && !mysteryTimeManager.isActive()
-      && !monsterHouseManager.isActive()
-      && !kecleonShopManager.isTheftBattleActive()
-      && mysteryTimeManager.shouldSpawn()
-    ) {
-      mysteryTimeManager.start(battle.waveIndex);
-
-      console.log("[MYSTERY_TIME_TRIGGERED]", {
-        wave: battle.waveIndex,
-        startWave: mysteryTimeManager.getStartWave(),
-        endWave: mysteryTimeManager.getEndWave(),
-        rank: mysteryTimeManager.getRank(),
-      });
-    }
+    // 미스터리타임 발생 판정은 start()의 게이트 입장 확인 단계에서 처리합니다.
 
     // 트레이너전에서는 몬스터소굴 상태가 절대 유지되지 않도록 한다.
     if (battle.battleType === BattleType.TRAINER && monsterHouseManager.isActive()) {
@@ -987,12 +1020,39 @@ export class EncounterPhase extends BattlePhase {
       }
     }
 
+    // 구버전/불완전한 세션에서 야생 포켓몬 파티가 비어 있는 경우만 복구합니다.
+    // 폼 변경이나 일반 신규 조우는 이 경로를 타지 않습니다.
+    const restoreMissingWildEnemy =
+      this.loaded
+      && battle.battleType === BattleType.WILD
+      && !battle.isBattleMysteryEncounter()
+      && !monsterHouseManager.isActive()
+      && !mysteryTimeManager.isMysteryTimeWave(battle.waveIndex)
+      && !kecleonShopManager.isTheftBattleActive()
+      && battle.enemyParty.length === 0
+      && encounterEnemyLevels.length > 0;
+
+    if (restoreMissingWildEnemy) {
+      console.warn("[ENCOUNTER_RESTORE_MISSING_WILD_ENEMY]", {
+        wave: battle.waveIndex,
+        enemyLevels: encounterEnemyLevels,
+      });
+    } else if (this.loaded && battle.battleType === BattleType.WILD && battle.enemyParty.length === 0) {
+      console.error("[ENCOUNTER_LOADED_WILD_WITHOUT_ENEMY_LEVELS]", {
+        wave: battle.waveIndex,
+        enemyLevels: encounterEnemyLevels,
+        mysteryEncounter: battle.isBattleMysteryEncounter(),
+        monsterHouse: monsterHouseManager.isActive(),
+        mysteryTime: mysteryTimeManager.isMysteryTimeWave(battle.waveIndex),
+      });
+    }
+
     encounterEnemyLevels.every((level, e) => {
       if (battle.isBattleMysteryEncounter()) {
         return false;
       }
 
-      if (!this.loaded) {
+      if (!this.loaded || restoreMissingWildEnemy) {
         const isMysteryTime = mysteryTimeManager.isMysteryTimeWave(battle.waveIndex);
 
         const isMysteryTimeBoss = isMysteryTime && mysteryTimeManager.shouldSpawnBoss(battle.waveIndex);
@@ -3355,7 +3415,9 @@ export class EncounterPhase extends BattlePhase {
       ) {
         const minPartySize = globalScene.currentBattle.double ? 2 : 1;
 
-        if (availablePartyMembers.length > minPartySize) {
+        // 적이 전혀 없는 불완전한 세션에서 교체창만 뜨는 현상을 막습니다.
+        // 정상적인 야생전의 교체 선택 기능은 그대로 유지됩니다.
+        if (availablePartyMembers.length > minPartySize && globalScene.currentBattle.enemyParty.length > 0) {
           globalScene.phaseManager.pushNew("CheckSwitchPhase", 0, globalScene.currentBattle.double);
 
           if (globalScene.currentBattle.double) {

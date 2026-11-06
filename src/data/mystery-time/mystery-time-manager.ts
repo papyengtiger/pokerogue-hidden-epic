@@ -1,6 +1,6 @@
 import { globalScene } from "#app/global-scene";
-import { GameModes } from "#enums/game-modes";
 import { ClassicFixedBossWaves } from "#enums/fixed-boss-waves";
+import { GameModes } from "#enums/game-modes";
 import { MarkId } from "#enums/mark-id";
 
 /**
@@ -198,7 +198,11 @@ export class MysteryTimeManager {
   /**
    * 현재 층에서 미스터리타임을 시작한다.
    */
-  public start(waveIndex = globalScene.currentBattle.waveIndex, rank: MysteryTimeRank = MysteryTimeRank.RANK_1): void {
+  public start(
+    waveIndex = globalScene.currentBattle.waveIndex,
+    rank: MysteryTimeRank = MysteryTimeRank.RANK_1,
+    gateWaves?: number,
+  ): void {
     const minimumSpawnWave = this.getMinimumSpawnWave();
 
     if (globalScene.gameMode.isClassic && waveIndex >= 180) {
@@ -218,7 +222,10 @@ export class MysteryTimeManager {
       return;
     }
 
-    const endWave = this.calculateEndWave(waveIndex);
+    const endWave = Math.min(
+      this.calculateEndWave(waveIndex),
+      gateWaves == null ? Number.POSITIVE_INFINITY : waveIndex + Math.max(2, Math.floor(gateWaves)) - 1,
+    );
     // 보스층까지 최소 두 층이 필요하다. 중요 전투에 걸치는 짧은 구간은 시작하지 않는다.
     if (endWave <= waveIndex) {
       console.warn("[MYSTERY_TIME_START_BLOCKED_PROTECTED_WAVE]", { wave: waveIndex, endWave });
@@ -575,9 +582,13 @@ export class MysteryTimeManager {
     this.rank = data.rank ?? MysteryTimeRank.RANK_1;
 
     this.ominousSpawnWave = data.ominousSpawnWave ?? null;
-    if (this.active && this.startWave !== null && this.endWave !== null
+    if (
+      this.active
+      && this.startWave !== null
+      && this.endWave !== null
       && this.ominousSpawnWave !== null
-      && (this.ominousSpawnWave < this.startWave || this.ominousSpawnWave >= this.endWave)) {
+      && (this.ominousSpawnWave < this.startWave || this.ominousSpawnWave >= this.endWave)
+    ) {
       this.ominousSpawnWave = this.startWave;
     }
 

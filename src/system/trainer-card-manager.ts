@@ -14,13 +14,31 @@ export class TrainerCardManager {
   private owned = new Set<TrainerCardId>();
   private slotTypes: TrainerCardCategory[] = [];
   private equipped: (TrainerCardId | null)[] = [];
+  /** Saved equipment may arrive before strategy slots are initialized. */
+  private pendingEquipped: (TrainerCardId | null)[] | null = null;
 
   configureSlots(types: readonly TrainerCardCategory[]): void {
+    const previous = this.pendingEquipped ?? this.equipped;
     this.slotTypes = [...types];
-    this.equipped = types.map((type, index) => {
-      const id = this.equipped[index];
-      const card = id && trainerCardById.get(id);
-      return card && (type === TrainerCardCategory.EPIC || card.category === type) ? id : null;
+    this.equipped = this.validateEquipped(previous);
+    if (types.length > 0) {
+      this.pendingEquipped = null;
+    }
+  }
+
+  private validateEquipped(saved: readonly (TrainerCardId | null)[]): (TrainerCardId | null)[] {
+    const seen = new Set<TrainerCardId>();
+    return this.slotTypes.map((slot, index) => {
+      const id = saved[index];
+      if (!id || seen.has(id) || !this.owned.has(id)) {
+        return null;
+      }
+      const card = trainerCardById.get(id);
+      if (!card || (slot !== TrainerCardCategory.EPIC && slot !== card.category)) {
+        return null;
+      }
+      seen.add(id);
+      return id;
     });
   }
 
@@ -37,15 +55,20 @@ export class TrainerCardManager {
     this.configureSlots(types);
   }
 
-  /** Start a fresh run. Do not call this when resuming a saved run. */
+  /** Starting a NEW run erases all run-owned cards and slot equipment. */
   resetRun(): void {
     this.owned.clear();
+    this.pendingEquipped = null;
+    this.syncSlotsWithStrategy();
     this.equipped = this.slotTypes.map(() => null);
   }
 
   grant(id: TrainerCardId): boolean {
     if (!trainerCardById.has(id)) {
       return false;
+    }
+    if (this.owned.has(id)) {
+      return true;
     }
     this.owned.add(id);
     return true;
@@ -106,25 +129,14 @@ export class TrainerCardManager {
   }
 
   exportSaveData(): TrainerCardSaveData {
-    return { owned: [...this.owned], equipped: [...this.equipped] };
+    return { owned: [...this.owned], equipped: [...(this.pendingEquipped ?? this.equipped)] };
   }
 
-  importSaveData(data?: Partial<TrainerCardSaveData>): void {
-    this.owned = new Set((data?.owned ?? []).filter(id => trainerCardById.has(id)));
-    this.equipped = this.slotTypes.map((slot, i) => {
-      const id = data?.equipped?.[i];
-      const card = id && trainerCardById.get(id);
-      if (!id || !this.owned.has(id) || !card) {
-        return null;
-      }
-      if (slot !== TrainerCardCategory.EPIC && slot !== card.category) {
-        return null;
-      }
-      if (data?.equipped?.indexOf(id) !== i) {
-        return null;
-      }
-      return id;
-    });
+  /** Replace in-memory card state with the selected session's state. */
+  importSaveData(data?: Partial<TrainerCardSaveData> | null): void {
+    this.owned = new Set((Array.isArray(data?.owned) ? data.owned : []).filter(id => trainerCardById.has(id)));
+    this.pendingEquipped = Array.isArray(data?.equipped) ? [...data.equipped] : [];
+    this.syncSlotsWithStrategy();
   }
 }
 
