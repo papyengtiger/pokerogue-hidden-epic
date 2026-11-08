@@ -130,4 +130,67 @@ export const coupons: Record<string, CouponData> = {
       { type: "STORAGE_ITEM", itemId: "MARK_CHARM", amount: 3 },
     ],
   },
+
+  /** 2026 빼빼로데이 기념 */
+  PEPERO2026: {
+    code: "PEPERO2026",
+    name: "2026 빼빼로데이 기념 쿠폰",
+    startAt: "2026-11-11T00:00:00+09:00",
+    endAt: "2026-11-18T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 3000 },
+      { type: "STORAGE_ITEM", itemId: "GOLDEN_EGG", amount: 3 },
+    ],
+  },
+
+  /** 2026 대학수학능력시험 응원 */
+  CSAT2026: {
+    code: "CSAT2026",
+    name: "2026 수능 응원 쿠폰",
+    startAt: "2026-11-12T00:00:00+09:00",
+    endAt: "2026-11-22T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 5000 },
+      { type: "STORAGE_ITEM", itemId: "LUCKY_EGG", amount: 5 },
+      { type: "STORAGE_ITEM", itemId: "SHINY_CHARM", amount: 2 },
+    ],
+  },
+
+  /** 디 아더 패치 기념 (실제 패치 배포일에 맞춰 startAt 조정 가능) */
+  THEOTHER2026: {
+    code: "THEOTHER2026",
+    name: "히든 에픽 디 아더 패치 기념",
+    startAt: "2026-11-07T00:00:00+09:00",
+    endAt: "2026-12-31T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 10000 },
+      { type: "BANK_GOLD", amount: 20000 },
+      { type: "STORAGE_ITEM", itemId: "GOLDEN_EGG", amount: 5 },
+    ],
+  },
+
+  /** 휴일 없는 11월 응원 */
+  KEEPGOING2026: {
+    code: "KEEPGOING2026",
+    name: "휴일 없는 11월, 함께 힘내요!",
+    startAt: "2026-11-07T00:00:00+09:00",
+    endAt: "2026-11-30T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 5000 },
+      { type: "BANK_GOLD", amount: 10000 },
+    ],
+  },
+
+  /** 2026 추수감사절 기념 */
+  THANKSGIVING2026: {
+    code: "THANKSGIVING2026",
+    name: "2026 추수감사절 기념 쿠폰",
+    startAt: "2026-11-26T00:00:00+09:00",
+    endAt: "2026-12-03T23:59:59+09:00",
+    rewards: [
+      { type: "ROGUE_POINTS", amount: 5000 },
+      { type: "STORAGE_ITEM", itemId: "GOLDEN_EGG", amount: 5 },
+      { type: "STORAGE_ITEM", itemId: "MARK_CHARM", amount: 2 },
+    ],
+  },
 };

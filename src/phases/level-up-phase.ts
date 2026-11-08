@@ -1,4 +1,6 @@
 import { globalScene } from "#app/global-scene";
+import { trainerCardManager } from "#system/trainer-card-manager";
+import { TrainerCardId } from "#enums/trainer-card-id";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { ExpNotification } from "#enums/exp-notification";
 import type { PlayerPokemon } from "#field/pokemon";
@@ -14,154 +16,93 @@ import {
   validateShedinjaEvo,
   levelUpAndEvolveTotallyRandom,
 } from "#balance/pokemon-evolutions";
-import { LearnMoveType } from "#enums/learn-move-type";
+import { allMoves } from "#data/data-lists";
 
 export class LevelUpPhase extends PlayerPartyMemberPokemonPhase {
   public readonly phaseName = "LevelUpPhase";
-
   protected lastLevel: number;
   protected level: number;
+  protected pokemon: PlayerPokemon = this.getPlayerPokemon();
 
-  private companion: boolean;
-  protected pokemon: PlayerPokemon;
-
-  constructor(
-    partyMemberIndex: number,
-    lastLevel: number,
-    level: number,
-    companion = false,
-  ) {
+  constructor(partyMemberIndex: number, lastLevel: number, level: number) {
     super(partyMemberIndex);
 
     this.lastLevel = lastLevel;
     this.level = level;
-    this.companion = companion;
-
-    const pokemon = companion
-      ? globalScene.getCompanionParty()[partyMemberIndex]
-      : this.getPlayerPokemon();
-
-    if (!pokemon) {
-      throw new Error(
-        `[LEVEL_UP_NO_POKEMON] index=${partyMemberIndex} companion=${companion}`,
-      );
-    }
-
-    this.pokemon = pokemon;
   }
 
   public override start() {
     super.start();
 
     if (this.level > globalScene.gameData.gameStats.highestLevel) {
-      globalScene.gameData.gameStats.highestLevel =
-        this.level;
+      globalScene.gameData.gameStats.highestLevel = this.level;
     }
 
-    globalScene.validateAchvs(
-      LevelAchv,
-      new NumberHolder(this.level),
-    );
+    globalScene.validateAchvs(LevelAchv, new NumberHolder(this.level));
 
-    const prevStats =
-      this.pokemon.stats.slice(0);
+    const prevStats = this.pokemon.stats.slice(0);
+this.pokemon.calculateStats();
+// 성장의 기쁨: 실제 레벨 상승 횟수만큼 회복하며, 기절 상태는 부활시키지 않는다.
+if (trainerCardManager.isEquipped(TrainerCardId.JOY_OF_GROWTH) && !this.pokemon.isFainted()) {
+  const gainedLevels = Math.max(0, this.level - this.lastLevel);
+  const maxHp = this.pokemon.getMaxHp();
+  const healAmount = Math.floor(maxHp * 0.1 * gainedLevels);
+  if (healAmount > 0) {
+    const beforeHp = this.pokemon.hp;
+    this.pokemon.hp = Math.min(maxHp, this.pokemon.hp + healAmount);
+    console.log("[TRAINER_CARD_LEVEL_HEAL]", { pokemon: this.pokemon.name, gainedLevels, beforeHp, afterHp: this.pokemon.hp });
+  }
+}
+this.pokemon.updateInfo();
 
-    this.pokemon.calculateStats();
-    this.pokemon.updateInfo();
+// ✅ 레벨업 로그포인트
+if (this.pokemon.isPlayer()) {
+  globalScene.gameData.addRoguePoints(1);
+  globalScene.updateroguePointText();
+}
 
-    // 동료도 레벨업 자체는 정상 처리
-    if (this.pokemon.isPlayer()) {
-      globalScene.gameData.addRoguePoints(1);
-      globalScene.updateroguePointText();
-    }
-
-    // 동료는 플레이어용 스탯 팝업을 띄우지 않음
-    if (this.companion) {
-      this.end();
-      return;
-    }
-
-    if (
-      globalScene.expParty
-      === ExpNotification.DEFAULT
-    ) {
-      globalScene.playSound(
-        "level_up_fanfare",
-      );
-
+if (globalScene.expParty === ExpNotification.DEFAULT) {
+      globalScene.playSound("level_up_fanfare");
       globalScene.ui.showText(
         i18next.t("battle:levelUp", {
-          pokemonName:
-            getPokemonNameWithAffix(
-              this.pokemon,
-            ),
+          pokemonName: getPokemonNameWithAffix(this.pokemon),
           level: this.level,
         }),
         null,
         () =>
           globalScene.ui
             .getMessageHandler()
-            .promptLevelUpStats(
-              this.partyMemberIndex,
-              prevStats,
-              false,
-            )
+            .promptLevelUpStats(this.partyMemberIndex, prevStats, false)
             .then(() => this.end()),
         null,
         true,
       );
-    } else if (
-      globalScene.expParty
-      === ExpNotification.SKIP
-    ) {
+    } else if (globalScene.expParty === ExpNotification.SKIP) {
       this.end();
     } else {
+      // we still want to display the stats if activated
       globalScene.ui
         .getMessageHandler()
-        .promptLevelUpStats(
-          this.partyMemberIndex,
-          prevStats,
-          false,
-        )
+        .promptLevelUpStats(this.partyMemberIndex, prevStats, false)
         .then(() => this.end());
     }
   }
 
   public override end() {
     if (this.lastLevel < 100) {
-      const levelMoves =
-        this.pokemon.getLevelMoves(
-          this.lastLevel + 1,
-        );
-
+      // this feels like an unnecessary optimization
+      const levelMoves = this.getPokemon().getLevelMoves(this.lastLevel + 1);
       for (const lm of levelMoves) {
-  globalScene.phaseManager.unshiftNew(
-    "LearnMovePhase",
-    this.partyMemberIndex,
-    lm[1],
-    LearnMoveType.LEARN_MOVE,
-    -1,
-    this.companion,
-  );
-}
-    }
-
-    if (!this.pokemon.pauseEvolutions) {
-      const evolution =
-        this.pokemon.getEvolution();
-
-      if (evolution) {
-        this.pokemon.breakIllusion();
-
-        globalScene.phaseManager.unshiftNew(
-          "EvolutionPhase",
-          this.pokemon,
-          evolution,
-          this.lastLevel,
-        );
+        globalScene.phaseManager.unshiftNew("LearnMovePhase", this.partyMemberIndex, lm[1]);
       }
     }
-
+    if (!this.pokemon.pauseEvolutions) {
+      const evolution = this.pokemon.getEvolution();
+      if (evolution) {
+        this.pokemon.breakIllusion();
+        globalScene.phaseManager.unshiftNew("EvolutionPhase", this.pokemon, evolution, this.lastLevel);
+      }
+    }
     return super.end();
   }
 }

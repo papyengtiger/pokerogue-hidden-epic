@@ -373,22 +373,52 @@ export class GameOverPhase extends BattlePhase {
                 }
               }
 
-              // 아이템 회수 및 시스템 저장
+              // 종료 전 시스템 데이터 스냅샷을 남기고, 서버 저장 실패 시 종료하지 않는다.
+              // 주의: saveSystem()은 로컬 캐시를 먼저 갱신하므로 원본을 별도로 보존한다.
               if (globalScene.gameMode.modeId !== GameModes.PRACTICE) {
-                globalScene.gameData.depositRemainingRunItemsToStorage(
+                const data = globalScene.gameData;
+                const beforeStorage = data.getStorageItems().map(item => ({ ...item }));
+                const beforeRunStorage = data.getRunStorageItems().map(item => ({ ...item }));
+                console.log("[GAME_OVER_STORAGE_BEFORE]", {
+                  roguePoints: data.roguePoints,
+                  bankRoguePoints: data.bankRoguePoints,
+                  storageCount: beforeStorage.length,
+                  runStorageCount: beforeRunStorage.length,
+                  storageItems: beforeStorage,
+                  runStorageItems: beforeRunStorage,
+                });
+
+                data.depositRemainingRunItemsToStorage(
                   this.isVictory && !isQuestClear && globalScene.gameMode.difficulty === GameDifficulty.HARD,
                 );
+                console.log("[GAME_OVER_STORAGE_AFTER_DEPOSIT]", {
+                  roguePoints: data.roguePoints,
+                  bankRoguePoints: data.bankRoguePoints,
+                  storageCount: data.getStorageItems().length,
+                  runStorageCount: data.getRunStorageItems().length,
+                });
 
+                let saved = false;
                 try {
-                  const saved = await globalScene.gameData.saveSystem();
-
-                  if (!saved) {
-                    console.error("[GAME_OVER] 시스템 저장 실패");
-                  } else {
-                    console.log("[GAME_OVER] 시스템 저장 완료");
-                  }
+                  saved = await data.saveSystem();
                 } catch (error) {
-                  console.error("[GAME_OVER] 시스템 저장 오류", error);
+                  console.error("[GAME_OVER_SYSTEM_SAVE_EXCEPTION]", error);
+                }
+                console.log("[GAME_OVER_SYSTEM_SAVE_RESULT]", {
+                  saved,
+                  roguePoints: data.roguePoints,
+                  storageCount: data.getStorageItems().length,
+                });
+                if (!saved) {
+                  // 메모리에서 원래 상태를 유지해 재진입 시 회수 중복을 막는다.
+                  // 저장 실패 후 자동 종료하면 미저장 보상이 사라질 위험이 있다.
+                  data.storageItems = beforeStorage;
+                  data.runStorageItems = beforeRunStorage;
+                  console.error("[GAME_OVER_SAVE_BLOCKED] 시스템 저장 실패로 종료를 중단했습니다.");
+                  globalScene.ui.fadeIn(250).then(() => {
+                    globalScene.ui.showText("시스템 저장에 실패하여 종료를 중단했습니다. 새로고침하지 말고 관리자에게 알려 주세요.");
+                  });
+                  return;
                 }
               }
 

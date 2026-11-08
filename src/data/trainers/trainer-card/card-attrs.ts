@@ -16,10 +16,15 @@ export type CardNumericKind =
   | "EXTRA_ITEM_CHOICE"
   | "SHOP_PRICE"
   | "HEALING_ITEM_PRICE"
-  | "REROLL_PRICE";
+  | "REROLL_PRICE"
+  | "CRIT_STAGE_BONUS"
+  | "LOW_HP_ATTACK_DAMAGE"
+  | "STATUS_DAMAGE_REDUCTION"
+  | "SWITCH_IN_HEAL_FRACTION"
+  | "ITEM_TIER_UPGRADE_CHANCE";
 
 export abstract class CardAttr {
-  abstract readonly kind: CardNumericKind | "HARMONY";
+  abstract readonly kind: CardNumericKind | "HARMONY" | "LEVEL_UP_HEAL" | "MARK_EXP_BONUS";
 }
 
 export class CardMultiplierAttr extends CardAttr {
@@ -40,4 +45,16 @@ export class HarmonyCardAttr extends CardAttr {
 
 export function amplifyCardMultiplier(multiplier: number, harmonyEquipped: boolean): number {
   return harmonyEquipped ? 1 + (multiplier - 1) * 1.2 : multiplier;
+}
+
+
+/** Restores 10% of maximum HP per level gained (living Pokémon only). */
+export class LevelUpHealCardAttr extends CardAttr {
+  readonly kind = "LEVEL_UP_HEAL" as const;
+  constructor(public readonly healFraction = 0.1) { super(); }
+}
+
+/** EXP increase by the highest grade of a Pokémon's own mark. */
+export class MarkExpCardAttr extends CardAttr {
+  readonly kind = "MARK_EXP_BONUS" as const;
 }

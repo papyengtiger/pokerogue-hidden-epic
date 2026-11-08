@@ -12,6 +12,7 @@ import { Nature } from "#enums/nature";
 import { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
+import { StatusEffect } from "#enums/status-effect";
 import { TrainerSlot } from "#enums/trainer-slot";
 import { EnemyPokemon, type MysteryMonster, Pokemon } from "#field/pokemon";
 import { PokemonMove } from "#moves/pokemon-move";
@@ -272,7 +273,18 @@ this.shiny = source.shiny;
     if (!this.player) {
       const battleStarted = globalScene.currentBattle?.started;
       if (!battleStarted) {
+        // A saved enemy can have full HP restored while retaining the FAINT status.
+        // Clear only that contradictory status; preserve other status conditions.
+        const hadFaintStatus = ret.status?.effect === StatusEffect.FAINT;
         ret.hp = ret.getMaxHp();
+        if (hadFaintStatus) {
+          ret.status = null;
+          console.warn("[ENEMY_PREBATTLE_FAINT_STATUS_CLEARED]", {
+            pokemon: ret.name,
+            hp: ret.hp,
+            wave: globalScene.currentBattle?.waveIndex,
+          });
+        }
         ret.updateInfo?.(true);
       }
     }

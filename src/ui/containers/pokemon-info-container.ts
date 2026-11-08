@@ -1,6 +1,9 @@
 import { globalScene } from "#app/global-scene";
 import { Gender, getGenderColor, getGenderSymbol } from "#data/gender";
 import { getNatureName } from "#data/nature";
+import { markData } from "#data/mark";
+import { MarkId } from "#enums/mark-id";
+import { MarkTier } from "#enums/mark-tier";
 import { DexAttr } from "#enums/dex-attr";
 import { PokemonType } from "#enums/pokemon-type";
 import { TextStyle } from "#enums/text-style";
@@ -52,6 +55,7 @@ export class PokemonInfoContainer extends Phaser.GameObjects.Container {
   private pokemonNatureLabelText: Phaser.GameObjects.Text;
   private pokemonNatureText: BBCodeText;
   private pokemonShinyIcon: Phaser.GameObjects.Image;
+  private pokemonMarkIcon: Phaser.GameObjects.Image;
   private pokemonShinyNewIcon: Phaser.GameObjects.Text;
   private pokemonFusionShinyIcon: Phaser.GameObjects.Image;
   private pokemonMovesContainer: Phaser.GameObjects.Container;
@@ -224,6 +228,14 @@ export class PokemonInfoContainer extends Phaser.GameObjects.Container {
     this.pokemonShinyIcon.setName("img-pkmn-shiny-icon");
     this.add(this.pokemonShinyIcon);
 
+    this.pokemonMarkIcon = globalScene.add.image(-25, 48.5, "icon_mark_common");
+    this.pokemonMarkIcon.setOrigin(0, 0);
+    this.pokemonMarkIcon.setScale(0.75);
+    this.pokemonMarkIcon.setName("img-pkmn-mark-tier-icon");
+    this.pokemonMarkIcon.setVisible(false);
+    this.pokemonMarkIcon.setInteractive();
+    this.add(this.pokemonMarkIcon);
+
     this.pokemonShinyNewIcon = addTextObject(
       this.pokemonShinyIcon.x + 12,
       this.pokemonShinyIcon.y,
@@ -347,6 +359,31 @@ export class PokemonInfoContainer extends Phaser.GameObjects.Container {
         this.pokemonNatureLabelText.setShadowColor(getTextColor(TextStyle.WINDOW, true));
       }
 
+      // Show the hatched Pokémon's mark tier using the same icons as battle and starter selection.
+      const mark = pokemon.mark ?? MarkId.NONE;
+      const markInfo = markData[mark];
+      const markTextures: Partial<Record<MarkTier, string>> = {
+        [MarkTier.COMMON]: "icon_mark_common",
+        [MarkTier.RARE]: "icon_mark_super",
+        [MarkTier.ROGUE]: "icon_mark_rogue",
+        [MarkTier.EPIC]: "icon_mark_ultra",
+        [MarkTier.LEGENDARY]: "icon_mark_master",
+        [MarkTier.MYSTERY]: "icon_mark_master",
+        [MarkTier.SPECIAL]: "icon_mark_master",
+      };
+      this.pokemonMarkIcon.off("pointerover");
+      this.pokemonMarkIcon.off("pointerout");
+      if (mark !== MarkId.NONE && markInfo) {
+        this.pokemonMarkIcon.setTexture(markTextures[markInfo.tier] ?? "icon_mark_common");
+        this.pokemonMarkIcon.setVisible(true);
+        this.pokemonMarkIcon.on("pointerover", () =>
+          globalScene.ui.showTooltip("", `${markInfo.name} (${MarkTier[markInfo.tier]})`, true),
+        );
+        this.pokemonMarkIcon.on("pointerout", () => globalScene.ui.hideTooltip());
+      } else {
+        this.pokemonMarkIcon.setVisible(false);
+      }
+
       const isFusion = pokemon.isFusion();
       const doubleShiny = isFusion && pokemon.shiny && pokemon.fusionShiny;
       const baseVariant = !doubleShiny ? pokemon.getVariant() : pokemon.variant;
@@ -454,6 +491,7 @@ export class PokemonInfoContainer extends Phaser.GameObjects.Container {
     this.pokemonGenderText.setPosition(89, -2);
     this.pokemonGenderNewText.setPosition(79, -2);
     this.pokemonShinyIcon.setPosition(82, 87);
+    this.pokemonMarkIcon.setPosition(99, 87);
     this.pokemonShinyNewIcon.setPosition(72, 87);
 
     this.pokemonFormLabelText.setPosition(infoContainerLabelXPos, 153);
@@ -514,6 +552,8 @@ export class PokemonInfoContainer extends Phaser.GameObjects.Container {
           this.setVisible(false);
           this.pokemonShinyIcon.off("pointerover");
           this.pokemonShinyIcon.off("pointerout");
+          this.pokemonMarkIcon.off("pointerover");
+          this.pokemonMarkIcon.off("pointerout");
           globalScene.ui.hideTooltip();
           globalScene.showEnemyModifierBar();
           resolve();

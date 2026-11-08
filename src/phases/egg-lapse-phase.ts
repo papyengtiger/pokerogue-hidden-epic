@@ -39,8 +39,10 @@ export class EggLapsePhase extends Phase {
   // 1) 기본치 세팅 + "한 번만" 속도업 초기화
   globalScene.gameData.eggs.forEach(egg => {
     // 기본치 없으면 티어 기준으로 세팅
+    // 마나피알은 고유 알 외형/종족 판정을 유지하되 부화 시간은 에픽 기준으로 계산합니다.
+    const hatchTier = egg.isManaphyEgg() ? EggTier.EPIC : egg.tier;
     if (egg.originalHatchWaves === undefined) {
-      switch (egg.tier) {
+      switch (hatchTier) {
         case EggTier.COMMON:    egg.originalHatchWaves = 10; break;
         case EggTier.RARE:      egg.originalHatchWaves = 25; break;
         case EggTier.EPIC:      egg.originalHatchWaves = 50; break;

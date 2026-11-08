@@ -22,6 +22,7 @@ import { GrayscalePostFX } from "#app/pipelines/grayscale";
 import { InvertPostFX } from "#app/pipelines/invert";
 import { SpritePipeline } from "#app/pipelines/sprite";
 import { SceneBase } from "#app/scene-base";
+import { updateTheOtherDiagnostics } from "#app/the-other-diagnostics";
 import { startingWave } from "#app/starting-wave";
 import { TimedEventManager } from "#app/timed-event-manager";
 import { UiInputs } from "#app/ui-inputs";
@@ -110,6 +111,8 @@ import {
   getLuckString,
   getLuckTextTint,
   getPartyLuckValue,
+  getPartyMarkLuckValue,
+  getMarkLuckDisplayValue,
   type ModifierType,
   PokemonHeldItemModifierType,
 } from "#modifiers/modifier-type";
@@ -306,6 +309,8 @@ export class BattleScene extends SceneBase {
   private roguePointText: Phaser.GameObjects.Text;
   private luckLabelText: Phaser.GameObjects.Text;
   private luckText: Phaser.GameObjects.Text;
+  private markLuckText: Phaser.GameObjects.Text;
+  private markLuckLabelText: Phaser.GameObjects.Text;
   private modifierBar: ModifierBar;
   private enemyModifierBar: ModifierBar;
   public arenaFlyout: ArenaFlyout;
@@ -440,6 +445,7 @@ export class BattleScene extends SceneBase {
 
   update() {
     this.ui?.update();
+    updateTheOtherDiagnostics(this);
 
     // 디 아더 최종전: 피아나가 퇴장한 뒤 레쿠쟈 1·2페이즈가
     // 끝날 때까지 OTHER 바이옴의 적 발판을 화면에 유지한다.
@@ -625,6 +631,18 @@ export class BattleScene extends SceneBase {
     this.luckLabelText.setOrigin(1, 0.5);
     this.luckLabelText.setVisible(false);
     this.fieldUI.add(this.luckLabelText);
+
+    this.markLuckText = addTextObject(this.scaledCanvas.width - 2, 0, "", TextStyle.PARTY, { fontSize: "54px" });
+    this.markLuckText.setName("text-mark-luck");
+    this.markLuckText.setOrigin(1, 0.5);
+    this.markLuckText.setVisible(false);
+    this.fieldUI.add(this.markLuckText);
+
+    this.markLuckLabelText = addTextObject(this.scaledCanvas.width - 2, 0, "증표 행운", TextStyle.PARTY, { fontSize: "54px" });
+    this.markLuckLabelText.setName("text-mark-luck-label");
+    this.markLuckLabelText.setOrigin(1, 0.5);
+    this.markLuckLabelText.setVisible(false);
+    this.fieldUI.add(this.markLuckLabelText);
 
     this.arenaFlyout = new ArenaFlyout();
     this.fieldUI.add(this.arenaFlyout);
@@ -1682,7 +1700,7 @@ export class BattleScene extends SceneBase {
     this.updateroguePointText();
     this.roguePointText.setVisible(false);
 
-    [this.luckLabelText, this.luckText].forEach(t => {
+    [this.luckLabelText, this.luckText, this.markLuckLabelText, this.markLuckText].forEach(t => {
       t.setVisible(false);
     });
 
@@ -2863,7 +2881,7 @@ export class BattleScene extends SceneBase {
    * @param duration The time for this label to fade in, if it is not already visible.
    */
   updateAndShowText(duration: number): void {
-    const labels = [this.luckLabelText, this.luckText];
+    const labels = [this.luckLabelText, this.luckText, this.markLuckLabelText, this.markLuckText];
     for (const label of labels) {
       label.setAlpha(0);
     }
@@ -2875,6 +2893,18 @@ export class BattleScene extends SceneBase {
       this.luckText.setTint(0xffef5c, 0x47ff69, 0x6b6bff, 0xff6969);
     }
     this.luckLabelText.setX(this.scaledCanvas.width - 2 - (this.luckText.displayWidth + 2));
+    const rawMarkLuck = getPartyMarkLuckValue(this.getPlayerParty());
+    const markDisplayLuck = getMarkLuckDisplayValue(rawMarkLuck);
+    this.markLuckText.setText(getLuckString(markDisplayLuck));
+    if (markDisplayLuck < 14) {
+      this.markLuckText.setTint(getLuckTextTint(markDisplayLuck));
+    } else {
+      this.markLuckText.setTint(0xffef5c, 0x47ff69, 0x6b6bff, 0xff6969);
+    }
+    // Separate row to avoid overlapping the existing shiny-luck indicator.
+    this.markLuckText.setX(this.scaledCanvas.width - 2);
+    this.markLuckLabelText.setX(this.scaledCanvas.width - 2 - (this.markLuckText.displayWidth + 2));
+
     this.tweens.add({
       targets: labels,
       duration,
@@ -2891,7 +2921,7 @@ export class BattleScene extends SceneBase {
     if (this.reroll) {
       return;
     }
-    const labels = [this.luckLabelText, this.luckText];
+    const labels = [this.luckLabelText, this.luckText, this.markLuckLabelText, this.markLuckText];
     this.tweens.add({
       targets: labels,
       duration,
@@ -2925,6 +2955,7 @@ export class BattleScene extends SceneBase {
         : this.moneyText;
 
     [this.luckLabelText, this.luckText].forEach(l => l.setY(bottomInfoText.y + 10));
+    [this.markLuckLabelText, this.markLuckText].forEach(l => l.setY(bottomInfoText.y + 20));
 
     const offsetY = bottomInfoText.y + 15;
 

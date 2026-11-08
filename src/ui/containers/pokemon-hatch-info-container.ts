@@ -158,6 +158,11 @@ super.add(this.pokemonEggMoveContainer);
     this.displayPokemon(pokemon);
 
     super.show(pokemon, false, 1, hatchInfo.getDex(), hatchInfo.getStarterEntry(), true);
+
+    // The inherited mark icon overlaps the egg-summary grid.
+    // Keep tier icons rendered by HatchedPokemonContainer instead.
+    const inheritedMarkIcon = this.getByName("img-pkmn-mark-tier-icon") as Phaser.GameObjects.Image | null;
+    inheritedMarkIcon?.setVisible(false);
     const colorScheme = getStarterColors(species.speciesId);
 
     this.pokemonCandyIcon.setTint(argbFromRgba(rgbHexToRgba(colorScheme[0])));

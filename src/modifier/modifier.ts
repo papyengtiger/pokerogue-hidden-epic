@@ -12148,6 +12148,25 @@ export class CriticalCatchChanceBoosterModifier extends PersistentModifier {
   }
 }
 
+/** Card Record: enables fixed-tier rerolls for trainer-card rewards only. */
+export class LockTrainerCardTiersModifier extends PersistentModifier {
+  override match(modifier: Modifier): boolean {
+    return modifier instanceof LockTrainerCardTiersModifier;
+  }
+
+  override apply(): boolean {
+    return true;
+  }
+
+  override clone(): LockTrainerCardTiersModifier {
+    return new LockTrainerCardTiersModifier(this.type, this.stackCount);
+  }
+
+  override getMaxStackCount(): number {
+    return 1;
+  }
+}
+
 export class LockModifierTiersModifier extends PersistentModifier {
   match(modifier: Modifier): boolean {
     return modifier instanceof LockModifierTiersModifier;
@@ -12461,6 +12480,29 @@ export class ExtraModifierModifier extends PersistentModifier {
   }
 
   getMaxStackCount(): number {
+    return 3;
+  }
+}
+
+/**
+ * Persistent trainer-card-only choice bonus (Silver Card Ball).
+ * Used by SILVER_POKEBALL (maximum 3 stacks per run).
+ */
+export class ExtraTrainerCardModifier extends PersistentModifier {
+  override match(modifier: Modifier): boolean {
+    return modifier instanceof ExtraTrainerCardModifier;
+  }
+
+  override clone(): ExtraTrainerCardModifier {
+    return new ExtraTrainerCardModifier(this.type, this.stackCount);
+  }
+
+  override apply(count: NumberHolder): boolean {
+    count.value += this.getStackCount();
+    return true;
+  }
+
+  override getMaxStackCount(): number {
     return 3;
   }
 }
@@ -12977,6 +13019,7 @@ export const ModifierClassMap = Object.freeze({
   ShinyRateBoosterModifier,
   MarkRateBoosterModifier,
   CriticalCatchChanceBoosterModifier,
+  LockTrainerCardTiersModifier,
   LockModifierTiersModifier,
   HealShopCostModifier,
   BoostBugSpawnModifier,
@@ -12986,6 +13029,7 @@ export const ModifierClassMap = Object.freeze({
   ContactHeldItemTransferChanceModifier,
   IvScannerModifier,
   ExtraModifierModifier,
+  ExtraTrainerCardModifier,
   TempExtraModifierModifier,
   EnemyPersistentModifier,
   EnemyDamageMultiplierModifier,

@@ -419,6 +419,9 @@ export class Battle {
             case SpeciesId.MELOETTA:
             case SpeciesId.GENESECT:
               return "battle_legendary_unova";
+            case SpeciesId.RESHIRAM:
+            case SpeciesId.ZEKROM:
+              return "battle_legendary_res_zek";
             case SpeciesId.KYUREM:
               return "battle_legendary_kyurem";
             case SpeciesId.XERNEAS:

@@ -13,6 +13,9 @@ import { tmSpecies } from "#balance/tm-species-map";
 import { tmPoolTiers } from "#balance/tms";
 import { getBerryEffectDescription, getBerryName } from "#data/berry";
 import { getDailyEventSeedLuck } from "#data/daily-seed/daily-run";
+import { markData } from "#data/mark";
+import { MarkId } from "#enums/mark-id";
+import { MarkTier } from "#enums/mark-tier";
 import { allMoves, modifierTypes } from "#data/data-lists";
 import { SpeciesFormChangeItemTrigger } from "#data/form-change-triggers";
 import { getNatureName, getNatureStatMultiplier } from "#data/nature";
@@ -99,6 +102,7 @@ import {
   ExpBoosterModifier,
   ExpShareModifier,
   ExtraModifierModifier,
+  ExtraTrainerCardModifier,
   FieldEffectModifier,
   FlinchChanceModifier,
   FusePokemonModifier,
@@ -124,6 +128,7 @@ import {
   LevelIncrementBoosterModifier,
   LightMoveModifier,
   LockModifierTiersModifier,
+  LockTrainerCardTiersModifier,
   MapModifier,
   MarkRateBoosterModifier,
   MaxAllIvModifier,
@@ -3843,7 +3848,40 @@ export type GeneratorModifierOverride = {
 /** Type used to construct modifiers and held items for overriding purposes. */
 export type ModifierOverride = GeneratorModifierOverride | BaseModifierOverride;
 
+/** Silver Ball: permanent trainer-card choice booster. */
+class SilverCardBallModifierType extends ModifierType {
+  constructor() {
+    super(
+      "modifierType:ModifierType.SILVER_POKEBALL",
+      "pb_silver",
+      type => new ExtraTrainerCardModifier(type),
+      "trainer",
+      "se/pb_bounce_1",
+    );
+    this.tier = ModifierTier.ROGUE;
+  }
+
+  override get name(): string {
+    return "실버볼";
+  }
+
+  override getDescription(): string {
+    return "트레이너 카드 선택지가 1개 늘어난다. 최대 3개까지 중첩된다.";
+  }
+}
+
 export type ModifierTypeKeys = keyof typeof modifierTypeInitObj;
+
+/** Dedicated fallback strings until localized modifierType entries are provided. */
+class CardRecordModifierType extends ModifierType {
+  override get name(): string {
+    return "카드레코더";
+  }
+
+  override getDescription(): string {
+    return "카드 섞기 시 현재 카드들의 등급을 고정할 수 있다. 등급 고정 리롤 비용은 등급에 따라 달라진다.";
+  }
+}
 
 const modifierTypeInitObj = Object.freeze({
   POKEBALL: () => new AddPokeballModifierType("pb", PokeballType.POKEBALL, 5),
@@ -4503,6 +4541,14 @@ const modifierTypeInitObj = Object.freeze({
       "modifierType:ModifierType.COIN_CASE",
       "coin_case",
       (type, _args) => new MoneyInterestModifier(type),
+      "trainer",
+    ),
+
+  CARD_RECORD: () =>
+    new CardRecordModifierType(
+      "modifierType:ModifierType.CARD_RECORD",
+      "card_record",
+      (type, _args) => new LockTrainerCardTiersModifier(type),
       "trainer",
     ),
 
@@ -5195,14 +5241,7 @@ const modifierTypeInitObj = Object.freeze({
       undefined,
       "se/pb_bounce_1",
     ),
-  SILVER_POKEBALL: () =>
-    new ModifierType(
-      "modifierType:ModifierType.SILVER_POKEBALL",
-      "pb_silver",
-      (type, _args) => new TempExtraModifierModifier(type, 100),
-      undefined,
-      "se/pb_bounce_1",
-    ),
+  SILVER_POKEBALL: () => new SilverCardBallModifierType(),
 
   ENEMY_DAMAGE_BOOSTER: () =>
     new ModifierType(
@@ -5901,22 +5940,32 @@ function getNewModifierTypeOption(
     if (player && tierValue && allowLuckUpgrades) {
       const partyLuckValue = getPartyLuckValue(party);
       const upgradeOdds = Math.floor(128 / ((partyLuckValue + 4) / 4));
+      const upgradeThreshold = 4 * trainerCardManager.getMultiplier("ITEM_TIER_UPGRADE_CHANCE");
       let upgraded = false;
       do {
-        upgraded = randSeedInt(upgradeOdds) < 4;
+        upgraded = randSeedInt(upgradeOdds) < upgradeThreshold;
         if (upgraded) {
           upgradeCount++;
         }
       } while (upgraded);
     }
 
-    if (tierValue > 255) {
+    // Mark luck improves the initial reward tier; shiny luck still controls
+    // the independent tier-upgrade rolls above. 0 mark points = vanilla odds.
+    // Maximum mark luck is 30 (six LEGENDARY marks, five points each).
+    const markLuck = player ? Math.min(30, Math.max(0, getPartyMarkLuckValue(party))) : 0;
+    const commonCutoff = 255 + markLuck * 6;
+    const greatCutoff = 60 + markLuck * 2;
+    const ultraCutoff = 12 + Math.floor(markLuck * 7 / 10);
+    const masterCutoff = Math.floor(markLuck / 8);
+
+    if (tierValue > commonCutoff) {
       tier = ModifierTier.COMMON;
-    } else if (tierValue > 60) {
+    } else if (tierValue > greatCutoff) {
       tier = ModifierTier.GREAT;
-    } else if (tierValue > 12) {
+    } else if (tierValue > ultraCutoff) {
       tier = ModifierTier.ULTRA;
-    } else if (tierValue) {
+    } else if (tierValue > masterCutoff) {
       tier = ModifierTier.ROGUE;
     } else {
       tier = ModifierTier.MASTER;
@@ -5934,8 +5983,9 @@ function getNewModifierTypeOption(
     if (tier < ModifierTier.MASTER && allowLuckUpgrades) {
       const partyLuckValue = getPartyLuckValue(party);
       const upgradeOdds = Math.floor(128 / ((partyLuckValue + 4) / 4));
+      const upgradeThreshold = 4 * trainerCardManager.getMultiplier("ITEM_TIER_UPGRADE_CHANCE");
       while (pool.hasOwnProperty(tier + upgradeCount + 1) && pool[tier + upgradeCount + 1].length > 0) {
-        if (randSeedInt(upgradeOdds) < 4) {
+        if (randSeedInt(upgradeOdds) < upgradeThreshold) {
           upgradeCount++;
         } else {
           break;
@@ -6069,6 +6119,33 @@ export function getPartyLuckValue(party: readonly Pokemon[]): number {
   );
 
   return Math.min(timedEventManager.getEventLuckBoost() + luck, 14);
+}
+
+/** Raw mark luck used by trainer-card rolls (do not clamp to shiny luck). */
+const MARK_LUCK_POINTS: Partial<Record<MarkTier, number>> = {
+  [MarkTier.COMMON]: 1,
+  [MarkTier.RARE]: 2,
+  [MarkTier.ROGUE]: 3,
+  [MarkTier.EPIC]: 4,
+  [MarkTier.LEGENDARY]: 5,
+  [MarkTier.SPECIAL]: 4,
+};
+
+export function getPartyMarkLuckValue(party: readonly Pokemon[]): number {
+  return party.reduce((total, pokemon) => {
+    const marked = pokemon as Pokemon & { mark?: MarkId; markId?: MarkId };
+    const id = marked.mark ?? marked.markId;
+    if (id == null || id === MarkId.NONE || id === MarkId.MYSTERY) {
+      return total;
+    }
+    const tier = markData[id]?.tier;
+    return total + (tier == null ? 0 : (MARK_LUCK_POINTS[tier] ?? 0));
+  }, 0);
+}
+
+/** 0–30 raw mark points mapped to the same 0–14 grade scale as shiny luck. */
+export function getMarkLuckDisplayValue(markLuck: number): number {
+  return Phaser.Math.Clamp(Math.floor(markLuck * 14 / 30), 0, 14);
 }
 
 export function getLuckString(luckValue: number): string {

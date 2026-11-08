@@ -72,39 +72,56 @@ export class SummonPhase extends PartyMemberPokemonPhase {
    */
   preSummon(): void {
     const partyMember = this.getPokemon();
-    // If the Pokemon about to be sent out is fainted, illegal under a challenge, or no longer in the party for some reason, switch to the first non-fainted legal Pokemon
-    if (!partyMember.isAllowedInBattle() || (this.player && !this.getParty().some(p => p.id === partyMember.id))) {
-      console.warn(
-        "The Pokemon about to be sent out is fainted or illegal under a challenge. Attempting to resolve...",
-      );
+    const party = this.getParty();
+    // Challenge restrictions apply to the player team. Enemy trainers must not be
+    // treated as defeated simply because isAllowedInBattle() rejects their Pokemon.
+    const canSummon = (p: Pokemon): boolean =>
+      !p.isFainted() && (!this.player || p.isAllowedInBattle());
 
-      // First check if they're somehow still in play, if so remove them.
-      if (partyMember.isOnField()) {
+    const inParty = !!partyMember && (!this.player || party.some(p => p.id === partyMember.id));
+    if (!partyMember || !canSummon(partyMember) || !inParty) {
+      console.warn("[SUMMON_INVALID_TARGET]", {
+        player: this.player,
+        companion: this.companion,
+        index: this.partyMemberIndex,
+        party: party.map((p, index) => ({
+          index,
+          name: p.name,
+          hp: p.hp,
+          fainted: p.isFainted(),
+          allowed: p.isAllowedInBattle(),
+        })),
+      });
+
+      if (partyMember?.isOnField()) {
         partyMember.leaveField();
       }
 
-      const party = this.getParty();
-
-      // Find the first non-fainted Pokemon index above the current one
-      const legalIndex = party.findIndex((p, i) => i > this.partyMemberIndex && p.isAllowedInBattle());
-      if (legalIndex === -1) {
-        console.error("Party Details:\n", party);
-        console.error("All available Pokemon were fainted or illegal!");
-        globalScene.clearPhaseQueue();
-        globalScene.unshiftPhase(new GameOverPhase());
-        this.end();
+      // Prefer later party members, then search the earlier part as a fallback.
+      const legalIndex = party.findIndex((p, i) => i > this.partyMemberIndex && canSummon(p));
+      const fallbackIndex = legalIndex >= 0 ? legalIndex : party.findIndex(canSummon);
+      if (fallbackIndex < 0) {
+        console.error("[SUMMON_NO_AVAILABLE_POKEMON]", { player: this.player, party });
+        if (this.player) {
+          globalScene.phaseManager.clearAllPhases();
+          globalScene.phaseManager.unshiftNew("GameOverPhase");
+        } else {
+          // Never declare a player loss because the enemy party cannot summon.
+          console.error("[SUMMON_ENEMY_EMPTY] Enemy summon aborted; investigate enemy party state.");
+        }
+        super.end();
         return;
       }
 
-      // Swaps the fainted Pokemon and the first non-fainted legal Pokemon in the party
-      [party[this.partyMemberIndex], party[legalIndex]] = [party[legalIndex], party[this.partyMemberIndex]];
-      console.warn(
-        "Swapped %s %O with %s %O",
-        getPokemonNameWithAffix(partyMember),
-        partyMember,
-        getPokemonNameWithAffix(party[0]),
-        party[0],
-      );
+      if (fallbackIndex !== this.partyMemberIndex) {
+        [party[this.partyMemberIndex], party[fallbackIndex]] = [party[fallbackIndex], party[this.partyMemberIndex]];
+        console.warn("[SUMMON_FALLBACK_SELECTED]", {
+          player: this.player,
+          from: this.partyMemberIndex,
+          replacementIndex: fallbackIndex,
+          name: getPokemonNameWithAffix(party[this.partyMemberIndex]),
+        });
+      }
     }
 
     if (this.player) {

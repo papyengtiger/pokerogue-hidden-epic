@@ -104,6 +104,7 @@ export class PlayerBattleInfo extends BattleInfo {
       this.teraIcon,
       this.splicedIcon,
       this.shinyIcon,
+      this.markIcon,
       this.statusIndicator,
       this.levelContainer,
     ];

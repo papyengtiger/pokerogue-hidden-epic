@@ -103,6 +103,7 @@ import { LearnMoveSituation } from "#enums/learn-move-situation";
 import { MarkId } from "#enums/mark-id";
 import { ModifierTier } from "#enums/modifier-tier";
 import { MoveCategory } from "#enums/move-category";
+import { TrainerCardId } from "#enums/trainer-card-id";
 import { MoveFlags } from "#enums/move-flags";
 import { MoveFlags2 } from "#enums/move-flags-2";
 import { MoveId } from "#enums/move-id";
@@ -1828,6 +1829,26 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     const critStackTag = source.getTag(BattlerTagType.CRIT_STACKING_BOOST) as CritStackingTag;
     const stackingStage = critStackTag?.getCritStage?.() ?? 0;
     critStage.value += stackingStage;
+    // 트레이너 카드: 승부사의 직감 (급소 랭크 +1)
+    const critStageBeforeCard = critStage.value;
+    const bettorsInstinctEquipped = source.isPlayer() && trainerCardManager.isEquipped(TrainerCardId.BETTORS_INSTINCT);
+    if (bettorsInstinctEquipped) {
+      critStage.value += 1;
+    }
+    if (source.isPlayer()) {
+      const finalCritStage = Phaser.Math.Clamp(critStage.value, 0, 3);
+      const critDenominator = [24, 8, 2, 1][finalCritStage];
+      console.log("[TRAINER_CARD_CRIT_STAGE_CHECK]", {
+        attacker: source.getName(),
+        defender: this.getName(),
+        move: move.name,
+        cardEquipped: bettorsInstinctEquipped,
+        critStageBeforeCard,
+        critStageAfterCard: critStage.value,
+        finalCritStage,
+        critChance: `${100 / critDenominator}%`,
+      });
+    }
 
     if ((globalScene.currentBattle as any)?.isPracticeBattle) {
       const result = (globalScene as any).practiceTurnResult;
@@ -6430,6 +6451,42 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
             beforeDamage,
             loyaltyMultiplier,
             afterDamage: damage.value,
+          });
+        }
+      }
+    }
+
+    // 트레이너 카드: 굳건한 유대 - 상태이상인 아군이 직접 기술 피해를 받을 때.
+    if (this.isPlayer() && source.isEnemy() && damage.value > 0
+      && this.status != null && this.status.effect !== StatusEffect.NONE && this.status.effect !== StatusEffect.FAINT) {
+      const steadfastMultiplier = trainerCardManager.getMultiplier("STATUS_DAMAGE_REDUCTION");
+      if (steadfastMultiplier !== 1) {
+        const beforeDamage = damage.value;
+        watchDamageValue("트레이너 카드: 굳건한 유대", () => {
+          damage.value = toDmgValue(damage.value * steadfastMultiplier);
+        });
+        if (!simulated) {
+          console.log("[TRAINER_CARD_STEADFAST_BOND]", {
+            pokemon: this.getName(), status: this.status.effect,
+            beforeDamage, steadfastMultiplier, afterDamage: damage.value,
+          });
+        }
+      }
+    }
+
+    // 트레이너 카드: 불굴의 투지
+    if (source.isPlayer() && damage.value > 0 && moveCategory !== MoveCategory.STATUS
+      && source.hp > 0 && source.hp * 2 <= source.getMaxHp()) {
+      const spiritMultiplier = trainerCardManager.getMultiplier("LOW_HP_ATTACK_DAMAGE");
+      if (spiritMultiplier !== 1) {
+        const before = damage.value;
+        watchDamageValue("트레이너 카드: 불굴의 투지", () => {
+          damage.value = toDmgValue(damage.value * spiritMultiplier);
+        });
+        if (!simulated) {
+          console.log("[TRAINER_CARD_UNYIELDING_SPIRIT]", {
+            pokemon: source.name, hp: source.hp, maxHp: source.getMaxHp(),
+            beforeDamage: before, spiritMultiplier, afterDamage: damage.value,
           });
         }
       }

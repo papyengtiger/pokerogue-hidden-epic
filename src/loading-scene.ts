@@ -48,6 +48,7 @@ export class LoadingScene extends SceneBase {
     this.loadImage("trainer_epic_card", "card");
     this.loadImage("trainer_friend_card", "card");
     this.loadImage("trainer_growth_card", "card");
+    this.loadImage("trainer_card_back", "card");
     for (const wv of getEnumValues(WindowVariant)) {
       for (let w = 1; w <= 5; w++) {
         this.loadImage(`window_${w}${getWindowVariantSuffix(wv)}`, "ui/windows");
@@ -77,6 +78,9 @@ export class LoadingScene extends SceneBase {
     this.loadImage("icon_owned", "ui");
     this.loadImage("icon_egg_move", "ui");
     this.loadImage("icon_mark", "ui");
+    for (const tier of ["common", "super", "rogue", "ultra", "master"]) {
+      this.loadImage(`icon_mark_${tier}`, "ui");
+    }
     this.loadImage("ability_bar_left", "ui");
     this.loadImage("ability_bar_right", "ui");
     this.loadImage("bgm_bar", "ui");

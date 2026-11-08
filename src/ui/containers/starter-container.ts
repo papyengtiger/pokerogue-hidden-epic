@@ -7,6 +7,7 @@ export class StarterContainer extends Phaser.GameObjects.Container {
   public species: PokemonSpecies;
   public icon: Phaser.GameObjects.Sprite;
   public shinyIcons: Phaser.GameObjects.Image[] = [];
+  public markIcon: Phaser.GameObjects.Image;
   public label: Phaser.GameObjects.Text;
   public starterPassiveBgs: Phaser.GameObjects.Image;
   public hiddenAbilityIcon: Phaser.GameObjects.Image;
@@ -57,6 +58,12 @@ export class StarterContainer extends Phaser.GameObjects.Container {
     }
     this.add(this.shinyIcons);
 
+    // Mark tier badge (kept separate from shiny and ribbon indicators).
+    this.markIcon = globalScene.add.image(13, 12, "icon_mark_common");
+    this.markIcon.setOrigin(0, 0).setScale(0.45).setVisible(false);
+    this.markIcon.setDepth(1);
+    this.add(this.markIcon);
+
     // value label
     const label = addTextObject(1, 2, "0", TextStyle.WINDOW, {
       fontSize: "32px",
@@ -92,7 +99,7 @@ export class StarterContainer extends Phaser.GameObjects.Container {
     this.classicWinIcon = classicWinIcon;
 
     // candy upgrade icon
-    const candyUpgradeIcon = globalScene.add.image(12, 12, "candy");
+    const candyUpgradeIcon = globalScene.add.image(8, 12, "candy");
     candyUpgradeIcon.setOrigin(0, 0);
     candyUpgradeIcon.setScale(0.25);
     candyUpgradeIcon.setVisible(false);
@@ -100,7 +107,7 @@ export class StarterContainer extends Phaser.GameObjects.Container {
     this.candyUpgradeIcon = candyUpgradeIcon;
 
     // candy upgrade overlay icon
-    const candyUpgradeOverlayIcon = globalScene.add.image(12, 12, "candy_overlay");
+    const candyUpgradeOverlayIcon = globalScene.add.image(8, 12, "candy_overlay");
     candyUpgradeOverlayIcon.setOrigin(0, 0);
     candyUpgradeOverlayIcon.setScale(0.25);
     candyUpgradeOverlayIcon.setVisible(false);

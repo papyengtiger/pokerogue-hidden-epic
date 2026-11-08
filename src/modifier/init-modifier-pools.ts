@@ -26,6 +26,8 @@ import {
   CalyrexReinsUnifiedModifier,
   DawnWingsBeadModifier,
   DoubleBattleChanceBoosterModifier,
+  ExtraTrainerCardModifier,
+  LockTrainerCardTiersModifier,
   DuskManeBeadModifier,
   SpeciesCritBoosterModifier,
   SpeciesHealingBellModifier,
@@ -2764,6 +2766,17 @@ function initUltraModifierPool() {
 function initRogueModifierPool() {
   const arr = [
     new WeightedModifierType(modifierTypes.ROGUE_BALL, () => (hasMaximumBalls(PokeballType.ROGUE_BALL) ? 0 : 16), 16),
+    // 실버볼: 카드 선택지 +1, 최대 3개. 최대 중첩 시 보상에서 제외.
+    new WeightedModifierType(
+      modifierTypes.SILVER_POKEBALL,
+      () => {
+        const owned = globalScene.findModifier(m => m instanceof ExtraTrainerCardModifier) as
+          | ExtraTrainerCardModifier
+          | undefined;
+        return owned && owned.getStackCount() >= 3 ? 0 : 4;
+      },
+      4,
+    ),
     new WeightedModifierType(modifierTypes.QUICK_BALL, () => (hasMaximumBalls(PokeballType.ROGUE_BALL) ? 0 : 16), 16),
     new WeightedModifierType(
       modifierTypes.BOOSTER_ENERGY,
@@ -2825,6 +2838,12 @@ function initRogueModifierPool() {
     new WeightedModifierType(modifierTypes.FOCUS_BAND, 5),
     new WeightedModifierType(modifierTypes.KINGS_ROCK, 3),
     new WeightedModifierType(modifierTypes.LOCK_CAPSULE, () => (isStoryRewardRestrictedMode() ? 0 : 3)),
+    // 카드 기록: 카드 등급 고정 리롤 허용, 로그볼 등급. 1개 보유하면 추가 등장하지 않음.
+    new WeightedModifierType(
+      modifierTypes.CARD_RECORD,
+      () => globalScene.findModifier(m => m instanceof LockTrainerCardTiersModifier) ? 0 : 3,
+      3,
+    ),
     new WeightedModifierType(modifierTypes.SUPER_EXP_CHARM, skipInLastClassicWaveOrDefault(8)),
     new WeightedModifierType(
       modifierTypes.VOUCHER_PLUS,

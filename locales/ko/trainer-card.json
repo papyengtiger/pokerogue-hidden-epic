@@ -50,5 +50,33 @@
   "captureTime": {
     "name": "포획타임!",
     "description": "하이퍼볼 등급 이상 보상에서 포획볼의 등장 가중치가 1.5배가 된다."
+  },
+  "joyOfGrowth": {
+    "name": "성장의 기쁨",
+    "description": "레벨업할 때마다 최대 HP의 10%를 회복한다. 기절한 포켓몬에게는 적용되지 않는다."
+  },
+  "markOfGrowth": {
+    "name": "성장의 증표",
+    "description": "자신의 증표 등급에 따라 획득 경험치가 증가한다."
+  },
+   "bettorsInstinct": {
+    "name": "승부사의 직감",
+    "description": "아군 공격 기술의 급소율이 1랭크 상승한다."
+  },
+  "unyieldingSpirit": {
+    "name": "불굴의 투지",
+    "description": "HP 절반 이하일 때 공격 기술의 피해가 1.3배가 된다."
+  },
+  "steadfastBond": {
+    "name": "굳건한 유대",
+    "description": "상태이상에 걸린 아군 포켓몬이 공격 기술로 받는 피해가 20% 감소한다."
+  },
+  "miracleOfFriendship": {
+    "name": "우정의 기적",
+    "description": "교체로 등장한 아군 포켓몬의 HP를 최대 HP의 10% 회복한다. 최초 출전 및 기절한 포켓몬은 제외한다."
+  },
+  "fatefulChoice": {
+    "name": "운명의 선택",
+    "description": "일반 아이템 보상의 등급 상승 성공 확률이 1.25배가 된다."
   }
 }

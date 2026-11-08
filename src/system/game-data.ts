@@ -181,6 +181,13 @@ export class GameData {
 
   private battleRpRemainder = 0;
 
+  // Serialize online system saves; a later snapshot must not reach the server before an older one.
+  private systemSaveQueue: Promise<boolean> = Promise.resolve(true);
+  // A failed account load must never be followed by an implicit overwrite with empty defaults.
+  private systemLoadBlocked = false;
+  /** Original server snapshot identity for an explicitly approved one-time legacy recovery. */
+  private legacyRecoveryIdentity: { trainerId: number; secretId: number; timestamp: number } | null = null;
+
   public bankMoney: number;
   public bankRoguePoints: number;
   public achvPointsGranted = false;
@@ -1032,96 +1039,490 @@ export class GameData {
     return saved;
   }
 
+  /** Go's json.RawMessage renders absent legacy account fields as JSON null. */
+  private static isUnsetLegacySystemField(data: Record<string, unknown>, key: string): boolean {
+    return !Object.hasOwn(data, key) || data[key] === null;
+  }
+
+  /** Reject missing account-wide fields rather than treating an incomplete payload as a fresh account. */
+  private static isValidSystemSnapshot(value: unknown): value is SystemSaveData {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return false;
+    }
+    const data = value as Record<string, unknown>;
+    return (
+      typeof data.trainerId === "number" && Number.isFinite(data.trainerId)
+      && typeof data.secretId === "number" && Number.isFinite(data.secretId)
+      && data.dexData != null && typeof data.dexData === "object"
+      && data.starterData != null && typeof data.starterData === "object"
+      && typeof data.roguePoints === "number" && Number.isFinite(data.roguePoints) && (data.roguePoints as number) >= 0
+      && Array.isArray(data.storageItems)
+      && Array.isArray(data.questList)
+      && typeof data.bankMoney === "number" && Number.isFinite(data.bankMoney)
+      && typeof data.bankRoguePoints === "number" && Number.isFinite(data.bankRoguePoints)
+    );
+  }
+
+  /**
+   * Read-only compatibility for a legacy save missing newly introduced economy fields.
+   * Never treats malformed core progress as recoverable, and never invents past balances.
+   * The caller MUST disable saving for this session until a verified recovery is applied.
+   */
+  private static prepareLegacySystemForRead(value: unknown): SystemSaveData | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+
+    const data = value as Record<string, unknown>;
+    if (
+      typeof data.trainerId !== "number" || !Number.isFinite(data.trainerId)
+      || typeof data.secretId !== "number" || !Number.isFinite(data.secretId)
+      || !data.dexData || typeof data.dexData !== "object" || Array.isArray(data.dexData)
+      || !data.starterData || typeof data.starterData !== "object" || Array.isArray(data.starterData)
+      || !data.gameStats || typeof data.gameStats !== "object"
+    ) {
+      return null;
+    }
+
+    // Older snapshots omit these fields. Go json.RawMessage re-encodes absent
+    // legacy fields as JSON null, which is equivalent to being absent here.
+    // Do not replace any non-null invalid field: those indicate corruption.
+    const defaults: Record<string, unknown> = {
+      roguePoints: 0,
+      bankMoney: 0,
+      bankRoguePoints: 0,
+      questList: [],
+      storageItems: [],
+    };
+    const normalized: Record<string, unknown> = { ...data };
+    let added = 0;
+    for (const [key, fallback] of Object.entries(defaults)) {
+      if (GameData.isUnsetLegacySystemField(data, key)) {
+        normalized[key] = fallback;
+        added++;
+      }
+    }
+
+    if (added === 0 || !GameData.isValidSystemSnapshot(normalized)) {
+      return null;
+    }
+
+    console.warn("[SYSTEM_LEGACY_READ_ONLY] Legacy data is viewable; saving remains blocked", {
+      addedFields: Object.keys(defaults).filter(key => GameData.isUnsetLegacySystemField(data, key)),
+      trainerId: data.trainerId,
+    });
+    return normalized;
+  }
+
+  /**
+   * Explicit, one-time recovery for an account whose SERVER system record predates
+   * the economy fields. This never runs during ordinary login/save, never rewrites
+   * an unrecognized/malformed record and never invents account balances implicitly.
+   *
+   * Call only after backing up the server /savedata/system/get response. Supply
+   * the exact balances and inventories the account owner has approved.
+   */
+  /** Read-only diagnostic; never updates server data, memory balances or local cache. */
+  public async diagnoseLegacySystemRecovery(): Promise<void> {
+    const identity = this.legacyRecoveryIdentity;
+    try {
+      const raw = await pokerogueApi.savedata.system.get({ clientSessionId });
+      if (typeof raw !== "string" || !raw.trimStart().startsWith("{")) {
+        console.warn("[SYSTEM_RECOVERY_DIAG] Non-JSON server response", { type: typeof raw });
+        return;
+      }
+      const server: unknown = JSON.parse(raw);
+      if (!server || typeof server !== "object" || Array.isArray(server)) {
+        console.warn("[SYSTEM_RECOVERY_DIAG] Unexpected server data structure");
+        return;
+      }
+      const value = server as Record<string, unknown>;
+      const missing = ["roguePoints", "bankMoney", "bankRoguePoints", "questList", "storageItems"];
+      console.table([{
+        blocked: this.systemLoadBlocked,
+        legacyIdentityPresent: !!identity,
+        trainerMatches: identity ? value.trainerId === identity.trainerId : false,
+        secretMatches: identity ? value.secretId === identity.secretId : false,
+        serverTimestamp: value.timestamp,
+        expectedTimestamp: identity?.timestamp,
+        timestampMatches: identity ? value.timestamp === identity.timestamp : false,
+        dexValid: !!value.dexData && typeof value.dexData === "object" && !Array.isArray(value.dexData),
+        startersValid: !!value.starterData && typeof value.starterData === "object" && !Array.isArray(value.starterData),
+        statsValid: !!value.gameStats && typeof value.gameStats === "object" && !Array.isArray(value.gameStats),
+        missingFields: missing.filter(key => GameData.isUnsetLegacySystemField(value, key)).join(", "),
+        currentRoguePoints: this.roguePoints,
+        currentStorageCount: this.storageItems?.length ?? 0,
+      }]);
+    } catch (error) {
+      console.error("[SYSTEM_RECOVERY_DIAG_FAILED]", error);
+    }
+  }
+
+  /**
+   * Read-only confirmation before the owner approves a legacy server migration.
+   * The output intentionally omits private account identifiers and full inventories.
+   */
+  public async previewLegacySystemRecovery(): Promise<boolean> {
+    const identity = this.legacyRecoveryIdentity;
+    if (!identity || !this.systemLoadBlocked || bypassLogin) {
+      console.error("[SYSTEM_RECOVERY_PREVIEW_REJECTED] No blocked legacy account is loaded");
+      return false;
+    }
+
+    try {
+      const raw = await pokerogueApi.savedata.system.get({ clientSessionId });
+      if (typeof raw !== "string" || !raw.trimStart().startsWith("{")) {
+        console.error("[SYSTEM_RECOVERY_PREVIEW_FAILED] Server did not return a JSON save");
+        return false;
+      }
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return false;
+      }
+      const server = parsed as Record<string, unknown>;
+      const missingFields = ["roguePoints", "bankMoney", "bankRoguePoints", "questList", "storageItems"]
+        .filter(key => GameData.isUnsetLegacySystemField(server, key));
+      const validCore = server.trainerId === identity.trainerId
+        && server.secretId === identity.secretId
+        && server.timestamp === identity.timestamp
+        && !!server.dexData && typeof server.dexData === "object" && !Array.isArray(server.dexData)
+        && !!server.starterData && typeof server.starterData === "object" && !Array.isArray(server.starterData)
+        && !!server.gameStats && typeof server.gameStats === "object" && !Array.isArray(server.gameStats);
+      const canRecover = validCore && missingFields.length === 5;
+
+      console.table([{
+        canRecover,
+        expectedTimestamp: identity.timestamp,
+        serverTimestamp: server.timestamp,
+        missingFields: missingFields.join(", "),
+        currentRoguePoints: this.roguePoints,
+        currentBankMoney: this.bankMoney,
+        currentBankRoguePoints: this.bankRoguePoints,
+        currentQuestCount: this.questList?.length ?? 0,
+        currentStorageCount: this.storageItems?.length ?? 0,
+      }]);
+      if (!canRecover) {
+        console.warn("[SYSTEM_RECOVERY_PREVIEW_BLOCKED] The server no longer matches the loaded legacy snapshot");
+      }
+      return canRecover;
+    } catch (error) {
+      console.error("[SYSTEM_RECOVERY_PREVIEW_FAILED]", error);
+      return false;
+    }
+  }
+
+  public async recoverLegacySystemSave(
+    expectedTimestamp: number,
+    recovery: {
+      roguePoints: number;
+      bankMoney: number;
+      bankRoguePoints: number;
+      questList: QuestEntry[];
+      storageItems: StoredItemData[];
+    },
+    confirmation: string,
+  ): Promise<boolean> {
+    const identity = this.legacyRecoveryIdentity;
+    if (
+      bypassLogin
+      || confirmation !== "I_BACKED_UP_MY_SYSTEM_SAVE_AND_APPROVE_RECOVERY"
+      || !this.systemLoadBlocked
+      || !identity
+      || expectedTimestamp !== identity.timestamp
+    ) {
+      console.error("[SYSTEM_RECOVERY_REJECTED] No matching legacy session or explicit approval");
+      return false;
+    }
+
+    if (
+      !Number.isSafeInteger(recovery.roguePoints) || recovery.roguePoints < 0
+      || !Number.isSafeInteger(recovery.bankMoney) || recovery.bankMoney < 0
+      || !Number.isSafeInteger(recovery.bankRoguePoints) || recovery.bankRoguePoints < 0
+      || !Array.isArray(recovery.questList)
+      || !Array.isArray(recovery.storageItems)
+      || !recovery.storageItems.every(item =>
+        item && typeof item.itemId === "string" && Number.isSafeInteger(item.quantity) && item.quantity > 0
+      )
+    ) {
+      console.error("[SYSTEM_RECOVERY_REJECTED] Invalid explicitly supplied recovery values");
+      return false;
+    }
+
+    // The run-end handler may have just deposited items in memory. A recovery
+    // command copied from an earlier title screen must not silently discard them.
+    // Never mutate any account/server data on this rejection path.
+    if (this.storageItems?.length && JSON.stringify(this.storageItems) !== JSON.stringify(recovery.storageItems)) {
+      console.error("[SYSTEM_RECOVERY_REJECTED] Live storage differs from approved recovery storage; export and reconcile run rewards first", {
+        liveCount: this.storageItems.length,
+        approvedCount: recovery.storageItems.length,
+      });
+      return false;
+    }
+    if (this.questList?.length && JSON.stringify(this.questList) !== JSON.stringify(recovery.questList)) {
+      console.error("[SYSTEM_RECOVERY_REJECTED] Live quest list differs from approved recovery quests");
+      return false;
+    }
+
+    try {
+      const raw = await pokerogueApi.savedata.system.get({ clientSessionId });
+      if (typeof raw !== "string" || !raw.trimStart().startsWith("{")) {
+        console.error("[SYSTEM_RECOVERY_ABORTED] Server response is not JSON");
+        return false;
+      }
+
+      // Do not deserialize/re-serialize the Pokemon data via migrations here:
+      // this operation is restricted to appending absent top-level account fields.
+      const original: unknown = JSON.parse(raw);
+      if (!original || typeof original !== "object" || Array.isArray(original)) {
+        return false;
+      }
+      const server = original as Record<string, any>;
+      if (
+        server.trainerId !== identity.trainerId
+        || server.secretId !== identity.secretId
+        || server.timestamp !== identity.timestamp
+        || server.timestamp !== expectedTimestamp
+        || !server.dexData || typeof server.dexData !== "object" || Array.isArray(server.dexData)
+        || !server.starterData || typeof server.starterData !== "object" || Array.isArray(server.starterData)
+        || !server.gameStats || typeof server.gameStats !== "object" || Array.isArray(server.gameStats)
+      ) {
+        console.error("[SYSTEM_RECOVERY_ABORTED] Server identity/timestamp changed or core data is invalid", {
+          expectedTimestamp,
+          serverTimestamp: server.timestamp,
+          identityMatches: server.trainerId === identity.trainerId && server.secretId === identity.secretId,
+        });
+        return false;
+      }
+
+      const missing = ["roguePoints", "bankMoney", "bankRoguePoints", "questList", "storageItems"];
+      if (!missing.every(key => GameData.isUnsetLegacySystemField(server, key))) {
+        console.error("[SYSTEM_RECOVERY_ABORTED] Fields have changed since the legacy backup", missing);
+        return false;
+      }
+      if (!GameData.isUnsetLegacySystemField(server, "achvPointsGranted") && typeof server.achvPointsGranted !== "boolean") {
+        console.error("[SYSTEM_RECOVERY_ABORTED] Existing achievement settlement flag is invalid");
+        return false;
+      }
+
+      const upgraded = {
+        ...server,
+        roguePoints: recovery.roguePoints,
+        bankMoney: recovery.bankMoney,
+        bankRoguePoints: recovery.bankRoguePoints,
+        questList: recovery.questList,
+        storageItems: recovery.storageItems,
+        // A legacy account has its past achievements settled by initParsedSystem.
+        // Persisting the explicitly approved points must not grant them twice.
+        achvPointsGranted: server.achvPointsGranted ?? true,
+        timestamp: Date.now(),
+      };
+      if (!GameData.isValidSystemSnapshot(upgraded)) {
+        console.error("[SYSTEM_RECOVERY_ABORTED] Upgraded snapshot is invalid");
+        return false;
+      }
+
+      const upgradedRaw = JSON.stringify(upgraded);
+      const error = await pokerogueApi.savedata.system.update({ clientSessionId }, upgradedRaw);
+      if (error) {
+        console.error("[SYSTEM_RECOVERY_SERVER_FAILED]", error);
+        return false;
+      }
+      // A successful HTTP response alone is insufficient: older server builds
+      // previously accepted the write but dropped the new account fields.
+      // Keep saving blocked until the persisted server representation is verified.
+      const verifyRaw = await pokerogueApi.savedata.system.get({ clientSessionId });
+      let persisted: Record<string, unknown> | null = null;
+      if (typeof verifyRaw === "string" && verifyRaw.trimStart().startsWith("{")) {
+        const decoded: unknown = JSON.parse(verifyRaw);
+        if (decoded && typeof decoded === "object" && !Array.isArray(decoded)) {
+          persisted = decoded as Record<string, unknown>;
+        }
+      }
+      if (
+        !persisted
+        || !GameData.isValidSystemSnapshot(persisted)
+        || persisted.trainerId !== identity.trainerId
+        || persisted.secretId !== identity.secretId
+        || persisted.timestamp !== upgraded.timestamp
+        || persisted.roguePoints !== recovery.roguePoints
+        || persisted.bankMoney !== recovery.bankMoney
+        || persisted.bankRoguePoints !== recovery.bankRoguePoints
+        || JSON.stringify(persisted.questList) !== JSON.stringify(recovery.questList)
+        || JSON.stringify(persisted.storageItems) !== JSON.stringify(recovery.storageItems)
+      ) {
+        console.error("[SYSTEM_RECOVERY_VERIFY_FAILED] Server did not retain the approved recovery fields; saving remains blocked");
+        return false;
+      }
+      localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(upgradedRaw, bypassLogin));
+      this.roguePoints = recovery.roguePoints;
+      this.bankMoney = recovery.bankMoney;
+      this.bankRoguePoints = recovery.bankRoguePoints;
+      this.questList = recovery.questList;
+      this.storageItems = recovery.storageItems;
+      this.achvPointsGranted = upgraded.achvPointsGranted;
+      this.legacyRecoveryIdentity = null;
+      this.systemLoadBlocked = false;
+      console.info("[SYSTEM_RECOVERY_SUCCESS] Server snapshot upgraded; reload before continuing gameplay");
+      return true;
+    } catch (error) {
+      console.error("[SYSTEM_RECOVERY_EXCEPTION]", error);
+      return false;
+    }
+  }
+
   public saveSystem(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
-      globalScene.ui.savingIcon.show();
+    if (this.systemLoadBlocked) {
+      console.error("[SYSTEM_SAVE_BLOCKED] Previous system load failed; refusing to overwrite account data");
+      return Promise.resolve(false);
+    }
+
+    // Take the snapshot at invocation time. The queue governs transmission order.
+    let systemData: string;
+    try {
       const data = this.getSystemSaveData();
-
-      console.log(
-        "[SYSTEM_SAVE_PASSIVES]",
-        Object.entries(this.starterData)
-          .filter(([, entry]) => (entry.passiveUnlocks ?? 0) !== 0)
-          .map(([speciesId, entry]) => ({
-            speciesId,
-            passiveUnlocks: entry.passiveUnlocks,
-            passiveIndex: entry.passiveIndex,
-            passiveAttr: entry.passiveAttr,
-          })),
-      );
-
+      if (!GameData.isValidSystemSnapshot(data)) {
+        console.error("[SYSTEM_SAVE_BLOCKED] Incomplete system snapshot");
+        return Promise.resolve(false);
+      }
       const maxIntAttrValue = 0x80000000;
-      const systemData = JSON.stringify(data, (_k: any, v: any) =>
+      systemData = JSON.stringify(data, (_k: any, v: any) =>
         typeof v === "bigint" ? (v <= maxIntAttrValue ? Number(v) : v.toString()) : v,
       );
+    } catch (error) {
+      console.error("[SYSTEM_SAVE_SERIALIZE_FAILED]", error);
+      return Promise.resolve(false);
+    }
 
-      localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(systemData, bypassLogin));
-
-      if (!bypassLogin) {
-        pokerogueApi.savedata.system.update({ clientSessionId }, systemData).then(error => {
-          globalScene.ui.savingIcon.hide();
+    const write = async (): Promise<boolean> => {
+      if (this.systemLoadBlocked) {
+        return false;
+      }
+      globalScene.ui.savingIcon.show();
+      try {
+        if (!bypassLogin) {
+          const error = await pokerogueApi.savedata.system.update({ clientSessionId }, systemData);
           if (error) {
-            if (error.startsWith("session out of date")) {
+            console.error("[SYSTEM_SAVE_SERVER_FAILED]", error);
+            if (typeof error === "string" && error.startsWith("session out of date")) {
+              this.systemLoadBlocked = true;
               globalScene.phaseManager.clearPhaseQueue();
               globalScene.phaseManager.unshiftNew("ReloadSessionPhase");
             }
-            console.error(error);
-            return resolve(false);
+            return false;
           }
-          resolve(true);
-        });
-      } else {
+        }
+        // Keep the local cache only after the corresponding server write succeeds.
+        localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(systemData, bypassLogin));
+        return true;
+      } catch (error) {
+        console.error("[SYSTEM_SAVE_EXCEPTION]", error);
+        return false;
+      } finally {
         globalScene.ui.savingIcon.hide();
-
-        resolve(true);
       }
-    });
+    };
+
+    const pending = this.systemSaveQueue.then(write, write);
+    // Continue draining the queue after a failed request, but report each failure to its caller.
+    this.systemSaveQueue = pending;
+    return pending;
   }
 
-  public loadSystem(): Promise<boolean> {
-    return new Promise<boolean>(resolve => {
-      console.log("Client Session:", clientSessionId);
+  public async loadSystem(): Promise<boolean> {
+    console.log("Client Session:", clientSessionId);
+    const cacheKey = `data_${loggedInUser?.username}`;
+    const cachedSystem = localStorage.getItem(cacheKey);
 
-      if (bypassLogin && !localStorage.getItem(`data_${loggedInUser?.username}`)) {
-        return resolve(false);
+    if (bypassLogin) {
+      if (!cachedSystem) {
+        return false;
+      }
+      try {
+        return await this.initSystem(decrypt(cachedSystem, bypassLogin));
+      } catch (error) {
+        console.error("[SYSTEM_LOAD_OFFLINE_FAILED]", error);
+        return false;
+      }
+    }
+
+    try {
+      const saveDataOrErr = await pokerogueApi.savedata.system.get({ clientSessionId });
+      if (saveDataOrErr === 404) {
+        // For a genuine first-time account, the server has no system record and there is no local cache.
+        // If a cache exists, this could be a temporary server error affecting an existing account.
+        if (cachedSystem) {
+          this.systemLoadBlocked = true;
+          console.error("[SYSTEM_LOAD_404_EXISTING_CACHE] Account data missing; saves are blocked to protect previous data");
+          globalScene.phaseManager.queueMessage(
+            "Account save data could not be found. Saving has been disabled to protect existing progress. Please try reconnecting.",
+            null,
+            true,
+          );
+          return false;
+        }
+        console.info("[SYSTEM_LOAD_NEW_ACCOUNT] No system data or prior local cache");
+        return true;
       }
 
-      if (!bypassLogin) {
-        pokerogueApi.savedata.system.get({ clientSessionId }).then(saveDataOrErr => {
-          if (
-            typeof saveDataOrErr === "number"
-            || !saveDataOrErr
-            || saveDataOrErr.length === 0
-            || saveDataOrErr[0] !== "{"
-          ) {
-            if (saveDataOrErr === 404) {
-              globalScene.phaseManager.queueMessage(
-                "Save data could not be found. If this is a new account, you can safely ignore this message.",
-                null,
-                true,
-              );
-              return resolve(true);
-            }
-            if (typeof saveDataOrErr === "string" && saveDataOrErr?.includes("Too many connections")) {
-              globalScene.phaseManager.queueMessage(
-                "Too many people are trying to connect and the server is overloaded. Please try again later.",
-                null,
-                true,
-              );
-              return resolve(false);
-            }
-            return resolve(false);
+      if (typeof saveDataOrErr !== "string" || !saveDataOrErr.startsWith("{")) {
+        this.systemLoadBlocked = true;
+        console.error("[SYSTEM_LOAD_BAD_RESPONSE]", typeof saveDataOrErr, saveDataOrErr);
+        return false;
+      }
+
+      const serverSnapshot = GameData.parseSystemData(saveDataOrErr);
+      let serverDataForRead = saveDataOrErr;
+      let legacyReadOnly = false;
+      if (!GameData.isValidSystemSnapshot(serverSnapshot)) {
+        const legacySnapshot = GameData.prepareLegacySystemForRead(serverSnapshot);
+        if (!legacySnapshot) {
+          this.systemLoadBlocked = true;
+          console.error("[SYSTEM_LOAD_INVALID_SNAPSHOT] Critical fields missing; refusing to initialize");
+          return false;
+        }
+        // The original server response stays untouched. This conversion exists
+        // only in memory, for displaying the preserved progress.
+        // Match saveSystem's BigInt serialization for legacy dex flags.
+        // Do not persist this normalized snapshot: recovery remains read-only.
+        const maxIntAttrValue = 0x80000000;
+        serverDataForRead = JSON.stringify(legacySnapshot, (_key, value) =>
+          typeof value === "bigint" ? (value <= BigInt(maxIntAttrValue) ? Number(value) : value.toString()) : value,
+        );
+        legacyReadOnly = true;
+        this.systemLoadBlocked = true;
+        this.legacyRecoveryIdentity = {
+          trainerId: serverSnapshot.trainerId,
+          secretId: serverSnapshot.secretId,
+          timestamp: serverSnapshot.timestamp,
+        };
+      }
+
+      let localSnapshot: string | undefined;
+      if (cachedSystem) {
+        try {
+          const decoded = AES.decrypt(cachedSystem, saveKey).toString(enc.Utf8);
+          if (GameData.isValidSystemSnapshot(GameData.parseSystemData(decoded))) {
+            localSnapshot = decoded;
+          } else {
+            console.warn("[SYSTEM_CACHE_INVALID] Ignoring incomplete cache");
           }
-
-          const cachedSystem = localStorage.getItem(`data_${loggedInUser?.username}`);
-          this.initSystem(
-            saveDataOrErr,
-            cachedSystem ? AES.decrypt(cachedSystem, saveKey).toString(enc.Utf8) : undefined,
-          ).then(resolve);
-        });
-      } else {
-        this.initSystem(decrypt(localStorage.getItem(`data_${loggedInUser?.username}`)!, bypassLogin)).then(resolve); // TODO: is this bang correct?
+        } catch (error) {
+          console.warn("[SYSTEM_CACHE_DECODE_FAILED] Ignoring cache", error);
+        }
       }
-    });
+
+      // Never prefer an older local cache over the server during legacy recovery.
+      // Never write recovered placeholder balances back to the server or cache.
+      const loaded = await this.initSystem(serverDataForRead, legacyReadOnly ? undefined : localSnapshot);
+      if (!loaded || legacyReadOnly) {
+        this.systemLoadBlocked = true;
+      }
+      return loaded;
+    } catch (error) {
+      this.systemLoadBlocked = true;
+      console.error("[SYSTEM_LOAD_EXCEPTION]", error);
+      return false;
+    }
   }
 
   /**
@@ -1479,15 +1880,22 @@ export class GameData {
     try {
       let systemData = GameData.parseSystemData(systemDataStr);
 
+      if (!GameData.isValidSystemSnapshot(systemData)) {
+        throw new Error("[SYSTEM_LOAD_INVALID_SNAPSHOT] Missing required fields");
+      }
+
       if (cachedSystemDataStr) {
         const cachedSystemData = GameData.parseSystemData(cachedSystemDataStr);
 
-        if (cachedSystemData.timestamp >= systemData.timestamp) {
+        if (GameData.isValidSystemSnapshot(cachedSystemData)
+          && Number.isFinite(cachedSystemData.timestamp)
+          && cachedSystemData.timestamp >= systemData.timestamp) {
           console.debug("Use cached system");
           systemData = cachedSystemData;
           systemDataStr = cachedSystemDataStr;
         } else {
-          this.clearLocalData();
+          // A newer server snapshot is not evidence that local run/history backups are invalid.
+          console.info("[SYSTEM_CACHE_OLDER] Keeping local backup; using server system data");
         }
       }
 
@@ -1503,7 +1911,9 @@ export class GameData {
         }
       }
 
-      localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(systemDataStr, bypassLogin));
+      if (!this.systemLoadBlocked) {
+        localStorage.setItem(`data_${loggedInUser?.username}`, encrypt(systemDataStr, bypassLogin));
+      }
 
       const lsItemKey = `runHistoryData_${loggedInUser?.username}`;
 
@@ -1516,6 +1926,7 @@ export class GameData {
       this.initParsedSystem(systemData);
       resolve(true);
     } catch (err) {
+      this.systemLoadBlocked = true;
       console.error(err);
       resolve(false);
     }

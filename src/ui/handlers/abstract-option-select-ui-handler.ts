@@ -29,6 +29,8 @@ export interface OptionSelectItem {
   style?: TextStyle;
   /** Optional per-option text color (hex #RRGGBB), used for trainer-card choices. */
   textColor?: string;
+  /** Optional standalone texture for an icon shown before this option label. */
+  iconTexture?: string;
   item?: string;
   itemArgs?: any[];
 }
@@ -129,7 +131,7 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
       0,
       optionsForWidth
         .map(o =>
-          o.item
+          (o.item || o.iconTexture)
             ? `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]    ${o.label}[/color][/shadow]`
             : `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]${o.label}[/color][/shadow]`,
         )
@@ -154,12 +156,27 @@ export abstract class AbstractOptionSelectUiHandler extends UiHandler {
     // Now that the container and background widths are established, we can set up the proper text restricted to visible options
     this.textContent = optionsWithScroll
       .map(o =>
-        o.item
+        (o.item || o.iconTexture)
           ? `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]    ${o.label}[/color][/shadow]`
           : `[shadow=${getTextColor(o.style ?? this.defaultTextStyle, true)}][color=${this.getOptionTextColor(o)}]${o.label}[/color][/shadow]`,
       )
       .join("\n");
     this.optionSelectText.setText(this.textContent);
+
+    // Icons use the visible rows, not the full list indices, so scrolling
+    // keeps each badge aligned with its title.
+    optionsWithScroll.forEach((option, row) => {
+      if (!option.iconTexture || !globalScene.textures.exists(option.iconTexture)) {
+        return;
+      }
+      const icon = globalScene.add.sprite(0, 0, option.iconTexture).setOrigin(0.5);
+      // Fit into the existing option row without stretching large source textures.
+      const maxSize = 11;
+      icon.setScale(Math.min(maxSize / icon.width, maxSize / icon.height));
+      icon.setPositionRelative(this.optionSelectText, 36 * this.scale, 7 + row * (114 * this.scale - 3));
+      this.optionSelectTextContainer.add(icon);
+      this.optionSelectIcons.push(icon);
+    });
 
     options.forEach((option: OptionSelectItem, i: number) => {
       if (option.item) {

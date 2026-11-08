@@ -3,6 +3,8 @@ import { globalScene } from "#app/global-scene";
 import { Phase } from "#app/phase";
 import type { Egg } from "#data/egg";
 import type { EggHatchData } from "#data/egg-hatch-data";
+import { getMarkData } from "#data/mark";
+import { MarkId } from "#enums/mark-id";
 import { UiMode } from "#enums/ui-mode";
 import { EggCountChangedEvent } from "#events/egg";
 import { doShinySparkleAnim } from "#field/anims";
@@ -379,9 +381,15 @@ export class EggHatchPhase extends Phase {
 
         globalScene.playSoundWithoutBgm("evolution_fanfare");
 
+        const speciesName = this.pokemon.species.getExpandedSpeciesName();
+        const markTitle = this.pokemon.mark != null && this.pokemon.mark !== MarkId.NONE
+          ? getMarkData(this.pokemon.mark).title
+          : "";
+        const displayName = markTitle ? `${markTitle} ${speciesName}` : speciesName;
+
         globalScene.ui.showText(
           i18next.t("egg:hatchFromTheEgg", {
-            pokemonName: this.pokemon.species.getExpandedSpeciesName(),
+            pokemonName: displayName,
           }),
           null,
           () => {

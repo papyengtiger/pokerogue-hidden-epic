@@ -12,7 +12,6 @@ import {
   GACHA_DEFAULT_SHINY_RATE,
   GACHA_EGG_HA_RATE,
   GACHA_LEGENDARY_UP_THRESHOLD_OFFSET,
-  GACHA_MARK_RATE_MULTIPLIER,
   GACHA_SHINY_UP_SHINY_RATE,
   HATCH_WAVES_COMMON_EGG,
   HATCH_WAVES_EPIC_EGG,
@@ -28,7 +27,8 @@ import {
 import { speciesEggTiers } from "#balance/species-egg-tiers";
 import { speciesStarterCosts } from "#balance/starters";
 import { speciesEggMoves } from "#balance/egg-moves";
-import { rollRandomMark } from "#data/mark";
+import { markData } from "#data/mark";
+import { MarkTier } from "#enums/mark-tier";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { EggSourceType } from "#enums/egg-source-types";
 import { EggTier } from "#enums/egg-type";
@@ -41,6 +41,20 @@ import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
 export const EGG_SEED = 1073741824;
+
+// Marks that require a special encounter, achievement, or size condition.
+// ITEMFINDER and PARTNER remain eligible for the egg-only RARE pool.
+const EGG_EXCLUDED_MARKS = new Set<MarkId>([
+  MarkId.NONE,
+  MarkId.SLEEPY, MarkId.LUNCHTIME, MarkId.DUSK, MarkId.DAWN,
+  MarkId.CLOUDY, MarkId.RAINY, MarkId.STORMY, MarkId.SNOWY,
+  MarkId.BLIZZARD, MarkId.DRY, MarkId.SANDSTORM, MarkId.MISTY,
+  MarkId.FISHING, MarkId.CURRY, MarkId.DESTINY,
+  MarkId.JUMBO, MarkId.MINI,
+  MarkId.MYSTERY, MarkId.CLASSIC_CHAMPION,
+  MarkId.ALPHA, MarkId.MIGHTIEST, MarkId.TITAN,
+]);
+
 
 /** Egg options to override egg properties */
 export interface IEggOptions {
@@ -191,8 +205,13 @@ export class Egg {
 
       this._overrideHiddenAbility = eggOptions?.overrideHiddenAbility ?? false;
 
-      this._mark =
-        eggOptions?.mark ?? (this._sourceType === EggSourceType.GACHA_MARK ? this.rollGachaMark() : MarkId.NONE);
+      // Mark Up eggs have a 1/3 mark chance; other eggs have a 1/4 chance.
+      // Explicit marks (including NONE) always take precedence.
+      this._mark = eggOptions?.mark ?? (
+        !randSeedInt(this._sourceType === EggSourceType.GACHA_MARK ? 3 : 4)
+          ? this.rollGachaMark()
+          : MarkId.NONE
+      );
       // Override egg tier and hatchwaves if species was given
       if (eggOptions?.species) {
         this._tier = this.getEggTier();
@@ -368,9 +387,26 @@ export class Egg {
   ////
 
   private rollGachaMark(): MarkId {
-    const mark = rollRandomMark(GACHA_MARK_RATE_MULTIPLIER);
+    // The 1/4 (normal) or 1/3 (Mark Up) chance is rolled by the constructor.
+    // Once a mark is awarded, select its rarity independently. Never replace
+    // a failed wild-encounter roll with SLEEPY (which biases COMMON heavily).
+    const tierRoll = randSeedInt(1000);
+    const tier = tierRoll < 700 ? MarkTier.COMMON
+      : tierRoll < 900 ? MarkTier.RARE
+      : tierRoll < 980 ? MarkTier.ROGUE
+      : tierRoll < 995 ? MarkTier.EPIC
+      : MarkTier.LEGENDARY;
 
-    return mark === MarkId.NONE ? MarkId.SLEEPY : mark;
+    // Egg-specific pool: event, achievement, weather, time, size, and
+    // encounter-method marks are not randomly awarded by eggs.
+    const eggMarkPool = Object.values(markData)
+      .filter(data => data.tier === tier)
+      .map(data => data.id)
+      .filter(id => !EGG_EXCLUDED_MARKS.has(id));
+
+    return eggMarkPool.length
+      ? eggMarkPool[randSeedInt(eggMarkPool.length)]
+      : MarkId.UNCOMMON;
   }
 
   /**

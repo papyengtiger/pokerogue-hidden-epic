@@ -1,5 +1,8 @@
 import { globalScene } from "#app/global-scene";
 import { Gender, getGenderColor, getGenderSymbol } from "#data/gender";
+import { getMarkTier } from "#data/mark";
+import { MarkId } from "#enums/mark-id";
+import { MarkTier } from "#enums/mark-tier";
 import { getTypeRgb } from "#data/type";
 import { PokemonType } from "#enums/pokemon-type";
 import { Stat } from "#enums/stat";
@@ -68,6 +71,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
   protected genderText: Phaser.GameObjects.Text;
   protected teraIcon: Phaser.GameObjects.Sprite;
   protected shinyIcon: Phaser.GameObjects.Sprite;
+  protected markIcon: Phaser.GameObjects.Sprite;
   protected fusionShinyIcon: Phaser.GameObjects.Sprite;
   protected splicedIcon: Phaser.GameObjects.Sprite;
   protected statusIndicator: Phaser.GameObjects.Sprite;
@@ -114,6 +118,13 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
       .setInteractive(hitArea, hitCallback)
       .setPositionRelative(this.nameText, 0, 2);
 
+    this.markIcon = globalScene.add
+      .sprite(0, 0, "icon_mark_common")
+      .setName("icon_mark")
+      .setVisible(false)
+      .setOrigin(0)
+      .setScale(0.45);
+
     this.fusionShinyIcon = globalScene.add
       .sprite(0, 0, "shiny_star_2")
       .setName("icon_fusion_shiny")
@@ -131,7 +142,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
       .setInteractive(hitArea, hitCallback)
       .setPositionRelative(this.nameText, 0, 2);
 
-    this.add([this.teraIcon, this.shinyIcon, this.fusionShinyIcon, this.splicedIcon]);
+    this.add([this.teraIcon, this.shinyIcon, this.fusionShinyIcon, this.splicedIcon, this.markIcon]);
   }
 
   /**
@@ -345,6 +356,28 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
     }
   }
 
+  /** Display the individual Pokemon's mark after the shiny icon. */
+  protected updateMarkIcon(pokemon: Pokemon): void {
+    const mark = pokemon.mark ?? MarkId.NONE;
+    if (mark === MarkId.NONE) {
+      this.markIcon.setVisible(false);
+      return;
+    }
+
+    const tier = getMarkTier(mark);
+    const texture = tier === MarkTier.COMMON ? "icon_mark_common"
+      : tier === MarkTier.RARE ? "icon_mark_super"
+      : tier === MarkTier.ROGUE ? "icon_mark_rogue"
+      : tier === MarkTier.EPIC ? "icon_mark_ultra"
+      : "icon_mark_master";
+    this.markIcon.setTexture(texture).setVisible(true);
+    const rightmost = this.shinyIcon.visible ? this.shinyIcon : this.splicedIcon.visible ? this.splicedIcon : this.teraIcon.visible ? this.teraIcon : this.genderText;
+    const x = rightmost === this.genderText
+      ? this.nameText.x + this.nameText.displayWidth + this.genderText.displayWidth + 2
+      : rightmost.x + rightmost.displayWidth + 2;
+    this.markIcon.setPosition(x, this.nameText.y + 2.5);
+  }
+
   initInfo(pokemon: Pokemon) {
     this.updateNameText(pokemon);
     const nameTextWidth = this.nameText.displayWidth;
@@ -381,6 +414,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
     this.initShinyIcon(pokemon, nameTextWidth, doubleShiny);
 
     this.fusionShinyIcon.setVisible(doubleShiny).copyPosition(this.shinyIcon);
+    this.updateMarkIcon(pokemon);
     if (isFusion) {
       this.fusionShinyIcon.setTint(getVariantTint(pokemon.fusionVariant));
     }
@@ -395,6 +429,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
     this.lastLevel = pokemon.level;
 
     this.shinyIcon.setVisible(pokemon.isShiny());
+    this.updateMarkIcon(pokemon);
 
     this.setTypes(pokemon.getTypes(true, false, undefined, true));
 
@@ -611,6 +646,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
     }
 
     this.shinyIcon.setVisible(pokemon.isShiny(true));
+    this.updateMarkIcon(pokemon);
 
     const doubleShiny = isFusion && pokemon.shiny && pokemon.fusionShiny;
     const baseVariant = !doubleShiny ? pokemon.getVariant(true) : pokemon.variant;
@@ -640,6 +676,7 @@ export abstract class BattleInfo extends Phaser.GameObjects.Container {
         - ((gender !== Gender.GENDERLESS ? 6 : 0)
           + (pokemon.fusionSpecies ? 8 : 0)
           + (pokemon.isShiny() ? 8 : 0)
+          + (pokemon.mark !== MarkId.NONE ? 8 : 0)
           + (Math.min(pokemon.level.toString().length, 3) - 3) * 8)
     ) {
       displayName = `${displayName.slice(0, displayName.endsWith(".") ? -2 : -1).trimEnd()}.`;

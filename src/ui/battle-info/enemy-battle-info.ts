@@ -182,6 +182,7 @@ export class EnemyBattleInfo extends BattleInfo {
         this.teraIcon,
         this.splicedIcon,
         this.shinyIcon,
+        this.markIcon,
         this.ownedIcon,
         this.championRibbon,
         this.statusIndicator,

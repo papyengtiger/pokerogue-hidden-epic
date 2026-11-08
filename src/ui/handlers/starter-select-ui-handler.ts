@@ -20,7 +20,8 @@ import { allAbilities, allMoves, allSpecies } from "#data/data-lists";
 import { Egg, getEggTierForSpecies } from "#data/egg";
 import { GrowthRate, getGrowthRateColor } from "#data/exp";
 import { Gender, getGenderColor, getGenderSymbol } from "#data/gender";
-import { getMarkTitle } from "#data/mark";
+import { getMarkTitle, getMarkTier } from "#data/mark";
+import { MarkTier } from "#enums/mark-tier";
 import { getNatureName } from "#data/nature";
 import { pokemonFormChanges } from "#data/pokemon-forms";
 import type { PokemonSpecies } from "#data/pokemon-species";
@@ -587,7 +588,13 @@ export class StarterSelectUiHandler extends MessageUiHandler {
       new DropDownLabel(i18next.t("filterBar:pokerus"), undefined, DropDownState.OFF),
       new DropDownLabel(i18next.t("filterBar:hasPokerus"), undefined, DropDownState.ON),
     ];
+    const markLabels = [
+      new DropDownLabel("증표", undefined, DropDownState.OFF),
+      new DropDownLabel("증표 보유", undefined, DropDownState.ON),
+      new DropDownLabel("증표 미보유", undefined, DropDownState.EXCLUDE),
+    ];
     const miscOptions = [
+      new DropDownOption("MARK", markLabels),
       new DropDownOption("FAVORITE", favoriteLabels),
       new DropDownOption("WIN", winLabels),
       new DropDownOption("HIDDEN_ABILITY", hiddenAbilityLabels),
@@ -2283,6 +2290,28 @@ export class StarterSelectUiHandler extends MessageUiHandler {
                       .map((m: MarkId) => {
                         const option: OptionSelectItem = {
                           label: m === MarkId.NONE ? "증표 없음" : getMarkTitle(m),
+                          ...(m === MarkId.NONE ? {} : (() => {
+                            const tier = getMarkTier(m);
+                            const icons: Partial<Record<MarkTier, string>> = {
+                              [MarkTier.COMMON]: "icon_mark_common",
+                              [MarkTier.RARE]: "icon_mark_super",
+                              [MarkTier.ROGUE]: "icon_mark_rogue",
+                              [MarkTier.EPIC]: "icon_mark_ultra",
+                              [MarkTier.LEGENDARY]: "icon_mark_master",
+                              [MarkTier.MYSTERY]: "icon_mark_master",
+                              [MarkTier.SPECIAL]: "icon_mark_master",
+                            };
+                            const colors: Partial<Record<MarkTier, string>> = {
+                              [MarkTier.COMMON]: "#FFFFFF",
+                              [MarkTier.RARE]: "#63B7FF",
+                              [MarkTier.ROGUE]: "#B58AFF",
+                              [MarkTier.EPIC]: "#FFD65A",
+                              [MarkTier.LEGENDARY]: "#FF7272",
+                              [MarkTier.MYSTERY]: "#5FE5D3",
+                              [MarkTier.SPECIAL]: "#FF9AD6",
+                            };
+                            return { iconTexture: icons[tier], textColor: colors[tier] };
+                          })()),
                           handler: () => {
                             starterAttributes.mark = m;
                             originalStarterAttributes.mark = m;
@@ -4145,6 +4174,20 @@ export class StarterSelectUiHandler extends MessageUiHandler {
         }
       });
 
+      // Mark ownership filter (use saved unlocks, not the currently selected mark).
+      const hasMark = (passiveStarterData.marks ?? []).some(mark => mark !== MarkId.NONE);
+      const fitsMark = this.filterBar.getVals(DropDownColumn.MISC).some(misc => {
+        if (misc.val === "MARK" && misc.state === DropDownState.ON) {
+          return hasMark;
+        }
+        if (misc.val === "MARK" && misc.state === DropDownState.EXCLUDE) {
+          return !hasMark;
+        }
+        if (misc.val === "MARK" && misc.state === DropDownState.OFF) {
+          return true;
+        }
+      });
+
       // HA Filter
       const speciesHasHiddenAbility =
         container.species.abilityHidden !== container.species.ability1
@@ -4197,6 +4240,7 @@ export class StarterSelectUiHandler extends MessageUiHandler {
         && fitsCostReduction
         && fitsFavorite
         && fitsWin
+        && fitsMark
         && fitsHA
         && fitsEgg
         && fitsPokerus
@@ -4323,6 +4367,35 @@ export class StarterSelectUiHandler extends MessageUiHandler {
           );
         }
       }
+
+      // Display the highest-tier mark owned by this starter species.
+      // SPECIAL and MYSTERY currently share the master badge until custom art exists.
+      const markIconByTier: Partial<Record<MarkTier, string>> = {
+        [MarkTier.COMMON]: "icon_mark_common",
+        [MarkTier.RARE]: "icon_mark_super",
+        [MarkTier.ROGUE]: "icon_mark_rogue",
+        [MarkTier.EPIC]: "icon_mark_ultra",
+        [MarkTier.LEGENDARY]: "icon_mark_master",
+        [MarkTier.MYSTERY]: "icon_mark_master",
+        [MarkTier.SPECIAL]: "icon_mark_master",
+      };
+      const markPriority: Partial<Record<MarkTier, number>> = {
+        [MarkTier.COMMON]: 1,
+        [MarkTier.RARE]: 2,
+        [MarkTier.ROGUE]: 3,
+        [MarkTier.EPIC]: 4,
+        [MarkTier.LEGENDARY]: 5,
+        [MarkTier.MYSTERY]: 6,
+        [MarkTier.SPECIAL]: 6,
+      };
+      const ownedMarks = (starterDataEntry.marks ?? []).filter(mark => mark !== MarkId.NONE);
+      const topMark = ownedMarks.reduce<MarkId | undefined>((best, mark) => {
+        if (!best) return mark;
+        return (markPriority[getMarkTier(mark)] ?? 0) > (markPriority[getMarkTier(best)] ?? 0) ? mark : best;
+      }, undefined);
+      const markTexture = topMark === undefined ? undefined : markIconByTier[getMarkTier(topMark)];
+      container.markIcon.setVisible(!!markTexture);
+      if (markTexture) container.markIcon.setTexture(markTexture);
 
       container.starterPassiveBgs.setVisible(!!starterDataEntry.passiveAttr);
       container.hiddenAbilityIcon.setVisible(!!dexEntry.caughtAttr && !!(starterDataEntry.abilityAttr & 4));

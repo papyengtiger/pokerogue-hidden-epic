@@ -1,9 +1,11 @@
 import { globalScene } from "#app/global-scene";
 import type { EggHatchData } from "#data/egg-hatch-data";
 import { Gender } from "#data/gender";
+import { markData } from "#data/mark";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { DexAttr } from "#enums/dex-attr";
 import { MarkId } from "#enums/mark-id";
+import { MarkTier } from "#enums/mark-tier";
 import { getVariantTint } from "#sprites/variant";
 import type { PokemonIconAnimHelper } from "#ui/pokemon-icon-anim-helper";
 import { PokemonIconAnimMode } from "#ui/pokemon-icon-anim-helper";
@@ -78,7 +80,8 @@ export class HatchedPokemonContainer extends Phaser.GameObjects.Container {
 
     const markIcon = globalScene.add.image(0, offset, "icon_mark");
     markIcon.setOrigin(0, 0);
-    markIcon.setScale(0.5);
+    // Keep the tier badge small; source textures have different native sizes.
+    markIcon.setDisplaySize(6, 6);
 
     this.markIcon = markIcon;
     this.add(this.markIcon);
@@ -118,7 +121,23 @@ export class HatchedPokemonContainer extends Phaser.GameObjects.Container {
     this.hiddenAbilityIcon.setVisible(displayPokemon.abilityIndex === 2);
     this.pokeballIcon.setVisible(!caughtAttr || newForm);
 
-    this.markIcon.setVisible(displayPokemon.mark !== MarkId.NONE);
+    const mark = displayPokemon.mark ?? MarkId.NONE;
+    const markInfo = mark !== MarkId.NONE ? markData[mark] : undefined;
+    const markTextures: Partial<Record<MarkTier, string>> = {
+      [MarkTier.COMMON]: "icon_mark_common",
+      [MarkTier.RARE]: "icon_mark_super",
+      [MarkTier.ROGUE]: "icon_mark_rogue",
+      [MarkTier.EPIC]: "icon_mark_ultra",
+      [MarkTier.LEGENDARY]: "icon_mark_master",
+      [MarkTier.MYSTERY]: "icon_mark_master",
+      [MarkTier.SPECIAL]: "icon_mark_master",
+    };
+    const markTexture = markInfo ? markTextures[markInfo.tier] : undefined;
+    if (markTexture) {
+      this.markIcon.setTexture(markTexture);
+      this.markIcon.setDisplaySize(6, 6);
+    }
+    this.markIcon.setVisible(!!markTexture);
     // add animation to the Pokemon sprite for new unlocks (new catch, new shiny or new form)
     if (!caughtAttr || newShinyOrVariant || newForm) {
       iconAnimHandler.addOrUpdate(this.icon, PokemonIconAnimMode.PASSIVE);

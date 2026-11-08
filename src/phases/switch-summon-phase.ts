@@ -1,4 +1,5 @@
 import { globalScene } from "#app/global-scene";
+import { trainerCardManager } from "#system/trainer-card-manager";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { SubstituteTag } from "#data/battler-tags";
 import { allMoves } from "#data/data-lists";
@@ -407,6 +408,34 @@ if (
           pokemon: switchedInPokemon.getName(),
           statStages: [...switchedInPokemon.summonData.statStages],
         });
+      }
+      // 트레이너 카드 「우정의 기적」: 최초 출전과 동료의 교체는 제외한다.
+      // 전투에 교체로 나온 플레이어 포켓몬만 최대 HP의 10%를 회복한다.
+      if (
+        this.player
+        && !this.isCompanionSwitch()
+        && this.switchType !== SwitchType.INITIAL_SWITCH
+        && switchedInPokemon.hp > 0
+        && switchedInPokemon.hp < switchedInPokemon.getMaxHp()
+      ) {
+        const healFraction = Math.max(0, trainerCardManager.getMultiplier("SWITCH_IN_HEAL_FRACTION") - 1);
+        if (healFraction > 0) {
+          const beforeHp = switchedInPokemon.hp;
+          const maxHp = switchedInPokemon.getMaxHp();
+          const healAmount = Math.max(1, Math.floor(maxHp * healFraction));
+          const healed = switchedInPokemon.heal(healAmount);
+          if (healed > 0) {
+            void switchedInPokemon.updateInfo();
+            console.log("[TRAINER_CARD_MIRACLE_OF_FRIENDSHIP]", {
+              pokemon: switchedInPokemon.getName(),
+              beforeHp,
+              maxHp,
+              healAmount,
+              healed,
+              afterHp: switchedInPokemon.hp,
+            });
+          }
+        }
       }
       this.summon();
     };
